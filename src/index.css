@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Manrope', sans-serif;
+  --font-display: 'Fraunces', serif;
+}
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --aurora-primary: #ebb090;
+  --aurora-primary-soft: #f4c7ae;
+  --aurora-primary-pale: #f8e3d6;
+  --aurora-cream: #fff7f2;
+  --aurora-sand: #f3dfd2;
+  --aurora-text: #6f4738;
+  --aurora-text-strong: #4f2f24;
+  --aurora-border: #e8c4b0;
+  --aurora-olive: #8a9077;
+  --aurora-olive-deep: #6d745b;
+  --aurora-olive-soft: #e6e8de;
+  --aurora-sky: #90b4c4;
+  --aurora-sky-deep: #6f95a6;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background: linear-gradient(180deg, #fff8f3 0%, #f7e6dc 55%, #f3ddd0 100%);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
