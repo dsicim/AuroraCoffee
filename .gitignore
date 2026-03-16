@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Config file for Backend. Check example for self-hosting.
+config.json

@@ -1,4 +1,9 @@
 {
     "port": 4150,
-    "wsport": 4151
+    "wsport": 4151,
+    "dbport": 3600,
+    "user": "server",
+    "password": "password",
+    "database": "coffeedb"
+
 }

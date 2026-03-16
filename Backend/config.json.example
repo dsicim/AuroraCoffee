@@ -1,0 +1,9 @@
+{
+    "port": 3000,
+    "wsport": 3001,
+    "dbport": 3006,
+    "user": "Insert your database username",
+    "password": "Insert your database password",
+    "database": "Insert your database name"
+
+}

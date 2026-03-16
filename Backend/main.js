@@ -24,7 +24,7 @@ const server = http.createServer(function (req, res) {
         res.end("Bad Request");
     }
     else if (req.url.startsWith("/api/")) {
-
+        
     }
     else if (req.url.startsWith("/assets/")) {
         console.log("Request for asset: " + req.url.substring(8));
