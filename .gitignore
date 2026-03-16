@@ -24,4 +24,4 @@ dist-ssr
 *.sw?
 
 # Config file for Backend. Check example for self-hosting.
-config.json
+Backend/config.json
