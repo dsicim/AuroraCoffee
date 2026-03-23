@@ -9,6 +9,7 @@ An online coffee store project for CS308 made with React, Tailwind, Node.JS and 
 - `npm run build`
 - `npm run lint`
 - Go to the backend's directory
+- Configure the backend service by editing the [config.json](https://github.com/dsicim/AuroraCoffee/blob/main/Backend/config.json.example) file and remove `.example` from the name.
 - `npm i`
 - `node .`
 
