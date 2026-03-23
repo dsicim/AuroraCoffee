@@ -1,15 +1,19 @@
-# Aurora Coffee Roastery Frontend
+# Aurora Coffee Web Software
 
-Basic React + Tailwind homepage scaffold for the CS308 online store project.
+An online coffee store project for CS308 made with React, Tailwind, Node.JS and MySQL.
 
-## Commands
+## Self Hosting Instructions
 
+- Go to the frontend's directory
 - `npm run dev`
 - `npm run build`
 - `npm run lint`
+- Go to the backend's directory
+- `npm i`
+- `node .`
 
 ## Structure
 
-- `src/pages/HomePage.jsx`: homepage layout
-- `src/components/`: reusable UI pieces
-- `src/data/products.js`: temporary featured product data 
+- `Frontend`: Website layout and interface for the end-users.
+- `Database`: Storage of users, products and more information.
+- `Backend`: Service that hosts the interface and lets users/admins interact with the database.
