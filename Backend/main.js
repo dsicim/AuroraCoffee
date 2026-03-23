@@ -18,29 +18,53 @@ const mimes = {
     "json": "application/json",
     "txt": "text/plain"
 }
-const server = http.createServer(function (req, res) {
+const server = http.createServer(async function (req, res) {
     if (req.url.includes("..")) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("Bad Request");
     }
     else if (req.url.startsWith("/api/")) {
-        
+        const body = await new Promise((resolve, reject) => {
+            let t = 0;
+            let b = "";
+            req.on("data", function (c) {
+                b += c;
+            });
+            req.on("end", function () {
+                if (b == "") {
+                    t = 0;
+                    b = null;
+                }
+                else {
+                    try {
+                        b = JSON.parse(b);
+                        t = 2;
+                    } catch (error) {
+                        t = 1;
+                    }
+                }
+                resolve({ exists: t !== 0, json: t === 2, data: b, err: null });
+            });
+            req.on("error", function (err) {
+                resolve({ exists: false, json: false, data: null, err: err });
+            });
+        });
     }
     else if (req.url.startsWith("/assets/")) {
         console.log("Request for asset: " + req.url.substring(8));
-        fs.readFile(fdir + "assets/"+req.url.substring(8), function (error, data) {
+        fs.readFile(fdir + "assets/" + req.url.substring(8), function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/plain" });
                 res.end("File not found");
             }
             else {
-                res.writeHead(200, { "Content-Type": mimes[path.extname(req.url.substring(1)).substring(1)]||"application/octet-stream" });
+                res.writeHead(200, { "Content-Type": mimes[path.extname(req.url.substring(1)).substring(1)] || "application/octet-stream" });
                 res.write(data);
                 res.end();
             }
         });
     }
-    else if (req.url == "/favicon.svg"){
+    else if (req.url == "/favicon.svg") {
         fs.readFile(fdir + "favicon.svg", function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/html" });
@@ -67,6 +91,9 @@ const server = http.createServer(function (req, res) {
         });
     }
 });
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
 server.listen(config.port, function (error) {
     if (error) {
         console.log("AUCOFFEE-BACKEND > Something went wrong", error);
