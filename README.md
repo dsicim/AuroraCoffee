@@ -5,7 +5,7 @@ An online coffee store project for CS308 made with React, Tailwind, Node.JS and 
 ## Self Hosting Instructions
 
 - Go to the frontend's directory
-- `npm run dev`
+- `npm i`
 - `npm run build`
 - `npm run lint`
 - Go to the backend's directory
