@@ -2,6 +2,7 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const fetch = require('node-fetch');
+const api = require("./api.js");
 const crypto = require('crypto');
 const fdir = "../Frontend/dist/";
 const ddir = "../Database/";
@@ -24,7 +25,35 @@ const server = http.createServer(async function (req, res) {
         res.end("Bad Request");
     }
     else if (req.url.startsWith("/api/")) {
-        
+        const body = await new Promise((resolve, reject) => {
+            let t = 0;
+            let b = "";
+            req.on("data", function (c) {
+                b += c;
+            });
+            req.on("end", function () {
+                if (b == "") {
+                    t = 0;
+                    b = null;
+                }
+                else {
+                    try {
+                        b = JSON.parse(b);
+                        t = 2;
+                    } catch (error) {
+                        t = 1;
+                    }
+                }
+                resolve({ exists: t !== 0, json: t === 2, data: b, err: null });
+            });
+            req.on("error", function (err) {
+                reject(err);
+            });
+        }).catch(err => ({ exists: false, json: false, data: null, err: err }));
+        const response = await api.handleAPI(req.method, req.url.substring(5), body);
+        res.writeHead(response.s, { "Content-Type": "application/json", ...response.h });
+        res.write(response.j?JSON.stringify(response.d):response.d);
+        res.end();
     }
     else if (req.url.startsWith("/assets/")) {
         console.log("Request for asset: " + req.url.substring(8));

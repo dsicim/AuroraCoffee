@@ -1,25 +1,4 @@
-const body = await new Promise((resolve, reject) => {
-            let t = 0;
-            let b = "";
-            req.on("data", function (c) {
-                b += c;
-            });
-            req.on("end", function () {
-                if (b == "") {
-                    t = 0;
-                    b = null;
-                }
-                else {
-                    try {
-                        b = JSON.parse(b);
-                        t = 2;
-                    } catch (error) {
-                        t = 1;
-                    }
-                }
-                resolve({ exists: t !== 0, json: t === 2, data: b, err: null });
-            });
-            req.on("error", function (err) {
-                resolve({ exists: false, json: false, data: null, err: err });
-            });
-        });
+async function handleAPI(method, endpoint, body) {
+    console.log(`API Request: ${method} ${endpoint} with body: ${JSON.stringify(body)}`);
+    return {s:400, j:true, d:{m:"Not Found"}, h: {"x-api-check":"true"}};
+}
