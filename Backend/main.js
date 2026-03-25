@@ -50,7 +50,15 @@ const server = http.createServer(async function (req, res) {
                 reject(err);
             });
         }).catch(err => ({ exists: false, json: false, data: null, err: err }));
-        const response = await api.handleAPI(req.method, req.url.substring(5), body);
+        const directory = req.url.substring(5).split("/");
+        let query = directory.pop().split("?");
+        directory.push(query.shift());
+        query = query.split("&").reduce((acc, curr) => {
+            const [key, value] = curr.split("=");
+            acc[key] = value;
+            return acc;
+        }, {});
+        const response = await api.handleAPI(req.method, directory, query, body, req.headers);
         res.writeHead(response.s, { "Content-Type": "application/json", ...response.h });
         res.write(response.j?JSON.stringify(response.d):response.d);
         res.end();
