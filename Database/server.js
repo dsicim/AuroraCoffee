@@ -4,11 +4,11 @@ const bcrypt = require('bcryptjs');
 const config = JSON.parse(fs.readFileSync("../Backend/config.json", "utf-8"));
 
 class DBError extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-    this.error = message;
-  }
+    constructor(status, message) {
+        super(message);
+        this.status = status;
+        this.error = message;
+    }
 }
 
 let pool;
@@ -44,8 +44,10 @@ func.registerUser = async function (username, password, displayname) {
         if (error.code === 'ER_DUP_ENTRY') {
             throw new DBError(403, 'Username already exists');
         }
-        console.error('Registration error:', error);
-        throw new DBError(500, 'Internal server error');
+        else {
+            console.error('Registration error:', error);
+            throw new DBError(500, 'Internal server error');
+        }
     }
 };
 func.loginUser = async function (username, password) {
@@ -72,10 +74,10 @@ func.loginUser = async function (username, password) {
 
         return { success: true, message: 'Login successful', userId: user.id };
     } catch (error) {
-        console.error('Login error:', error);
         if (error instanceof DBError) throw error; // Re-throw known DBErrors
+        console.error('Login error:', error);
         throw new DBError(500, 'Internal server error');
     }
 };
 
-module.exports = {DBError,...func};
+module.exports = { DBError, ...func };
