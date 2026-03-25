@@ -59,7 +59,4 @@ async function handleAPI(method, endpoint, query, body, headers) {
     }
     return {s:400, j:true, d:{e:"Not Found"}};
 }
-(() => {
-    sql.initDB();
-});
-module.exports = { handleAPI };
+module.exports = { handleAPI, initDB: sql.initDB };
