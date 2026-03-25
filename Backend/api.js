@@ -1,4 +1,4 @@
-const sql = require("./sql.js");
+const sql = require("../Database/server.js");
 async function handleAPI(method, endpoint, query, body, headers) {
     console.log("API "+method+" ");
     console.log(endpoint);
@@ -59,4 +59,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     }
     return {s:400, j:true, d:{e:"Not Found"}};
 }
+(() => {
+    sql.initDB();
+});
 module.exports = { handleAPI };
