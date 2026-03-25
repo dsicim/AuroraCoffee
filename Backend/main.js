@@ -53,14 +53,19 @@ const server = http.createServer(async function (req, res) {
         const directory = req.url.substring(5).split("/");
         let query = directory.pop().split("?");
         directory.push(query.shift());
-        query = query.split("&").reduce((acc, curr) => {
-            const [key, value] = curr.split("=");
-            acc[key] = value;
-            return acc;
-        }, {});
+        if (query.includes("&")) {
+            query = query.split("&").reduce((acc, curr) => {
+                const [key, value] = curr.split("=");
+                acc[key] = value;
+                return acc;
+            }, {});
+        }
+        else {
+            query = query.length > 0 ? { [query.split("=")[0]]: query.split("=")[1] } : {};
+        }
         const response = await api.handleAPI(req.method, directory, query, body, req.headers);
         res.writeHead(response.s, { "Content-Type": "application/json", ...response.h });
-        res.write(response.j?JSON.stringify(response.d):response.d);
+        res.write(response.j ? JSON.stringify(response.d) : response.d);
         res.end();
     }
     else if (req.url.startsWith("/assets/")) {
