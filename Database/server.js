@@ -16,7 +16,6 @@ const func = {};
 
 func.initDB = async function () {
     try {
-        console.log(config.user + " " + config.password + " " + config.database);
         pool = mysql.createPool({
             host: "localhost",
             port: config.dbport,
