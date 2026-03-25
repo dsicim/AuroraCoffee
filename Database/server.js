@@ -1,3 +1,4 @@
+const fs = require('fs');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const config = JSON.parse(fs.readFileSync("../Backend/config.json", "utf-8"));
