@@ -76,4 +76,4 @@ async function initDB() {
 //     }
 // });
 
-module.exports = { initDB, server };
+module.exports = { initDB };
