@@ -85,7 +85,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 if (!emailvalid) {
                                     const emailToken = await generateToken(true);
                                     const emailExpires = new Date().getTime() + 14400000;
-                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                         console.log("Email sent:", res);
                                         emailids.set(result.userId + "-register", emailToken);
                                         emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -105,10 +105,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
                     });
                 }
-                else {
-                    console.log("Invalid Login Request Body or Email Regex Failed", { body, regexMatch: body.data ? emailRegex.test(body.data.u) : false });
-                    return { s: 400, j: true, d: { e: "Invalid Request" } };
-                }
+                else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
@@ -129,7 +126,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (config.verifyemail) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-register", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -155,18 +152,14 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
                     });
                 }
-                else {
-                    console.log("Invalid Register Request Body or Email Regex Failed", { body, regexMatch: body.data ? emailRegex.test(body.data.u) : false });
-                    return { s: 400, j: true, d: { e: "Invalid Request" } };
-                }
+                else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
         else if (endpoint[0] === "password") {
-            if (method === "POST" && !endpoint[1]) { // Change password token request
+            if (method === "POST") { // Change password token request
                 if (body && body.exists && body.json && !body.err && body.data.u) {
                     const email = body.data.u;
-                    return { s: 500, j: true, d: { e: "Not implemented" } };
                     return await sql.findUser(email).then(async result => {
                         if (result.success) {
                             let emailvalid = false;
@@ -185,7 +178,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!emailvalid) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password" });
@@ -208,39 +201,44 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 }
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
-            else if (method === "POST" && endpoint[1] === "change") { // Change password with old/new p
-                if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && body.data.np) {
-                    const username = body.data.u;
-                    const oldPassword = body.data.p;
-                    const newPassword = body.data.np;
-                    return await sql.changePassword(username, oldPassword, newPassword).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        console.error("Change password error:", err);
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        else return { s: 500, j: true, d: { e: "Internal server error" } };
-                    });
+            else if (method === "PATCH") { // Change password
+                if (body && body.exists && body.json && !body.err && body.data.t && body.data.p) {
+                    const token = body.data.t;
+                    const password = body.data.p;
+                    if (emailtokens.has(token)) {
+                        if (emailtokens.get(token).expires < new Date().getTime()) {
+                            emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
+                            emailtokens.delete(token);
+                            return { s: 400, j: true, d: { e: "Invalid or expired token" } };
+                        }
+                        else if (emailtokens.get(token).for === "password") {
+                            const pv = validatePassword(password, [emailtokens.get(token).id.toString()]);
+                            if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
+                            return await sql.changePassword(emailtokens.get(token).id, password).then(async res => {
+                                if (res.success) {
+                                    invalidateAllTokens(emailtokens.get(token).id);
+                                    emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
+                                    emailtokens.delete(token);
+                                    const token = await generateToken();
+                                    const expires = new Date().getTime() + 3600000;
+                                    tokens.set(token, { id: result.userId, expires: expires });
+                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: token, expires: expires } } };
+                                }
+                                else {
+                                    console.error("Change password error:", err);
+                                    return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                                }
+                            }).catch(err => {
+                                console.error("Change password error:", err);
+                                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                            });
+                        }
+                        else return { s: 400, j: true, d: { e: "Invalid token purpose" } };
+                    }
+
                 }
-                else return { s: 400, j: true, d: { e: "Invalid Request. Username, old password and new password are required." } };
-            }
-            else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-        }
-    }
-    else if (endpoint[0] === "user") {
-        endpoint.shift();
-        if (endpoint[0] === "search") {
-            if (method === "GET" || method === "POST") {
-                const username = method === "GET" ? query.u : (body && body.data ? body.data.u : null);
-                if (username) {
-                    return await sql.findUser(username).then(res => {
-                        return { s: 200, j: true, d: res.user };
-                    }).catch(err => {
-                        console.error("Search error:", err);
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        else return { s: 500, j: true, d: { e: "Internal server error" } };
-                    });
-                }
-                else return { s: 400, j: true, d: { e: "Username parameter 'u' is required" } };
+                else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }

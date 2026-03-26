@@ -119,23 +119,19 @@ func.findUser = async function (username) {
         throw new DBError(500, 'Internal server error');
     }
 };
-func.changePassword = async function (username, oldPassword, newPassword) {
-    if (!username || !oldPassword || !newPassword) {
-        throw new DBError(400, 'Username, old password and new password are required');
+func.changePassword = async function (id, newPassword) {
+    if (!id || !newPassword) {
+        throw new DBError(400, 'User ID and new password are required');
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT * FROM users WHERE username = ?',
-            [username]
+            'SELECT * FROM users WHERE id = ?',
+            [id]
         );
         if (rows.length === 0) {
             throw new DBError(404, 'User not found');
         }
         const user = rows[0];
-        const isMatch = await bcrypt.compare(oldPassword, user.password);
-        if (!isMatch) {
-            throw new DBError(401, 'Invalid old password');
-        }
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await pool.execute(
             'UPDATE users SET password = ? WHERE id = ?',
