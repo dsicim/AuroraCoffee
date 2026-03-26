@@ -236,7 +236,51 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         }
                         else return { s: 400, j: true, d: { e: "Invalid token purpose" } };
                     }
-
+                }
+                else if (body && body.exists && body.json && !body.err && body.data.t && body.data.p && body.data.n) {
+                    const token = headers.authorization;
+                    const password = body.data.p;
+                    const newpassword = body.data.n;
+                    if (tokens.has(token)) {
+                        if (tokens.get(token).expires < new Date().getTime()) {
+                            tokens.delete(token);
+                            return { s: 401, j: true, d: { e: "Unauthorized" } };
+                        }
+                        else {
+                            const userId = tokens.get(token).id;
+                            const email = await sql.findUserById(userId).then(res => {
+                                return res.success ? res.user : null;
+                            }).catch(err => {
+                                return null;
+                            });
+                            if (!email) return { s: 401, j: true, d: { e: "Unauthorized. User not found." } };
+                            const login = await sql.loginUser(email.username, password).then(res => {
+                                return res.userId === userId && res.success;
+                            }).catch(err => {
+                                return false;
+                            });
+                            if (!login) return { s: 401, j: true, d: { e: "The original password is invalid" } };
+                            const pv = validatePassword(newpassword, [email.username.split("@")[0], email.displayname]);
+                            if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
+                            return await sql.changePassword(userId, newpassword).then(async res => {
+                                if (res.success) {
+                                    invalidateAllTokens(userId);
+                                    const token = await generateToken();
+                                    const expires = new Date().getTime() + 3600000;
+                                    tokens.set(token, { id: userId, expires: expires });
+                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: token, expires: expires } } };
+                                }
+                                else {
+                                    console.error("Change password error:", err);
+                                    return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                                }
+                            }).catch(err => {
+                                console.error("Change password error:", err);
+                                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                            });
+                        }
+                    }
                 }
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
