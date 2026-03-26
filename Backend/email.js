@@ -13,18 +13,22 @@ async function sendEmail(to, subject, body) {
         subject: subject,
         html: body
     };
-    nodemailer.createTransport({
+    const mail = nodemailer.createTransport({
         host: 'smtp.gmail.com',
         auth: {
             user: config.mail.user,
             pass: config.mail.pass
         }
-    }).sendMail(mailcontent, function (error, info) {
-        if (error) {
-            return {s:false, d:error};
-        } else {
-            return {s:true, d:info};
-        }
+
+    })
+    return new Promise((resolve) => {
+        mail.sendMail(mailcontent, function (error, info) {
+            if (error) {
+                resolve(error);
+            } else {
+                resolve(info);
+            }
+        });
     });
 }
 module.exports = { sendEmail };
