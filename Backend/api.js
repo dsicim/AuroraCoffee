@@ -86,7 +86,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 if (!emailvalid) {
                                     const emailToken = await generateToken(true);
                                     const emailExpires = new Date().getTime() + 14400000;
-                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                         console.log("Email sent:", res);
                                         emailids.set(result.userId + "-register", emailToken);
                                         emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -179,7 +179,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!emailvalid) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password", user: result.user });
@@ -213,7 +213,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             return { s: 400, j: true, d: { e: "Invalid or expired token" } };
                         }
                         else if (emailtokens.get(token).for === "password") {
-                            const pv = validatePassword(password, [emailtokens.get(token).user.username.split("@")[0],emailtokens.get(token).user.displayname]);
+                            const pv = validatePassword(password, [emailtokens.get(token).user.username.split("@")[0], emailtokens.get(token).user.displayname]);
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(emailtokens.get(token).user.username, password).then(async res => {
                                 if (res.success) {
@@ -287,6 +287,38 @@ async function handleAPI(method, endpoint, query, body, headers) {
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
+    }
+    else if (endpoint[0] === "users") {
+        endpoint.shift();
+        const token = headers.authorization;
+        if (!token) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (tokens.has(token)) {
+            if (tokens.get(token).expires < new Date().getTime()) {
+                tokens.delete(token);
+                return { s: 401, j: true, d: { e: "Unauthorized" } };
+            }
+        }
+        else return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (endpoint[0] === "me") {
+            if (method === "GET") {
+                const userId = tokens.get(token).id;
+                return await sql.findUserById(userId,true).then(res => {
+                    if (res.success) {
+                        return { s: 200, j: true, d: { user: res.user } };
+                    }
+                    else {
+                        console.error("Find user error:", err);
+                        return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    }
+                }).catch(err => {
+                    console.error("Find user error:", err);
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
+            }
+            else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+        }
+        else return { s: 400, j: true, d: { e: "Not Found" } };
     }
     else if (endpoint[0] === "verify") {
         if (method === "GET") {

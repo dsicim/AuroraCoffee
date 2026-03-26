@@ -100,13 +100,13 @@ func.verifyUser = async function (userId) {
         throw new DBError(500, 'Internal server error');
     }
 }
-func.findUser = async function (username) {
+func.findUser = async function (username, id) {
     if (!username) {
         throw new DBError(400, 'Username is required');
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, created_at FROM users WHERE username = ?',
+            'SELECT id, displayname, username, verified, created_at FROM users WHERE '+(id?'id = ?':'username = ?'),
             [username]
         );
         if (rows.length === 0) {
