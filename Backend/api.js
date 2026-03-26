@@ -55,7 +55,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     console.log(query);
     console.log(body);
     if (endpoint[0] === "version") {
-        return { s: 200, j: false, d: "0.1.20" };
+        return { s: 200, j: false, d: "0.1.67" };
     }
     else if (endpoint[0] === "auth") {
         endpoint.shift();
