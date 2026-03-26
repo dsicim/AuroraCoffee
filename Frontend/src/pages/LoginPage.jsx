@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
@@ -26,6 +26,16 @@ export default function LoginPage() {
   const [feedbackKind, setFeedbackKind] = useState('error')
   const [rememberMe, setRememberMe] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [callbackFeedback, setCallbackFeedback] = useState(callbackMessage || '')
+
+  useEffect(() => {
+    if (!callbackMessage) {
+      return
+    }
+
+    setCallbackFeedback(callbackMessage)
+    navigate('/login', { replace: true })
+  }, [callbackMessage, navigate])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -175,9 +185,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            {callbackMessage ? (
+            {callbackFeedback ? (
               <div className="mt-6 rounded-[1.75rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] p-4 text-sm font-medium leading-7 text-[var(--aurora-olive-deep)]">
-                {callbackMessage}
+                {callbackFeedback}
               </div>
             ) : null}
 

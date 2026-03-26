@@ -114,7 +114,12 @@ export default function DashboardPage() {
                   Token expiry
                 </p>
                 <p className="mt-3 text-2xl font-semibold">
-                  {new Date(session.expires).toLocaleTimeString()}
+                  {new Date(session.expires).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: false,
+                  })}
                 </p>
               </div>
               <div className="rounded-[1.75rem] bg-[rgba(255,247,242,0.08)] p-5">
