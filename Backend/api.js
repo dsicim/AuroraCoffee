@@ -41,12 +41,13 @@ function validatePassword(p, ids) {
     }
     return { s: true };
 }
-function invalidateAllTokens(userId) {
+async function invalidateAllTokens(userId) {
     for (const [token, data] of tokens) {
         if (data.id === userId) {
-            tokens.delete(token);
+            await tokens.delete(token);
         }
     }
+    return;
 }
 async function handleAPI(method, endpoint, query, body, headers) {
     console.log("API " + method + " ");
@@ -216,7 +217,8 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(emailtokens.get(token).user.username, password).then(async res => {
                                 if (res.success) {
-                                    invalidateAllTokens(emailtokens.get(token).id);
+                                    console.log("Password changed for user ID:", emailtokens.get(token).id);
+                                    await invalidateAllTokens(emailtokens.get(token).id);
                                     emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
                                     emailtokens.delete(token);
                                     const token = await generateToken();
@@ -264,7 +266,8 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(email.username, newpassword).then(async res => {
                                 if (res.success) {
-                                    invalidateAllTokens(userId);
+                                    console.log("Password changed for user ID:", userId);
+                                    await invalidateAllTokens(userId);
                                     const token = await generateToken();
                                     const expires = new Date().getTime() + 3600000;
                                     tokens.set(token, { id: userId, expires: expires });
