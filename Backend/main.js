@@ -69,7 +69,6 @@ const server = http.createServer(async function (req, res) {
         res.end();
     }
     else if (req.url.startsWith("/assets/")) {
-        console.log("Request for asset: " + req.url.substring(8));
         fs.readFile(fdir + "assets/" + req.url.substring(8), function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/plain" });

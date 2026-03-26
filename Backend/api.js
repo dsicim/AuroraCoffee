@@ -8,6 +8,7 @@ async function generateToken() {
     }
     return token;
 }
+const emailsrv = require("./email.js");
 async function handleAPI(method, endpoint, query, body, headers) {
     console.log("API "+method+" ");
     console.log(endpoint);
