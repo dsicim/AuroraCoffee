@@ -95,29 +95,6 @@ export default function LoginPage() {
         expires: payload.expires,
       }
 
-      try {
-        const meResponse = await fetch(buildApiUrl('/users/me'), {
-          method: 'GET',
-          headers: {
-            authorization: payload.token,
-          },
-        })
-
-        let mePayload = null
-
-        try {
-          mePayload = await meResponse.json()
-        } catch {
-          mePayload = null
-        }
-
-        if (meResponse.ok && mePayload?.user) {
-          nextSession.user = mePayload.user
-        }
-      } catch {
-        // Allow login to continue even if the profile lookup fails.
-      }
-
       saveAuthSession(nextSession, rememberMe)
       navigate('/dashboard', { replace: true })
     } catch {

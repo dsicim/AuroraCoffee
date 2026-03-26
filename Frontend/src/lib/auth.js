@@ -1,3 +1,5 @@
+import { buildApiUrl } from './api'
+
 export const authStorageKey = 'auroraAuth'
 
 export function saveAuthSession(session, rememberMe) {
@@ -24,19 +26,28 @@ export function getAuthSession() {
   }
 }
 
-export function updateAuthSession(session) {
-  const storage = window.localStorage.getItem(authStorageKey)
-    ? window.localStorage
-    : window.sessionStorage
-
-  storage.setItem(authStorageKey, JSON.stringify(session))
-}
-
 export function clearAuthSession() {
   window.localStorage.removeItem(authStorageKey)
   window.sessionStorage.removeItem(authStorageKey)
 }
 
-export function getSessionDisplayName(session) {
-  return session?.user?.displayname || 'Aurora User'
+export async function fetchCurrentUser(token) {
+  if (!token) {
+    return null
+  }
+
+  const response = await fetch(buildApiUrl('/users/me'), {
+    method: 'GET',
+    headers: {
+      authorization: token,
+    },
+  })
+
+  if (!response.ok) {
+    return null
+  }
+
+  const payload = await response.json()
+
+  return payload?.user || null
 }

@@ -3,8 +3,8 @@ import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import {
   clearAuthSession,
+  fetchCurrentUser,
   getAuthSession,
-  getSessionDisplayName,
 } from '../lib/auth'
 
 const navItems = ['Shop', 'Subscriptions', 'Our Story', 'Contact']
@@ -12,12 +12,14 @@ const navItems = ['Shop', 'Subscriptions', 'Our Story', 'Contact']
 export default function Header() {
   const navigate = useNavigate()
   const [session, setSession] = useState(getAuthSession())
+  const [user, setUser] = useState(null)
   const hasSession = Boolean(session?.token)
-  const displayName = getSessionDisplayName(session)
+  const displayName = user?.displayname || 'Aurora User'
 
   useEffect(() => {
     const syncSessionState = () => {
       setSession(getAuthSession())
+      setUser(null)
     }
 
     window.addEventListener('storage', syncSessionState)
@@ -27,9 +29,38 @@ export default function Header() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!session?.token) {
+      return
+    }
+
+    let cancelled = false
+
+    const loadUser = async () => {
+      try {
+        const nextUser = await fetchCurrentUser(session.token)
+
+        if (!cancelled) {
+          setUser(nextUser)
+        }
+      } catch {
+        if (!cancelled) {
+          setUser(null)
+        }
+      }
+    }
+
+    loadUser()
+
+    return () => {
+      cancelled = true
+    }
+  }, [session?.token])
+
   const handleLogout = () => {
     clearAuthSession()
     setSession(null)
+    setUser(null)
     navigate('/', { replace: true })
   }
 

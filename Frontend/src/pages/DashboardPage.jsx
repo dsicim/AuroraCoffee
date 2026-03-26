@@ -2,12 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
-import { buildApiUrl } from '../lib/api'
 import {
   clearAuthSession,
+  fetchCurrentUser,
   getAuthSession,
-  getSessionDisplayName,
-  updateAuthSession,
 } from '../lib/auth'
 
 export default function DashboardPage() {
@@ -16,7 +14,7 @@ export default function DashboardPage() {
   const sessionToken = session?.token
   const sessionEmail = session?.email
   const sessionExpires = session?.expires
-  const [user, setUser] = useState(session?.user || null)
+  const [user, setUser] = useState(null)
 
   const handleLogout = () => {
     clearAuthSession()
@@ -32,30 +30,13 @@ export default function DashboardPage() {
 
     const loadProfile = async () => {
       try {
-        const response = await fetch(buildApiUrl('/users/me'), {
-          method: 'GET',
-          headers: {
-            authorization: sessionToken,
-          },
-        })
+        const nextUser = await fetchCurrentUser(sessionToken)
 
-        if (!response.ok) {
+        if (cancelled || !nextUser) {
           return
         }
 
-        const payload = await response.json()
-
-        if (cancelled || !payload?.user) {
-          return
-        }
-
-        setUser(payload.user)
-        updateAuthSession({
-          email: sessionEmail,
-          expires: sessionExpires,
-          token: sessionToken,
-          user: payload.user,
-        })
+        setUser(nextUser)
       } catch {
         // Keep the dashboard usable even if the profile lookup fails.
       }
@@ -107,7 +88,7 @@ export default function DashboardPage() {
     )
   }
 
-  const displayName = getSessionDisplayName({ user })
+  const displayName = user?.displayname || 'Aurora User'
   const displayEmail = user?.username || sessionEmail
 
   return (
