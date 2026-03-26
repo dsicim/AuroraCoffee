@@ -36,3 +36,7 @@ export function clearAuthSession() {
   window.localStorage.removeItem(authStorageKey)
   window.sessionStorage.removeItem(authStorageKey)
 }
+
+export function getSessionDisplayName(session) {
+  return session?.user?.displayname || 'Aurora User'
+}

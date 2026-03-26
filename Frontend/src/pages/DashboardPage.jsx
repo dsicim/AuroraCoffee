@@ -3,7 +3,12 @@ import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
-import { clearAuthSession, getAuthSession, updateAuthSession } from '../lib/auth'
+import {
+  clearAuthSession,
+  getAuthSession,
+  getSessionDisplayName,
+  updateAuthSession,
+} from '../lib/auth'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
@@ -102,7 +107,7 @@ export default function DashboardPage() {
     )
   }
 
-  const displayName = user?.displayname || 'Aurora User'
+  const displayName = getSessionDisplayName({ user })
   const displayEmail = user?.username || sessionEmail
 
   return (
@@ -130,13 +135,18 @@ export default function DashboardPage() {
             </div>
           </Link>
 
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.72)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
-          >
-            Log out
-          </button>
+          <div className="flex items-center gap-3">
+            <span className="rounded-full border border-[rgba(255,247,242,0.24)] bg-[rgba(255,247,242,0.12)] px-4 py-2 text-sm font-semibold text-[var(--aurora-cream)]">
+              {displayName}
+            </span>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.72)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
+            >
+              Log out
+            </button>
+          </div>
         </header>
 
         <main className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">

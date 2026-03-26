@@ -1,17 +1,23 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
-import { clearAuthSession, getAuthSession } from '../lib/auth'
+import {
+  clearAuthSession,
+  getAuthSession,
+  getSessionDisplayName,
+} from '../lib/auth'
 
 const navItems = ['Shop', 'Subscriptions', 'Our Story', 'Contact']
 
 export default function Header() {
   const navigate = useNavigate()
-  const [hasSession, setHasSession] = useState(Boolean(getAuthSession()?.token))
+  const [session, setSession] = useState(getAuthSession())
+  const hasSession = Boolean(session?.token)
+  const displayName = getSessionDisplayName(session)
 
   useEffect(() => {
     const syncSessionState = () => {
-      setHasSession(Boolean(getAuthSession()?.token))
+      setSession(getAuthSession())
     }
 
     window.addEventListener('storage', syncSessionState)
@@ -23,7 +29,7 @@ export default function Header() {
 
   const handleLogout = () => {
     clearAuthSession()
-    setHasSession(false)
+    setSession(null)
     navigate('/', { replace: true })
   }
 
@@ -50,13 +56,18 @@ export default function Header() {
       </nav>
 
       {hasSession ? (
-        <button
-          type="button"
-          onClick={handleLogout}
-          className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-5 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_30px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
-        >
-          Logout
-        </button>
+        <div className="flex items-center gap-3">
+          <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(255,247,242,0.88)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_28px_rgba(95,58,43,0.08)]">
+            {displayName}
+          </span>
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-5 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_30px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+          >
+            Logout
+          </button>
+        </div>
       ) : (
         <Link
           to="/login"
