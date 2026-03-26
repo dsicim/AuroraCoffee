@@ -4,6 +4,12 @@
     "dbport": 3006,
     "user": "Insert your database username",
     "password": "Insert your database password",
-    "database": "Insert your database name"
-
+    "database": "Insert your database name",
+    "verifyemail":false,
+    "mail": {
+        "user": "Your gmail address (make an alt gmail account for this!)",
+        "pass": "The app password (make an app password on google accounts dashboard!)",
+        "from": "Your gmail alias (you can use cloudflare routing for this)",
+        "reply": "The address users could reply to incoming emails (For contact purposes)"
+    }
 }
