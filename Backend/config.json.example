@@ -5,6 +5,7 @@
     "user": "Insert your database username",
     "password": "Insert your database password",
     "database": "Insert your database name",
+    "domain": "Insert the domain here",
     "verifyemail":false,
     "mail": {
         "user": "Your gmail address (make an alt gmail account for this!)",
