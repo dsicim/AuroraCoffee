@@ -161,7 +161,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
             if (method === "POST") { // Change password token request
                 if (body && body.exists && body.json && !body.err && body.data.u) {
                     const email = body.data.u;
-                    return await sql.findUser(email).then(async result => {
+                    return await sql.findUser(email,false).then(async result => {
                         if (result.success) {
                             let emailvalid = false;
                             if (emailids.has(result.user.id + "-password")) {
