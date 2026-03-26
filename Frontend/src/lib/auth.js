@@ -24,24 +24,15 @@ export function getAuthSession() {
   }
 }
 
+export function updateAuthSession(session) {
+  const storage = window.localStorage.getItem(authStorageKey)
+    ? window.localStorage
+    : window.sessionStorage
+
+  storage.setItem(authStorageKey, JSON.stringify(session))
+}
+
 export function clearAuthSession() {
   window.localStorage.removeItem(authStorageKey)
   window.sessionStorage.removeItem(authStorageKey)
-}
-
-export function deriveDisplayName(email) {
-  const localPart = String(email || '')
-    .split('@')[0]
-    .replace(/[._-]+/g, ' ')
-    .trim()
-
-  if (!localPart) {
-    return 'Aurora Guest'
-  }
-
-  return localPart
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
 }

@@ -1,17 +1,67 @@
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
-import { clearAuthSession, deriveDisplayName, getAuthSession } from '../lib/auth'
+import { buildApiUrl } from '../lib/api'
+import { clearAuthSession, getAuthSession, updateAuthSession } from '../lib/auth'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
   const session = getAuthSession()
-  const displayName = deriveDisplayName(session?.email)
+  const sessionToken = session?.token
+  const sessionEmail = session?.email
+  const sessionExpires = session?.expires
+  const [user, setUser] = useState(session?.user || null)
 
   const handleLogout = () => {
     clearAuthSession()
     navigate('/login', { replace: true })
   }
+
+  useEffect(() => {
+    if (!sessionToken) {
+      return
+    }
+
+    let cancelled = false
+
+    const loadProfile = async () => {
+      try {
+        const response = await fetch(buildApiUrl('/users/me'), {
+          method: 'GET',
+          headers: {
+            authorization: sessionToken,
+          },
+        })
+
+        if (!response.ok) {
+          return
+        }
+
+        const payload = await response.json()
+
+        if (cancelled || !payload?.user) {
+          return
+        }
+
+        setUser(payload.user)
+        updateAuthSession({
+          email: sessionEmail,
+          expires: sessionExpires,
+          token: sessionToken,
+          user: payload.user,
+        })
+      } catch {
+        // Keep the dashboard usable even if the profile lookup fails.
+      }
+    }
+
+    loadProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [sessionEmail, sessionExpires, sessionToken])
 
   if (!session?.token) {
     return (
@@ -51,6 +101,9 @@ export default function DashboardPage() {
       </div>
     )
   }
+
+  const displayName = user?.displayname || 'Aurora User'
+  const displayEmail = user?.username || sessionEmail
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#f5e1d1_0%,#ebc3a6_42%,#d89a78_100%)] px-6 py-8 lg:px-10">
@@ -95,9 +148,11 @@ export default function DashboardPage() {
               HELLO, {displayName}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[rgba(255,247,242,0.8)]">
-              This is a placeholder dashboard wired to the live login flow. The
-              current backend token does not include a real display name, so
-              this greeting is derived from the signed-in email address.
+              This is a placeholder dashboard wired to the live login flow. It
+              now uses the profile returned from
+              <span className="font-semibold"> /api/users/me </span>
+              so the greeting reflects the backend display name associated with
+              the saved session token.
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -114,7 +169,7 @@ export default function DashboardPage() {
                   Token expiry
                 </p>
                 <p className="mt-3 text-2xl font-semibold">
-                  {new Date(session.expires).toLocaleTimeString([], {
+                  {new Date(sessionExpires).toLocaleTimeString([], {
                     hour: '2-digit',
                     minute: '2-digit',
                     second: '2-digit',
@@ -127,7 +182,7 @@ export default function DashboardPage() {
                   Email
                 </p>
                 <p className="mt-3 truncate text-lg font-semibold">
-                  {session.email}
+                  {displayEmail}
                 </p>
               </div>
             </div>
@@ -154,7 +209,7 @@ export default function DashboardPage() {
               </p>
               <ul className="mt-4 space-y-3 text-sm leading-7 text-[var(--aurora-text)]">
                 <li>Hook this route to a real post-login role destination.</li>
-                <li>Replace the derived greeting with backend display name data.</li>
+                <li>Use the fetched user profile to branch by role when available.</li>
                 <li>Protect the route with token expiry checks and refresh logic.</li>
               </ul>
             </div>
