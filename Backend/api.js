@@ -1,8 +1,9 @@
 const sql = require("../Database/server.js");
 const fs = require("fs");
 const crypto = require('crypto');
-const tokens = new Map(); // token: { token, userId, expires }
-const emailtokens = new Map(); // token: { token, userId, expires }
+const tokens = new Map();
+const emailtokens = new Map();
+const emailids = new Map();
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
@@ -37,7 +38,33 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             return { s: 200, j: true, d: { token: token, expires: expires } };
                         }
                         else {
-                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                            if (result.message == "User unverified") {
+                                let emailvalid = false;
+                                if (emailids.has(result.userId + "-register") && emailtokens.has(emailids.get(result.userId + "-register"))) {
+                                    if (emailtokens.get(emailids.get(result.userId + "-register")).expires > new Date().getTime()) {
+                                        emailvalid = true;
+                                    }
+                                    else {
+                                        emailtokens.delete(emailids.get(result.userId + "-register"));
+                                        emailids.delete(result.userId + "-register");
+                                    }
+                                }
+                                if (!emailvalid) {
+                                    const emailToken = await generateToken(true);
+                                    const emailExpires = new Date().getTime() + 14400000;
+                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                        console.log("Email sent:", res);
+                                        emailids.set(result.userId + "-register", emailToken);
+                                        emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
+                                        return { s: 403, j: true, d: { e: "Email not verified. We've re-sent the verification email." } };
+                                    }).catch(err => {
+                                        console.error("Email sending error:", err);
+                                        return { s: 500, j: true, d: { e: "Internal server error. Please check the email service" } };
+                                    });
+                                }
+                                else return { s: 403, j: true, d: { e: "Email not verified. Please verify your email before logging in." } };
+                            }
+                            else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                         }
                     }).catch(err => {
                         console.error("Login error:", err);
@@ -63,6 +90,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 const emailExpires = new Date().getTime() + 14400000;
                                 return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
+                                    emailids.set(result.userId + "-register", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
                                     return { s: 200, j: true, d: { m: "User registered successfully", v: true } };
                                 }).catch(err => {
@@ -123,6 +151,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 const purpose = query.purpose;
                 if (emailtokens.has(token)) {
                     if (emailtokens.get(token).expires < new Date().getTime()) {
+                        emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
                         emailtokens.delete(token);
                         return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
                     }
@@ -130,6 +159,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         if (purpose === "register") {
                             return await sql.verifyUser(emailtokens.get(token).id).then(res => {
                                 if (res.success) {
+                                    emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
                                     emailtokens.delete(token);
                                     return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Email verified successfully. You may log in now." } };
                                 }

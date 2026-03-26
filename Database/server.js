@@ -72,7 +72,7 @@ func.loginUser = async function (username, password) {
             throw new DBError(401, 'Invalid email or password');
         }
         if (config.verifyemail && !user.verified) {
-            throw new DBError(403, 'Email not verified. Please verify your email before logging in.');
+            return { success: false, message: 'User unverified', userId: user.id };
         }
         return { success: true, message: 'Login successful', userId: user.id };
     } catch (error) {
