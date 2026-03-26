@@ -1,34 +1,70 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import { buildApiUrl } from '../lib/api'
 import { validateEmail } from '../lib/validation'
 
-const roleHints = ['Customer access', 'Sales manager portal', 'Product manager portal']
+function getMessage(payload, fallbackMessage) {
+  if (!payload || typeof payload !== 'object') {
+    return fallbackMessage
+  }
 
-export default function LoginPage() {
-  const [searchParams] = useSearchParams()
-  const callbackMessage = searchParams.get('callback')
+  return payload.e || payload.m || fallbackMessage
+}
+
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const emailValidation = validateEmail(email)
 
     if (!emailValidation.s) {
       setFeedback(emailValidation.e)
+      setSubmitted(false)
       return
     }
 
-    if (!password) {
-      setFeedback('Password is required')
-      return
-    }
+    setSubmitting(true)
+    setFeedback('')
 
-    setFeedback('Login API wiring is not implemented on this screen yet.')
+    try {
+      const response = await fetch(buildApiUrl('/auth/password'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          u: email.trim(),
+        }),
+      })
+
+      let payload = null
+
+      try {
+        payload = await response.json()
+      } catch {
+        payload = null
+      }
+
+      const message = getMessage(
+        payload,
+        'If that email exists, a password reset link has been sent.',
+      )
+
+      setFeedback(message)
+      setSubmitted(response.ok)
+    } catch {
+      setFeedback('The password reset request could not be completed. Please try again.')
+      setSubmitted(false)
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -65,59 +101,46 @@ export default function LoginPage() {
           </Link>
 
           <Link
-            to="/"
+            to="/login"
             className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.72)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
           >
-            Back home
+            Back to login
           </Link>
         </header>
 
         <main className="grid flex-1 items-center gap-10 py-10 lg:grid-cols-[0.95fr_1.05fr]">
           <section>
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-              Welcome back
+              Forgot password
             </p>
             <h1 className="mt-5 max-w-xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-              Sign in to continue your Aurora coffee experience.
+              Send yourself a password reset link.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
-              This starter login screen is ready for backend integration. You
-              can connect it later to authentication endpoints for customers,
-              sales managers, and product managers.
+              Enter your email address and Aurora will ask the backend for a
+              reset link. When the email link is clicked, the user will land on
+              the reset password screen with the token already in the URL.
             </p>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              {roleHints.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-[rgba(138,144,119,0.28)] bg-[rgba(255,247,242,0.7)] px-4 py-2 text-sm text-[var(--aurora-olive-deep)]"
-                >
-                  {item}
-                </span>
-              ))}
-            </div>
           </section>
 
           <section className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] p-8 shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur sm:p-10">
             <div>
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Account login
-                </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  Sign in
-                </h2>
-              </div>
+              <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                Recover access
+              </p>
+              <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                Forgot password
+              </h2>
             </div>
 
-            {callbackMessage ? (
-              <div className="mt-6 rounded-[1.75rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] p-4 text-sm font-medium leading-7 text-[var(--aurora-olive-deep)]">
-                {callbackMessage}
-              </div>
-            ) : null}
-
             {feedback ? (
-              <div className="mt-6 rounded-[1.75rem] border border-[rgba(217,144,107,0.42)] bg-[rgba(248,227,214,0.72)] p-4 text-sm font-medium leading-7 text-[var(--aurora-text-strong)]">
+              <div
+                className={`mt-6 rounded-[1.75rem] border p-4 text-sm font-medium leading-7 ${
+                  submitted
+                    ? 'border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] text-[var(--aurora-olive-deep)]'
+                    : 'border-[rgba(217,144,107,0.42)] bg-[rgba(248,227,214,0.72)] text-[var(--aurora-text-strong)]'
+                }`}
+              >
                 {feedback}
               </div>
             ) : null}
@@ -133,57 +156,34 @@ export default function LoginPage() {
                   onChange={(event) => {
                     setEmail(event.target.value)
                     setFeedback('')
+                    setSubmitted(false)
                   }}
                   placeholder="you@example.com"
                   className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/80 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition placeholder:text-[rgba(111,71,56,0.5)] focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
                 />
               </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Password
-                </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(event) => {
-                    setPassword(event.target.value)
-                    setFeedback('')
-                  }}
-                  placeholder="Enter your password"
-                  className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/80 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition placeholder:text-[rgba(111,71,56,0.5)] focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
-                />
-              </label>
-
-              <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-                <label className="flex items-center gap-2 text-[var(--aurora-text)]">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-[var(--aurora-border)] accent-[var(--aurora-sky)]"
-                  />
-                  Remember me
-                </label>
-
-                <Link
-                  to="/forgotpassword"
-                  className="font-medium text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-
               <button
                 type="submit"
-                className="w-full rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+                disabled={submitting}
+                className="w-full rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                Login to Aurora
+                {submitting ? 'Sending reset link...' : 'Email me a reset link'}
               </button>
             </form>
 
             <div className="mt-8 rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.34)] p-5 text-sm leading-7 text-[var(--aurora-text)]">
-              For the course project, this screen can later validate users by
-              role and redirect them to customer, sales manager, or product
-              manager dashboards after authentication.
+              This page requests a reset email from
+              <span className="font-semibold text-[var(--aurora-text-strong)]">
+                {' '}
+                /api/auth/password
+              </span>
+              . The email link is expected to reach
+              <span className="font-semibold text-[var(--aurora-text-strong)]">
+                {' '}
+                /resetpassword?token=...
+              </span>
+              .
             </div>
           </section>
         </main>
