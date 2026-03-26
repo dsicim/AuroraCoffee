@@ -100,5 +100,53 @@ func.verifyUser = async function (userId) {
         throw new DBError(500, 'Internal server error');
     }
 }
+func.findUser = async function (username) {
+    if (!username) {
+        throw new DBError(400, 'Username is required');
+    }
+    try {
+        const [rows] = await pool.execute(
+            'SELECT id, displayname, username, verified, created_at FROM users WHERE username = ?',
+            [username]
+        );
+        if (rows.length === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, user: rows[0] };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Find user error:', error);
+        throw new DBError(500, 'Internal server error');
+    }
+};
+func.changePassword = async function (username, oldPassword, newPassword) {
+    if (!username || !oldPassword || !newPassword) {
+        throw new DBError(400, 'Username, old password and new password are required');
+    }
+    try {
+        const [rows] = await pool.execute(
+            'SELECT * FROM users WHERE username = ?',
+            [username]
+        );
+        if (rows.length === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        const user = rows[0];
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            throw new DBError(401, 'Invalid old password');
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.execute(
+            'UPDATE users SET password = ? WHERE id = ?',
+            [hashedPassword, user.id]
+        );
+        return { success: true, message: 'Password changed successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Change password error:', error);
+        throw new DBError(500, 'Internal server error');
+    }
+};
 
 module.exports = { DBError, ...func };
