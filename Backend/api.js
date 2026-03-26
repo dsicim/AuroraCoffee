@@ -181,7 +181,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
-                                    emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password" });
+                                    emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password", user: result.user });
                                     return { s: 200, j: true, d: { m: "We've sent a password reset email to your address. Please check your inbox." } };
                                 }).catch(err => {
                                     console.error("Email sending error:", err);
@@ -212,7 +212,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             return { s: 400, j: true, d: { e: "Invalid or expired token" } };
                         }
                         else if (emailtokens.get(token).for === "password") {
-                            const pv = validatePassword(password, [emailtokens.get(token).id.toString()]);
+                            const pv = validatePassword(password, [emailtokens.get(token).user.username.split("@")[0],emailtokens.get(token).user.displayname]);
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(emailtokens.get(token).id, password).then(async res => {
                                 if (res.success) {
