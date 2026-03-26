@@ -217,14 +217,13 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(emailtokens.get(token).user.username, password).then(async res => {
                                 if (res.success) {
-                                    console.log("Password changed for user ID:", emailtokens.get(token).id);
                                     await invalidateAllTokens(emailtokens.get(token).id);
                                     emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
                                     emailtokens.delete(token);
-                                    const token = await generateToken();
+                                    const ltoken = await generateToken();
                                     const expires = new Date().getTime() + 3600000;
-                                    tokens.set(token, { id: result.userId, expires: expires });
-                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: token, expires: expires } } };
+                                    tokens.set(ltoken, { id: result.userId, expires: expires });
+                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: ltoken, expires: expires } } };
                                 }
                                 else {
                                     console.error("Change password error:", err);
@@ -266,12 +265,11 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             return await sql.changePassword(email.username, newpassword).then(async res => {
                                 if (res.success) {
-                                    console.log("Password changed for user ID:", userId);
                                     await invalidateAllTokens(userId);
-                                    const token = await generateToken();
+                                    const ltoken = await generateToken();
                                     const expires = new Date().getTime() + 3600000;
-                                    tokens.set(token, { id: userId, expires: expires });
-                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: token, expires: expires } } };
+                                    tokens.set(ltoken, { id: userId, expires: expires });
+                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: ltoken, expires: expires } } };
                                 }
                                 else {
                                     console.error("Change password error:", err);
