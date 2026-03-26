@@ -97,41 +97,6 @@ async function handleAPI(method, endpoint, query, body, headers) {
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
-        else if (endpoint[0] === "verify") {
-            if (method === "GET") {
-                if (query && query.token && query.purpose) {
-                    const token = query.token;
-                    const purpose = query.purpose;
-                    if (emailtokens.has(token)) {
-                        if (emailtokens.get(token).expires < new Date().getTime()) {
-                            emailtokens.delete(token);
-                            return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
-                        }
-                        else if (emailtokens.get(token).for === purpose) {
-                            if (purpose === "register") {
-                                await sql.verifyUser(emailtokens.get(token).id).then(res => {
-                                    if (res.success) {
-                                        emailtokens.delete(token);
-                                        return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Email verified successfully. You may log in now." } };
-                                    }
-                                    else {
-                                        console.error("Database error:", err);
-                                        return { s: 500, j: true, d: { e: "Internal server error" } };
-                                    }
-                                }).catch(err => {
-                                    console.error("Database error:", err);
-                                    return { s: 500, j: true, d: { e: "Internal server error" } };
-                                });
-                            }
-                        }
-                        else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
-                    }
-                    else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
-                }
-                else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
-            }
-            else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-        }
         else if (endpoint[0] === "password") {
             if (method === "POST") { // Change password token request
                 if (body && body.exists && body.json && !body.err && body.data.u) {
@@ -150,6 +115,41 @@ async function handleAPI(method, endpoint, query, body, headers) {
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
+    }
+    else if (endpoint[0] === "verify") {
+        if (method === "GET") {
+            if (query && query.token && query.purpose) {
+                const token = query.token;
+                const purpose = query.purpose;
+                if (emailtokens.has(token)) {
+                    if (emailtokens.get(token).expires < new Date().getTime()) {
+                        emailtokens.delete(token);
+                        return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
+                    }
+                    else if (emailtokens.get(token).for === purpose) {
+                        if (purpose === "register") {
+                            return await sql.verifyUser(emailtokens.get(token).id).then(res => {
+                                if (res.success) {
+                                    emailtokens.delete(token);
+                                    return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Email verified successfully. You may log in now." } };
+                                }
+                                else {
+                                    console.error("Database error:", err);
+                                    return { s: 500, j: true, d: { e: "Internal server error" } };
+                                }
+                            }).catch(err => {
+                                console.error("Database error:", err);
+                                return { s: 500, j: true, d: { e: "Internal server error" } };
+                            });
+                        }
+                    }
+                    else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
+                }
+                else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
+            }
+            else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     return { s: 400, j: true, d: { e: "Not Found" } };
 }

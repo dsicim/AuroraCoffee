@@ -53,6 +53,7 @@ const server = http.createServer(async function (req, res) {
         const directory = req.url.substring(5).split("/");
         let query = directory.pop().split("?");
         directory.push(query.shift());
+        if (query.length) query = query[0];
         if (query.includes("&")) {
             query = query.split("&").reduce((acc, curr) => {
                 const [key, value] = curr.split("=");
