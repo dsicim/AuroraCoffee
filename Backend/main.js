@@ -20,6 +20,7 @@ const mimes = {
     "txt": "text/plain"
 }
 const server = http.createServer(async function (req, res) {
+    if (!req.url.startsWith("/api/")) req.url = req.url.split("?")[0];
     if (req.url.includes("..")) {
         res.writeHead(400, { "Content-Type": "text/plain" });
         res.end("Bad Request");
