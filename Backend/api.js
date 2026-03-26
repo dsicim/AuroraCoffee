@@ -3,6 +3,7 @@ const fs = require("fs");
 const crypto = require('crypto');
 const tokens = new Map(); // token: { token, userId, expires }
 const emailtokens = new Map(); // token: { token, userId, expires }
+const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
     while (email ? emailtokens.has(token) : tokens.has(token)) {
