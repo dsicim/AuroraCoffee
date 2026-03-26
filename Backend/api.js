@@ -85,7 +85,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 if (!emailvalid) {
                                     const emailToken = await generateToken(true);
                                     const emailExpires = new Date().getTime() + 14400000;
-                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                         console.log("Email sent:", res);
                                         emailids.set(result.userId + "-register", emailToken);
                                         emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -126,7 +126,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (config.verifyemail) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-register", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -179,7 +179,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!emailvalid) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://"+config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password" });
