@@ -5,6 +5,8 @@ const tokens = new Map();
 const emailtokens = new Map();
 const emailids = new Map();
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
+const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
+const emailsrv = require("./email.js");
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
     token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
@@ -14,7 +16,38 @@ async function generateToken(email = false) {
     }
     return token;
 }
-const emailsrv = require("./email.js");
+function validatePassword(p, ids) {
+    if (p.length < 8) return { s: false, e: "Password must be at least 8 characters long" };
+    if (p.length > 255) return { s: false, e: "Password must not exceed 255 characters" };
+    if (!/\p{Ll}/u.test(p)) return { s: false, e: "Password must contain at least one lowercase letter" };
+    if (!/\p{Lu}/u.test(p)) return { s: false, e: "Password must contain at least one uppercase letter" };
+    if (!/(?:\p{Nd}|[^\p{L}\p{N}\s])/u.test(p)) return { s: false, e: "Password must contain at least one number or symbol" };
+    const np = p.toLowerCase().replaceAll(" ", "");
+    for (const id of ids) {
+        const ni = id.toLowerCase().replaceAll(" ", "");
+        if (ni.length > 5) {
+            for (let i = 0; i <= ni.length - 5; i++) {
+                const sub = ni.substring(i, i + 5);
+                if (np.includes(sub)) {
+                    return { s: false, e: "Password must not contain parts of your email or name" };
+                }
+            }
+        }
+        else {
+            if (np.includes(ni)) {
+                return { s: false, e: "Password must not contain parts of your email or name" };
+            }
+        }
+    }
+    return { s: true };
+}
+function invalidateAllTokens(userId) {
+    for (const [token, data] of tokens) {
+        if (data.id === userId) {
+            tokens.delete(token);
+        }
+    }
+}
 async function handleAPI(method, endpoint, query, body, headers) {
     console.log("API " + method + " ");
     console.log(endpoint);
@@ -27,7 +60,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
         endpoint.shift();
         if (endpoint[0] === "login") {
             if (method === "POST") { // Login
-                if (body && body.exists && body.json && !body.err && body.data.u && body.data.p) {
+                if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && emailRegex.test(body.data.u)) {
                     const email = body.data.u;
                     const password = body.data.p;
                     return await sql.loginUser(email, password).then(async result => {
@@ -78,7 +111,12 @@ async function handleAPI(method, endpoint, query, body, headers) {
         }
         else if (endpoint[0] === "register") {
             if (method === "POST") { // Register
-                if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && body.data.n) {
+                if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && body.data.n && emailRegex.test(body.data.u)) {
+                    if (body.data.n.length > 255) return { s: 400, j: true, d: { e: "Name must not exceed 255 characters" } };
+                    if (body.data.p.length > 255) return { s: 400, j: true, d: { e: "Password must not exceed 255 characters" } };
+                    if (body.data.u.length > 255) return { s: 400, j: true, d: { e: "Email address must not exceed 255 characters" } };
+                    const pv = validatePassword(body.data.p, [body.data.u.split("@")[0], body.data.n]);
+                    if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                     const email = body.data.u;
                     const password = body.data.p;
                     const displayname = body.data.n;
@@ -116,13 +154,6 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 }
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
-            else if (method === "PATCH") { // Verify email
-                if (body && body.exists && body.json && !body.err && body.data.t) {
-                    const token = body.data.t;
-                    return { s: 500, j: true, d: { e: "Not implemented" } };
-                }
-                else return { s: 400, j: true, d: { e: "Invalid Request" } };
-            }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
         else if (endpoint[0] === "password") {
@@ -130,6 +161,44 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 if (body && body.exists && body.json && !body.err && body.data.u) {
                     const email = body.data.u;
                     return { s: 500, j: true, d: { e: "Not implemented" } };
+                    return await sql.findUser(email).then(async result => {
+                        if (result.success) {
+                            let emailvalid = false;
+                            if (emailids.has(result.user.id + "-password")) {
+                                if (emailtokens.has(emailids.get(result.user.id + "-password"))) {
+                                    if (emailtokens.get(emailids.get(result.user.id + "-password")).expires > new Date().getTime()) {
+                                        emailvalid = true;
+                                    }
+                                    else {
+                                        emailtokens.delete(emailids.get(result.user.id + "-password"));
+                                        emailids.delete(result.user.id + "-password");
+                                    }
+                                }
+                                else emailids.delete(result.user.id + "-password");
+                            }
+                            if (!emailvalid) {
+                                const emailToken = await generateToken(true);
+                                const emailExpires = new Date().getTime() + 14400000;
+                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
+                                    console.log("Email sent:", res);
+                                    emailids.set(result.userId + "-password", emailToken);
+                                    emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password" });
+                                    return { s: 200, j: true, d: { m: "We've sent a password reset email to your address. Please check your inbox." } };
+                                }).catch(err => {
+                                    console.error("Email sending error:", err);
+                                    return { s: 500, j: true, d: { e: "Internal server error. Please check the email service" } };
+                                });
+                            }
+                            else return { s: 429, j: true, d: { e: "We've already sent a password reset email to your address. Please check your inbox." } };
+                        }
+                        else {
+                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                        }
+                    }).catch(err => {
+                        console.error("Forgot password request error:", err);
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
@@ -137,7 +206,39 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 if (body && body.exists && body.json && !body.err && body.data.t && body.data.p) {
                     const token = body.data.t;
                     const password = body.data.p;
-                    return { s: 500, j: true, d: { e: "Not implemented" } };
+                    if (emailtokens.has(token)) {
+                        if (emailtokens.get(token).expires < new Date().getTime()) {
+                            emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
+                            emailtokens.delete(token);
+                            return { s: 400, j: true, d: { e: "Invalid or expired token" } };
+                        }
+                        else if (emailtokens.get(token).for === "password") {
+                            const pv = validatePassword(password, [emailtokens.get(token).id.toString()]);
+                            if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
+                            return { s: 500, j: true, d: { e: "Not implemented" } };
+                            return await sql.changePassword(emailtokens.get(token).id, password).then(async res => {
+                                if (res.success) {
+                                    invalidateAllTokens(emailtokens.get(token).id);
+                                    emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
+                                    emailtokens.delete(token);
+                                    const token = await generateToken();
+                                    const expires = new Date().getTime() + 3600000;
+                                    tokens.set(token, { id: result.userId, expires: expires });
+                                    return { s: 200, j: true, d: { m: "Password changed successfully", t: { token: token, expires: expires } } };
+                                }
+                                else {
+                                    console.error("Change password error:", err);
+                                    return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                                }
+                            }).catch(err => {
+                                console.error("Change password error:", err);
+                                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                            });
+                        }
+                        else return { s: 400, j: true, d: { e: "Invalid token purpose" } };
+                    }
+
                 }
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
@@ -172,6 +273,10 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 return { s: 500, j: true, d: { e: "Internal server error" } };
                             });
                         }
+                        else if (purpose === "password") {
+                            return { s: 302, j: false, d: "", h: { "Location": "/resetpassword?token=" + token } };
+                        }
+                        else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
                     }
                     else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
                 }
