@@ -302,7 +302,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
         if (endpoint[0] === "me") {
             if (method === "GET") {
                 const userId = tokens.get(token).id;
-                return await sql.findUserById(userId,true).then(res => {
+                return await sql.findUser(userId,true).then(res => {
                     if (res.success) {
                         return { s: 200, j: true, d: { user: res.user } };
                     }
