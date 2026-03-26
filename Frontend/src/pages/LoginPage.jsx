@@ -185,6 +185,16 @@ export default function LoginPage() {
               role and redirect them to customer, sales manager, or product
               manager dashboards after authentication.
             </div>
+
+            <p className="mt-6 text-center text-sm text-[var(--aurora-text)]">
+              Need an account?{' '}
+              <Link
+                to="/register"
+                className="font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+              >
+                Create one
+              </Link>
+            </p>
           </section>
         </main>
       </div>
