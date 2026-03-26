@@ -59,14 +59,14 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (config.verifyemail) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
-                                    console.log("Email sent:", res.d);
+                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                    console.log("Email sent:", res);
+                                    emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
                                     return { s: 200, j: true, d: { m: "User registered successfully", v: true } };
                                 }).catch(err => {
                                     console.error("Email sending error:", err);
                                     return { s: 500, j: true, d: { e: "Internal server error. Please check the email service" } };
                                 });
-                                emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
                             }
                             else {
                                 const token = await generateToken();
