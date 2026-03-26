@@ -214,7 +214,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         else if (emailtokens.get(token).for === "password") {
                             const pv = validatePassword(password, [emailtokens.get(token).user.username.split("@")[0],emailtokens.get(token).user.displayname]);
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
-                            return await sql.changePassword(emailtokens.get(token).id, password).then(async res => {
+                            return await sql.changePassword(emailtokens.get(token).user.username, password).then(async res => {
                                 if (res.success) {
                                     invalidateAllTokens(emailtokens.get(token).id);
                                     emailids.delete(emailtokens.get(token).id + "-" + emailtokens.get(token).for);
@@ -262,7 +262,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!login) return { s: 401, j: true, d: { e: "The original password is invalid" } };
                             const pv = validatePassword(newpassword, [email.username.split("@")[0], email.displayname]);
                             if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
-                            return await sql.changePassword(userId, newpassword).then(async res => {
+                            return await sql.changePassword(email.username, newpassword).then(async res => {
                                 if (res.success) {
                                     invalidateAllTokens(userId);
                                     const token = await generateToken();

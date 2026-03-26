@@ -119,14 +119,14 @@ func.findUser = async function (username) {
         throw new DBError(500, 'Internal server error');
     }
 };
-func.changePassword = async function (id, newPassword) {
-    if (!id || !newPassword) {
-        throw new DBError(400, 'User ID and new password are required');
+func.changePassword = async function (username, newPassword) {
+    if (!username || !newPassword) {
+        throw new DBError(400, 'Username and new password are required');
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT * FROM users WHERE id = ?',
-            [id]
+            'SELECT * FROM users WHERE username = ?',
+            [username]
         );
         if (rows.length === 0) {
             throw new DBError(404, 'User not found');
