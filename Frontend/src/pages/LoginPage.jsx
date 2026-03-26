@@ -1,34 +1,99 @@
 import { useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import { buildApiUrl } from '../lib/api'
+import { saveAuthSession } from '../lib/auth'
 import { validateEmail } from '../lib/validation'
 
 const roleHints = ['Customer access', 'Sales manager portal', 'Product manager portal']
 
+function getMessage(payload, fallbackMessage) {
+  if (!payload || typeof payload !== 'object') {
+    return fallbackMessage
+  }
+
+  return payload.e || payload.m || fallbackMessage
+}
+
 export default function LoginPage() {
+  const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const callbackMessage = searchParams.get('callback')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [feedbackKind, setFeedbackKind] = useState('error')
+  const [rememberMe, setRememberMe] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
 
     const emailValidation = validateEmail(email)
 
     if (!emailValidation.s) {
       setFeedback(emailValidation.e)
+      setFeedbackKind('error')
       return
     }
 
     if (!password) {
       setFeedback('Password is required')
+      setFeedbackKind('error')
       return
     }
 
-    setFeedback('Login API wiring is not implemented on this screen yet.')
+    setSubmitting(true)
+    setFeedback('')
+
+    try {
+      const response = await fetch(buildApiUrl('/auth/login'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          u: email.trim(),
+          p: password,
+        }),
+      })
+
+      let payload = null
+
+      try {
+        payload = await response.json()
+      } catch {
+        payload = null
+      }
+
+      if (!response.ok) {
+        setFeedback(getMessage(payload, 'Login failed. Please try again.'))
+        setFeedbackKind('error')
+        return
+      }
+
+      if (!payload?.token || !payload?.expires) {
+        setFeedback('Login succeeded, but the backend response was incomplete.')
+        setFeedbackKind('error')
+        return
+      }
+
+      saveAuthSession(
+        {
+          email: email.trim(),
+          token: payload.token,
+          expires: payload.expires,
+        },
+        rememberMe,
+      )
+      navigate('/dashboard', { replace: true })
+    } catch {
+      setFeedback('The login request could not be completed. Please try again.')
+      setFeedbackKind('error')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -117,7 +182,13 @@ export default function LoginPage() {
             ) : null}
 
             {feedback ? (
-              <div className="mt-6 rounded-[1.75rem] border border-[rgba(217,144,107,0.42)] bg-[rgba(248,227,214,0.72)] p-4 text-sm font-medium leading-7 text-[var(--aurora-text-strong)]">
+              <div
+                className={`mt-6 rounded-[1.75rem] border p-4 text-sm font-medium leading-7 ${
+                  feedbackKind === 'success'
+                    ? 'border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] text-[var(--aurora-olive-deep)]'
+                    : 'border-[rgba(217,144,107,0.42)] bg-[rgba(248,227,214,0.72)] text-[var(--aurora-text-strong)]'
+                }`}
+              >
                 {feedback}
               </div>
             ) : null}
@@ -159,6 +230,8 @@ export default function LoginPage() {
                 <label className="flex items-center gap-2 text-[var(--aurora-text)]">
                   <input
                     type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) => setRememberMe(event.target.checked)}
                     className="h-4 w-4 rounded border-[var(--aurora-border)] accent-[var(--aurora-sky)]"
                   />
                   Remember me
@@ -174,9 +247,10 @@ export default function LoginPage() {
 
               <button
                 type="submit"
+                disabled={submitting}
                 className="w-full rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
               >
-                Login to Aurora
+                {submitting ? 'Signing in...' : 'Login to Aurora'}
               </button>
             </form>
 
