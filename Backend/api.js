@@ -1,3 +1,13 @@
+const sql = require("../Database/server.js");
+const crypto = require('crypto');
+const tokens = new Map(); // token: { token, userId, expires }
+async function generateToken() {
+    let token = crypto.randomBytes(128).toString('base64').substring(0,64);
+    while (tokens.has(token)) {
+        token = crypto.randomBytes(128).toString('base64').substring(0,64);
+    }
+    return token;
+}
 const emailsrv = require("./email.js");
 async function handleAPI(method, endpoint, query, body, headers) {
     console.log("API "+method+" ");
@@ -14,7 +24,21 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 if (body && body.exists && body.json && !body.err && body.data.u && body.data.p) {
                     const email = body.data.u;
                     const password = body.data.p;
-                    return {s:500, j:true, d:{e:"Not implemented"}};
+                    return await sql.loginUser(email, password).then(async result => {
+                        if (result.success) {
+                            const token = await generateToken();
+                            const expires = new Date().getTime() + 3600000;
+                            tokens.set(token, { id: result.userId, expires: expires });
+                            return { s: 200, j: true, d: { token: token, expires: expires } };
+                        }
+                        else {
+                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                        }
+                    }).catch(err => {
+                        console.error("Login error:", err);
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 else return {s:400, j:true, d:{e:"Invalid Request"}};
             }
@@ -25,7 +49,22 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && body.data.n) {
                     const email = body.data.u;
                     const password = body.data.p;
-                    return {s:500, j:true, d:{e:"Not implemented"}};
+                    const displayname = body.data.n;
+                    return await sql.registerUser(email, password, displayname).then(async result => {
+                        if (result.success) {
+                            // const token = await generateToken();
+                            // const expires = new Date().getTime() + 3600000;
+                            // tokens.set(token, { id: result.userId, expires: expires });
+                            return { s: 200, j: true, d: { m: "User registered successfully" } };
+                        }
+                        else {
+                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                        }
+                    }).catch(err => {
+                        console.error("Register error:", err);
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 else return {s:400, j:true, d:{e:"Invalid Request"}};
             }
@@ -59,4 +98,4 @@ async function handleAPI(method, endpoint, query, body, headers) {
     }
     return {s:400, j:true, d:{e:"Not Found"}};
 }
-module.exports = { handleAPI };
+module.exports = { handleAPI, initDB: sql.initDB };

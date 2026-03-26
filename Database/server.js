@@ -1,60 +1,58 @@
-const express = require('express');
+const fs = require('fs');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
-require('dotenv').config();
+const config = JSON.parse(fs.readFileSync("../Backend/config.json", "utf-8"));
 
-const app = express();
-app.use(express.json());
-
-const dbConfig = {
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
-};
+class DBError extends Error {
+    constructor(status, message) {
+        super(message);
+        this.status = status;
+        this.error = message;
+    }
+}
 
 let pool;
+const func = {};
 
-async function initDB() {
+func.initDB = async function () {
     try {
-        pool = mysql.createPool(dbConfig);
+        pool = mysql.createPool({
+            host: "localhost",
+            port: config.dbport,
+            user: config.user,
+            password: config.password,
+            database: config.database
+        });
         console.log('Connected to MySQL database.');
     } catch (error) {
         console.error('Database connection failed:', error.message);
         process.exit(1);
     }
 }
-
-// Register Endpoint
-app.post('/register', async (req, res) => {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required' });
+func.registerUser = async function (username, password, displayname) {
+    if (!username || !password || !displayname) {
+        throw new DBError(400, 'Username, name and password are required');
     }
-
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.execute(
-            'INSERT INTO users (username, password) VALUES (?, ?)',
-            [username, hashedPassword]
+            'INSERT INTO users (displayname, username, password) VALUES (?, ?, ?)',
+            [displayname, username, hashedPassword]
         );
-        res.status(201).json({ message: 'User registered successfully' });
+        return { success: true, message: 'User registered successfully' };
     } catch (error) {
         if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ error: 'Username already exists' });
+            throw new DBError(403, 'Username already exists');
         }
-        console.error('Registration error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        else {
+            console.error('Registration error:', error);
+            throw new DBError(500, 'Internal server error');
+        }
     }
-});
-
-// Login Endpoint
-app.post('/login', async (req, res) => {
-    const { username, password } = req.body;
-
+};
+func.loginUser = async function (username, password) {
     if (!username || !password) {
-        return res.status(400).json({ error: 'Username and password are required' });
+        throw new DBError(400, 'Username and password are required');
     }
 
     try {
@@ -64,42 +62,22 @@ app.post('/login', async (req, res) => {
         );
 
         if (rows.length === 0) {
-            return res.status(401).json({ error: 'Invalid username or password' });
+            throw new DBError(401, 'Invalid email or password');
         }
 
         const user = rows[0];
         const isMatch = await bcrypt.compare(password, user.password);
 
         if (!isMatch) {
-            return res.status(401).json({ error: 'Invalid username or password' });
+            throw new DBError(401, 'Invalid email or password');
         }
 
-        res.json({ message: 'Login successful', userId: user.id });
+        return { success: true, message: 'Login successful', userId: user.id };
     } catch (error) {
+        if (error instanceof DBError) throw error; // Re-throw known DBErrors
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        throw new DBError(500, 'Internal server error');
     }
-});
+};
 
-const PORT = process.env.PORT || 3000;
-
-const server = app.listen(PORT, async () => {
-    try {
-        await initDB();
-        console.log(`\x1b[32m%s\x1b[0m`, `Server is LIVE at http://localhost:${PORT}`);
-        console.log('Keep this terminal open to use the login system.');
-        console.log('Press Ctrl+C to stop the server.');
-    } catch (err) {
-        console.error('Initialization error:', err);
-        process.exit(1);
-    }
-});
-
-server.on('error', (error) => {
-    if (error.code === 'EADDRINUSE') {
-        console.error(`Error: Port ${PORT} is already in use.`);
-    } else {
-        console.error('Server error:', error);
-    }
-    process.exit(1);
-});
+module.exports = { DBError, ...func };

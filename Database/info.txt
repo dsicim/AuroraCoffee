@@ -1,5 +1,0 @@
-ilk server çalıştır:
-node server.js  
-
-sonra
-node terminal-client.js

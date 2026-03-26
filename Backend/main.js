@@ -117,5 +117,6 @@ server.listen(config.port, function (error) {
     }
     else {
         console.log("AUCOFFEE-BACKEND > Listening on " + config.port);
+        api.initDB();
     }
 })

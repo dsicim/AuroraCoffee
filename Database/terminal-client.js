@@ -13,38 +13,39 @@ function question(query) {
 }
 
 async function register() {
-    const username = await question('Enter username: ');
+    const username = await question('Enter email/username: ');
+    const displayname = await question('Enter display name: ');
     const password = await question('Enter password: ');
 
-    const res = await fetch(`${API_URL}/register`, {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ u: username, p: password, n: displayname })
     });
 
     const data = await res.json();
     if (res.ok) {
-        console.log('\x1b[32m%s\x1b[0m', `Success: ${data.message}`);
+        console.log('\x1b[32m%s\x1b[0m', `Success: ${data.m}`);
     } else {
-        console.log('\x1b[31m%s\x1b[0m', `Error: ${data.error}`);
+        console.log('\x1b[31m%s\x1b[0m', `Error: ${data.e}`);
     }
 }
 
 async function login() {
-    const username = await question('Enter username: ');
+    const username = await question('Enter email/username: ');
     const password = await question('Enter password: ');
 
-    const res = await fetch(`${API_URL}/login`, {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ u: username, p: password })
     });
 
     const data = await res.json();
     if (res.ok) {
-        console.log('\x1b[32m%s\x1b[0m', `Success: ${data.message} (User ID: ${data.userId})`);
+        console.log('\x1b[32m%s\x1b[0m', `Success: Logged in! Token: ${data.token ? data.token.substring(0,10) + '...' : 'N/A'}`);
     } else {
-        console.log('\x1b[31m%s\x1b[0m', `Error: ${data.error}`);
+        console.log('\x1b[31m%s\x1b[0m', `Error: ${data.e}`);
     }
 }
 
@@ -60,7 +61,7 @@ async function checkServer() {
 async function mainMenu() {
     const isServerUp = await checkServer();
     if (!isServerUp) {
-        console.log('\x1b[31m%s\x1b[0m', 'Error: Server is not running! Please start "node server.js" in another terminal first.');
+        console.log('\x1b[31m%s\x1b[0m', 'Error: Server is not running! Please start "node main.js" in the Backend folder first.');
         process.exit(1);
     }
 
