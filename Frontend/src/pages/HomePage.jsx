@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import Header from '../components/Header'
 import Footer from '../components/Footer'
 import ProductCard from '../components/ProductCard'
@@ -27,24 +28,25 @@ export default function HomePage() {
                 Aurora Coffee Roastery brings warm, modern coffee retail online.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
-                A clean starting homepage for your CS308 store project. It sets
-                the tone for a coffee brand while leaving room for product
-                listings, authentication, cart, and backend integration later.
+                A warmer storefront landing page for your CS308 progress demo.
+                It still carries the Aurora brand, but now pushes visitors into
+                a fuller product flow with catalog browsing, detail pages, and
+                local cart interactions.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
-                <a
-                  href="#featured"
+                <Link
+                  to="/products"
                   className="rounded-full border border-[#d89270] bg-[var(--aurora-primary)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_14px_36px_rgba(235,176,144,0.38)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-primary-soft)]"
                 >
-                  Shop featured beans
-                </a>
-                <a
-                  href="#about"
+                  Explore all coffees
+                </Link>
+                <Link
+                  to="/products/midnight-espresso"
                   className="rounded-full border border-[var(--aurora-olive)] bg-[rgba(255,247,242,0.92)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-olive-deep)] shadow-[0_10px_28px_rgba(138,144,119,0.12)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-olive-soft)]"
                 >
-                  Learn the brand
-                </a>
+                  View signature product
+                </Link>
               </div>
 
               <div className="mt-10 grid gap-4 sm:grid-cols-3">
@@ -58,10 +60,10 @@ export default function HomePage() {
                 </div>
                 <div className="rounded-[1.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.84)] p-4">
                   <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                    3
+                    5
                   </p>
                   <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                    Featured launch coffees
+                    Demo catalog products
                   </p>
                 </div>
                 <div className="rounded-[1.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.84)] p-4">
@@ -92,8 +94,9 @@ export default function HomePage() {
                   </p>
                   <p className="mt-4 font-display text-4xl">Signature Blend</p>
                   <p className="mt-3 max-w-sm text-sm leading-7 text-[var(--aurora-text)]">
-                    A balanced everyday coffee designed as the visual anchor of
-                    the homepage until the full catalog pages are ready.
+                    A merchandise-led spotlight card that now feeds directly
+                    into the live product detail flow instead of acting as a
+                    static homepage placeholder.
                   </p>
 
                   <div className="mt-8 grid grid-cols-2 gap-3 text-sm">
@@ -109,9 +112,9 @@ export default function HomePage() {
                 </div>
 
                 <div className="mt-6 flex items-center justify-between text-sm text-[#fff3eb]">
-                  <span>Designed for desktop and mobile first demos</span>
+                  <span>Built to bridge the landing page and the catalog flow</span>
                   <span className="rounded-full bg-white/20 px-3 py-1">
-                    Homepage only
+                    Demo ready
                   </span>
                 </div>
               </div>
@@ -127,19 +130,29 @@ export default function HomePage() {
                   Featured coffee
                 </p>
                 <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  A simple product strip for the landing page
+                  Featured releases that open the real product flow
                 </h2>
               </div>
               <p className="max-w-xl text-sm leading-7 text-[var(--aurora-text)]">
-                These cards can later be connected to backend product endpoints
-                without redesigning the homepage structure.
+                Each featured product now links into the catalog and detail
+                experience, while still preserving the branded landing-page
+                structure.
               </p>
             </div>
 
             <div className="mt-10 grid gap-6 lg:grid-cols-3">
               {featuredProducts.map((product) => (
-                <ProductCard key={product.name} product={product} />
+                <ProductCard key={product.name} product={product} compact />
               ))}
+            </div>
+
+            <div className="mt-10 flex justify-center">
+              <Link
+                to="/products"
+                className="inline-flex rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+              >
+                Browse full catalog
+              </Link>
             </div>
           </div>
         </section>

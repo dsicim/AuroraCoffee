@@ -2,6 +2,18 @@ import { buildApiUrl } from './api'
 
 export const authStorageKey = 'auroraAuth'
 
+export function getAuthStorageMode() {
+  if (window.localStorage.getItem(authStorageKey)) {
+    return 'local'
+  }
+
+  if (window.sessionStorage.getItem(authStorageKey)) {
+    return 'session'
+  }
+
+  return null
+}
+
 export function saveAuthSession(session, rememberMe) {
   const storage = rememberMe ? window.localStorage : window.sessionStorage
   const otherStorage = rememberMe ? window.sessionStorage : window.localStorage
@@ -11,9 +23,10 @@ export function saveAuthSession(session, rememberMe) {
 }
 
 export function getAuthSession() {
-  const storedSession =
-    window.localStorage.getItem(authStorageKey) ||
-    window.sessionStorage.getItem(authStorageKey)
+  const storageMode = getAuthStorageMode()
+  const storedSession = storageMode
+    ? getStorageValue(storageMode)
+    : null
 
   if (!storedSession) {
     return null
@@ -24,6 +37,12 @@ export function getAuthSession() {
   } catch {
     return null
   }
+}
+
+function getStorageValue(mode) {
+  return mode === 'local'
+    ? window.localStorage.getItem(authStorageKey)
+    : window.sessionStorage.getItem(authStorageKey)
 }
 
 export function clearAuthSession() {
