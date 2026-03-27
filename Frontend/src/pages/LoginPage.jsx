@@ -4,6 +4,7 @@ import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
 import { saveAuthSession } from '../lib/auth'
+import { reconcileCartStorageWithAuth } from '../lib/cart'
 import { validateEmail } from '../lib/validation'
 
 const roleHints = ['Customer access', 'Sales manager portal', 'Product manager portal']
@@ -16,10 +17,19 @@ function getMessage(payload, fallbackMessage) {
   return payload.e || payload.m || fallbackMessage
 }
 
+function sanitizeNextPath(nextPath) {
+  if (!nextPath || !nextPath.startsWith('/') || nextPath.startsWith('//')) {
+    return null
+  }
+
+  return nextPath
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const callbackMessage = searchParams.get('callback')
+  const nextPath = sanitizeNextPath(searchParams.get('next'))
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -34,8 +44,10 @@ export default function LoginPage() {
     }
 
     setCallbackFeedback(callbackMessage)
-    navigate('/login', { replace: true })
-  }, [callbackMessage, navigate])
+    navigate(nextPath ? `/login?next=${encodeURIComponent(nextPath)}` : '/login', {
+      replace: true,
+    })
+  }, [callbackMessage, navigate, nextPath])
 
   const handleSubmit = async (event) => {
     event.preventDefault()
@@ -96,7 +108,8 @@ export default function LoginPage() {
       }
 
       saveAuthSession(nextSession, rememberMe)
-      navigate('/dashboard', { replace: true })
+      reconcileCartStorageWithAuth()
+      navigate(nextPath || '/dashboard', { replace: true })
     } catch {
       setFeedback('The login request could not be completed. Please try again.')
       setFeedbackKind('error')
