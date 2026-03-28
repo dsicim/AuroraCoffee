@@ -377,8 +377,8 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 if (body && body.exists && body.json && !body.err && body.data.action) {
                     if (body.data.action === "restart" || body.data.action === "update") {
                         return await new Promise((resolve) => {
-                            console.log("Running version.js with action " + body.data.action);
-                            const child = spawn("/bin/bash", ["node version.js", "--action", body.data.action], {
+                            const child = spawn("node", ["version.js", "--action", body.data.action], {
+                                cwd: __dirname,
                                 detached: true,
                                 stdio: ["ignore", "pipe", "ignore"],
                             });
