@@ -203,36 +203,38 @@ export default function Header() {
             </button>
 
             {menuOpen ? (
-              <div className="absolute right-0 top-[calc(100%+0.9rem)] z-30 w-60 rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.97)] p-3 shadow-[0_24px_70px_rgba(95,58,43,0.14)] backdrop-blur">
-                <div className="border-b border-[rgba(138,144,119,0.16)] px-3 pb-3">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Account
-                  </p>
-                  <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
-                    {displayName}
-                  </p>
-                </div>
+              <div className="absolute right-0 top-full z-30 w-60 pt-4">
+                <div className="rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.97)] p-3 shadow-[0_24px_70px_rgba(95,58,43,0.14)] backdrop-blur">
+                  <div className="border-b border-[rgba(138,144,119,0.16)] px-3 pb-3">
+                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Account
+                    </p>
+                    <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                      {displayName}
+                    </p>
+                  </div>
 
-                <div className="mt-3 space-y-1">
-                  {accountLinks.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      onClick={() => setMenuOpen(false)}
-                      className="block rounded-[1.2rem] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(230,232,222,0.44)]"
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-                </div>
+                  <div className="mt-3 space-y-1">
+                    {accountLinks.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMenuOpen(false)}
+                        className="block rounded-[1.2rem] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(230,232,222,0.44)]"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="mt-3 w-full rounded-[1.2rem] border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-3 text-left text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:border-[rgba(176,41,41,0.8)] hover:bg-[rgba(176,41,41,0.9)] hover:text-[var(--aurora-cream)]"
-                >
-                  Logout
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="mt-3 w-full rounded-[1.2rem] border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-3 text-left text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:border-[rgba(176,41,41,0.8)] hover:bg-[rgba(176,41,41,0.9)] hover:text-[var(--aurora-cream)]"
+                  >
+                    Logout
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>
