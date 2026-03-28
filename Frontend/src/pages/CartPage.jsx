@@ -33,19 +33,24 @@ export default function CartPage() {
   const isLoggedIn = Boolean(session?.token)
 
   useEffect(() => {
-    const syncCart = () => {
+    const syncFromStorage = () => {
       reconcileCartStorageWithAuth()
       setItems(getCartItems())
       setSession(getAuthSession())
     }
 
-    window.addEventListener('storage', syncCart)
-    window.addEventListener(cartChangeEvent, syncCart)
-    const initialSyncId = window.setTimeout(syncCart, 0)
+    const syncCartState = () => {
+      setItems(getCartItems())
+      setSession(getAuthSession())
+    }
+
+    window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(cartChangeEvent, syncCartState)
+    const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
-      window.removeEventListener('storage', syncCart)
-      window.removeEventListener(cartChangeEvent, syncCart)
+      window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(cartChangeEvent, syncCartState)
       window.clearTimeout(initialSyncId)
     }
   }, [])

@@ -20,18 +20,23 @@ export default function FavoriteToggleButton({
   const hasSession = Boolean(session?.token)
 
   useEffect(() => {
-    const syncFavoriteState = () => {
+    const syncFromStorage = () => {
       setSession(getAuthSession())
       reconcileAccountStorageWithAuth()
       setIsFavorite(isFavoriteProduct(productId))
     }
 
-    window.addEventListener('storage', syncFavoriteState)
+    const syncFavoriteState = () => {
+      setSession(getAuthSession())
+      setIsFavorite(isFavoriteProduct(productId))
+    }
+
+    window.addEventListener('storage', syncFromStorage)
     window.addEventListener(accountDataChangeEvent, syncFavoriteState)
-    const initialSyncId = window.setTimeout(syncFavoriteState, 0)
+    const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
-      window.removeEventListener('storage', syncFavoriteState)
+      window.removeEventListener('storage', syncFromStorage)
       window.removeEventListener(accountDataChangeEvent, syncFavoriteState)
       window.clearTimeout(initialSyncId)
     }

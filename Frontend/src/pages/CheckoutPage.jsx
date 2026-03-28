@@ -173,7 +173,7 @@ export default function CheckoutPage() {
   const isLoggedIn = Boolean(session?.token)
 
   useEffect(() => {
-    const syncCheckoutState = () => {
+    const syncFromStorage = () => {
       reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
       setItems(getCartItems())
@@ -181,15 +181,25 @@ export default function CheckoutPage() {
       setSavedAddresses(getSavedAddresses())
     }
 
-    window.addEventListener('storage', syncCheckoutState)
-    window.addEventListener(cartChangeEvent, syncCheckoutState)
-    window.addEventListener(accountDataChangeEvent, syncCheckoutState)
-    const initialSyncId = window.setTimeout(syncCheckoutState, 0)
+    const syncCartState = () => {
+      setItems(getCartItems())
+      setSession(getAuthSession())
+    }
+
+    const syncAccountState = () => {
+      setSession(getAuthSession())
+      setSavedAddresses(getSavedAddresses())
+    }
+
+    window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(cartChangeEvent, syncCartState)
+    window.addEventListener(accountDataChangeEvent, syncAccountState)
+    const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
-      window.removeEventListener('storage', syncCheckoutState)
-      window.removeEventListener(cartChangeEvent, syncCheckoutState)
-      window.removeEventListener(accountDataChangeEvent, syncCheckoutState)
+      window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(cartChangeEvent, syncCartState)
+      window.removeEventListener(accountDataChangeEvent, syncAccountState)
       window.clearTimeout(initialSyncId)
     }
   }, [])
