@@ -55,7 +55,7 @@ function execute(command, options = {}, logfile = null) {
     });
 }
 const log = true;
-async function runResetScript(repoParent) {
+async function runResetScript(repoParent,gitrepo) {
     try {
         const cwd = repoParent;
         if (log) fs.writeFileSync("./resetlog.log", "");
@@ -68,7 +68,7 @@ async function runResetScript(repoParent) {
         }
         await fs.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, forced: true }, err => { });
         if (log) fs.appendFileSync("./resetlog.log", "Removed directory.\n");
-        await execute("git clone -b main "+config.gitrepo, { cwd: cwd }, "./resetlog.log");
+        await execute("git clone -b main "+gitrepo, { cwd: cwd }, "./resetlog.log");
         if (log) fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
         await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
@@ -116,7 +116,7 @@ async function RunServerMaintenance() {
             process.chdir(repoParent);
             if (updateneeded) {
                 console.log("Running git refresh script...");
-                const output = await runResetScript(repoParent).then(res => res).catch(err => "Error: " + err);
+                const output = await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err);
                 console.log(output);
                 if (output.startsWith("Success:")) {
                     config.version = latest.v;
