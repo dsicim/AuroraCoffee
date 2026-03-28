@@ -1,5 +1,5 @@
 const fetch = require("node-fetch");
-const { spawn } = require("child_process");
+const { spawn, exec } = require("child_process");
 const path = require("path");
 const fs = require("fs");
 async function getUpToDateVersion() {
@@ -27,38 +27,58 @@ async function getUpToDateVersion() {
     const latestVersion = "0." + sprintNo[0] + "." + (latestCommit - sprintNo[1]);
     return { s: true, v: latestVersion };
 }
-async function runResetScript() {
-    const cwd = path.join(__dirname, "../..");
-    fs.writeFileSync("./resetlog.log", "");
+function execute(command, options = {}, logfile = null) {
     return new Promise((resolve, reject) => {
-        const child = spawn("sh", ["reset.sh"], {
-            cwd,
-            stdio: ["ignore", "pipe", "pipe"],
+        const child = exec(command, options, (error, stdout, stderr) => {
+            if (error) return reject(error);
+            resolve({ stdout, stderr });
         });
-        child.stdout.on("data", chunk => {
-            fs.appendFileSync("./resetlog.log", chunk);
-            process.stdout.write(chunk);
-        });
-        child.stderr.on("data", chunk => {
-            fs.appendFileSync("./resetlog.log", chunk);
-            process.stderr.write(chunk);
-        });
-        child.on("close", code => {
-            console.log(`reset.sh exited with code ${code}`);
-            if (code === 0) {
-                console.log("reset.sh completed successfully");
-                resolve("Success: reset.sh completed successfully");
-            }
-            else {
-                console.error("reset.sh failed with exit code " + code);
-                reject("Error: reset.sh failed with exit code " + code);
-            }
+        let logStream = null;
+        if (logfile) {
+            logStream = fs.createWriteStream(logfile, { flags: "a" });
+        }
+
+        if (child.stdout) {
+            child.stdout.pipe(process.stdout);
+            if (logStream) child.stdout.pipe(logStream, { end: false });
+        }
+        if (child.stderr) {
+            child.stderr.pipe(process.stderr);
+            if (logStream) child.stderr.pipe(logStream, { end: false });
+        }
+
+        child.on("close", () => {
+            if (logStream) logStream.end();
         });
         child.on("error", err => {
-            console.error("Failed to start reset.sh:", err);
-            reject("Error: Failed to start reset.sh: " + err);
+            if (logStream) logStream.end();
+            reject(err);
         });
     });
+}
+async function runResetScript(repoParent) {
+    const cwd = path.join(repoParent, "../..");
+    fs.writeFileSync("./resetlog.log", "");
+    await fs.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, forced: true }, err => {});
+    fs.appendFileSync("./resetlog.log", "Removed directory.\n");
+    await execute("git clone -b main https://github.com/dsicim/AuroraCoffee.git", {cwd: cwd}, "./resetlog.log");
+    fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
+    await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => {});
+    await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => {});
+    fs.appendFileSync("./resetlog.log", "Updated config.json.\n");
+    await execute("npm i", {cwd: cwd+"/AuroraCoffee/Backend"}, "./resetlog.log");
+    await execute("npm audit fix", {cwd: cwd+"/AuroraCoffee/Backend"}, "./resetlog.log");
+    fs.appendFileSync("./resetlog.log", "Updated backend dependencies.\n");
+    await execute("npm i", {cwd: cwd+"/AuroraCoffee/Frontend"}, "./resetlog.log");
+    await execute("npm audit fix", {cwd: cwd+"/AuroraCoffee/Frontend"}, "./resetlog.log");
+    fs.appendFileSync("./resetlog.log", "Updated frontend dependencies.\n");
+    await execute("npm run build", {cwd: cwd+"/AuroraCoffee/Frontend"}, "./resetlog.log");
+    await execute("npm run lint", {cwd: cwd+"/AuroraCoffee/Frontend"}, "./resetlog.log");
+    fs.appendFileSync("./resetlog.log", "Built frontend.\n");
+    await execute("npm i", {cwd: cwd+"/AuroraCoffee/Database"}, "./resetlog.log");
+    await execute("npm audit fix", {cwd: cwd+"/AuroraCoffee/Database"}, "./resetlog.log");
+    fs.appendFileSync("./resetlog.log", "Updated database dependencies.\n");
+    return "Success: reset.sh completed successfully";
 }
 async function RunServerMaintenance() {
     const args = process.argv.slice(2);
@@ -84,7 +104,7 @@ async function RunServerMaintenance() {
             process.chdir(repoParent);
             if (updateneeded) {
                 console.log("Running git refresh script...");
-                const output = await runResetScript().then(res => res).catch(err => "Error: " + err);
+                const output = await runResetScript(repoParent).then(res => res).catch(err => "Error: " + err);
                 console.log(output);
                 if (output.startsWith("Success:")) {
                     config.version = latest.v;
