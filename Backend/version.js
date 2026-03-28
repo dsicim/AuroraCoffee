@@ -1,5 +1,6 @@
 const fetch = require("node-fetch");
 const { spawn } = require("child_process");
+const path = require("path");
 const fs = require("fs");
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
@@ -72,16 +73,22 @@ async function RunServerMaintenance() {
         else console.log("GOTIT:Restarting without update");
         setTimeout(async () => {
             console.log("Under assumption that server has stopped.");
+            const repoParent = path.join(__dirname, "../..");
+            process.chdir(repoParent);
             if (updateneeded) {
-                config.version = latest.v;
-                fs.writeFileSync("../../config.json", JSON.stringify(config, null, 4), "utf-8");
-                console.log("Updated version in config.json to " + latest.v);
                 console.log("Running git refresh script...");
                 const output = await runResetScript().then(res => res).catch(err => "Error: " + err);
                 console.log(output);
+                if (output.startsWith("Success:")) {
+                    config.version = latest.v;
+                    fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(config, null, 4), "utf-8");
+                    console.log("Updated version in config.json to " + latest.v);
+                }
             }
+            console.log("Starting server...");
+            const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
             spawn("node", ["."], {
-                cwd: __dirname,
+                cwd: backendDir,
                 detached: true,
                 stdio: "ignore",
             }).unref();
