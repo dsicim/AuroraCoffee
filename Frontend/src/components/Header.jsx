@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import {
   clearAuthSession,
@@ -21,17 +21,14 @@ const navItems = [
 ]
 
 export default function Header() {
-  const location = useLocation()
   const navigate = useNavigate()
   const menuRef = useRef(null)
-  const currentLocationKey = `${location.pathname}${location.search}`
   const [session, setSession] = useState(getAuthSession())
   const [user, setUser] = useState(null)
   const [cartCount, setCartCount] = useState(getCartCount())
-  const [openMenuLocationKey, setOpenMenuLocationKey] = useState('')
+  const [menuOpen, setMenuOpen] = useState(false)
   const hasSession = Boolean(session?.token)
   const displayName = user?.displayname || 'Coffee Lover'
-  const menuOpen = openMenuLocationKey === currentLocationKey
 
   const accountLinks = [
     { label: 'Orders', to: '/account/orders' },
@@ -98,7 +95,7 @@ export default function Header() {
 
     const handlePointerDown = (event) => {
       if (!menuRef.current?.contains(event.target)) {
-        setOpenMenuLocationKey('')
+        setMenuOpen(false)
       }
     }
 
@@ -110,7 +107,7 @@ export default function Header() {
   }, [menuOpen])
 
   const handleLogout = () => {
-    setOpenMenuLocationKey('')
+    setMenuOpen(false)
     clearAuthSession()
     reconcileCartStorageWithAuth()
     setSession(getAuthSession())
@@ -177,16 +174,17 @@ export default function Header() {
         </Link>
 
         {hasSession ? (
-          <div className="relative" ref={menuRef}>
+          <div
+            className="relative"
+            ref={menuRef}
+            onMouseEnter={() => setMenuOpen(true)}
+            onMouseLeave={() => setMenuOpen(false)}
+          >
             <button
               type="button"
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              onClick={() =>
-                setOpenMenuLocationKey((current) =>
-                  current === currentLocationKey ? '' : currentLocationKey,
-                )
-              }
+              onClick={() => setMenuOpen(true)}
               className="inline-flex items-center gap-3 rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(255,247,242,0.88)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_28px_rgba(95,58,43,0.08)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-cream)]"
             >
               <span>{displayName}</span>
@@ -220,6 +218,7 @@ export default function Header() {
                     <Link
                       key={item.to}
                       to={item.to}
+                      onClick={() => setMenuOpen(false)}
                       className="block rounded-[1.2rem] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(230,232,222,0.44)]"
                     >
                       {item.label}
@@ -230,7 +229,7 @@ export default function Header() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="mt-3 w-full rounded-[1.2rem] border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-3 text-left text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(248,227,214,0.82)]"
+                  className="mt-3 w-full rounded-[1.2rem] border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-3 text-left text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:border-[rgba(176,41,41,0.8)] hover:bg-[rgba(176,41,41,0.9)] hover:text-[var(--aurora-cream)]"
                 >
                   Logout
                 </button>
