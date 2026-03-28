@@ -57,7 +57,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     console.log(body);
     if (endpoint[0] === "version") {
         endpoint.shift();
-        if (endpoint[0] === "uptodate") {
+        if (endpoint[0] === "latest") {
             const uptodate = await version.getUpToDateVersion().then(res => res.s ? res.v : null).catch(err => null);
             return { s: 200, j: false, d: uptodate || "Error: Failed to fetch latest version", h: { "Access-Control-Allow-Origin": "*" } };
         }
