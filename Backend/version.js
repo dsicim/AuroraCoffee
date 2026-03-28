@@ -56,9 +56,9 @@ function execute(command, options = {}, logfile = null) {
 }
 async function runResetScript(repoParent) {
     try {
-        const cwd = path.join(repoParent, "../..");
+        const cwd = repoParent;
         fs.writeFileSync("./resetlog.log", "");
-        await fs.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, forced: true }, err => { });
+        await fs.rm(path.join(repo, "AuroraCoffee"), { recursive: true, forced: true }, err => { });
         fs.appendFileSync("./resetlog.log", "Removed directory.\n");
         await execute("git clone -b main https://github.com/dsicim/AuroraCoffee.git", { cwd: cwd }, "./resetlog.log");
         fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
