@@ -406,23 +406,31 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + err.toString() });
                         });
                     }
-                    else if (body.data.action === "sql") {
-                            return { s: 500, j: false, d: "Not implemented yet" };
-                        }
-                        else if (body.data.action === "sqlrerun") {
-                            return { s: 500, j: false, d: "Not implemented yet" };
-                        }
-                        else if (body.data.action === "reset") {
-                            return { s: 500, j: false, d: "Not implemented yet" };
-                        }
-                        else return { s: 400, j: false, d: "Invalid action" };
+                    else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
+                        const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8") : body.data.code);
+                        return await sql.runCode(code).then(res => {
+                            if (res.success) {
+                                return { s: 200, j: false, d: "Response from SQL:\n"+JSON.stringify(res.result) };
+                            }
+                            else {
+                                return { s: 200, j: false, d: "Unknown Error from SQL:\n"+JSON.stringify(res) }
+                            }
+                        }).catch(err => {
+                            if (err instanceof sql.DBError) return { s: 200, j: false, d: "Error from SQL:\n"+err.error };
+                            else return { s: 200, j: false, d: "An unknown error occurred"+err.toString() };
+                        });
                     }
-                    else return { s: 400, j: false, d: "Invalid request body" };
+                    else if (body.data.action === "reset") {
+                        return { s: 500, j: false, d: "Not implemented yet" };
+                    }
+                    else return { s: 400, j: false, d: "Invalid action" };
                 }
-                else return { s: 405, j: false, d: "Method Not Allowed" };
+                else return { s: 400, j: false, d: "Invalid request body" };
             }
-            else return { s: 401, j: true, d: { e: "Unauthorized" } };
+            else return { s: 405, j: false, d: "Method Not Allowed" };
         }
-        return { s: 400, j: true, d: { e: "Not Found" } };
+        else return { s: 401, j: true, d: { e: "Unauthorized" } };
     }
-    module.exports = { handleAPI, initDB: sql.initDB };
+    return { s: 400, j: true, d: { e: "Not Found" } };
+}
+module.exports = { handleAPI, initDB: sql.initDB };

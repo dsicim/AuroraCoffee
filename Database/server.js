@@ -21,7 +21,8 @@ func.initDB = async function () {
             port: config.dbport,
             user: config.user,
             password: config.password,
-            database: config.database
+            database: config.database,
+            multipleStatements: true
         });
         console.log('Connected to MySQL database.');
     } catch (error) {
@@ -106,7 +107,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, created_at FROM users WHERE '+(id?'id = ?':'username = ?'),
+            'SELECT id, displayname, username, verified, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {
@@ -144,5 +145,17 @@ func.changePassword = async function (username, newPassword) {
         throw new DBError(500, 'Internal server error');
     }
 };
+func.runCode = async function (code) {
+    try {
+        const result = await pool.execute(code);
+        return { success: true, message: 'Code executed successfully', result: result };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Code execution error:', error);
+        throw new DBError(500, 'Code execution failed: ' + error.message);
+    }
+}
+func.resetDB = async function () {
 
+}
 module.exports = { DBError, ...func };
