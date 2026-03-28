@@ -29,13 +29,20 @@ async function getUpToDateVersion() {
 }
 async function runResetScript() {
     const cwd = path.join(__dirname, "../..");
+    fs.writeFileSync("./resetlog.log", "");
     return new Promise((resolve, reject) => {
         const child = spawn("sh", ["reset.sh"], {
             cwd,
             stdio: ["ignore", "pipe", "pipe"],
         });
-        child.stdout.on("data", chunk => process.stdout.write(chunk));
-        child.stderr.on("data", chunk => process.stderr.write(chunk));
+        child.stdout.on("data", chunk => {
+            fs.appendFileSync("./resetlog.log", chunk);
+            process.stdout.write(chunk);
+        });
+        child.stderr.on("data", chunk => {
+            fs.appendFileSync("./resetlog.log", chunk);
+            process.stderr.write(chunk);
+        });
         child.on("close", code => {
             console.log(`reset.sh exited with code ${code}`);
             if (code === 0) {
