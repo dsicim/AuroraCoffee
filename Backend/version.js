@@ -1,6 +1,8 @@
 const fetch = require("node-fetch");
+const fs = require("fs");
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
+    console.log(github);
     if (!github) {
         return {s:false};
     }
@@ -11,10 +13,9 @@ async function getUpToDateVersion() {
     catch (err) {
         return {s:false};
     }
-    const sprint = await fetch("https://raw.githubusercontent.com/dsicim/AuroraCoffee/refs/heads/main/Backend/scrumnumber.txt").then(res => res.text()).catch(err => null);
     let sprintNo = null;
     try {
-        sprintNo = (sprint == "404: Not Found") ? null : sprint.split(".").map(s => parseInt(s.trim()));
+        sprintNo = fs.readFileSync("./scrumnumber.txt", "utf-8").trim().split(".").map(s => parseInt(s.trim()));
     }
     catch (err) {
         return {s:false};
