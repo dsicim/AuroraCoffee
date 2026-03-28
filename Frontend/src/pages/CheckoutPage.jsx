@@ -4,6 +4,11 @@ import CoffeeBeanDecor from '../components/CoffeeBeanDecor'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import {
+  getCityOptions,
+  getCityOptionValue,
+  sanitizePostalCode,
+} from '../lib/address'
+import {
   accountDataChangeEvent,
   addOrderHistoryEntry,
   getDefaultSavedAddress,
@@ -17,7 +22,11 @@ import {
   getCartItems,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { validateEmail } from '../lib/validation'
+import {
+  validateCityPostalCode,
+  validateEmail,
+  validateTurkishCity,
+} from '../lib/validation'
 
 const checkoutSteps = [
   { key: 'delivery', label: 'Delivery' },
@@ -110,12 +119,21 @@ function validateDeliveryForm(delivery) {
     errors.address = 'Address is required'
   }
 
-  if (!delivery.city.trim()) {
-    errors.city = 'City is required'
+  const cityValidation = validateTurkishCity(delivery.city)
+  if (!cityValidation.s) {
+    errors.city = cityValidation.e
   }
 
-  if (!delivery.postalCode.trim()) {
-    errors.postalCode = 'Postal code is required'
+  const cityPostalValidation = validateCityPostalCode(
+    delivery.city,
+    delivery.postalCode,
+  )
+  if (!cityPostalValidation.s) {
+    if (!errors.city && cityPostalValidation.e === 'Select a valid city from the list') {
+      errors.city = cityPostalValidation.e
+    } else {
+      errors.postalCode = cityPostalValidation.e
+    }
   }
 
   return errors
@@ -217,7 +235,17 @@ export default function CheckoutPage() {
   const handleDeliveryChange = (field, value) => {
     setSelectedAddressId('')
     setDelivery((current) => ({ ...current, [field]: value }))
-    setErrors((current) => ({ ...current, [field]: '' }))
+    setErrors((current) => {
+      if (field === 'city' || field === 'postalCode') {
+        return {
+          ...current,
+          city: '',
+          postalCode: '',
+        }
+      }
+
+      return { ...current, [field]: '' }
+    })
   }
 
   const handlePaymentChange = (field, value) => {
@@ -301,6 +329,8 @@ export default function CheckoutPage() {
         {errors[field]}
       </p>
     ) : null
+
+  const cityOptions = getCityOptions(delivery.city)
 
   if (!items.length && !submittedOrder) {
     return (
@@ -501,14 +531,23 @@ export default function CheckoutPage() {
                     <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
                       City
                     </span>
-                    <input
-                      type="text"
+                    <select
                       value={delivery.city}
                       onChange={(event) =>
                         handleDeliveryChange('city', event.target.value)
                       }
                       className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
-                    />
+                    >
+                      <option value="">Select a city</option>
+                      {cityOptions.map((option) => (
+                        <option
+                          key={option}
+                          value={getCityOptionValue(option)}
+                        >
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                     {renderFieldError('city')}
                   </label>
 
@@ -519,8 +558,13 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       value={delivery.postalCode}
+                      inputMode="numeric"
+                      maxLength={5}
                       onChange={(event) =>
-                        handleDeliveryChange('postalCode', event.target.value)
+                        handleDeliveryChange(
+                          'postalCode',
+                          sanitizePostalCode(event.target.value),
+                        )
                       }
                       className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
                     />

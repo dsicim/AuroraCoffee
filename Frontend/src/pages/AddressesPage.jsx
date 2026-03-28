@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react'
 import AccountLayout from '../components/AccountLayout'
 import {
+  getCityOptions,
+  getCityOptionValue,
+  sanitizePostalCode,
+} from '../lib/address'
+import {
   accountDataChangeEvent,
   deleteSavedAddress,
   getSavedAddresses,
   saveSavedAddress,
   setDefaultSavedAddress,
 } from '../lib/accountData'
-import { validateEmail } from '../lib/validation'
+import {
+  validateCityPostalCode,
+  validateEmail,
+  validateTurkishCity,
+} from '../lib/validation'
 
 const initialFormState = {
   id: '',
@@ -37,12 +46,18 @@ function validateAddressForm(form) {
     errors.address = 'Address is required'
   }
 
-  if (!form.city.trim()) {
-    errors.city = 'City is required'
+  const cityValidation = validateTurkishCity(form.city)
+  if (!cityValidation.s) {
+    errors.city = cityValidation.e
   }
 
-  if (!form.postalCode.trim()) {
-    errors.postalCode = 'Postal code is required'
+  const cityPostalValidation = validateCityPostalCode(form.city, form.postalCode)
+  if (!cityPostalValidation.s) {
+    if (!errors.city && cityPostalValidation.e === 'Select a valid city from the list') {
+      errors.city = cityPostalValidation.e
+    } else {
+      errors.postalCode = cityPostalValidation.e
+    }
   }
 
   return errors
@@ -74,10 +89,20 @@ export default function AddressesPage() {
       ...current,
       [field]: value,
     }))
-    setErrors((current) => ({
-      ...current,
-      [field]: '',
-    }))
+    setErrors((current) => {
+      if (field === 'city' || field === 'postalCode') {
+        return {
+          ...current,
+          city: '',
+          postalCode: '',
+        }
+      }
+
+      return {
+        ...current,
+        [field]: '',
+      }
+    })
   }
 
   const resetForm = () => {
@@ -122,6 +147,8 @@ export default function AddressesPage() {
         {errors[field]}
       </p>
     ) : null
+
+  const cityOptions = getCityOptions(form.city)
 
   return (
     <AccountLayout
@@ -208,12 +235,21 @@ export default function AddressesPage() {
               <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
                 City
               </span>
-              <input
-                type="text"
+              <select
                 value={form.city}
                 onChange={(event) => handleChange('city', event.target.value)}
                 className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
-              />
+              >
+                <option value="">Select a city</option>
+                {cityOptions.map((option) => (
+                  <option
+                    key={option}
+                    value={getCityOptionValue(option)}
+                  >
+                    {option}
+                  </option>
+                ))}
+              </select>
               {renderFieldError('city')}
             </label>
 
@@ -224,7 +260,11 @@ export default function AddressesPage() {
               <input
                 type="text"
                 value={form.postalCode}
-                onChange={(event) => handleChange('postalCode', event.target.value)}
+                inputMode="numeric"
+                maxLength={5}
+                onChange={(event) =>
+                  handleChange('postalCode', sanitizePostalCode(event.target.value))
+                }
                 className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
               />
               {renderFieldError('postalCode')}
