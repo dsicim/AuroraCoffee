@@ -407,7 +407,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         });
                     }
                     else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
-                        const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8") : body.data.code);
+                        const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8").replaceAll("USE 308_db;","").replaceAll("CREATE DATABASE IF NOT EXISTS 308_db;","") : body.data.code);
                         return await sql.runCode(code).then(res => {
                             if (res.success) {
                                 return { s: 200, j: false, d: "Response from SQL:\n"+JSON.stringify(res.result) };
