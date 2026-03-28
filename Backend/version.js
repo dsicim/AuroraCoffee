@@ -68,7 +68,7 @@ async function runResetScript(repoParent) {
         }
         await fs.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, forced: true }, err => { });
         if (log) fs.appendFileSync("./resetlog.log", "Removed directory.\n");
-        await execute("git clone -b main https://github.com/dsicim/AuroraCoffee.git", { cwd: cwd }, "./resetlog.log");
+        await execute("git clone -b main "+config.gitrepo, { cwd: cwd }, "./resetlog.log");
         if (log) fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
         await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
