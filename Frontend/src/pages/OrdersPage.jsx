@@ -2,7 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import { accountDataChangeEvent, getOrderHistory } from '../lib/accountData'
-import { restoreOrderItemsToCart } from '../lib/accountActions'
+import {
+  buildRestoreMessage,
+  getOrderStatus,
+  restoreOrderItemsToCart,
+} from '../lib/accountActions'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -51,18 +55,6 @@ export default function OrdersPage() {
       window.clearTimeout(timeoutId)
     }
   }, [feedback])
-
-  const buildRestoreMessage = (result, label) => {
-    if (!result.addedCount && result.skippedItems.length) {
-      return `Could not restore ${label}. ${result.skippedItems.join(', ')} is no longer available.`
-    }
-
-    if (result.skippedItems.length) {
-      return `${label} added to cart. Skipped ${result.skippedItems.join(', ')} because it is no longer available.`
-    }
-
-    return `${label} added to cart.`
-  }
 
   const handleRestoreOrder = (order, redirectToCart = false) => {
     const result = restoreOrderItemsToCart(order.items)
@@ -118,11 +110,22 @@ export default function OrdersPage() {
                   <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                     {order.reference}
                   </p>
-                  <h2 className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    Demo order placed
-                  </h2>
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <h2 className="font-display text-3xl text-[var(--aurora-text-strong)]">
+                      {getOrderStatus(order)}
+                    </h2>
+                    <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(230,232,222,0.48)] px-4 py-2 text-sm font-semibold text-[var(--aurora-olive-deep)]">
+                      {order.items.reduce((total, item) => total + item.quantity, 0)} item
+                      {order.items.reduce((total, item) => total + item.quantity, 0) === 1
+                        ? ''
+                        : 's'}
+                    </span>
+                  </div>
                   <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-                    Submitted on {formatTimestamp(order.submittedAt)}
+                    Submitted on {formatTimestamp(order.submittedAt)} · total{' '}
+                    <span className="font-semibold text-[var(--aurora-text-strong)]">
+                      {formatCurrency(order.total)}
+                    </span>
                   </p>
                   <div className="mt-5 flex flex-wrap gap-3">
                     <button
@@ -141,12 +144,17 @@ export default function OrdersPage() {
                     </button>
                   </div>
                 </div>
-                <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(230,232,222,0.48)] px-4 py-2 text-sm font-semibold text-[var(--aurora-olive-deep)]">
-                  {order.items.reduce((total, item) => total + item.quantity, 0)} item
-                  {order.items.reduce((total, item) => total + item.quantity, 0) === 1
-                    ? ''
-                    : 's'}
-                </span>
+                <div className="rounded-[1.5rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4 text-sm leading-7 text-[var(--aurora-text)] sm:max-w-[18rem]">
+                  <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                    Delivery status
+                  </p>
+                  <p className="mt-3 font-semibold text-[var(--aurora-text-strong)]">
+                    {getOrderStatus(order)}
+                  </p>
+                  <p className="mt-2">
+                    {order.delivery.city}, {order.delivery.postalCode}
+                  </p>
+                </div>
               </div>
 
               <div className="mt-8 grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">

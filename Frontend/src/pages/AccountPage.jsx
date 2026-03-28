@@ -8,7 +8,7 @@ import {
   getOrderHistory,
   getSavedAddresses,
 } from '../lib/accountData'
-import { restoreOrderItemsToCart } from '../lib/accountActions'
+import { buildRestoreMessage, restoreOrderItemsToCart } from '../lib/accountActions'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -21,18 +21,6 @@ function formatTimestamp(value) {
   return new Date(value).toLocaleString('en-GB', {
     hour12: false,
   })
-}
-
-function buildRestoreMessage(result, label) {
-  if (!result.addedCount && result.skippedItems.length) {
-    return `Could not restore ${label}. ${result.skippedItems.join(', ')} is no longer available.`
-  }
-
-  if (result.skippedItems.length) {
-    return `${label} added to cart. Skipped ${result.skippedItems.join(', ')} because it is no longer available.`
-  }
-
-  return `${label} added to cart.`
 }
 
 export default function AccountPage() {
@@ -95,9 +83,9 @@ export default function AccountPage() {
 
   return (
     <AccountLayout
-      eyebrow="Customer account"
-      title="Your saved coffee corner"
-      description="Pick up where you left off with recent orders, saved delivery details, and coffees you marked for later."
+      eyebrow="Account tools"
+      title="Manage saved shopping details"
+      description="Use this area for your deeper customer tools: order history, saved addresses, and favorites built around the storefront."
     >
       <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-8">

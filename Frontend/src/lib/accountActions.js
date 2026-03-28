@@ -67,3 +67,41 @@ export function addDefaultProductToCart(productId) {
     variant,
   }
 }
+
+const orderStatusStages = [
+  { thresholdHours: 2, label: 'Order received' },
+  { thresholdHours: 12, label: 'Preparing' },
+  { thresholdHours: 36, label: 'Out for delivery' },
+  { thresholdHours: Number.POSITIVE_INFINITY, label: 'Delivered' },
+]
+
+export function getOrderStatus(order) {
+  if (order?.status && order.status !== 'Demo order placed') {
+    return order.status
+  }
+
+  const submittedAt = order?.submittedAt ? new Date(order.submittedAt).getTime() : Number.NaN
+
+  if (!Number.isFinite(submittedAt)) {
+    return 'Order received'
+  }
+
+  const elapsedHours = Math.max(0, (Date.now() - submittedAt) / 3600000)
+  const nextStage =
+    orderStatusStages.find((stage) => elapsedHours < stage.thresholdHours) ||
+    orderStatusStages[orderStatusStages.length - 1]
+
+  return nextStage.label
+}
+
+export function buildRestoreMessage(result, label) {
+  if (!result.addedCount && result.skippedItems.length) {
+    return `Could not restore ${label}. ${result.skippedItems.join(', ')} is no longer available.`
+  }
+
+  if (result.skippedItems.length) {
+    return `${label} added to cart. Skipped ${result.skippedItems.join(', ')} because it is no longer available.`
+  }
+
+  return `${label} added to cart.`
+}
