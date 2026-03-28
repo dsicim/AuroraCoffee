@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restart Service</title>
+    <style>
+        * {
+            font-family: arial;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 20px;
+        }
+
+        button:hover {
+            background-color: #9e0000;
+        }
+
+        .optionbox {
+            border: 1px solid #000000;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Service Admin</h1>
+    <h3>Installed software version: {version}</h3>
+    <h3 id="latest">Latest software version: Loading...</h3>
+    <label>How to read the version: Major.SprintNumber.CommitNumberOnSprint</label>
+    <br>
+    <br>
+    <div class="optionbox">
+        <label id="output">Request output goes here</label>
+    </div>
+    <div class="optionbox">
+        <button id="restartButton">Restart Software</button>
+        <label>Restarting the software will restart the service without updating. <b>This will invalidate all active sessions and email verification links.</b></label>
+    </div>
+    <div class="optionbox">
+        <button id="updateButton">Update Software</button>
+        <label>Updating the software will install the latest features from the repository. <b>This will invalidate all active sessions and email verification links.</b> This will take a while.</label>
+    </div>
+    <div class="optionbox">
+        <textarea id="sqlEdit" placeholder="SQL edit code"
+            style="width: calc(100% - 20px); height: 100px;"></textarea><br>
+        <button id="executeSqlButton">Execute SQL Edit</button>
+        <label><b>Warning: This will execute the above SQL code. Only use this if you know exactly what the code does and there is a slight update to the database structure.</b></label>
+    </div>
+    <div class="optionbox">
+        <button id="rerunSQLCode">Re-run SQL Code</button>
+        <label><b>Warning: This will re-execute the pre-determined database.sql file. May affect database structure.</b></label>
+    </div>
+    <div class="optionbox">
+        <button id="resetDatabaseButton">Reset Database</button>
+        <label><b>Warning: This will delete all data located on the server. Only use this if there are drastic database changes.</b></label>
+    </div>
+    <script>
+        async function fetchVersion() {
+            const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
+            if (!github) {
+                document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
+                return;
+            }
+            let latestCommit = null;
+            try {
+                latestCommit = github.split(",").find(s => s.includes('rel="last"')).match(/&page=(\d+)>/)[1];
+            }
+            catch (err) {
+                document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
+            }
+            const sprint = await fetch("https://raw.githubusercontent.com/dsicim/AuroraCoffee/refs/heads/main/Backend/scrumnumber.txt").then(res => res.text()).catch(err => null);
+            let sprintNo = null;
+            try {
+                sprintNo = (sprint == "404: Not Found") ? null : sprint.split(".").map(s => parseInt(s.trim()));
+            }
+            catch (err) {
+                document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
+            }
+            if (!latestCommit || !sprintNo) {
+                document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
+                return;
+            }
+            const latestVersion = "0."+sprintNo[0]+"."+(latestCommit-sprintNo[1]);
+            document.getElementById("latest").textContent = "Latest software version: " + latestVersion;
+        }
+        function updateOutput(text) {
+            const output = document.getElementById("output");
+            output.textContent = text;
+        }
+        document.getElementById("restartButton").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to restart the software? This will invalidate all active sessions and email verification links.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Restarting software...");
+            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"restart"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("updateButton").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to update the software? This will invalidate all active sessions and email verification links. This will also take some time to reinstall and compile the source code.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Requesting Update...");
+            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"update"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("executeSqlButton").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to execute SQL? MAKE SURE YOU KNOW WHAT YOU ARE DOING.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Executing SQL...");
+            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"sql",code:document.getElementById("sqlEdit").value}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("rerunSQLCode").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to re-run SQL? THIS WILL EXECUTE THE SQL CODE AGAIN.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Re-executing SQL...");
+            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"sqlrerun"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("resetDatabaseButton").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to reset the database? THIS WILL DELETE ALL DATA.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Resetting Database...");
+            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"reset"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        fetchVersion();
+    </script>
+</body>
+</html>

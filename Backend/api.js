@@ -1,6 +1,7 @@
 const sql = require("../Database/server.js");
 const fs = require("fs");
 const crypto = require('crypto');
+const version = require('./version.js');
 const tokens = new Map();
 const emailtokens = new Map();
 const emailids = new Map();
@@ -55,7 +56,12 @@ async function handleAPI(method, endpoint, query, body, headers) {
     console.log(query);
     console.log(body);
     if (endpoint[0] === "version") {
-        return { s: 200, j: false, d: "0.1.67" };
+        endpoint.shift();
+        if (endpoint[0] === "uptodate") {
+            const uptodate = await version.getUpToDateVersion().then(res => res.s ? res.v : null).catch(err => null);
+            return { s: 200, j: false, d: uptodate || "Error: Failed to fetch latest version" };
+        }
+        return { s: 200, j: false, d: config.version };
     }
     else if (endpoint[0] === "auth") {
         endpoint.shift();
@@ -161,7 +167,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
             if (method === "POST") { // Change password token request
                 if (body && body.exists && body.json && !body.err && body.data.u) {
                     const email = body.data.u;
-                    return await sql.findUser(email,false).then(async result => {
+                    return await sql.findUser(email, false).then(async result => {
                         if (result.success) {
                             let emailvalid = false;
                             if (emailids.has(result.user.id + "-password")) {
@@ -302,7 +308,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
         if (endpoint[0] === "me") {
             if (method === "GET") {
                 const userId = tokens.get(token).id;
-                return await sql.findUser(userId,true).then(res => {
+                return await sql.findUser(userId, true).then(res => {
                     if (res.success) {
                         return { s: 200, j: true, d: { user: res.user } };
                     }
@@ -360,6 +366,17 @@ async function handleAPI(method, endpoint, query, body, headers) {
             else return { s: 302, j: false, d: "", h: { "Location": "/login?callback=Invalid verification token" } };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "restart") {
+        if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
+            if (method === "GET") {
+                return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8") };
+            }
+            else if (method === "POST") {
+                return { s: 500, j: true, d: {e: "Not implemented"} };
+            }
+        }
+        else return { s: 401, j: true, d: { e: "Unauthorized" } };
     }
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
