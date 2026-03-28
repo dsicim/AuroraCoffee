@@ -59,9 +59,9 @@ async function handleAPI(method, endpoint, query, body, headers) {
         endpoint.shift();
         if (endpoint[0] === "uptodate") {
             const uptodate = await version.getUpToDateVersion().then(res => res.s ? res.v : null).catch(err => null);
-            return { s: 200, j: false, d: uptodate || "Error: Failed to fetch latest version" };
+            return { s: 200, j: false, d: uptodate || "Error: Failed to fetch latest version", h: { "Access-Control-Allow-Origin": "*" } };
         }
-        return { s: 200, j: false, d: config.version };
+        return { s: 200, j: false, d: config.version, h: { "Access-Control-Allow-Origin": "*" } };
     }
     else if (endpoint[0] === "auth") {
         endpoint.shift();
@@ -373,7 +373,30 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8") };
             }
             else if (method === "POST") {
-                return { s: 500, j: true, d: {e: "Not implemented"} };
+                if (body && body.exists && body.json && !body.err && body.data.action) {
+                    if (body.data.action === "restart") {
+                        setTimeout(() => {
+                            process.exit(0);
+                        }, 2000);
+                        return { s: 200, j: false, d: "Server restart initiated. Server will be unresponsive for a few seconds." };
+                    }
+                    else if (body.data.action === "update") {
+                        setTimeout(() => {
+                            process.exit(0);
+                        }, 2000);
+                        return { s: 200, j: false, d: "Server update initiated. Server will be unresponsive for a few minutes." };
+                    }
+                    else if (body.data.action === "sql") {
+                        return { s: 500, j: false, d: "Not implemented yet" };
+                    }
+                    else if (body.data.action === "sqlrerun") {
+                        return { s: 500, j: false, d: "Not implemented yet" };
+                    }
+                    else if (body.data.action === "reset") {
+                        return { s: 500, j: false, d: "Not implemented yet" };
+                    }
+                }
+                else return { s: 400, j: false, d: "Invalid request body" };
             }
         }
         else return { s: 401, j: true, d: { e: "Unauthorized" } };

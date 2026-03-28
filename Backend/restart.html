@@ -39,7 +39,7 @@
 
 <body>
     <h1>Service Admin</h1>
-    <h3>Installed software version: {version}</h3>
+    <h3 id="version">Installed software version: {version}</h3>
     <h3 id="latest">Latest software version: Loading...</h3>
     <label>How to read the version: Major.SprintNumber.CommitNumberOnSprint</label>
     <br>
@@ -70,7 +70,13 @@
         <label><b>Warning: This will delete all data located on the server. Only use this if there are drastic database changes.</b></label>
     </div>
     <script>
+        const key = new URLSearchParams(window.location.search).get("key") || "";
         async function fetchVersion() {
+            if (document.getElementById("version").innerText.includes("{version}")) {
+                document.getElementById("version").textContent = "Installed software version: Loading...";
+                const installedVersion = await fetch("https://auroracoffee.youcantdrop.com/api/version").then(res => res.text()).catch(err => null);
+                document.getElementById("version").textContent = "Installed software version: " + (installedVersion || "Unable to fetch");
+            }
             const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
             if (!github) {
                 document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
@@ -106,35 +112,35 @@
             if (!confirm("Are you sure you want to restart the software? This will invalidate all active sessions and email verification links.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Restarting software...");
-            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"restart"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({action:"restart"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("updateButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to update the software? This will invalidate all active sessions and email verification links. This will also take some time to reinstall and compile the source code.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Requesting Update...");
-            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"update"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({action:"update"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("executeSqlButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to execute SQL? MAKE SURE YOU KNOW WHAT YOU ARE DOING.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Executing SQL...");
-            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"sql",code:document.getElementById("sqlEdit").value}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({action:"sql",code:document.getElementById("sqlEdit").value}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("rerunSQLCode").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to re-run SQL? THIS WILL EXECUTE THE SQL CODE AGAIN.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Re-executing SQL...");
-            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"sqlrerun"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({action:"sqlrerun"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("resetDatabaseButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to reset the database? THIS WILL DELETE ALL DATA.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Resetting Database...");
-            await fetch("/api/restart?key={restarttoken}", { method: "POST", body: JSON.stringify({action:"reset"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
+            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({action:"reset"}) }).then(res => res.text()).then(res => {updateOutput("RESPONSE: " + res);}).catch(err => {updateOutput("ERROR: " + err);});
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         fetchVersion();
