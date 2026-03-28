@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import { accountDataChangeEvent, getOrderHistory } from '../lib/accountData'
+import { restoreOrderItemsToCart } from '../lib/accountActions'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -17,7 +18,9 @@ function formatTimestamp(value) {
 }
 
 export default function OrdersPage() {
+  const navigate = useNavigate()
   const [orders, setOrders] = useState(() => getOrderHistory())
+  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
     const syncOrders = () => {
@@ -35,12 +38,58 @@ export default function OrdersPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!feedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback('')
+    }, 3000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [feedback])
+
+  const buildRestoreMessage = (result, label) => {
+    if (!result.addedCount && result.skippedItems.length) {
+      return `Could not restore ${label}. ${result.skippedItems.join(', ')} is no longer available.`
+    }
+
+    if (result.skippedItems.length) {
+      return `${label} added to cart. Skipped ${result.skippedItems.join(', ')} because it is no longer available.`
+    }
+
+    return `${label} added to cart.`
+  }
+
+  const handleRestoreOrder = (order, redirectToCart = false) => {
+    const result = restoreOrderItemsToCart(order.items)
+    setFeedback(buildRestoreMessage(result, order.reference))
+
+    if (redirectToCart && result.addedCount) {
+      navigate('/cart')
+    }
+  }
+
+  const handleRestoreItem = (orderReference, item) => {
+    const result = restoreOrderItemsToCart([item])
+    setFeedback(buildRestoreMessage(result, `${item.name} from ${orderReference}`))
+  }
+
   return (
     <AccountLayout
       eyebrow="Account orders"
       title="Your order history"
-      description="Completed demo checkouts are stored locally here so you can review what was placed, when it happened, and which packages were included."
+      description="Review completed checkouts, inspect the packages that were placed, and send any available items back into the cart."
     >
+      {feedback ? (
+        <div className="mb-6 rounded-[1.5rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.44)] px-5 py-4 text-sm font-medium text-[var(--aurora-olive-deep)]">
+          {feedback}
+        </div>
+      ) : null}
+
       {!orders.length ? (
         <div className="rounded-[2.25rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.72)] px-6 py-12 text-center">
           <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
@@ -75,6 +124,22 @@ export default function OrdersPage() {
                   <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
                     Submitted on {formatTimestamp(order.submittedAt)}
                   </p>
+                  <div className="mt-5 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreOrder(order, true)}
+                      className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+                    >
+                      Reorder all
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRestoreOrder(order)}
+                      className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.4)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-olive-deep)] transition hover:bg-[rgba(230,232,222,0.58)]"
+                    >
+                      Add items to cart
+                    </button>
+                  </div>
                 </div>
                 <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(230,232,222,0.48)] px-4 py-2 text-sm font-semibold text-[var(--aurora-olive-deep)]">
                   {order.items.reduce((total, item) => total + item.quantity, 0)} item
@@ -102,6 +167,13 @@ export default function OrdersPage() {
                           <p className="mt-1 text-sm text-[var(--aurora-text)]">
                             Qty {item.quantity}
                           </p>
+                          <button
+                            type="button"
+                            onClick={() => handleRestoreItem(order.reference, item)}
+                            className="mt-3 text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                          >
+                            Add again
+                          </button>
                         </div>
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
                           {formatCurrency(item.price * item.quantity)}

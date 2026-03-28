@@ -1,4 +1,5 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import AccountPage from './pages/AccountPage'
 import AddressesPage from './pages/AddressesPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
@@ -18,6 +19,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/account" element={<AccountPage />} />
         <Route path="/account/addresses" element={<AddressesPage />} />
         <Route path="/account/favorites" element={<FavoritesPage />} />
         <Route path="/account/orders" element={<OrdersPage />} />

@@ -69,7 +69,7 @@ function normalizeProductPrice(product) {
   return 0
 }
 
-function buildCartItem(product, variant) {
+function buildCartItem(product, variant, quantity = 1) {
   return {
     id: variant.id,
     productId: product.id,
@@ -80,7 +80,7 @@ function buildCartItem(product, variant) {
     weight: variant.weight,
     grind: variant.grind,
     price: normalizeProductPrice(variant),
-    quantity: 1,
+    quantity: Math.max(1, Math.floor(quantity) || 1),
   }
 }
 
@@ -141,14 +141,19 @@ export function getCartSubtotal() {
 }
 
 export function addCartItem(product, variant) {
+  return addCartVariant(product, variant, 1)
+}
+
+export function addCartVariant(product, variant, quantity = 1) {
   const storageMode = getCartStorageMode()
   const existingItems = readCartItems(storageMode)
   const existingItem = existingItems.find((item) => item.id === variant.id)
+  const nextQuantity = Math.max(1, Math.floor(quantity) || 1)
 
   if (existingItem) {
     const nextItems = existingItems.map((item) =>
       item.id === variant.id
-        ? { ...item, quantity: item.quantity + 1 }
+        ? { ...item, quantity: item.quantity + nextQuantity }
         : item,
     )
 
@@ -157,7 +162,37 @@ export function addCartItem(product, variant) {
     return nextItems
   }
 
-  const nextItems = [...existingItems, buildCartItem(product, variant)]
+  const nextItems = [...existingItems, buildCartItem(product, variant, nextQuantity)]
+  writeCartItems(storageMode, nextItems)
+  dispatchCartChange()
+  return nextItems
+}
+
+export function addCartVariants(entries) {
+  const storageMode = getCartStorageMode()
+  const existingItems = readCartItems(storageMode)
+  const merged = new Map(existingItems.map((item) => [item.id, { ...item }]))
+
+  for (const entry of entries) {
+    if (!entry?.product || !entry?.variant) {
+      continue
+    }
+
+    const quantity = Math.max(1, Math.floor(entry.quantity) || 1)
+    const existingItem = merged.get(entry.variant.id)
+
+    if (existingItem) {
+      existingItem.quantity += quantity
+      continue
+    }
+
+    merged.set(
+      entry.variant.id,
+      buildCartItem(entry.product, entry.variant, quantity),
+    )
+  }
+
+  const nextItems = Array.from(merged.values())
   writeCartItems(storageMode, nextItems)
   dispatchCartChange()
   return nextItems
