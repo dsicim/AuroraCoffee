@@ -395,6 +395,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                     else if (body.data.action === "reset") {
                         return { s: 500, j: false, d: "Not implemented yet" };
                     }
+                    else return { s: 400, j: false, d: "Invalid action" };
                 }
                 else return { s: 400, j: false, d: "Invalid request body" };
             }
