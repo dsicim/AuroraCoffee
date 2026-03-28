@@ -17,8 +17,7 @@ import {
 const navItems = [
   { label: 'Home', to: '/' },
   { label: 'Products', to: '/products' },
-  { label: 'Our Story', href: '/#about' },
-  { label: 'Contact', href: '/#footer' },
+  { label: 'Our Story', to: '/about' },
 ]
 
 export default function Header() {
@@ -132,23 +131,13 @@ export default function Header() {
 
       <nav className="hidden items-center gap-8 text-sm font-medium text-[var(--aurora-text)] md:flex">
         {navItems.map((item) => (
-          item.to ? (
-            <Link
-              key={item.label}
-              to={item.to}
-              className="transition hover:text-[var(--aurora-olive-deep)]"
-            >
-              {item.label}
-            </Link>
-          ) : (
-            <a
-              key={item.label}
-              href={item.href}
-              className="transition hover:text-[var(--aurora-olive-deep)]"
-            >
-              {item.label}
-            </a>
-          )
+          <Link
+            key={item.label}
+            to={item.to}
+            className="transition hover:text-[var(--aurora-olive-deep)]"
+          >
+            {item.label}
+          </Link>
         ))}
       </nav>
 

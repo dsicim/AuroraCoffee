@@ -21,10 +21,10 @@ import { featuredProducts, products } from '../data/products'
 
 const curatedProducts = featuredProducts.slice(0, 3)
 
-const highlights = [
-  'Featured coffees up front, full catalog one click away',
-  'Saved favorites, repeat orders, and faster checkout for signed-in shoppers',
-  'Variant-aware products with weight and grind selection on detail pages',
+const storyValues = [
+  'Roasted in small, deliberate batches with freshness in mind.',
+  'Built around coffees that stay expressive from the first pour to the last sip.',
+  'Designed to make repeat orders, favorites, and checkout feel effortless.',
 ]
 
 function formatCurrency(amount) {
@@ -398,25 +398,46 @@ export default function HomePage() {
         </section>
 
         <section id="about" className="px-6 py-14 lg:px-10">
-          <div className="mx-auto grid max-w-7xl gap-8 rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.8)] p-8 shadow-[0_20px_60px_rgba(140,84,60,0.06)] lg:grid-cols-[0.9fr_1.1fr] lg:p-10">
+          <div className="mx-auto grid max-w-7xl gap-8 rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.82)] p-8 shadow-[0_20px_60px_rgba(140,84,60,0.06)] lg:grid-cols-[0.92fr_1.08fr] lg:p-10">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                Why this entry point works
+                Our story
               </p>
               <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                Product-first now, deeper tools when needed
+                A quieter coffee story, told in a longer timeline.
               </h2>
             </div>
 
-            <div className="space-y-4">
-              {highlights.map((item) => (
+            <div>
+              <p className="text-base leading-8 text-[var(--aurora-text)]">
+                Aurora Coffee grew from a preference for smaller menus, clearer
+                flavor direction, and coffees people actually want to return to.
+                The roastery story sits behind the storefront now as a dedicated page,
+                with the full timeline, guiding ideas, and how the shop found its pace.
+              </p>
+              <p className="mt-5 text-base leading-8 text-[var(--aurora-text)]">
+                It is a better fit for a slower read than a single homepage panel,
+                so the landing page now gives you the short version and points to the
+                full story when you want it.
+              </p>
+
+              <div className="mt-8 space-y-4">
+                {storyValues.map((item) => (
                 <div
                   key={item}
                   className="rounded-[1.5rem] border border-[rgba(138,144,119,0.26)] bg-[rgba(255,247,242,0.92)] px-5 py-4 text-[var(--aurora-text)]"
                 >
                   {item}
                 </div>
-              ))}
+                ))}
+              </div>
+
+              <Link
+                to="/about"
+                className="mt-8 inline-flex rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-5 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+              >
+                Open the full story
+              </Link>
             </div>
           </div>
         </section>

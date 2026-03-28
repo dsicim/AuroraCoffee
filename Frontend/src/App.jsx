@@ -1,6 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AccountPage from './pages/AccountPage'
 import AddressesPage from './pages/AddressesPage'
+import AboutPage from './pages/AboutPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import FavoritesPage from './pages/FavoritesPage'
@@ -19,6 +20,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/account" element={<AccountPage />} />
         <Route path="/account/addresses" element={<AddressesPage />} />
         <Route path="/account/favorites" element={<FavoritesPage />} />
