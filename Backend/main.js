@@ -66,7 +66,7 @@ const server = http.createServer(async function (req, res) {
             query = query.length > 0 ? { [query.split("=")[0]]: query.split("=")[1] } : {};
         }
         const response = await api.handleAPI(req.method, directory, query, body, req.headers);
-        res.writeHead(response.s, { "Content-Type": "application/json", ...response.h });
+        res.writeHead(response.s, { "Content-Type": (response.j ? "application/json" : (response.h ? (response.h["Content-Type"] || "text/plain") : "text/plain")), ...response.h });
         res.write(response.j ? JSON.stringify(response.d) : response.d);
         res.end();
     }

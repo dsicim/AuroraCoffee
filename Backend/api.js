@@ -370,7 +370,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     else if (endpoint[0] === "restart") {
         if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
             if (method === "GET") {
-                return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8") };
+                return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
             }
             else if (method === "POST") {
                 if (body && body.exists && body.json && !body.err && body.data.action) {
