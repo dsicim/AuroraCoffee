@@ -6,6 +6,7 @@ const tokens = new Map();
 const emailtokens = new Map();
 const emailids = new Map();
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
+const { spawn } = require("child_process");
 const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
 const emailsrv = require("./email.js");
 async function generateToken(email = false) {
@@ -374,17 +375,32 @@ async function handleAPI(method, endpoint, query, body, headers) {
             }
             else if (method === "POST") {
                 if (body && body.exists && body.json && !body.err && body.data.action) {
-                    if (body.data.action === "restart") {
-                        setTimeout(() => {
-                            process.exit(0);
-                        }, 2000);
-                        return { s: 200, j: false, d: "Server restart initiated. Server will be unresponsive for a few seconds." };
-                    }
-                    else if (body.data.action === "update") {
-                        setTimeout(() => {
-                            process.exit(0);
-                        }, 2000);
-                        return { s: 200, j: false, d: "Server update initiated. Server will be unresponsive for a few minutes." };
+                    if (body.data.action === "restart" || body.data.action === "update") {
+                        const child = spawn("/bin/bash", ["node version.js", "--action", body.data.action], {
+                            detached: true,
+                            stdio: ["ignore", "pipe", "ignore"],
+                        });
+                        let buffer = "";
+                        child.stdout.on("data", chunk => {
+                            buffer += chunk.toString("utf8");
+                            const newlineIndex = buffer.indexOf("\n");
+                            if (newlineIndex !== -1) {
+                                const firstLine = buffer.slice(0, newlineIndex).trim();
+                                if (firstLine.startsWith("GOTIT:")) {
+                                    setTimeout(() => process.exit(0), 2000);
+                                }
+                                else {
+                                    console.error("Unexpected child output:", firstLine);
+                                }
+                                child.stdout.removeAllListeners("data");
+                                child.stdout.destroy();
+                                child.unref();
+                                if (!firstLine.startsWith("GOTIT:")) return { s: 500, j: false, d: "Failed to initiate server "+body.data.action+". Child process returned "+firstLine };
+                                const actualoutput = firstLine.substring(6);
+                                return { s: 200, j: false, d: "Server "+body.data.action+" initiated. Server will be unresponsive for a few "+(body.data.action === "update" ? "minutes" : "seconds")+".\n"+actualoutput };
+                            }
+                        });
+                        
                     }
                     else if (body.data.action === "sql") {
                         return { s: 500, j: false, d: "Not implemented yet" };
