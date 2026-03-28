@@ -54,7 +54,7 @@ function execute(command, options = {}, logfile = null) {
         });
     });
 }
-const log = false;
+const log = true;
 async function runResetScript(repoParent) {
     try {
         const cwd = repoParent;
