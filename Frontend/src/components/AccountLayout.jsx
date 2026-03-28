@@ -1,14 +1,13 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import CoffeeBeanDecor from './CoffeeBeanDecor'
 import Footer from './Footer'
 import Header from './Header'
-import { getAuthSession } from '../lib/auth'
+import { authChangeEvent, getAuthSession } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 
 const accountLinks = [
-  { label: 'Customer Home', to: '/customer' },
-  { label: 'Account Tools', to: '/account' },
+  { label: 'Overview', to: '/account' },
   { label: 'Orders', to: '/account/orders' },
   { label: 'Saved Addresses', to: '/account/addresses' },
   { label: 'Favorites', to: '/account/favorites' },
@@ -22,8 +21,22 @@ export default function AccountLayout({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const session = getAuthSession()
+  const [session, setSession] = useState(() => getAuthSession())
   const hasSession = Boolean(session?.token)
+
+  useEffect(() => {
+    const syncSession = () => {
+      setSession(getAuthSession())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(authChangeEvent, syncSession)
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(authChangeEvent, syncSession)
+    }
+  }, [])
 
   useEffect(() => {
     if (!hasSession) {

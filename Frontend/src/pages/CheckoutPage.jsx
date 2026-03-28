@@ -10,7 +10,7 @@ import {
   getSavedAddresses,
   reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
-import { getAuthSession } from '../lib/auth'
+import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
   clearCart,
@@ -192,12 +192,14 @@ export default function CheckoutPage() {
     }
 
     window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(authChangeEvent, syncAccountState)
     window.addEventListener(cartChangeEvent, syncCartState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
     const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
       window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(authChangeEvent, syncAccountState)
       window.removeEventListener(cartChangeEvent, syncCartState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
       window.clearTimeout(initialSyncId)

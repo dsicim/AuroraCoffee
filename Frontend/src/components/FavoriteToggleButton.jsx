@@ -6,7 +6,7 @@ import {
   reconcileAccountStorageWithAuth,
   toggleFavoriteProduct,
 } from '../lib/accountData'
-import { getAuthSession } from '../lib/auth'
+import { authChangeEvent, getAuthSession } from '../lib/auth'
 
 export default function FavoriteToggleButton({
   productId,
@@ -32,11 +32,13 @@ export default function FavoriteToggleButton({
     }
 
     window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(authChangeEvent, syncFavoriteState)
     window.addEventListener(accountDataChangeEvent, syncFavoriteState)
     const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
       window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(authChangeEvent, syncFavoriteState)
       window.removeEventListener(accountDataChangeEvent, syncFavoriteState)
       window.clearTimeout(initialSyncId)
     }

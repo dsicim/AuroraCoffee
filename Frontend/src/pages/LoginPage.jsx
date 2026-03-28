@@ -111,7 +111,7 @@ export default function LoginPage() {
       saveAuthSession(nextSession, rememberMe)
       reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
-      navigate(nextPath || '/customer', { replace: true })
+      navigate(nextPath || '/', { replace: true })
     } catch {
       setFeedback('The login request could not be completed. Please try again.')
       setFeedbackKind('error')

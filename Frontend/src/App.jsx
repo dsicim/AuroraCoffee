@@ -3,7 +3,6 @@ import AccountPage from './pages/AccountPage'
 import AddressesPage from './pages/AddressesPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
-import CustomerPage from './pages/CustomerPage'
 import FavoritesPage from './pages/FavoritesPage'
 import HomePage from './pages/HomePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
@@ -26,8 +25,8 @@ export default function App() {
         <Route path="/account/orders" element={<OrdersPage />} />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/customer" element={<CustomerPage />} />
-        <Route path="/dashboard" element={<Navigate to="/customer" replace />} />
+        <Route path="/customer" element={<Navigate to="/" replace />} />
+        <Route path="/dashboard" element={<Navigate to="/" replace />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/products/:productId" element={<ProductDetailPage />} />

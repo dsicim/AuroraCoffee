@@ -1,6 +1,11 @@
 import { buildApiUrl } from './api'
 
 export const authStorageKey = 'auroraAuth'
+export const authChangeEvent = 'aurora-auth-change'
+
+function dispatchAuthChange() {
+  window.dispatchEvent(new Event(authChangeEvent))
+}
 
 export function getAuthStorageMode() {
   if (window.localStorage.getItem(authStorageKey)) {
@@ -20,6 +25,7 @@ export function saveAuthSession(session, rememberMe) {
 
   otherStorage.removeItem(authStorageKey)
   storage.setItem(authStorageKey, JSON.stringify(session))
+  dispatchAuthChange()
 }
 
 export function getAuthSession() {
@@ -48,6 +54,7 @@ function getStorageValue(mode) {
 export function clearAuthSession() {
   window.localStorage.removeItem(authStorageKey)
   window.sessionStorage.removeItem(authStorageKey)
+  dispatchAuthChange()
 }
 
 export async function fetchCurrentUser(token) {
@@ -55,18 +62,24 @@ export async function fetchCurrentUser(token) {
     return null
   }
 
-  const response = await fetch(buildApiUrl('/users/me'), {
-    method: 'GET',
-    headers: {
-      authorization: token,
-    },
-  })
+  try {
+    const response = await fetch(buildApiUrl('/users/me'), {
+      method: 'GET',
+      headers: {
+        authorization: token,
+      },
+    })
 
-  if (!response.ok) {
+    if (!response.ok) {
+      clearAuthSession()
+      return null
+    }
+
+    const payload = await response.json()
+
+    return payload?.user || null
+  } catch {
+    clearAuthSession()
     return null
   }
-
-  const payload = await response.json()
-
-  return payload?.user || null
 }
