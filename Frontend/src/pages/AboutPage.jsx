@@ -5,28 +5,40 @@ import Header from '../components/Header'
 
 const timelineMilestones = [
   {
-    year: '2019',
-    title: 'A smaller coffee list on purpose',
+    year: 'March 6, 2026',
+    title: 'The first step is taken',
     description:
-      'The idea for Aurora started with a preference for tighter menus and clearer flavor direction. Instead of carrying every profile at once, the goal was to build a lineup that felt edited, calm, and easy to return to.',
+      'The project moved from a loose concept into a real starting point. The first step was to define Aurora Coffee as a storefront with a calmer tone, a tighter coffee lineup, and a cleaner shopping direction.',
   },
   {
-    year: '2021',
-    title: 'Roasting around balance and repeatability',
+    year: 'March 13, 2026',
+    title: 'The first planning is completed',
     description:
-      'The roasting philosophy settled around sweetness, structure, and cups that stay readable at home. The target was coffee that works for daily ritual, not only for one perfect brew on one perfect day.',
+      'The initial planning pass gave the site a clearer structure. The lineup, page flow, and overall brand direction started to settle into something implementable rather than staying as a rough idea.',
   },
   {
-    year: '2023',
-    title: 'From shelf thinking to customer flow',
+    year: 'March 20, 2026',
+    title: 'The first real site action happens',
     description:
-      'The brand direction expanded beyond the beans themselves. Product pages, saved favorites, and repeat ordering became part of the experience, because good coffee retail should feel as smooth as the cup it delivers.',
+      'This was the point where planning turned into visible work on the site itself. The storefront direction began to appear in actual screens, with product flow and structure moving from notes into implementation.',
   },
   {
-    year: 'Now',
-    title: 'A storefront built for slower mornings',
+    year: 'March 27, 2026',
+    title: 'The site becomes more properly shaped',
     description:
-      'Today the shop is centered on curated coffees, variant-aware product detail, and the small conveniences that make people come back: easy reorder paths, saved addresses, and a cleaner catalog journey.',
+      'By the end of March, the site was no longer just an early shell. The layout, product flow, and customer-facing direction were brought into a more proper form, making the storefront feel substantially more complete.',
+  },
+  {
+    year: 'April 10, 2026',
+    title: 'A return-friendly customer flow',
+    description:
+      'By midsummer, the vision was no longer only about first impressions. Saved addresses, cart continuity, favorites, and reorder paths were framed as part of how the shop should support customers after the first purchase.',
+  },
+  {
+    year: 'April 24, 2026',
+    title: 'The brand story gets its own page',
+    description:
+      'The timeline, visual direction, and curated product-first landing page came together into a clearer identity. Aurora Coffee became less of a placeholder storefront and more of a coherent roastery concept with a defined pace and tone.',
   },
 ]
 
@@ -50,16 +62,16 @@ export default function AboutPage() {
                 Our story
               </p>
               <h1 className="mt-4 max-w-2xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-                A coffee timeline shaped by clarity, ritual, and return visits.
+                A dated 2026 timeline shaped by clarity, ritual, and return visits.
               </h1>
             </div>
 
             <div>
               <p className="text-base leading-8 text-[var(--aurora-text)]">
-                Aurora Coffee grew from a preference for smaller menus, warmer cups,
-                and a storefront that feels intentional instead of crowded. The
-                roastery story is less about chasing novelty and more about building
-                a lineup people want to come back to.
+                Aurora Coffee took shape across 2026 as the idea moved from a simple
+                coffee concept into a more complete storefront identity. The timeline
+                below tracks that progression with dated checkpoints beginning on
+                March 6 and moving forward through the first core buildout period.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Link
