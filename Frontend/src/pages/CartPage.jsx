@@ -6,7 +6,6 @@ import Header from '../components/Header'
 import { getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
-  clearCart,
   getCartItems,
   getCartSubtotal,
   reconcileCartStorageWithAuth,
@@ -25,7 +24,6 @@ export default function CartPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => getAuthSession())
-  const [feedback, setFeedback] = useState('')
 
   const subtotal = items.reduce(
     (total, item) => total + item.price * item.quantity,
@@ -58,13 +56,11 @@ export default function CartPage() {
     }
 
     if (!isLoggedIn) {
-      navigate('/login?next=%2Fcart')
+      navigate('/login?next=%2Fcheckout')
       return
     }
 
-    clearCart()
-    setItems([])
-    setFeedback('Demo order placed successfully. Your local cart has been cleared.')
+    navigate('/checkout')
   }
 
   return (
@@ -89,12 +85,6 @@ export default function CartPage() {
                   {totalItems} item{totalItems === 1 ? '' : 's'}
                 </span>
               </div>
-
-              {feedback ? (
-                <div className="mt-6 rounded-[1.75rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.52)] p-4 text-sm font-medium leading-7 text-[var(--aurora-olive-deep)]">
-                  {feedback}
-                </div>
-              ) : null}
 
               {!items.length ? (
                 <div className="mt-8 rounded-[2rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.7)] px-6 py-10 text-center">
@@ -222,8 +212,8 @@ export default function CartPage() {
 
               <div className="mt-8 rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.78)] p-5 text-sm leading-7 text-[var(--aurora-text)]">
                 {isLoggedIn
-                  ? 'You are signed in. Ordering here is a frontend demo only, so submitting will show confirmation and clear the cart.'
-                  : 'You can build your cart while browsing. When you are ready to order, Aurora will ask you to sign in first and then bring you back here.'}
+                  ? 'You are signed in. Continue to checkout to enter delivery and payment details, review the invoice preview, and finish the demo order.'
+                  : 'You can build your cart while browsing. When you continue to checkout, Aurora will ask you to sign in first and then bring you into the checkout flow.'}
               </div>
 
               <button
@@ -232,7 +222,7 @@ export default function CartPage() {
                 disabled={!items.length}
                 className="mt-8 w-full rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
               >
-                {isLoggedIn ? 'Order now' : 'Login to order'}
+                {isLoggedIn ? 'Continue to checkout' : 'Login to continue'}
               </button>
 
               {items.length ? (
