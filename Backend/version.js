@@ -34,7 +34,7 @@ function execute(command, options = {}, logfile = null) {
             resolve({ stdout, stderr });
         });
         let logStream = null;
-        if (logfile) {
+        if (logfile && log) {
             logStream = fs.createWriteStream(logfile, { flags: "a" });
         }
 
@@ -54,33 +54,41 @@ function execute(command, options = {}, logfile = null) {
         });
     });
 }
+const log = false;
 async function runResetScript(repoParent) {
     try {
         const cwd = repoParent;
-        fs.writeFileSync("./resetlog.log", "");
+        if (log) fs.writeFileSync("./resetlog.log", "");
+        try {
+            await fs.promises.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, force: true });
+            if (log) fs.appendFileSync("./resetlog.log", "Removed directory\n");
+        } catch (err) {
+            if (log) fs.appendFileSync("./resetlog.log", "Failed to remove directory: "+err+"\n");
+            throw err;
+        }
         await fs.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, forced: true }, err => { });
-        fs.appendFileSync("./resetlog.log", "Removed directory.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Removed directory.\n");
         await execute("git clone -b main https://github.com/dsicim/AuroraCoffee.git", { cwd: cwd }, "./resetlog.log");
-        fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Cloned repository.\n");
         await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
-        fs.appendFileSync("./resetlog.log", "Updated config.json.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Updated config.json.\n");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Backend" }, "./resetlog.log");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Backend" }, "./resetlog.log");
-        fs.appendFileSync("./resetlog.log", "Updated backend dependencies.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Updated backend dependencies.\n");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        fs.appendFileSync("./resetlog.log", "Updated frontend dependencies.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Updated frontend dependencies.\n");
         await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        fs.appendFileSync("./resetlog.log", "Built frontend.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Built frontend.\n");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Database" }, "./resetlog.log");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Database" }, "./resetlog.log");
-        fs.appendFileSync("./resetlog.log", "Updated database dependencies.\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Updated database dependencies.\n");
         return "Success: reset.sh completed successfully";
     }
     catch (err) {
-        fs.appendFileSync("./resetlog.log", "Error during reset: " + err + "\n");
+        if (log) fs.appendFileSync("./resetlog.log", "Error during reset: " + err + "\n");
         return "Error: " + err;
     }
 }
