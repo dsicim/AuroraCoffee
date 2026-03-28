@@ -54,7 +54,10 @@ async function runResetScript() {
 async function RunServerMaintenance() {
     const args = process.argv.slice(2);
     const index = args.indexOf("--action");
-    if (index === -1 || index === args.length - 1) return null;
+    if (index === -1 || index === args.length - 1) {
+        console.log("NOWAIT: No action specified, skipping maintenance");
+        return null;
+    }
     const action = args[index + 1];
     if (action === "restart" || action === "update") {
         let updateneeded = false;
