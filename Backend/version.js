@@ -1,4 +1,5 @@
 const fetch = require("node-fetch");
+const { spawn } = require("child_process");
 const fs = require("fs");
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
