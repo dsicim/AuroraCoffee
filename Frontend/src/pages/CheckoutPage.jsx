@@ -3,6 +3,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import CoffeeBeanDecor from '../components/CoffeeBeanDecor'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
+import {
+  accountDataChangeEvent,
+  addOrderHistoryEntry,
+  getDefaultSavedAddress,
+  getSavedAddresses,
+  reconcileAccountStorageWithAuth,
+} from '../lib/accountData'
 import { getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
@@ -33,6 +40,21 @@ const initialPayment = {
   cardNumber: '',
   expiry: '',
   cvc: '',
+}
+
+function buildDeliveryFromAddress(address) {
+  if (!address) {
+    return initialDelivery
+  }
+
+  return {
+    fullName: address.fullName || '',
+    email: address.email || '',
+    address: address.address || '',
+    city: address.city || '',
+    postalCode: address.postalCode || '',
+    notes: address.notes || '',
+  }
 }
 
 function formatCurrency(amount) {
@@ -126,11 +148,18 @@ function validatePaymentForm(payment) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
+  const initialDefaultAddress = getDefaultSavedAddress()
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => getAuthSession())
   const [stepIndex, setStepIndex] = useState(0)
-  const [delivery, setDelivery] = useState(initialDelivery)
+  const [delivery, setDelivery] = useState(() =>
+    buildDeliveryFromAddress(initialDefaultAddress),
+  )
   const [payment, setPayment] = useState(initialPayment)
+  const [savedAddresses, setSavedAddresses] = useState(() => getSavedAddresses())
+  const [selectedAddressId, setSelectedAddressId] = useState(
+    initialDefaultAddress?.id || '',
+  )
   const [errors, setErrors] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
 
@@ -145,18 +174,22 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const syncCheckoutState = () => {
+      reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
       setItems(getCartItems())
       setSession(getAuthSession())
+      setSavedAddresses(getSavedAddresses())
     }
 
     window.addEventListener('storage', syncCheckoutState)
     window.addEventListener(cartChangeEvent, syncCheckoutState)
+    window.addEventListener(accountDataChangeEvent, syncCheckoutState)
     const initialSyncId = window.setTimeout(syncCheckoutState, 0)
 
     return () => {
       window.removeEventListener('storage', syncCheckoutState)
       window.removeEventListener(cartChangeEvent, syncCheckoutState)
+      window.removeEventListener(accountDataChangeEvent, syncCheckoutState)
       window.clearTimeout(initialSyncId)
     }
   }, [])
@@ -170,6 +203,7 @@ export default function CheckoutPage() {
   }, [isLoggedIn, items.length, navigate, submittedOrder])
 
   const handleDeliveryChange = (field, value) => {
+    setSelectedAddressId('')
     setDelivery((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: '' }))
   }
@@ -208,11 +242,9 @@ export default function CheckoutPage() {
   }
 
   const handleSubmitOrder = () => {
-    const submittedAt = new Date()
-
-    setSubmittedOrder({
+    const submittedOrderSnapshot = {
       reference: createOrderReference(),
-      submittedAt,
+      submittedAt: new Date().toISOString(),
       items,
       delivery,
       payment: {
@@ -223,11 +255,32 @@ export default function CheckoutPage() {
       subtotal,
       serviceFee,
       total,
-    })
+      status: 'Demo order placed',
+    }
+
+    addOrderHistoryEntry(submittedOrderSnapshot)
+    setSubmittedOrder(submittedOrderSnapshot)
     clearCart()
     setItems([])
     setErrors({})
     setStepIndex(3)
+  }
+
+  const handleApplySavedAddress = (addressId) => {
+    if (!addressId) {
+      setSelectedAddressId('')
+      return
+    }
+
+    const address = savedAddresses.find((candidate) => candidate.id === addressId)
+
+    if (!address) {
+      return
+    }
+
+    setDelivery(buildDeliveryFromAddress(address))
+    setSelectedAddressId(address.id)
+    setErrors({})
   }
 
   const renderFieldError = (field) =>
@@ -310,7 +363,7 @@ export default function CheckoutPage() {
                   <h1 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
                     {currentStep.key === 'success'
                       ? 'Order confirmed'
-                      : 'Complete your Aurora order'}
+                      : 'Complete your order'}
                   </h1>
                 </div>
                 {submittedOrder ? (
@@ -347,6 +400,46 @@ export default function CheckoutPage() {
 
               {currentStep.key === 'delivery' ? (
                 <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                  {savedAddresses.length ? (
+                    <div className="rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.34)] p-5 sm:col-span-2">
+                      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                            Saved addresses
+                          </p>
+                          <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                            Pick an address to prefill delivery details or keep editing manually.
+                          </p>
+                        </div>
+                        <Link
+                          to="/account/addresses"
+                          className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                        >
+                          Manage saved addresses
+                        </Link>
+                      </div>
+
+                      <label className="mt-4 block">
+                        <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                          Apply a saved address
+                        </span>
+                        <select
+                          value={selectedAddressId}
+                          onChange={(event) => handleApplySavedAddress(event.target.value)}
+                          className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                        >
+                          <option value="">Choose a saved address</option>
+                          {savedAddresses.map((address) => (
+                            <option key={address.id} value={address.id}>
+                              {address.label || address.fullName}
+                              {address.isDefault ? ' (Default)' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  ) : null}
+
                   <label className="block sm:col-span-2">
                     <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
                       Full name
@@ -576,6 +669,9 @@ export default function CheckoutPage() {
                               {item.name}
                             </p>
                             <p className="text-sm text-[var(--aurora-text)]">
+                              {item.weight} / {item.grind}
+                            </p>
+                            <p className="text-sm text-[var(--aurora-text)]">
                               Qty {item.quantity}
                             </p>
                           </div>
@@ -599,7 +695,7 @@ export default function CheckoutPage() {
                   </h2>
                   <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
                     Reference {submittedOrder.reference} was created on{' '}
-                    {submittedOrder.submittedAt.toLocaleString('en-GB', {
+                    {new Date(submittedOrder.submittedAt).toLocaleString('en-GB', {
                       hour12: false,
                     })}
                     .
@@ -636,6 +732,12 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="mt-8 flex flex-wrap gap-4">
+                    <Link
+                      to="/account/orders"
+                      className="inline-flex rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.48)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-olive-deep)] transition hover:bg-[rgba(230,232,222,0.62)]"
+                    >
+                      View order history
+                    </Link>
                     <Link
                       to="/products"
                       className="inline-flex rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
@@ -689,7 +791,7 @@ export default function CheckoutPage() {
                 Order summary
               </p>
               <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                Aurora invoice preview
+                Invoice preview
               </h2>
 
               <div className="mt-8 space-y-4">
@@ -702,6 +804,9 @@ export default function CheckoutPage() {
                       <div>
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
                           {item.name}
+                        </p>
+                        <p className="text-sm text-[var(--aurora-text)]">
+                          {item.weight} / {item.grind}
                         </p>
                         <p className="text-sm text-[var(--aurora-text)]">
                           Qty {item.quantity}

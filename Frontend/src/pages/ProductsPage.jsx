@@ -3,7 +3,7 @@ import Footer from '../components/Footer'
 import Header from '../components/Header'
 import ProductCard from '../components/ProductCard'
 import CoffeeBeanDecor from '../components/CoffeeBeanDecor'
-import { productCategories, products } from '../data/products'
+import { getMinimumVariantPrice, productCategories, products } from '../data/products'
 
 const sortOptions = [
   { value: 'popularity', label: 'Most popular' },
@@ -20,11 +20,17 @@ function sortProducts(items, sortBy) {
   }
 
   if (sortBy === 'price-asc') {
-    return sortableItems.sort((left, right) => left.price - right.price)
+    return sortableItems.sort(
+      (left, right) =>
+        getMinimumVariantPrice(left) - getMinimumVariantPrice(right),
+    )
   }
 
   if (sortBy === 'price-desc') {
-    return sortableItems.sort((left, right) => right.price - left.price)
+    return sortableItems.sort(
+      (left, right) =>
+        getMinimumVariantPrice(right) - getMinimumVariantPrice(left),
+    )
   }
 
   return sortableItems.sort((left, right) => right.popularity - left.popularity)
@@ -64,7 +70,7 @@ export default function ProductsPage() {
             <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                  Aurora catalog
+                  Coffee catalog
                 </p>
                 <h1 className="mt-4 max-w-3xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
                   Explore a warmer, more complete storefront for the progress demo.
@@ -72,7 +78,7 @@ export default function ProductsPage() {
                 <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
                   Browse signature coffees, compare roast profiles, and move
                   directly into the product detail experience without leaving
-                  the existing Aurora visual language.
+                  the existing visual language.
                 </p>
               </div>
 

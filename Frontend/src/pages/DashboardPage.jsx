@@ -88,7 +88,7 @@ export default function DashboardPage() {
     )
   }
 
-  const displayName = user?.displayname || 'Aurora User'
+  const displayName = user?.displayname || 'Coffee Lover'
   const displayEmail = user?.username || sessionEmail
 
   return (
@@ -139,11 +139,11 @@ export default function DashboardPage() {
               HELLO, {displayName}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[rgba(255,247,242,0.8)]">
-              This is a placeholder dashboard wired to the live login flow. It
-              now uses the profile returned from
+              This placeholder dashboard is wired to the live login flow. It
+              uses the profile returned from
               <span className="font-semibold"> /api/users/me </span>
-              so the greeting reflects the backend display name associated with
-              the saved session token.
+              so the greeting reflects the backend display name tied to the
+              saved session token.
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">

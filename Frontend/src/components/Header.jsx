@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import {
   clearAuthSession,
   fetchCurrentUser,
   getAuthSession,
 } from '../lib/auth'
+import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import {
   cartChangeEvent,
   getCartCount,
@@ -20,17 +21,29 @@ const navItems = [
 ]
 
 export default function Header() {
+  const location = useLocation()
   const navigate = useNavigate()
+  const menuRef = useRef(null)
+  const currentLocationKey = `${location.pathname}${location.search}`
   const [session, setSession] = useState(getAuthSession())
   const [user, setUser] = useState(null)
   const [cartCount, setCartCount] = useState(getCartCount())
+  const [openMenuLocationKey, setOpenMenuLocationKey] = useState('')
   const hasSession = Boolean(session?.token)
-  const displayName = user?.displayname || 'Aurora User'
+  const displayName = user?.displayname || 'Coffee Lover'
+  const menuOpen = openMenuLocationKey === currentLocationKey
+
+  const accountLinks = [
+    { label: 'Orders', to: '/account/orders' },
+    { label: 'Saved Addresses', to: '/account/addresses' },
+    { label: 'Favorites', to: '/account/favorites' },
+  ]
 
   useEffect(() => {
     const syncSessionState = () => {
       setSession(getAuthSession())
       setUser(null)
+      reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
       setCartCount(getCartCount())
     }
@@ -78,7 +91,26 @@ export default function Header() {
     }
   }, [session?.token])
 
+  useEffect(() => {
+    if (!menuOpen) {
+      return undefined
+    }
+
+    const handlePointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) {
+        setOpenMenuLocationKey('')
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+    }
+  }, [menuOpen])
+
   const handleLogout = () => {
+    setOpenMenuLocationKey('')
     clearAuthSession()
     reconcileCartStorageWithAuth()
     setSession(getAuthSession())
@@ -145,18 +177,66 @@ export default function Header() {
         </Link>
 
         {hasSession ? (
-          <>
-            <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(255,247,242,0.88)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_28px_rgba(95,58,43,0.08)]">
-              {displayName}
-            </span>
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
-              onClick={handleLogout}
-              className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-5 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_30px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              onClick={() =>
+                setOpenMenuLocationKey((current) =>
+                  current === currentLocationKey ? '' : currentLocationKey,
+                )
+              }
+              className="inline-flex items-center gap-3 rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(255,247,242,0.88)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_28px_rgba(95,58,43,0.08)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-cream)]"
             >
-              Logout
+              <span>{displayName}</span>
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 20 20"
+                className={`h-4 w-4 transition ${menuOpen ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="m5 7 5 6 5-6" />
+              </svg>
             </button>
-          </>
+
+            {menuOpen ? (
+              <div className="absolute right-0 top-[calc(100%+0.9rem)] z-30 w-60 rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.97)] p-3 shadow-[0_24px_70px_rgba(95,58,43,0.14)] backdrop-blur">
+                <div className="border-b border-[rgba(138,144,119,0.16)] px-3 pb-3">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                    Account
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                    {displayName}
+                  </p>
+                </div>
+
+                <div className="mt-3 space-y-1">
+                  {accountLinks.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      className="block rounded-[1.2rem] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(230,232,222,0.44)]"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="mt-3 w-full rounded-[1.2rem] border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-3 text-left text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(248,227,214,0.82)]"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : null}
+          </div>
         ) : (
           <Link
             to="/login"

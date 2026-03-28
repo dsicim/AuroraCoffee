@@ -1,11 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import CoffeeBeanDecor from '../components/CoffeeBeanDecor'
+import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import Footer from '../components/Footer'
 import Header from '../components/Header'
 import ProductCard from '../components/ProductCard'
 import { addCartItem } from '../lib/cart'
-import { getProductById, getRelatedProducts } from '../data/products'
+import {
+  getDefaultVariant,
+  getProductAvailability,
+  getProductById,
+  getRelatedProducts,
+} from '../data/products'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -23,6 +29,12 @@ export default function ProductDetailPage() {
   const { productId } = useParams()
   const product = getProductById(productId)
   const [feedback, setFeedback] = useState('')
+  const [selectedWeight, setSelectedWeight] = useState(() =>
+    product ? getDefaultVariant(product)?.weight || '' : '',
+  )
+  const [selectedGrind, setSelectedGrind] = useState(() =>
+    product ? getDefaultVariant(product)?.grind || '' : '',
+  )
 
   useEffect(() => {
     if (!feedback) {
@@ -54,7 +66,7 @@ export default function ProductDetailPage() {
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
               The product route does not match anything in the current demo
-              catalog. Return to the shop to continue browsing Aurora Coffee.
+              catalog. Return to the shop to continue browsing.
             </p>
             <Link
               to="/products"
@@ -71,15 +83,44 @@ export default function ProductDetailPage() {
   }
 
   const relatedProducts = getRelatedProducts(product)
-  const isOutOfStock = product.stock <= 0
+  const availability = getProductAvailability(product)
+  const availableWeights = [...new Set(product.variants.map((variant) => variant.weight))]
+  const availableGrinds = product.variants
+    .filter((variant) => variant.weight === selectedWeight)
+    .map((variant) => variant.grind)
+  const selectedVariant =
+    product.variants.find(
+      (variant) =>
+        variant.weight === selectedWeight && variant.grind === selectedGrind,
+    ) || getDefaultVariant(product)
+  const isOutOfStock = !selectedVariant || selectedVariant.stock <= 0
+
+  const handleWeightChange = (weight) => {
+    setSelectedWeight(weight)
+
+    const matchingVariant =
+      product.variants.find(
+        (variant) => variant.weight === weight && variant.grind === selectedGrind,
+      ) ||
+      product.variants.find(
+        (variant) => variant.weight === weight && variant.stock > 0,
+      ) ||
+      product.variants.find((variant) => variant.weight === weight)
+
+    if (matchingVariant) {
+      setSelectedGrind(matchingVariant.grind)
+    }
+  }
 
   const handleAddToCart = () => {
     if (isOutOfStock) {
       return
     }
 
-    addCartItem(product)
-    setFeedback('Added to cart')
+    addCartItem(product, selectedVariant)
+    setFeedback(
+      `Added ${selectedVariant.weight} / ${selectedVariant.grind} to cart`,
+    )
   }
 
   return (
@@ -145,16 +186,24 @@ export default function ProductDetailPage() {
                     Stock
                   </p>
                   <p className="mt-2 font-display text-3xl">
-                    {isOutOfStock ? 'Sold out' : product.stock}
+                    {availability.hasStock ? availability.totalStock : 'Sold out'}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-[2.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur">
-              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                Product details
-              </p>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
+                    Product details
+                  </p>
+                </div>
+                <FavoriteToggleButton
+                  productId={product.id}
+                  productName={product.name}
+                />
+              </div>
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <span className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.36)] px-4 py-2 text-sm font-semibold text-[var(--aurora-olive-deep)]">
                   {renderStars(product.rating)}
@@ -183,10 +232,12 @@ export default function ProductDetailPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Aurora price
+                      Selected package
                     </p>
                     <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                      {formatCurrency(product.price)}
+                      {selectedVariant
+                        ? formatCurrency(selectedVariant.price)
+                        : 'Unavailable'}
                     </p>
                   </div>
                   <span
@@ -196,13 +247,76 @@ export default function ProductDetailPage() {
                         : 'bg-[var(--aurora-olive-soft)] text-[var(--aurora-olive-deep)]'
                     }`}
                   >
-                    {isOutOfStock ? 'Out of stock' : `${product.stock} bags ready`}
+                    {isOutOfStock
+                      ? 'Variant out of stock'
+                      : `${selectedVariant.stock} bags ready`}
                   </span>
                 </div>
 
                 <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
                   {product.brewGuide}
                 </p>
+
+                <div className="mt-6 grid gap-5 sm:grid-cols-2">
+                  <div>
+                    <p className="text-sm font-medium text-[var(--aurora-text-strong)]">
+                      Weight
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {availableWeights.map((weight) => (
+                        <button
+                          key={weight}
+                          type="button"
+                          onClick={() => handleWeightChange(weight)}
+                          className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                            selectedWeight === weight
+                              ? 'border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] text-[var(--aurora-cream)]'
+                              : 'border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.92)] text-[var(--aurora-text-strong)] hover:bg-[var(--aurora-primary-pale)]'
+                          }`}
+                        >
+                          {weight}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-[var(--aurora-text-strong)]">
+                      Grind
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {availableGrinds.map((grind) => {
+                        const variant = product.variants.find(
+                          (candidate) =>
+                            candidate.weight === selectedWeight &&
+                            candidate.grind === grind,
+                        )
+                        const grindOutOfStock = !variant || variant.stock <= 0
+
+                        return (
+                          <button
+                            key={grind}
+                            type="button"
+                            onClick={() => setSelectedGrind(grind)}
+                            className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                              selectedGrind === grind
+                                ? 'border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] text-[var(--aurora-cream)]'
+                                : 'border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.92)] text-[var(--aurora-text-strong)] hover:bg-[var(--aurora-primary-pale)]'
+                            } ${grindOutOfStock ? 'opacity-60' : ''}`}
+                          >
+                            {grind}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {selectedVariant ? (
+                  <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+                    {selectedVariant.weight} / {selectedVariant.grind}
+                  </p>
+                ) : null}
 
                 <button
                   type="button"
@@ -277,7 +391,7 @@ export default function ProductDetailPage() {
                 You may also like
               </p>
               <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                More from the Aurora lineup
+                More from the lineup
               </h2>
 
               <div className="mt-8 grid gap-6 xl:grid-cols-2">

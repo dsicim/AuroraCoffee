@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
+import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import { saveAuthSession } from '../lib/auth'
 import { reconcileCartStorageWithAuth } from '../lib/cart'
 import { validateEmail } from '../lib/validation'
@@ -108,6 +109,7 @@ export default function LoginPage() {
       }
 
       saveAuthSession(nextSession, rememberMe)
+      reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
       navigate(nextPath || '/dashboard', { replace: true })
     } catch {
@@ -165,12 +167,11 @@ export default function LoginPage() {
               Welcome back
             </p>
             <h1 className="mt-5 max-w-xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-              Sign in to continue your Aurora coffee experience.
+              Sign in to continue.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
-              This starter login screen is ready for backend integration. You
-              can connect it later to authentication endpoints for customers,
-              sales managers, and product managers.
+              This login screen is wired for backend integration and ready to
+              connect to customer, sales manager, and product manager access.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -272,7 +273,7 @@ export default function LoginPage() {
                 disabled={submitting}
                 className="w-full rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
               >
-                {submitting ? 'Signing in...' : 'Login to Aurora'}
+                {submitting ? 'Signing in...' : 'Login'}
               </button>
             </form>
 

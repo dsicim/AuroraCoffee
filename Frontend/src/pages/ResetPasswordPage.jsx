@@ -137,7 +137,7 @@ export default function ResetPasswordPage() {
               Password reset
             </p>
             <h1 className="mt-5 max-w-xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-              Choose a new password for your Aurora account.
+              Choose a new password.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
               This page is designed for the email link redirect from the backend.

@@ -164,7 +164,7 @@ export default function RegisterPage() {
               Create account
             </p>
             <h1 className="mt-5 max-w-xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-              Register for your Aurora Coffee account.
+              Create your account.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
               This screen submits directly to the backend registration endpoint

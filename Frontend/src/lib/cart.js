@@ -69,14 +69,17 @@ function normalizeProductPrice(product) {
   return 0
 }
 
-function buildCartItem(product) {
+function buildCartItem(product, variant) {
   return {
-    id: product.id,
+    id: variant.id,
+    productId: product.id,
     name: product.name,
     roast: product.roast,
     description: product.description,
     notes: product.notes || [],
-    price: normalizeProductPrice(product),
+    weight: variant.weight,
+    grind: variant.grind,
+    price: normalizeProductPrice(variant),
     quantity: 1,
   }
 }
@@ -137,14 +140,14 @@ export function getCartSubtotal() {
   )
 }
 
-export function addCartItem(product) {
+export function addCartItem(product, variant) {
   const storageMode = getCartStorageMode()
   const existingItems = readCartItems(storageMode)
-  const existingItem = existingItems.find((item) => item.id === product.id)
+  const existingItem = existingItems.find((item) => item.id === variant.id)
 
   if (existingItem) {
     const nextItems = existingItems.map((item) =>
-      item.id === product.id
+      item.id === variant.id
         ? { ...item, quantity: item.quantity + 1 }
         : item,
     )
@@ -154,7 +157,7 @@ export function addCartItem(product) {
     return nextItems
   }
 
-  const nextItems = [...existingItems, buildCartItem(product)]
+  const nextItems = [...existingItems, buildCartItem(product, variant)]
   writeCartItems(storageMode, nextItems)
   dispatchCartChange()
   return nextItems

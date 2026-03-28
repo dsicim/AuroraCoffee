@@ -117,9 +117,9 @@ export default function ForgotPasswordPage() {
               Send yourself a password reset link.
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
-              Enter your email address and Aurora will ask the backend for a
-              reset link. When the email link is clicked, the user will land on
-              the reset password screen with the token already in the URL.
+              Enter your email address to request a reset link from the backend.
+              When the email link is clicked, the user lands on the reset page
+              with the token already in the URL.
             </p>
           </section>
 

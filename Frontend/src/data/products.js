@@ -1,3 +1,15 @@
+function createVariant(baseId, weight, grind, price, stock) {
+  return {
+    id: `${baseId}-${weight.toLowerCase()}-${grind
+      .toLowerCase()
+      .replace(/\s+/g, '-')}`,
+    weight,
+    grind,
+    price,
+    stock,
+  }
+}
+
 export const products = [
   {
     id: 'ethiopia-guji',
@@ -9,8 +21,6 @@ export const products = [
     story:
       'A vibrant Ethiopian release designed for the demo catalog. It leans tea-like in structure, stays sweet as it cools, and gives the storefront a lighter profile beside the richer espresso offerings.',
     notes: ['Peach', 'Jasmine', 'Citrus'],
-    price: 18,
-    stock: 14,
     rating: 4.8,
     reviewCount: 32,
     popularity: 91,
@@ -29,6 +39,14 @@ export const products = [
       },
     ],
     featured: true,
+    variants: [
+      createVariant('ethiopia-guji', '250g', 'Whole Bean', 18, 14),
+      createVariant('ethiopia-guji', '250g', 'Filter', 18, 9),
+      createVariant('ethiopia-guji', '250g', 'French Press', 18, 4),
+      createVariant('ethiopia-guji', '500g', 'Whole Bean', 33, 6),
+      createVariant('ethiopia-guji', '500g', 'Filter', 33, 3),
+      createVariant('ethiopia-guji', '1kg', 'Whole Bean', 61, 2),
+    ],
   },
   {
     id: 'midnight-espresso',
@@ -38,10 +56,8 @@ export const products = [
     description:
       'A fuller body blend with dark chocolate sweetness and a smooth caramel finish.',
     story:
-      'Built as the reliable espresso anchor of Aurora Coffee, this blend gives the product page a bolder direction. It is forgiving on home machines and still works beautifully with milk.',
+      'Built as the reliable espresso anchor of the catalog, this blend gives the product page a bolder direction. It is forgiving on home machines and still works beautifully with milk.',
     notes: ['Chocolate', 'Caramel', 'Rich Body'],
-    price: 16,
-    stock: 26,
     rating: 4.7,
     reviewCount: 46,
     popularity: 97,
@@ -60,6 +76,14 @@ export const products = [
       },
     ],
     featured: true,
+    variants: [
+      createVariant('midnight-espresso', '250g', 'Whole Bean', 16, 26),
+      createVariant('midnight-espresso', '250g', 'Espresso', 16, 18),
+      createVariant('midnight-espresso', '250g', 'Moka Pot', 16, 10),
+      createVariant('midnight-espresso', '500g', 'Whole Bean', 29, 8),
+      createVariant('midnight-espresso', '500g', 'Espresso', 29, 5),
+      createVariant('midnight-espresso', '1kg', 'Whole Bean', 54, 3),
+    ],
   },
   {
     id: 'colombia-huila',
@@ -69,10 +93,8 @@ export const products = [
     description:
       'Balanced and approachable with panela sweetness, red fruit acidity, and cocoa.',
     story:
-      'This sits in the middle of the Aurora lineup and is intended to feel broadly approachable. It gives the storefront a balanced option for customers who want complexity without too much brightness.',
+      'This sits in the middle of the lineup and is intended to feel broadly approachable. It gives the storefront a balanced option for customers who want complexity without too much brightness.',
     notes: ['Panela', 'Red Fruit', 'Cocoa'],
-    price: 17,
-    stock: 9,
     rating: 4.6,
     reviewCount: 28,
     popularity: 84,
@@ -91,6 +113,14 @@ export const products = [
       },
     ],
     featured: true,
+    variants: [
+      createVariant('colombia-huila', '250g', 'Whole Bean', 17, 9),
+      createVariant('colombia-huila', '250g', 'Filter', 17, 7),
+      createVariant('colombia-huila', '250g', 'French Press', 17, 4),
+      createVariant('colombia-huila', '500g', 'Whole Bean', 31, 4),
+      createVariant('colombia-huila', '500g', 'Filter', 31, 2),
+      createVariant('colombia-huila', '1kg', 'Whole Bean', 57, 1),
+    ],
   },
   {
     id: 'sumatra-rain',
@@ -102,8 +132,6 @@ export const products = [
     story:
       'A heavier-bodied coffee that broadens the catalog visually and lets the product detail page show a more grounded, comforting flavor profile. It is deliberately styled as a slower, richer cup.',
     notes: ['Cedar', 'Black Sugar', 'Spice'],
-    price: 19,
-    stock: 0,
     rating: 4.5,
     reviewCount: 19,
     popularity: 73,
@@ -122,6 +150,13 @@ export const products = [
       },
     ],
     featured: false,
+    variants: [
+      createVariant('sumatra-rain', '250g', 'Whole Bean', 19, 0),
+      createVariant('sumatra-rain', '250g', 'French Press', 19, 0),
+      createVariant('sumatra-rain', '500g', 'Whole Bean', 35, 3),
+      createVariant('sumatra-rain', '500g', 'French Press', 35, 2),
+      createVariant('sumatra-rain', '1kg', 'Whole Bean', 64, 1),
+    ],
   },
   {
     id: 'aurora-house-decaf',
@@ -133,8 +168,6 @@ export const products = [
     story:
       'The decaf offer rounds out the demo catalog and gives the filtering controls a meaningful category split. It is designed to feel warm and familiar rather than compromise-driven.',
     notes: ['Almond', 'Cocoa Nib', 'Brown Sugar'],
-    price: 15,
-    stock: 21,
     rating: 4.4,
     reviewCount: 14,
     popularity: 65,
@@ -153,15 +186,68 @@ export const products = [
       },
     ],
     featured: false,
+    variants: [
+      createVariant('aurora-house-decaf', '250g', 'Whole Bean', 15, 21),
+      createVariant('aurora-house-decaf', '250g', 'Filter', 15, 12),
+      createVariant('aurora-house-decaf', '500g', 'Whole Bean', 28, 7),
+      createVariant('aurora-house-decaf', '500g', 'Filter', 28, 4),
+      createVariant('aurora-house-decaf', '1kg', 'Whole Bean', 51, 2),
+    ],
   },
 ]
 
 export const featuredProducts = products.filter((product) => product.featured)
 
-export const productCategories = ['All', ...new Set(products.map((product) => product.category))]
+export const productCategories = [
+  'All',
+  ...new Set(products.map((product) => product.category)),
+]
 
 export function getProductById(productId) {
   return products.find((product) => product.id === productId) || null
+}
+
+export function getVariantById(variantId) {
+  for (const product of products) {
+    const variant = product.variants.find((candidate) => candidate.id === variantId)
+
+    if (variant) {
+      return { product, variant }
+    }
+  }
+
+  return null
+}
+
+export function getDefaultVariant(product) {
+  return (
+    product.variants.find((variant) => variant.stock > 0) ||
+    product.variants[0] ||
+    null
+  )
+}
+
+export function getMinimumVariantPrice(product) {
+  return product.variants.reduce(
+    (minimum, variant) => Math.min(minimum, variant.price),
+    product.variants[0]?.price ?? 0,
+  )
+}
+
+export function getVariantCount(product) {
+  return product.variants.length
+}
+
+export function getProductAvailability(product) {
+  const totalStock = product.variants.reduce(
+    (total, variant) => total + variant.stock,
+    0,
+  )
+
+  return {
+    totalStock,
+    hasStock: totalStock > 0,
+  }
 }
 
 export function getRelatedProducts(product, limit = 3) {

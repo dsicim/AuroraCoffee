@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { addCartItem } from '../lib/cart'
+import {
+  getDefaultVariant,
+  getMinimumVariantPrice,
+  getProductAvailability,
+  getVariantCount,
+} from '../data/products'
+import FavoriteToggleButton from './FavoriteToggleButton'
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat('en-US', {
@@ -16,7 +22,11 @@ function renderStars(rating) {
 
 export default function ProductCard({ product, compact = false }) {
   const [feedback, setFeedback] = useState('')
-  const isOutOfStock = product.stock <= 0
+  const defaultVariant = getDefaultVariant(product)
+  const minimumPrice = getMinimumVariantPrice(product)
+  const variantCount = getVariantCount(product)
+  const availability = getProductAvailability(product)
+  const isOutOfStock = !availability.hasStock
 
   useEffect(() => {
     if (!feedback) {
@@ -33,17 +43,24 @@ export default function ProductCard({ product, compact = false }) {
   }, [feedback])
 
   const handleAddToCart = () => {
-    if (isOutOfStock) {
-      return
-    }
-
-    addCartItem(product)
-    setFeedback('Added to cart')
+    setFeedback(
+      isOutOfStock
+        ? 'Choose another coffee'
+        : `Select a package on the product page before adding ${product.name} to cart.`,
+    )
   }
 
   return (
-    <article className="rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.92)] p-6 shadow-[0_20px_60px_rgba(140,84,60,0.08)] backdrop-blur">
-      <Link to={`/products/${product.id}`} className="block">
+    <article className="relative rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.92)] p-6 shadow-[0_20px_60px_rgba(140,84,60,0.08)] backdrop-blur">
+      <div className="absolute right-6 top-6 z-10">
+        <FavoriteToggleButton
+          productId={product.id}
+          productName={product.name}
+          compact
+        />
+      </div>
+
+      <Link to={`/products/${product.id}`} className="block pr-16">
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -65,7 +82,9 @@ export default function ProductCard({ product, compact = false }) {
                 : 'bg-[var(--aurora-olive-soft)] text-[var(--aurora-olive-deep)]'
             }`}
           >
-            {isOutOfStock ? 'Out of stock' : `${product.stock} in stock`}
+            {isOutOfStock
+              ? 'All variants sold out'
+              : `${availability.totalStock} bags across variants`}
           </span>
         </div>
 
@@ -104,9 +123,15 @@ export default function ProductCard({ product, compact = false }) {
       </Link>
 
       <div className="mt-6 flex items-center justify-between">
-        <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-          {formatCurrency(product.price)}
-        </p>
+        <div>
+          <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+            From {formatCurrency(minimumPrice)}
+          </p>
+          <p className="mt-1 text-sm text-[var(--aurora-text)]">
+            {variantCount} variants
+            {defaultVariant ? ` · starts with ${defaultVariant.weight}` : ''}
+          </p>
+        </div>
         <div className="flex items-center gap-3">
           <Link
             to={`/products/${product.id}`}
@@ -117,10 +142,9 @@ export default function ProductCard({ product, compact = false }) {
           <button
             type="button"
             onClick={handleAddToCart}
-            disabled={isOutOfStock}
             className="rounded-full border border-[#d89270] bg-[var(--aurora-primary)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_24px_rgba(235,176,144,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-primary-soft)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
           >
-            {isOutOfStock ? 'Unavailable' : 'Add to cart'}
+            Select package
           </button>
         </div>
       </div>

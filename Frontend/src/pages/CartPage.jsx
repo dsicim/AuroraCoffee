@@ -75,7 +75,7 @@ export default function CartPage() {
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                    Aurora cart
+                    Your cart
                   </p>
                   <h1 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
                     Review your order
@@ -93,7 +93,7 @@ export default function CartPage() {
                   </p>
                   <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
                     Add a few coffees from the shop to start building your next
-                    Aurora order.
+                    order.
                   </p>
                   <Link
                     to="/"
@@ -117,6 +117,9 @@ export default function CartPage() {
                           <h2 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)]">
                             {item.name}
                           </h2>
+                          <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                            {item.weight} / {item.grind}
+                          </p>
                           <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
                             {item.description}
                           </p>
@@ -213,7 +216,7 @@ export default function CartPage() {
               <div className="mt-8 rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.78)] p-5 text-sm leading-7 text-[var(--aurora-text)]">
                 {isLoggedIn
                   ? 'You are signed in. Continue to checkout to enter delivery and payment details, review the invoice preview, and finish the demo order.'
-                  : 'You can build your cart while browsing. When you continue to checkout, Aurora will ask you to sign in first and then bring you into the checkout flow.'}
+                  : 'You can build your cart while browsing. When you continue to checkout, you will be asked to sign in first and then brought into the checkout flow.'}
               </div>
 
               <button

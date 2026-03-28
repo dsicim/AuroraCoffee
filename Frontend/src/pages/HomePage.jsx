@@ -25,13 +25,11 @@ export default function HomePage() {
                 Specialty coffee e-commerce
               </p>
               <h1 className="mt-5 max-w-2xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-                Aurora Coffee Roastery brings warm, modern coffee retail online.
+                Warm, modern coffee retail built for the web.
               </h1>
               <p className="mt-6 max-w-xl text-lg leading-8 text-[var(--aurora-text)]">
-                A warmer storefront landing page for your CS308 progress demo.
-                It still carries the Aurora brand, but now pushes visitors into
-                a fuller product flow with catalog browsing, detail pages, and
-                local cart interactions.
+                A storefront landing page for the CS308 progress demo with
+                catalog browsing, detail pages, and local cart interactions.
               </p>
 
               <div className="mt-8 flex flex-wrap gap-4">
