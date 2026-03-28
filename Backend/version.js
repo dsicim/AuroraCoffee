@@ -99,4 +99,7 @@ async function RunServerMaintenance() {
 if (require.main === module) {
     RunServerMaintenance();
 }
+else {
+    console.log("NOWAIT: If you are seeing this message, it means version.js was required by another module. This file is meant to be run as a standalone script for server maintenance, not imported. If you are trying to check for updates, please use the getUpToDateVersion function exported by this module.");
+}
 module.exports = { getUpToDateVersion };

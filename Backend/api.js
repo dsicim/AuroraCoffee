@@ -376,48 +376,53 @@ async function handleAPI(method, endpoint, query, body, headers) {
             else if (method === "POST") {
                 if (body && body.exists && body.json && !body.err && body.data.action) {
                     if (body.data.action === "restart" || body.data.action === "update") {
-                        const child = spawn("/bin/bash", ["node version.js", "--action", body.data.action], {
-                            detached: true,
-                            stdio: ["ignore", "pipe", "ignore"],
-                        });
-                        let buffer = "";
-                        child.stdout.on("data", chunk => {
-                            buffer += chunk.toString("utf8");
-                            const newlineIndex = buffer.indexOf("\n");
-                            if (newlineIndex !== -1) {
-                                const firstLine = buffer.slice(0, newlineIndex).trim();
-                                if (firstLine.startsWith("GOTIT:")) {
-                                    setTimeout(() => process.exit(0), 2000);
+                        return await new Promise((resolve) => {
+                            console.log("Running version.js with action " + body.data.action);
+                            const child = spawn("/bin/bash", ["node version.js", "--action", body.data.action], {
+                                detached: true,
+                                stdio: ["ignore", "pipe", "ignore"],
+                            });
+                            let buffer = "";
+                            child.stdout.on("data", chunk => {
+                                buffer += chunk.toString("utf8");
+                                const newlineIndex = buffer.indexOf("\n");
+                                if (newlineIndex !== -1) {
+                                    const firstLine = buffer.slice(0, newlineIndex).trim();
+                                    if (firstLine.startsWith("GOTIT:")) {
+                                        setTimeout(() => process.exit(0), 2000);
+                                    }
+                                    else {
+                                        console.error("Unexpected child output:", firstLine);
+                                    }
+                                    child.stdout.removeAllListeners("data");
+                                    child.stdout.destroy();
+                                    child.unref();
+                                    if (!firstLine.startsWith("GOTIT:")) resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + firstLine });
+                                    const actualoutput = firstLine.substring(6);
+                                    resolve({ s: 200, j: false, d: "Server " + body.data.action + " initiated. Server will be unresponsive for a few " + (body.data.action === "update" ? "minutes" : "seconds") + ".\n" + actualoutput });
                                 }
-                                else {
-                                    console.error("Unexpected child output:", firstLine);
-                                }
-                                child.stdout.removeAllListeners("data");
-                                child.stdout.destroy();
-                                child.unref();
-                                if (!firstLine.startsWith("GOTIT:")) return { s: 500, j: false, d: "Failed to initiate server "+body.data.action+". Child process returned "+firstLine };
-                                const actualoutput = firstLine.substring(6);
-                                return { s: 200, j: false, d: "Server "+body.data.action+" initiated. Server will be unresponsive for a few "+(body.data.action === "update" ? "minutes" : "seconds")+".\n"+actualoutput };
-                            }
+                            });
+                        }).catch(err => {
+                            resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + err.toString() });
                         });
-                        
                     }
                     else if (body.data.action === "sql") {
-                        return { s: 500, j: false, d: "Not implemented yet" };
+                            return { s: 500, j: false, d: "Not implemented yet" };
+                        }
+                        else if (body.data.action === "sqlrerun") {
+                            return { s: 500, j: false, d: "Not implemented yet" };
+                        }
+                        else if (body.data.action === "reset") {
+                            return { s: 500, j: false, d: "Not implemented yet" };
+                        }
+                        else return { s: 400, j: false, d: "Invalid action" };
                     }
-                    else if (body.data.action === "sqlrerun") {
-                        return { s: 500, j: false, d: "Not implemented yet" };
-                    }
-                    else if (body.data.action === "reset") {
-                        return { s: 500, j: false, d: "Not implemented yet" };
-                    }
-                    else return { s: 400, j: false, d: "Invalid action" };
+                    else return { s: 400, j: false, d: "Invalid request body" };
                 }
-                else return { s: 400, j: false, d: "Invalid request body" };
+                else return { s: 405, j: false, d: "Method Not Allowed" };
             }
+            else return { s: 401, j: true, d: { e: "Unauthorized" } };
         }
-        else return { s: 401, j: true, d: { e: "Unauthorized" } };
+        return { s: 400, j: true, d: { e: "Not Found" } };
     }
-    return { s: 400, j: true, d: { e: "Not Found" } };
-}
-module.exports = { handleAPI, initDB: sql.initDB };
+    module.exports = { handleAPI, initDB: sql.initDB };
