@@ -3,6 +3,10 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
+import { reconcileAccountStorageWithAuth } from '../lib/accountData'
+import { fetchCurrentUser, saveAuthSession } from '../lib/auth'
+import { reconcileCartStorageWithAuth } from '../lib/cart'
+import { getRoleLandingPath } from '../lib/roles'
 import { validatePassword } from '../lib/validation'
 
 function getMessage(payload, fallbackMessage) {
@@ -79,6 +83,23 @@ export default function ResetPasswordPage() {
         payload,
         'Password changed successfully. You may log in now.',
       )
+
+      if (payload?.t?.token && payload?.t?.expires) {
+        const nextSession = {
+          email: '',
+          token: payload.t.token,
+          expires: payload.t.expires,
+        }
+
+        saveAuthSession(nextSession, false)
+        reconcileAccountStorageWithAuth()
+        reconcileCartStorageWithAuth()
+        const currentUser = await fetchCurrentUser(payload.t.token)
+        navigate(currentUser ? getRoleLandingPath(currentUser.role) : '/', {
+          replace: true,
+        })
+        return
+      }
 
       navigate(`/login?callback=${encodeURIComponent(successMessage)}`, {
         replace: true,

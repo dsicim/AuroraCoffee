@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { authChangeEvent, fetchCurrentUser, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthSession,
+} from '../lib/auth'
 import { getRoleLandingPath, normalizeUserRole } from '../lib/roles'
 
 function buildLoginPath(pathname, search) {
@@ -37,18 +42,23 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
       }
 
       setStatus('checking')
-      const user = await fetchCurrentUser(session.token)
+      const result = await fetchCurrentUserResult(session.token)
 
       if (cancelled) {
         return
       }
 
-      if (!user) {
+      if (result.status === currentUserFetchStatus.unauthorized) {
         navigate(buildLoginPath(location.pathname, location.search), { replace: true })
         return
       }
 
-      const resolvedRole = normalizeUserRole(user.role)
+      if (result.status === currentUserFetchStatus.error) {
+        navigate('/', { replace: true })
+        return
+      }
+
+      const resolvedRole = normalizeUserRole(result.user.role)
 
       if (requiredRole && resolvedRole !== requiredRole) {
         navigate(getRoleLandingPath(resolvedRole), { replace: true })

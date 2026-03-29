@@ -4,7 +4,8 @@ import auroraLogo from '../assets/aurora-logo.jpeg'
 import {
   authChangeEvent,
   clearAuthSession,
-  fetchCurrentUser,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
   getAuthSession,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
@@ -80,17 +81,18 @@ export default function Header() {
     let cancelled = false
 
     const loadUser = async () => {
-      try {
-        const nextUser = await fetchCurrentUser(session.token)
+      const result = await fetchCurrentUserResult(session.token)
 
-        if (!cancelled) {
-          setUser(nextUser)
-        }
-      } catch {
-        if (!cancelled) {
-          setUser(null)
-        }
+      if (cancelled) {
+        return
       }
+
+      if (result.status === currentUserFetchStatus.ok) {
+        setUser(result.user)
+        return
+      }
+
+      setUser(null)
     }
 
     loadUser()

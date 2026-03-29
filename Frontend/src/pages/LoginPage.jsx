@@ -4,9 +4,8 @@ import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { fetchCurrentUser, saveAuthSession } from '../lib/auth'
+import { saveAuthSession } from '../lib/auth'
 import { reconcileCartStorageWithAuth } from '../lib/cart'
-import { getRoleLandingPath } from '../lib/roles'
 import { validateEmail } from '../lib/validation'
 
 const roleHints = ['Customer access', 'Sales manager portal', 'Product manager portal']
@@ -112,14 +111,7 @@ export default function LoginPage() {
       saveAuthSession(nextSession, rememberMe)
       reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
-      const currentUser = await fetchCurrentUser(payload.token, {
-        clearOnFailure: false,
-      })
-      const destination = nextPath || (
-        currentUser ? getRoleLandingPath(currentUser.role) : '/'
-      )
-
-      navigate(destination, { replace: true })
+      navigate(nextPath || '/', { replace: true })
     } catch {
       setFeedback('The login request could not be completed. Please try again.')
       setFeedbackKind('error')

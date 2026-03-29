@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { authChangeEvent, fetchCurrentUser, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthSession,
+} from '../lib/auth'
 import { getRoleLandingPath } from '../lib/roles'
 
 export default function RoleLandingRedirect() {
@@ -30,13 +35,18 @@ export default function RoleLandingRedirect() {
         return
       }
 
-      const user = await fetchCurrentUser(session.token)
+      const result = await fetchCurrentUserResult(session.token)
 
       if (cancelled) {
         return
       }
 
-      navigate(getRoleLandingPath(user?.role), { replace: true })
+      if (result.status === currentUserFetchStatus.ok) {
+        navigate(getRoleLandingPath(result.user.role), { replace: true })
+        return
+      }
+
+      navigate('/', { replace: true })
     }
 
     redirectToRoleHome()

@@ -3,6 +3,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
+import { reconcileAccountStorageWithAuth } from '../lib/accountData'
+import { fetchCurrentUser, saveAuthSession } from '../lib/auth'
+import { reconcileCartStorageWithAuth } from '../lib/cart'
+import { getRoleLandingPath } from '../lib/roles'
 import { validateEmail, validatePassword } from '../lib/validation'
 
 function getMessage(payload, fallbackMessage) {
@@ -101,6 +105,23 @@ export default function RegisterPage() {
           'User registered successfully. Check your email to verify your account.',
         )
         setSubmitted(true)
+        return
+      }
+
+      if (payload?.t?.token && payload?.t?.expires) {
+        const nextSession = {
+          email: normalizedEmail,
+          token: payload.t.token,
+          expires: payload.t.expires,
+        }
+
+        saveAuthSession(nextSession, false)
+        reconcileAccountStorageWithAuth()
+        reconcileCartStorageWithAuth()
+        const currentUser = await fetchCurrentUser(payload.t.token)
+        navigate(currentUser ? getRoleLandingPath(currentUser.role) : '/', {
+          replace: true,
+        })
         return
       }
 

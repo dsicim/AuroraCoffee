@@ -2,6 +2,11 @@ import { buildApiUrl } from './api'
 
 export const authStorageKey = 'auroraAuth'
 export const authChangeEvent = 'aurora-auth-change'
+export const currentUserFetchStatus = {
+  ok: 'ok',
+  unauthorized: 'unauthorized',
+  error: 'error',
+}
 
 function dispatchAuthChange() {
   window.dispatchEvent(new Event(authChangeEvent))
@@ -57,12 +62,15 @@ export function clearAuthSession() {
   dispatchAuthChange()
 }
 
-export async function fetchCurrentUser(token, options = {}) {
+export async function fetchCurrentUserResult(token, options = {}) {
   if (!token) {
-    return null
+    return {
+      status: currentUserFetchStatus.unauthorized,
+      user: null,
+    }
   }
 
-  const { clearOnFailure = true } = options
+  const { clearOnUnauthorized = true } = options
 
   try {
     const response = await fetch(buildApiUrl('/users/me'), {
@@ -73,21 +81,50 @@ export async function fetchCurrentUser(token, options = {}) {
     })
 
     if (!response.ok) {
-      if (clearOnFailure) {
-        clearAuthSession()
+      if (response.status === 401) {
+        if (clearOnUnauthorized) {
+          clearAuthSession()
+        }
+
+        return {
+          status: currentUserFetchStatus.unauthorized,
+          user: null,
+        }
       }
 
-      return null
+      return {
+        status: currentUserFetchStatus.error,
+        user: null,
+      }
     }
 
     const payload = await response.json()
 
-    return payload?.user || null
-  } catch {
-    if (clearOnFailure) {
-      clearAuthSession()
+    if (!payload?.user) {
+      return {
+        status: currentUserFetchStatus.error,
+        user: null,
+      }
     }
 
+    return {
+      status: currentUserFetchStatus.ok,
+      user: payload.user,
+    }
+  } catch {
+    return {
+      status: currentUserFetchStatus.error,
+      user: null,
+    }
+  }
+}
+
+export async function fetchCurrentUser(token, options = {}) {
+  const result = await fetchCurrentUserResult(token, options)
+
+  if (result.status !== currentUserFetchStatus.ok) {
     return null
   }
+
+  return result.user
 }
