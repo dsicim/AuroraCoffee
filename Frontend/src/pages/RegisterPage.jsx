@@ -4,9 +4,8 @@ import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { buildApiUrl } from '../lib/api'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { fetchCurrentUser, saveAuthSession } from '../lib/auth'
+import { saveAuthSession } from '../lib/auth'
 import { reconcileCartStorageWithAuth } from '../lib/cart'
-import { getRoleLandingPath } from '../lib/roles'
 import { validateEmail, validatePassword } from '../lib/validation'
 
 function getMessage(payload, fallbackMessage) {
@@ -118,10 +117,7 @@ export default function RegisterPage() {
         saveAuthSession(nextSession, false)
         reconcileAccountStorageWithAuth()
         reconcileCartStorageWithAuth()
-        const currentUser = await fetchCurrentUser(payload.t.token)
-        navigate(currentUser ? getRoleLandingPath(currentUser.role) : '/', {
-          replace: true,
-        })
+        navigate('/', { replace: true })
         return
       }
 
