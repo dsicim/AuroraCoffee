@@ -256,7 +256,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         }
                         else {
                             const userId = tokens.get(token).id;
-                            const email = await sql.findUserById(userId).then(res => {
+                            const email = await sql.findUser(userId,true).then(res => {
                                 return res.success ? res.user : null;
                             }).catch(err => {
                                 return null;
@@ -309,7 +309,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
         if (endpoint[0] === "me") {
             if (method === "GET") {
                 const userId = tokens.get(token).id;
-                return await sql.findUserById(userId).then(res => { // Fixed to use findUserById
+                return await sql.findUser(userId,true).then(res => { // DO NOT USE findUserById
                     if (res.success) {
                         return { s: 200, j: true, d: { user: res.user } };
                     }
