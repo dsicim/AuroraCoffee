@@ -256,7 +256,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         }
                         else {
                             const userId = tokens.get(token).id;
-                            const email = await sql.findUser(userId,true).then(res => {
+                            const email = await sql.findUserById(userId).then(res => {
                                 return res.success ? res.user : null;
                             }).catch(err => {
                                 return null;
@@ -309,11 +309,12 @@ async function handleAPI(method, endpoint, query, body, headers) {
         if (endpoint[0] === "me") {
             if (method === "GET") {
                 const userId = tokens.get(token).id;
-                return await sql.findUser(userId,true).then(res => { // DO NOT USE findUserById
+                return await sql.findUser(userId, true).then(res => {
                     if (res.success) {
                         return { s: 200, j: true, d: { user: res.user } };
                     }
                     else {
+                        console.error("Find user error:", err);
                         return { s: 500, j: true, d: { e: "An unknown error occurred" } };
                     }
                 }).catch(err => {
@@ -324,184 +325,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
-        else if (endpoint[0] === "role") {
-            if (method === "PATCH") {
-                if (body && body.exists && body.json && !body.err && body.data.userId && body.data.role) {
-                    return await sql.changeUserRole(body.data.userId, body.data.role).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        console.error("Change role error:", err);
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-                    });
-                }
-                else return { s: 400, j: true, d: { e: "Invalid Request" } };
-            }
-            else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-        }
         else return { s: 400, j: true, d: { e: "Not Found" } };
-    }
-    else if (endpoint[0] === "products") {
-        endpoint.shift();
-        if (!endpoint.length) {
-            if (method === "GET") {
-                return await sql.getAllProducts().then(res => {
-                    return { s: 200, j: true, d: { products: res.products } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to fetch products" } };
-                });
-            }
-            else if (method === "POST") {
-                if (body && body.exists && body.json && !body.err) {
-                    return await sql.addProduct(body.data).then(res => {
-                        return { s: 200, j: true, d: { m: res.message, id: res.productId } };
-                    }).catch(err => {
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        return { s: 500, j: true, d: { e: "Failed to add product" } };
-                    });
-                }
-            }
-        }
-        else if (endpoint[0] === "search") {
-            if (method === "GET") {
-                return await sql.searchProducts(query.q, query.sort).then(res => {
-                    return { s: 200, j: true, d: { products: res.products } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Search failed" } };
-                });
-            }
-        }
-        else if (!isNaN(parseInt(endpoint[0]))) {
-            if (method === "GET") {
-                return await sql.getProductById(endpoint[0]).then(res => {
-                    return { s: 200, j: true, d: { product: res.product } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to fetch product" } };
-                });
-            }
-        }
-        return { s: 400, j: true, d: { e: "Not Found" } };
-    }
-    else if (endpoint[0] === "comments") {
-        endpoint.shift();
-        if (method === "POST") {
-            const token = headers.authorization;
-            if (!tokens.has(token)) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            const userId = tokens.get(token).id;
-            if (body && body.exists && body.json && !body.err) {
-                return await sql.addComment(userId, body.data.productId, body.data.text, body.data.rating).then(res => {
-                    return { s: 200, j: true, d: { m: res.message } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to add comment" } };
-                });
-            }
-        }
-        else if (endpoint[0] === "product" && endpoint[1]) {
-            if (method === "GET") {
-                return await sql.getApprovedComments(endpoint[1]).then(res => {
-                    return { s: 200, j: true, d: { comments: res.comments } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to fetch comments" } };
-                });
-            }
-        }
-        else if (endpoint[0] === "approve" || endpoint[0] === "reject") {
-            if (method === "PATCH") {
-                const action = endpoint[0] === "approve" ? sql.approveComment : sql.rejectComment;
-                if (body && body.exists && body.json && !body.err) {
-                    return await action(body.data.commentId).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        return { s: 500, j: true, d: { e: "Failed to update comment" } };
-                    });
-                }
-            }
-        }
-        return { s: 400, j: true, d: { e: "Not Found" } };
-    }
-    else if (endpoint[0] === "orders") {
-        endpoint.shift();
-        const token = headers.authorization;
-        if (!tokens.has(token)) return { s: 401, j: true, d: { e: "Unauthorized" } };
-        const userId = tokens.get(token).id;
-
-        if (method === "POST") {
-            if (body && body.exists && body.json && !body.err) {
-                return await sql.createOrder(userId, body.data.items).then(res => {
-                    return { s: 200, j: true, d: { m: res.message, orderId: res.orderId } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to create order" } };
-                });
-            }
-        }
-        else if (endpoint[0] === "me") {
-            if (method === "GET") {
-                return await sql.getUserOrders(userId).then(res => {
-                    return { s: 200, j: true, d: { orders: res.orders } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to fetch orders" } };
-                });
-            }
-        }
-        else if (endpoint[0] === "cancel") {
-            if (method === "PATCH") {
-                if (body && body.exists && body.json && !body.err) {
-                    return await sql.cancelOrder(body.data.orderId).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        return { s: 500, j: true, d: { e: "Failed to cancel order" } };
-                    });
-                }
-            }
-        }
-        else if (endpoint[0] === "status") {
-            if (method === "PATCH") {
-                if (body && body.exists && body.json && !body.err) {
-                    return await sql.updateOrderStatus(body.data.orderId, body.data.status).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        return { s: 500, j: true, d: { e: "Failed to update status" } };
-                    });
-                }
-            }
-        }
-        return { s: 400, j: true, d: { e: "Not Found" } };
-    }
-    else if (endpoint[0] === "refunds") {
-        endpoint.shift();
-        if (method === "POST") {
-            if (body && body.exists && body.json && !body.err) {
-                return await sql.requestRefund(body.data.orderId, body.data.productId).then(res => {
-                    return { s: 200, j: true, d: { m: res.message, refundId: res.refundId } };
-                }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                    return { s: 500, j: true, d: { e: "Failed to request refund" } };
-                });
-            }
-        }
-        else if (endpoint[0] === "approve") {
-            if (method === "PATCH") {
-                if (body && body.exists && body.json && !body.err) {
-                    return await sql.approveRefund(body.data.refundId).then(res => {
-                        return { s: 200, j: true, d: { m: res.message } };
-                    }).catch(err => {
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                        return { s: 500, j: true, d: { e: "Failed to approve refund" } };
-                    });
-                }
-            }
-        }
-        return { s: 400, j: true, d: { e: "Not Found" } };
     }
     else if (endpoint[0] === "verify") {
         if (method === "GET") {
