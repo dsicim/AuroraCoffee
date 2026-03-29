@@ -7,6 +7,7 @@ import { authChangeEvent, getAuthSession } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 
 const accountLinks = [
+  { label: 'Customer Home', to: '/customer' },
   { label: 'Overview', to: '/account' },
   { label: 'Orders', to: '/account/orders' },
   { label: 'Saved Addresses', to: '/account/addresses' },

@@ -57,10 +57,12 @@ export function clearAuthSession() {
   dispatchAuthChange()
 }
 
-export async function fetchCurrentUser(token) {
+export async function fetchCurrentUser(token, options = {}) {
   if (!token) {
     return null
   }
+
+  const { clearOnFailure = true } = options
 
   try {
     const response = await fetch(buildApiUrl('/users/me'), {
@@ -71,7 +73,10 @@ export async function fetchCurrentUser(token) {
     })
 
     if (!response.ok) {
-      clearAuthSession()
+      if (clearOnFailure) {
+        clearAuthSession()
+      }
+
       return null
     }
 
@@ -79,7 +84,10 @@ export async function fetchCurrentUser(token) {
 
     return payload?.user || null
   } catch {
-    clearAuthSession()
+    if (clearOnFailure) {
+      clearAuthSession()
+    }
+
     return null
   }
 }

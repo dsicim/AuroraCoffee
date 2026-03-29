@@ -13,6 +13,7 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
+import { getRoleLandingPath, getRoleLabel, userRoles } from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -29,13 +30,21 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const hasSession = Boolean(session?.token)
   const displayName = user?.displayname || 'Coffee Lover'
+  const resolvedRole = getRoleLabel(user?.role)
 
-  const accountLinks = [
-    { label: 'Account', to: '/account' },
-    { label: 'Orders', to: '/account/orders' },
-    { label: 'Saved Addresses', to: '/account/addresses' },
-    { label: 'Favorites', to: '/account/favorites' },
-  ]
+  const accountLinks = resolvedRole === userRoles.customer
+    ? [
+        { label: 'Customer Home', to: '/customer' },
+        { label: 'Account', to: '/account' },
+        { label: 'Orders', to: '/account/orders' },
+        { label: 'Saved Addresses', to: '/account/addresses' },
+        { label: 'Favorites', to: '/account/favorites' },
+      ]
+    : [
+        { label: `${resolvedRole} Home`, to: getRoleLandingPath(resolvedRole) },
+        { label: 'Browse Storefront', to: '/' },
+        { label: 'View Catalog', to: '/products' },
+      ]
 
   useEffect(() => {
     const syncSessionState = () => {
@@ -199,12 +208,12 @@ export default function Header() {
               <div className="absolute right-0 top-full z-30 w-60 pt-4">
                 <div className="rounded-[1.75rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.97)] p-3 shadow-[0_24px_70px_rgba(95,58,43,0.14)] backdrop-blur">
                   <Link
-                    to="/account"
+                    to={resolvedRole === userRoles.customer ? '/account' : getRoleLandingPath(resolvedRole)}
                     onClick={() => setMenuOpen(false)}
                     className="block rounded-[1.2rem] border-b border-[rgba(138,144,119,0.16)] px-3 pb-3 transition hover:bg-[rgba(230,232,222,0.28)]"
                   >
                     <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Account
+                      {resolvedRole}
                     </p>
                     <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
                       {displayName}
