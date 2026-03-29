@@ -43,8 +43,8 @@ func.registerUser = async function (username, password, displayname) {
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const [result] = await pool.execute(
-            'INSERT INTO users (displayname, username, password, verified) VALUES (?, ?, ?, ?)',
-            [displayname, username, hashedPassword, !config.verifyemail]
+            'INSERT INTO users (displayname, username, password, verified, role) VALUES (?, ?, ?, ?, ?)',
+            [displayname, username, hashedPassword, !config.verifyemail, 'Customer']
         );
         return { success: true, message: 'User registered successfully', userId: result.insertId };
     } catch (error) {
@@ -116,7 +116,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
+            'SELECT id, displayname, username, verified, role, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {
@@ -171,7 +171,574 @@ func.resetDB = async function () {
     // Placeholder for reset logic
 }
 
+// --- Product Management Functions ---
+
+func.getAllProducts = async function () {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN categories pc ON c.parent_id = pc.id
+        `);
+        return { success: true, products: rows };
+    } catch (error) {
+        console.error('Get all products error:', error);
+        throw new DBError(500, 'Failed to fetch products');
+    }
+};
+
+func.getProductById = async function (productId) {
+    if (!productId) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    try {
+        const [rows] = await pool.execute(`
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN categories pc ON c.parent_id = pc.id
+            WHERE p.id = ?
+        `, [productId]);
+        if (rows.length === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, product: rows[0] };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Get product by ID error:', error);
+        throw new DBError(500, 'Failed to fetch product');
+    }
+};
+
+func.searchProducts = async function (query, sortBy = 'newest') {
+    try {
+        let sql = `
+            SELECT p.*, c.name AS category_name
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            WHERE p.name LIKE ? OR p.description LIKE ?
+        `;
+        const params = [`%${query}%`, `%${query}%` || ''];
+
+        switch (sortBy) {
+            case 'price_asc':
+                sql += ' ORDER BY p.price ASC';
+                break;
+            case 'price_desc':
+                sql += ' ORDER BY p.price DESC';
+                break;
+            case 'newest':
+            default:
+                sql += ' ORDER BY p.created_at DESC';
+                break;
+        }
+
+        const [rows] = await pool.execute(sql, params);
+        return { success: true, products: rows };
+    } catch (error) {
+        console.error('Search products error:', error);
+        throw new DBError(500, 'Failed to search products');
+    }
+};
+
+func.decreaseStock = async function (productId, qty) {
+    if (!productId || qty === undefined) {
+        throw new DBError(400, 'Product ID and quantity are required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [rows] = await connection.execute('SELECT stock FROM products WHERE id = ? FOR UPDATE', [productId]);
+        if (rows.length === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        const currentStock = rows[0].stock;
+        if (currentStock < qty) {
+            throw new DBError(400, 'Insufficient stock');
+        }
+        await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ?', [qty, productId]);
+        await connection.commit();
+        return { success: true, message: 'Stock decreased successfully' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Decrease stock error:', error);
+        throw new DBError(500, 'Failed to decrease stock');
+    } finally {
+        connection.release();
+    }
+};
+
+func.increaseStock = async function (productId, qty) {
+    if (!productId || qty === undefined) {
+        throw new DBError(400, 'Product ID and quantity are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [qty, productId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, message: 'Stock increased successfully' };
+    } catch (error) {
+        console.error('Increase stock error:', error);
+        throw new DBError(500, 'Failed to increase stock');
+    }
+};
+
+func.addProduct = async function (data) {
+    const { name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes, material, capacity, image_url } = data;
+    if (!name || price === undefined) {
+        throw new DBError(400, 'Name and price are required');
+    }
+    try {
+        const [result] = await pool.execute(`
+            INSERT INTO products (
+                name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes, material, capacity, image_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+            name, description || null, price, stock || 0, category_id || null, 
+            origin || null, roast_level || null, acidity || null, flavor_notes || null, 
+            material || null, capacity || null, image_url || null
+        ]);
+        return { success: true, message: 'Product added successfully', productId: result.insertId };
+    } catch (error) {
+        console.error('Add product error:', error);
+        throw new DBError(500, 'Failed to add product');
+    }
+};
+
+func.updateProduct = async function (productId, data) {
+    if (!productId) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    try {
+        const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
+        const values = Object.values(data);
+        values.push(productId);
+        
+        const [result] = await pool.execute(`UPDATE products SET ${fields} WHERE id = ?`, values);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, message: 'Product updated successfully' };
+    } catch (error) {
+        console.error('Update product error:', error);
+        throw new DBError(500, 'Failed to update product');
+    }
+};
+
+func.removeProduct = async function (productId) {
+    if (!productId) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    try {
+        const [result] = await pool.execute('DELETE FROM products WHERE id = ?', [productId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, message: 'Product removed successfully' };
+    } catch (error) {
+        console.error('Remove product error:', error);
+        throw new DBError(500, 'Failed to remove product');
+    }
+};
+
+func.setProductPrice = async function (productId, price) {
+    if (!productId || price === undefined) {
+        throw new DBError(400, 'Product ID and price are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE products SET price = ? WHERE id = ?', [price, productId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, message: 'Price updated successfully' };
+    } catch (error) {
+        console.error('Set price error:', error);
+        throw new DBError(500, 'Failed to set price');
+    }
+};
+
+func.applyDiscount = async function (productId, rate) {
+    if (!productId || rate === undefined) {
+        throw new DBError(400, 'Product ID and discount rate are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE products SET price = price * (1 - ?) WHERE id = ?', [rate, productId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+        return { success: true, message: 'Discount applied successfully' };
+    } catch (error) {
+        console.error('Apply discount error:', error);
+        throw new DBError(500, 'Failed to apply discount');
+    }
+};
+
+// --- User Role Management ---
+
+func.changeUserRole = async function (userId, newRole) {
+    if (!userId || !newRole) {
+        throw new DBError(400, 'User ID and new role are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE users SET role = ? WHERE id = ?', [newRole, userId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, message: 'User role updated successfully' };
+    } catch (error) {
+        console.error('Change user role error:', error);
+        throw new DBError(500, 'Failed to update user role');
+    }
+};
+
+func.getUserRole = async function (userId) {
+    if (!userId) {
+        throw new DBError(400, 'User ID is required');
+    }
+    try {
+        const [rows] = await pool.execute('SELECT role FROM users WHERE id = ?', [userId]);
+        if (rows.length === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, role: rows[0].role };
+    } catch (error) {
+        console.error('Get user role error:', error);
+        throw new DBError(500, 'Failed to fetch user role');
+    }
+};
+
+// --- Comment & Rating Functions ---
+
+func.addComment = async function (userId, productId, text, rating) {
+    if (!userId || !productId || !text || rating === undefined) {
+        throw new DBError(400, 'User ID, Product ID, text and rating are required');
+    }
+    try {
+        // Check if user has bought and received the product
+        const bought = await func.hasUserBoughtProduct(userId, productId);
+        if (!bought) {
+            throw new DBError(403, 'You can only comment on products you have purchased and received');
+        }
+
+        const [result] = await pool.execute(
+            'INSERT INTO comments (user_id, product_id, comment_text, rating, status) VALUES (?, ?, ?, ?, ?)',
+            [userId, productId, text, rating, 'pending']
+        );
+        return { success: true, message: 'Comment submitted successfully, awaiting approval', commentId: result.insertId };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Add comment error:', error);
+        throw new DBError(500, 'Failed to add comment');
+    }
+};
+
+func.approveComment = async function (commentId) {
+    if (!commentId) {
+        throw new DBError(400, 'Comment ID is required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', ['approved', commentId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Comment not found');
+        }
+        return { success: true, message: 'Comment approved successfully' };
+    } catch (error) {
+        console.error('Approve comment error:', error);
+        throw new DBError(500, 'Failed to approve comment');
+    }
+};
+
+func.rejectComment = async function (commentId) {
+    if (!commentId) {
+        throw new DBError(400, 'Comment ID is required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', ['rejected', commentId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Comment not found');
+        }
+        return { success: true, message: 'Comment rejected successfully' };
+    } catch (error) {
+        console.error('Reject comment error:', error);
+        throw new DBError(500, 'Failed to reject comment');
+    }
+};
+
+func.getApprovedComments = async function (productId) {
+    if (!productId) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    try {
+        const [rows] = await pool.execute(`
+            SELECT c.*, u.displayname as user_name
+            FROM comments c
+            JOIN users u ON c.user_id = u.id
+            WHERE c.product_id = ? AND c.status = 'approved'
+            ORDER BY c.created_at DESC
+        `, [productId]);
+        return { success: true, comments: rows };
+    } catch (error) {
+        console.error('Get approved comments error:', error);
+        throw new DBError(500, 'Failed to fetch comments');
+    }
+};
+
+func.getAverageRating = async function (productId) {
+    if (!productId) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    try {
+        const [rows] = await pool.execute('SELECT AVG(rating) as averageRating FROM comments WHERE product_id = ? AND status = ?', [productId, 'approved']);
+        const average = rows[0].averageRating;
+        if (average === null) {
+            return { success: true, averageRating: 0 };
+        }
+        return { success: true, averageRating: parseFloat(Number(average).toFixed(1)) };
+    } catch (error) {
+        console.error('Get average rating error:', error);
+        throw new DBError(500, 'Failed to calculate average rating');
+    }
+}
+
+// --- Ordering Functions ---
+
+func.createOrder = async function (userId, items) {
+    if (!userId || !items || !items.length) {
+        throw new DBError(400, 'User ID and items are required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // Calculate total price
+        let totalPrice = 0;
+        for (const item of items) {
+            totalPrice += item.price * item.quantity;
+        }
+
+        // 1. Create Order
+        const [orderResult] = await connection.execute(
+            'INSERT INTO orders (user_id, total_price, status) VALUES (?, ?, ?)',
+            [userId, totalPrice, 'pending']
+        );
+        const orderId = orderResult.insertId;
+
+        // 2. Create Order Items and Decrease Stock
+        for (const item of items) {
+            await connection.execute(
+                'INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?)',
+                [orderId, item.productId, item.quantity, item.price]
+            );
+            
+            // Decrease stock
+            const [stockResult] = await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?', [item.quantity, item.productId, item.quantity]);
+            if (stockResult.affectedRows === 0) {
+                throw new Error(`Insufficient stock for product ID ${item.productId}`);
+            }
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Order created successfully', orderId: orderId };
+    } catch (error) {
+        await connection.rollback();
+        console.error('Create order error:', error);
+        throw new DBError(500, 'Failed to create order');
+    } finally {
+        connection.release();
+    }
+};
+
+func.updateOrderStatus = async function (orderId, status) {
+    if (!orderId || !status) {
+        throw new DBError(400, 'Order ID and status are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Order not found');
+        }
+        return { success: true, message: 'Order status updated successfully' };
+    } catch (error) {
+        console.error('Update order status error:', error);
+        throw new DBError(500, 'Failed to update order status');
+    }
+};
+
+func.getUserOrders = async function (userId) {
+    if (!userId) {
+        throw new DBError(400, 'User ID is required');
+    }
+    try {
+        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+        
+        for (let order of orders) {
+            const [items] = await pool.execute(`
+                SELECT oi.*, p.name as product_name 
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = ?
+            `, [order.id]);
+            order.items = items;
+        }
+
+        return { success: true, orders: orders };
+    } catch (error) {
+        console.error('Get user orders error:', error);
+        throw new DBError(500, 'Failed to fetch user orders');
+    }
+};
+
+func.getOrderHistory = func.getUserOrders;
+
+func.cancelOrder = async function (orderId) {
+    if (!orderId) {
+        throw new DBError(400, 'Order ID is required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // 1. Get order status and items
+        const [orders] = await connection.execute('SELECT status FROM orders WHERE id = ? FOR UPDATE', [orderId]);
+        if (orders.length === 0) {
+            throw new DBError(404, 'Order not found');
+        }
+        if (orders[0].status === 'cancelled') {
+            throw new DBError(400, 'Order is already cancelled');
+        }
+        if (orders[0].status === 'shipped' || orders[0].status === 'delivered') {
+            throw new DBError(400, `Cannot cancel order in ${orders[0].status} status`);
+        }
+
+        const [items] = await connection.execute('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+
+        // 2. Update status
+        await connection.execute('UPDATE orders SET status = ? WHERE id = ?', ['cancelled', orderId]);
+
+        // 3. Restore stock
+        for (const item of items) {
+            if (item.product_id) {
+                await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
+            }
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Order cancelled and stock restored' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Cancel order error:', error);
+        throw new DBError(500, 'Failed to cancel order');
+    } finally {
+        connection.release();
+    }
+};
+
+func.requestRefund = async function (orderId, productId) {
+    if (!orderId || !productId) {
+        throw new DBError(400, 'Order ID and Product ID are required');
+    }
+    try {
+        // 1. Get order info (must be delivered and within 30 days)
+        const [orders] = await pool.execute('SELECT user_id, status, created_at FROM orders WHERE id = ?', [orderId]);
+        if (orders.length === 0) throw new DBError(404, 'Order not found');
+        
+        const order = orders[0];
+        if (order.status !== 'delivered') {
+            throw new DBError(400, 'Only delivered orders can be refunded');
+        }
+
+        const orderDate = new Date(order.created_at);
+        const now = new Date();
+        const diffDays = Math.ceil(Math.abs(now - orderDate) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays > 30) {
+            throw new DBError(400, 'Refund request period (30 days) has expired');
+        }
+
+        // 2. Get item info
+        const [items] = await pool.execute('SELECT price_at_purchase FROM order_items WHERE order_id = ? AND product_id = ?', [orderId, productId]);
+        if (items.length === 0) throw new DBError(404, 'Product not found in this order');
+
+        const refundAmount = items[0].price_at_purchase;
+
+        // 3. Create refund request
+        const [result] = await pool.execute(
+            'INSERT INTO refunds (order_id, product_id, user_id, refund_amount, status) VALUES (?, ?, ?, ?, ?)',
+            [orderId, productId, order.user_id, refundAmount, 'pending']
+        );
+
+        return { success: true, message: 'Refund request submitted', refundId: result.insertId };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Request refund error:', error);
+        throw new DBError(500, 'Failed to request refund');
+    }
+};
+
+func.approveRefund = async function (refundId) {
+    if (!refundId) {
+        throw new DBError(400, 'Refund ID is required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        // 1. Get refund info
+        const [refunds] = await connection.execute('SELECT * FROM refunds WHERE id = ? FOR UPDATE', [refundId]);
+        if (refunds.length === 0) throw new DBError(404, 'Refund request not found');
+        
+        const refund = refunds[0];
+        if (refund.status !== 'pending') {
+            throw new DBError(400, `Refund is already ${refund.status}`);
+        }
+
+        // 2. Get item quantity from order
+        const [items] = await connection.execute('SELECT quantity FROM order_items WHERE order_id = ? AND product_id = ?', [refund.order_id, refund.product_id]);
+        const quantity = items.length > 0 ? items[0].quantity : 0;
+
+        // 3. Update refund status
+        await connection.execute('UPDATE refunds SET status = ? WHERE id = ?', ['approved', refundId]);
+
+        // 4. Restore stock
+        if (refund.product_id && quantity > 0) {
+            await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [quantity, refund.product_id]);
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Refund approved and stock restored' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Approve refund error:', error);
+        throw new DBError(500, 'Failed to approve refund');
+    } finally {
+        connection.release();
+    }
+};
+
+func.hasUserBoughtProduct = async function (userId, productId) {
+    try {
+        const [rows] = await pool.execute(`
+            SELECT 1 FROM orders o
+            JOIN order_items oi ON o.id = oi.order_id
+            WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'delivered'
+            LIMIT 1
+        `, [userId, productId]);
+        return rows.length > 0;
+    } catch (error) {
+        console.error('Check purchase error:', error);
+        return false;
+    }
+};
+
 module.exports = { 
     DBError, 
     ...func 
 };
+
+
+
