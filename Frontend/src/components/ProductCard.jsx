@@ -1,32 +1,25 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { formatCurrency } from '../lib/currency'
 import {
-  getDefaultVariant,
-  getMinimumVariantPrice,
   getProductAvailability,
-  getVariantCount,
-} from '../data/products'
+  getProductCategoryLabel,
+  getProductFlavorNotes,
+  getProductMetaLine,
+  getProductTypeLabel,
+  isCoffeeProduct,
+} from '../lib/products'
 import FavoriteToggleButton from './FavoriteToggleButton'
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-}
-
-function renderStars(rating) {
-  const roundedRating = Math.round(rating)
-  return '★'.repeat(roundedRating) + '☆'.repeat(5 - roundedRating)
-}
+import LiquidGlassButton from './LiquidGlassButton'
+import LiquidGlassFrame from './LiquidGlassFrame'
 
 export default function ProductCard({ product, compact = false }) {
   const [feedback, setFeedback] = useState('')
-  const defaultVariant = getDefaultVariant(product)
-  const minimumPrice = getMinimumVariantPrice(product)
-  const variantCount = getVariantCount(product)
   const availability = getProductAvailability(product)
   const isOutOfStock = !availability.hasStock
+  const notes = getProductFlavorNotes(product)
+  const metaLine = getProductMetaLine(product)
+  const detailRoute = `/products/${product.slug}`
 
   useEffect(() => {
     if (!feedback) {
@@ -42,118 +35,126 @@ export default function ProductCard({ product, compact = false }) {
     }
   }, [feedback])
 
-  const handleAddToCart = () => {
+  const handleOpenProduct = () => {
     setFeedback(
-      isOutOfStock
-        ? 'Choose another coffee'
-        : `Select a package on the product page before adding ${product.name} to cart.`,
+      isOutOfStock ? 'Currently unavailable' : `Open ${product.name} to view full product details.`,
     )
   }
 
   return (
-    <article className="relative rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.92)] p-6 shadow-[0_20px_60px_rgba(140,84,60,0.08)] backdrop-blur">
-      <div className="absolute right-6 top-6 z-10">
-        <FavoriteToggleButton
-          productId={product.id}
-          productName={product.name}
-          compact
-        />
-      </div>
+    <LiquidGlassFrame
+      as="article"
+      className="aurora-bento-card glass-card"
+      contentClassName="flex h-full flex-col gap-5 p-5 sm:p-6"
+    >
+      <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_60%)]" />
 
-      <Link to={`/products/${product.id}`} className="block pr-16">
-        <div className="mb-5 flex items-start justify-between gap-4">
-          <div>
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="text-xs uppercase tracking-[0.28em] text-[var(--aurora-olive-deep)]">
-                {product.roast}
-              </p>
-              <span className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.36)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
-                {product.category}
+      <Link to={detailRoute} className="block flex-1">
+        <div className="aurora-widget-body h-full">
+          <div className="aurora-widget-heading">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <p className="aurora-kicker">{getProductTypeLabel(product)}</p>
+              <span className="aurora-chip text-[10px] tracking-[0.18em]">
+                {getProductCategoryLabel(product)}
               </span>
             </div>
-            <h3 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)] transition hover:text-[var(--aurora-sky-deep)]">
+            <h3 className="aurora-heading mt-1 text-3xl transition hover:text-[var(--aurora-sky-deep)]">
               {product.name}
             </h3>
           </div>
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${
-              isOutOfStock
-                ? 'bg-[rgba(217,144,107,0.24)] text-[var(--aurora-text-strong)]'
-                : 'bg-[var(--aurora-olive-soft)] text-[var(--aurora-olive-deep)]'
-            }`}
-          >
-            {isOutOfStock
-              ? 'All variants sold out'
-              : `${availability.totalStock} bags across variants`}
-          </span>
-        </div>
 
-        <div className="flex items-center gap-3 text-sm">
-          <span className="font-semibold text-[var(--aurora-text-strong)]">
-            {product.rating.toFixed(1)}
-          </span>
-          <span className="text-[var(--aurora-primary)]">
-            {renderStars(product.rating)}
-          </span>
-          <span className="text-[var(--aurora-text)]">
-            {product.reviewCount} reviews
-          </span>
-        </div>
-
-        <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-          {product.description}
-        </p>
-
-        <div className="mt-5 flex flex-wrap gap-2">
-          {product.notes.map((note) => (
+          <div className="aurora-widget-meta text-sm">
             <span
-              key={note}
-              className="rounded-full border border-[rgba(122,130,96,0.34)] bg-[rgba(223,227,209,0.28)] px-3 py-1 text-xs text-[var(--aurora-olive-deep)]"
+              className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                isOutOfStock
+                  ? 'bg-[rgba(252,236,233,0.88)] text-[#7d3939]'
+                  : 'bg-[rgba(230,230,219,0.88)] text-[var(--aurora-olive-deep)]'
+              }`}
             >
-              {note}
+              {isOutOfStock
+                ? 'Out of stock'
+                : `${availability.totalStock} unit${availability.totalStock === 1 ? '' : 's'} available`}
             </span>
-          ))}
-        </div>
+            {metaLine ? (
+              <span className="text-sm font-medium text-[var(--aurora-text)]">
+                {metaLine}
+              </span>
+            ) : null}
+          </div>
 
-        {!compact ? (
-          <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
-            {product.brewGuide}
-          </p>
-        ) : null}
+          <FavoriteToggleButton
+            productId={product.slug}
+            productName={product.name}
+            compact
+          />
+
+          <div className="aurora-widget-subsurface p-4">
+            <div className="aurora-widget-body">
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                {product.description}
+              </p>
+
+              {notes.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {notes.map((note) => (
+                    <span
+                      key={note}
+                      className="rounded-full border border-[rgba(95,102,78,0.18)] bg-[rgba(230,230,219,0.44)] px-3 py-1 text-xs font-medium text-[var(--aurora-olive-deep)]"
+                    >
+                      {note}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
+
+              {!compact && isCoffeeProduct(product) && product.origin ? (
+                <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                  {product.origin}
+                  {product.acidity ? ` · ${product.acidity} acidity` : ''}
+                </p>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </Link>
 
-      <div className="mt-6 flex items-center justify-between">
-        <div>
-          <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-            From {formatCurrency(minimumPrice)}
-          </p>
-          <p className="mt-1 text-sm text-[var(--aurora-text)]">
-            {variantCount} variants
-            {defaultVariant ? ` · starts with ${defaultVariant.weight}` : ''}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            to={`/products/${product.id}`}
-            className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-          >
-            View details
-          </Link>
-          <button
-            type="button"
-            onClick={handleAddToCart}
-            className="rounded-full border border-[#d89270] bg-[var(--aurora-primary)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_24px_rgba(235,176,144,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-primary-soft)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0"
-          >
-            Select package
-          </button>
+      <div className="aurora-widget-subsurface mt-auto p-4">
+        <div className="aurora-widget-body">
+          <div className="aurora-widget-heading">
+            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+              Price
+            </p>
+            <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
+              {formatCurrency(product.price)}
+            </p>
+            {product.material || product.capacity ? (
+              <p className="text-sm text-[var(--aurora-text)]">
+                {[product.material, product.capacity].filter(Boolean).join(' · ')}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="aurora-widget-actions flex-col items-start sm:flex-row sm:items-center">
+            <Link to={detailRoute} className="aurora-link text-sm">
+              View details
+            </Link>
+            <LiquidGlassButton
+              type="button"
+              onClick={handleOpenProduct}
+              size="compact"
+              className="w-full sm:w-auto"
+            >
+              Open product
+            </LiquidGlassButton>
+          </div>
         </div>
       </div>
 
       {feedback ? (
-        <p className="mt-4 rounded-[1.25rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] px-4 py-3 text-sm font-medium text-[var(--aurora-olive-deep)]">
+        <p className="aurora-message aurora-message-success mt-4">
           {feedback}
         </p>
       ) : null}
-    </article>
+    </LiquidGlassFrame>
   )
 }

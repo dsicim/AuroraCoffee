@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AccountLayout from '../components/AccountLayout'
+import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   getCityOptions,
   getCityOptionValue,
@@ -154,10 +155,10 @@ export default function AddressesPage() {
     <AccountLayout
       eyebrow="Saved addresses"
       title="Faster checkout starts here"
-      description="Build a local address book for the demo storefront. A default address can prefill checkout automatically, and any saved address can be applied during delivery."
+      description="Build an address book for faster checkout. A default address can prefill delivery details automatically, and any saved address can be applied during checkout."
     >
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_24px_70px_rgba(108,69,51,0.1)] backdrop-blur">
+        <section className="aurora-ops-panel p-8">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
@@ -168,13 +169,13 @@ export default function AddressesPage() {
               </h2>
             </div>
             {form.id ? (
-              <button
+              <LiquidGlassButton
                 type="button"
                 onClick={resetForm}
-                className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.82)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
+                variant="quiet"
               >
                 Cancel edit
-              </button>
+              </LiquidGlassButton>
             ) : null}
           </div>
 
@@ -188,7 +189,7 @@ export default function AddressesPage() {
                 value={form.label}
                 onChange={(event) => handleChange('label', event.target.value)}
                 placeholder="Home, Office, Weekend brew station"
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-input"
               />
             </label>
 
@@ -200,7 +201,7 @@ export default function AddressesPage() {
                 type="text"
                 value={form.fullName}
                 onChange={(event) => handleChange('fullName', event.target.value)}
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-input"
               />
               {renderFieldError('fullName')}
             </label>
@@ -213,7 +214,7 @@ export default function AddressesPage() {
                 type="email"
                 value={form.email}
                 onChange={(event) => handleChange('email', event.target.value)}
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-input"
               />
               {renderFieldError('email')}
             </label>
@@ -226,7 +227,7 @@ export default function AddressesPage() {
                 type="text"
                 value={form.address}
                 onChange={(event) => handleChange('address', event.target.value)}
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-input"
               />
               {renderFieldError('address')}
             </label>
@@ -238,7 +239,7 @@ export default function AddressesPage() {
               <select
                 value={form.city}
                 onChange={(event) => handleChange('city', event.target.value)}
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-select"
               >
                 <option value="">Select a city</option>
                 {cityOptions.map((option) => (
@@ -265,7 +266,7 @@ export default function AddressesPage() {
                 onChange={(event) =>
                   handleChange('postalCode', sanitizePostalCode(event.target.value))
                 }
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-input"
               />
               {renderFieldError('postalCode')}
             </label>
@@ -278,30 +279,42 @@ export default function AddressesPage() {
                 rows="4"
                 value={form.notes}
                 onChange={(event) => handleChange('notes', event.target.value)}
-                className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                className="aurora-textarea"
               />
             </label>
 
-            <label className="flex items-center gap-3 text-sm font-medium text-[var(--aurora-text-strong)] sm:col-span-2">
+            <label className="glass-toggle sm:col-span-2">
               <input
                 type="checkbox"
                 checked={form.isDefault}
                 onChange={(event) => handleChange('isDefault', event.target.checked)}
-                className="h-4 w-4 rounded border-[var(--aurora-border)] accent-[var(--aurora-sky)]"
+                className="toggle-input"
               />
-              Set as default checkout address
+              <span className="toggle-track">
+                <span className="glass-filter" />
+                <span className="glass-overlay" />
+                <span className="glass-specular" />
+                <span className="toggle-thumb">
+                  <span className="glass-filter" />
+                  <span className="glass-overlay" />
+                  <span className="glass-specular" />
+                </span>
+              </span>
+              <span className="toggle-label">Set as default checkout address</span>
             </label>
 
-            <button
+            <LiquidGlassButton
               type="submit"
-              className="sm:col-span-2 rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+              variant="secondary"
+              size="hero"
+              className="sm:col-span-2"
             >
               {form.id ? 'Save address changes' : 'Add saved address'}
-            </button>
+            </LiquidGlassButton>
           </form>
         </section>
 
-        <section className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_24px_70px_rgba(108,69,51,0.1)] backdrop-blur">
+        <section className="aurora-ops-panel p-8">
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
             Address book
           </p>
@@ -310,13 +323,13 @@ export default function AddressesPage() {
           </h2>
 
           {!addresses.length ? (
-            <div className="mt-8 rounded-[2rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.72)] px-6 py-10 text-center">
+            <div className="aurora-ops-card mt-8 border-dashed px-6 py-10 text-center">
               <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
                 No saved addresses yet
               </p>
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
                 Save one here and checkout can prefill it the next time you
-                place a demo order.
+                place an order.
               </p>
             </div>
           ) : (
@@ -324,7 +337,7 @@ export default function AddressesPage() {
               {addresses.map((address) => (
                 <article
                   key={address.id}
-                  className="rounded-[1.9rem] border border-[rgba(138,144,119,0.2)] bg-[rgba(255,247,242,0.94)] p-5"
+                  className="aurora-ops-card p-5"
                 >
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div>
@@ -358,23 +371,27 @@ export default function AddressesPage() {
 
                     <div className="flex flex-wrap gap-2">
                       {!address.isDefault ? (
-                        <button
+                        <LiquidGlassButton
                           type="button"
+                          variant="soft"
+                          size="compact"
                           onClick={() => setAddresses(setDefaultSavedAddress(address.id))}
-                          className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.36)] px-4 py-2 text-sm font-semibold text-[var(--aurora-olive-deep)] transition hover:bg-[rgba(230,232,222,0.56)]"
                         >
                           Make default
-                        </button>
+                        </LiquidGlassButton>
                       ) : null}
-                      <button
+                      <LiquidGlassButton
                         type="button"
                         onClick={() => handleEdit(address)}
-                        className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
+                        variant="quiet"
+                        size="compact"
                       >
                         Edit
-                      </button>
-                      <button
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
                         type="button"
+                        variant="danger"
+                        size="compact"
                         onClick={() => {
                           const nextAddresses = deleteSavedAddress(address.id)
                           setAddresses(nextAddresses)
@@ -383,10 +400,9 @@ export default function AddressesPage() {
                             resetForm()
                           }
                         }}
-                        className="rounded-full border border-[rgba(217,144,107,0.28)] bg-[rgba(248,227,214,0.62)] px-4 py-2 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[rgba(248,227,214,0.82)]"
                       >
                         Delete
-                      </button>
+                      </LiquidGlassButton>
                     </div>
                   </div>
                 </article>

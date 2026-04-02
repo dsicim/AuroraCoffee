@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
+import LiquidGlassButton from '../components/LiquidGlassButton'
 import { accountDataChangeEvent, getOrderHistory } from '../lib/accountData'
 import {
   buildRestoreMessage,
   getOrderStatus,
   restoreOrderItemsToCart,
 } from '../lib/accountActions'
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-}
+import { formatCurrency } from '../lib/currency'
 
 function formatTimestamp(value) {
   return new Date(value).toLocaleString('en-GB', {
@@ -56,8 +51,8 @@ export default function OrdersPage() {
     }
   }, [feedback])
 
-  const handleRestoreOrder = (order, redirectToCart = false) => {
-    const result = restoreOrderItemsToCart(order.items)
+  const handleRestoreOrder = async (order, redirectToCart = false) => {
+    const result = await restoreOrderItemsToCart(order.items)
     setFeedback(buildRestoreMessage(result, order.reference))
 
     if (redirectToCart && result.addedCount) {
@@ -65,8 +60,8 @@ export default function OrdersPage() {
     }
   }
 
-  const handleRestoreItem = (orderReference, item) => {
-    const result = restoreOrderItemsToCart([item])
+  const handleRestoreItem = async (orderReference, item) => {
+    const result = await restoreOrderItemsToCart([item])
     setFeedback(buildRestoreMessage(result, `${item.name} from ${orderReference}`))
   }
 
@@ -77,33 +72,36 @@ export default function OrdersPage() {
       description="Review completed checkouts, inspect the packages that were placed, and send any available items back into the cart."
     >
       {feedback ? (
-        <div className="mb-6 rounded-[1.5rem] border border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.44)] px-5 py-4 text-sm font-medium text-[var(--aurora-olive-deep)]">
+        <div className="aurora-message aurora-message-success mb-6">
           {feedback}
         </div>
       ) : null}
 
       {!orders.length ? (
-        <div className="rounded-[2.25rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.72)] px-6 py-12 text-center">
+        <div className="aurora-ops-card border-dashed px-6 py-12 text-center">
           <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
             No orders yet
           </p>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
-            Once you complete the demo checkout flow, your submitted orders will
+            Once you complete checkout, your submitted orders will
             appear here with totals, package details, and delivery summary.
           </p>
-          <Link
+          <LiquidGlassButton
+            as={Link}
             to="/products"
-            className="mt-6 inline-flex rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+            variant="secondary"
+            size="hero"
+            className="mt-6"
           >
             Browse coffees
-          </Link>
+          </LiquidGlassButton>
         </div>
       ) : (
         <div className="space-y-6">
           {orders.map((order) => (
             <article
               key={order.reference}
-              className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_24px_70px_rgba(108,69,51,0.1)] backdrop-blur"
+              className="aurora-ops-panel p-8"
             >
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div>
@@ -128,23 +126,25 @@ export default function OrdersPage() {
                     </span>
                   </p>
                   <div className="mt-5 flex flex-wrap gap-3">
-                    <button
+                    <LiquidGlassButton
                       type="button"
+                      variant="secondary"
+                      size="compact"
                       onClick={() => handleRestoreOrder(order, true)}
-                      className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
                     >
                       Reorder all
-                    </button>
-                    <button
+                    </LiquidGlassButton>
+                    <LiquidGlassButton
                       type="button"
+                      variant="soft"
+                      size="compact"
                       onClick={() => handleRestoreOrder(order)}
-                      className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.4)] px-4 py-2.5 text-sm font-semibold text-[var(--aurora-olive-deep)] transition hover:bg-[rgba(230,232,222,0.58)]"
                     >
                       Add items to cart
-                    </button>
+                    </LiquidGlassButton>
                   </div>
                 </div>
-                <div className="rounded-[1.5rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4 text-sm leading-7 text-[var(--aurora-text)] sm:max-w-[18rem]">
+                <div className="aurora-ops-card px-5 py-4 text-sm leading-7 text-[var(--aurora-text)] sm:max-w-[18rem]">
                   <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                     Delivery status
                   </p>
@@ -162,7 +162,7 @@ export default function OrdersPage() {
                   {order.items.map((item) => (
                     <div
                       key={`${order.reference}-${item.id}`}
-                      className="rounded-[1.75rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4"
+                      className="aurora-ops-card px-5 py-4"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
@@ -170,18 +170,20 @@ export default function OrdersPage() {
                             {item.name}
                           </p>
                           <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            {item.weight} / {item.grind}
+                            {item.metaLine || item.category || 'Product'}
                           </p>
                           <p className="mt-1 text-sm text-[var(--aurora-text)]">
                             Qty {item.quantity}
                           </p>
-                          <button
+                          <LiquidGlassButton
                             type="button"
+                            variant="quiet"
+                            size="compact"
                             onClick={() => handleRestoreItem(order.reference, item)}
-                            className="mt-3 text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                            className="mt-3"
                           >
                             Add again
-                          </button>
+                          </LiquidGlassButton>
                         </div>
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
                           {formatCurrency(item.price * item.quantity)}
@@ -192,7 +194,7 @@ export default function OrdersPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="rounded-[1.75rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(230,232,222,0.38)] p-5">
+                  <div className="aurora-solid-plate rounded-[1.75rem] p-5">
                     <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                       Delivery summary
                     </p>
@@ -214,7 +216,7 @@ export default function OrdersPage() {
                     ) : null}
                   </div>
 
-                  <div className="rounded-[1.75rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] p-5">
+                  <div className="aurora-ops-card p-5">
                     <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                       Totals
                     </p>

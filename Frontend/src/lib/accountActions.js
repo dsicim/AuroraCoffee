@@ -1,31 +1,26 @@
-import {
-  getDefaultVariant,
-  getProductById,
-  getVariantById,
-} from '../data/products'
-import { addCartVariants } from './cart'
+import { addCartItem } from './cart'
+import { findProductByReference, getProductAvailability } from './products'
 
-function normalizeOrderLine(item) {
-  const resolved = getVariantById(item?.id)
+async function normalizeOrderLine(item) {
+  const product = await findProductByReference(item?.productSlug || item?.productId || item?.id)
 
-  if (!resolved?.product || !resolved.variant) {
+  if (!product) {
     return null
   }
 
   return {
-    product: resolved.product,
-    variant: resolved.variant,
+    product,
     quantity: Math.max(1, Math.floor(item.quantity) || 1),
-    name: item.name || resolved.product.name,
+    name: item.name || product.name,
   }
 }
 
-export function restoreOrderItemsToCart(items) {
+export async function restoreOrderItemsToCart(items) {
   const validEntries = []
   const skippedItems = []
 
   for (const item of items || []) {
-    const normalizedItem = normalizeOrderLine(item)
+    const normalizedItem = await normalizeOrderLine(item)
 
     if (normalizedItem) {
       validEntries.push(normalizedItem)
@@ -37,7 +32,9 @@ export function restoreOrderItemsToCart(items) {
   }
 
   if (validEntries.length) {
-    addCartVariants(validEntries)
+    for (const entry of validEntries) {
+      addCartItem(entry.product, entry.quantity)
+    }
   }
 
   return {
@@ -46,25 +43,24 @@ export function restoreOrderItemsToCart(items) {
   }
 }
 
-export function addDefaultProductToCart(productId) {
-  const product = getProductById(productId)
+export async function addDefaultProductToCart(productReference) {
+  const product = await findProductByReference(productReference)
 
   if (!product) {
     return { status: 'missing' }
   }
 
-  const variant = getDefaultVariant(product)
+  const availability = getProductAvailability(product)
 
-  if (!variant || variant.stock <= 0) {
+  if (!availability.hasStock) {
     return { status: 'sold-out', product }
   }
 
-  addCartVariants([{ product, variant, quantity: 1 }])
+  addCartItem(product, 1)
 
   return {
     status: 'added',
     product,
-    variant,
   }
 }
 

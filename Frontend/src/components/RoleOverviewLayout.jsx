@@ -1,6 +1,9 @@
-import CoffeeBeanDecor from './CoffeeBeanDecor'
+import { Link } from 'react-router-dom'
+import AuroraAtmosphere from './AuroraAtmosphere'
 import Footer from './Footer'
 import Header from './Header'
+import LiquidGlassButton from './LiquidGlassButton'
+import LiquidGlassDefs from './LiquidGlassDefs'
 
 export default function RoleOverviewLayout({
   eyebrow,
@@ -9,27 +12,46 @@ export default function RoleOverviewLayout({
   children,
 }) {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_center,#f7e6d9_0%,#efd3bf_34%,#e0b495_64%,#cf9877_100%)]">
-      <CoffeeBeanDecor />
+    <div className="aurora-page">
+      <LiquidGlassDefs />
+      <AuroraAtmosphere opacityClassName="opacity-60" />
       <Header />
 
-      <main className="relative z-10 px-6 pb-16 pt-6 lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <section className="rounded-[2.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur lg:p-10">
-            <div className="max-w-4xl">
-              <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                {eyebrow}
-              </p>
-              <h1 className="mt-4 font-display text-5xl text-[var(--aurora-text-strong)]">
-                {title}
-              </h1>
-              <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
-                {description}
-              </p>
+      <main className="aurora-main">
+        <div className="aurora-container aurora-page-rail">
+          <section className="aurora-shell aurora-shell-operational rounded-[2.3rem] p-6 sm:p-8 lg:p-9">
+            <div className="aurora-page-intro-split lg:items-start">
+              <div className="max-w-4xl">
+                <p className="aurora-kicker">
+                  {eyebrow}
+                </p>
+                <h1 className="aurora-heading mt-4 text-5xl md:text-6xl">
+                  {title}
+                </h1>
+                <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
+                  {description}
+                </p>
+              </div>
+
+              <div className="aurora-operational-card rounded-[1.8rem] p-5">
+                <p className="aurora-kicker">Operations view</p>
+                <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                  This workspace keeps the storefront language, but uses one quieter support block
+                  so the actual activity panels can do the work.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <LiquidGlassButton as={Link} to="/" variant="chip" size="compact">
+                    Storefront
+                  </LiquidGlassButton>
+                  <LiquidGlassButton as={Link} to="/products" variant="chip" size="compact">
+                    Catalog
+                  </LiquidGlassButton>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section className="mt-10">
+          <section>
             {children}
           </section>
         </div>

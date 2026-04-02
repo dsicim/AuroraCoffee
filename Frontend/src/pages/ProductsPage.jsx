@@ -1,13 +1,19 @@
-import { useState } from 'react'
-import Footer from '../components/Footer'
-import Header from '../components/Header'
+import { useMemo, useState } from 'react'
+import AuroraWidget from '../components/AuroraWidget'
+import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassFrame from '../components/LiquidGlassFrame'
 import ProductCard from '../components/ProductCard'
-import CoffeeBeanDecor from '../components/CoffeeBeanDecor'
-import { getMinimumVariantPrice, productCategories, products } from '../data/products'
+import StorefrontLayout from '../components/StorefrontLayout'
+import {
+  getProductCategories,
+  getProductCategoryLabel,
+  getProductSearchText,
+  useProductCatalog,
+} from '../lib/products'
 
 const sortOptions = [
-  { value: 'popularity', label: 'Most popular' },
-  { value: 'rating', label: 'Top rated' },
+  { value: 'newest', label: 'Newest first' },
+  { value: 'name', label: 'Name: A to Z' },
   { value: 'price-asc', label: 'Price: Low to high' },
   { value: 'price-desc', label: 'Price: High to low' },
 ]
@@ -15,123 +21,118 @@ const sortOptions = [
 function sortProducts(items, sortBy) {
   const sortableItems = [...items]
 
-  if (sortBy === 'rating') {
-    return sortableItems.sort((left, right) => right.rating - left.rating)
+  if (sortBy === 'name') {
+    return sortableItems.sort((left, right) => left.name.localeCompare(right.name))
   }
 
   if (sortBy === 'price-asc') {
-    return sortableItems.sort(
-      (left, right) =>
-        getMinimumVariantPrice(left) - getMinimumVariantPrice(right),
-    )
+    return sortableItems.sort((left, right) => left.price - right.price)
   }
 
   if (sortBy === 'price-desc') {
-    return sortableItems.sort(
-      (left, right) =>
-        getMinimumVariantPrice(right) - getMinimumVariantPrice(left),
-    )
+    return sortableItems.sort((left, right) => right.price - left.price)
   }
 
-  return sortableItems.sort((left, right) => right.popularity - left.popularity)
+  return sortableItems.sort(
+    (left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime(),
+  )
 }
 
 export default function ProductsPage() {
+  const { products, loading, error } = useProductCatalog()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('popularity')
+  const [sortBy, setSortBy] = useState('newest')
 
+  const categories = useMemo(() => getProductCategories(products), [products])
   const normalizedSearch = search.trim().toLowerCase()
-  const filteredProducts = sortProducts(
-    products.filter((product) => {
-      const matchesCategory =
-        category === 'All' || product.category === category
-      const matchesSearch =
-        !normalizedSearch ||
-        product.name.toLowerCase().includes(normalizedSearch) ||
-        product.description.toLowerCase().includes(normalizedSearch) ||
-        product.notes.some((note) =>
-          note.toLowerCase().includes(normalizedSearch),
-        )
+  const filteredProducts = useMemo(
+    () =>
+      sortProducts(
+        products.filter((product) => {
+          const matchesCategory =
+            category === 'All' || getProductCategoryLabel(product) === category
+          const matchesSearch =
+            !normalizedSearch ||
+            getProductSearchText(product).includes(normalizedSearch)
 
-      return matchesCategory && matchesSearch
-    }),
-    sortBy,
+          return matchesCategory && matchesSearch
+        }),
+        sortBy,
+      ),
+    [category, normalizedSearch, products, sortBy],
+  )
+
+  const hero = (
+    <section className="aurora-showcase-band p-6 sm:p-8 lg:p-10">
+      <div className="aurora-page-intro-split">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
+            Product catalog
+          </p>
+          <h1 className="mt-4 max-w-4xl font-display text-5xl leading-[0.98] text-[var(--aurora-text-strong)] md:text-6xl">
+            Explore the live Aurora product feed.
+          </h1>
+          <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
+            Search the current catalog, filter by category, and open each product by name-based route.
+          </p>
+        </div>
+
+        <div className="aurora-summary-strip xl:grid-cols-3">
+          <AuroraWidget title={String(products.length)} subtitle="Products" icon="package" className="aurora-summary-card p-5" />
+          <AuroraWidget title={String(Math.max(0, categories.length - 1))} subtitle="Categories" icon="grid" className="aurora-summary-card p-5" />
+          <AuroraWidget title={String(filteredProducts.length)} subtitle="Current results" icon="search" className="aurora-summary-card p-5" />
+        </div>
+      </div>
+    </section>
   )
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_center,#f7e6d9_0%,#efd3bf_34%,#e0b495_64%,#cf9877_100%)]">
-      <CoffeeBeanDecor />
-      <Header />
-
-      <main className="relative z-10 px-6 pb-16 pt-6 lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <section className="rounded-[2.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] p-8 shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur lg:p-10">
-            <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-end">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                  Coffee catalog
-                </p>
-                <h1 className="mt-4 max-w-3xl font-display text-5xl leading-tight text-[var(--aurora-text-strong)] md:text-6xl">
-                  Explore a warmer, more complete storefront for the progress demo.
-                </h1>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-                  Browse signature coffees, compare roast profiles, and move
-                  directly into the product detail experience without leaving
-                  the existing visual language.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-[1.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.95)] p-4">
-                  <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {products.length}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                    Coffee releases
-                  </p>
-                </div>
-                <div className="rounded-[1.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.95)] p-4">
-                  <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {productCategories.length - 1}
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                    Browsable categories
-                  </p>
-                </div>
-                <div className="rounded-[1.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.95)] p-4">
-                  <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                    4.8
-                  </p>
-                  <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                    Demo rating focus
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-10 grid gap-4 rounded-[2rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.72)] p-5 lg:grid-cols-[1.15fr_0.85fr]">
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Search coffees
-                </span>
+    <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
+      <section className="aurora-content-split">
+        <LiquidGlassFrame
+          as="div"
+          className="aurora-glass-dock glass-search rounded-[2.2rem]"
+          contentClassName="p-5 sm:p-6 lg:p-7"
+        >
+          <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Search products
+              </span>
+              <div className="glass-search-field">
+                <svg
+                  aria-hidden="true"
+                  viewBox="0 0 24 24"
+                  className="h-5 w-5 text-[var(--aurora-text)]"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <path d="m20 20-3.5-3.5" />
+                </svg>
                 <input
                   type="search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search by name, notes, or description"
-                  className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition placeholder:text-[rgba(111,71,56,0.48)] focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                  placeholder="Search by name, category, notes, or description"
+                  className="aurora-input glass-search-input"
                 />
-              </label>
+              </div>
+            </label>
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Sort catalog
-                </span>
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Sort results
+              </span>
+              <div className="glass-dropdown-surface">
                 <select
                   value={sortBy}
                   onChange={(event) => setSortBy(event.target.value)}
-                  className="w-full rounded-2xl border border-[var(--aurora-border)] bg-white/85 px-4 py-3.5 text-[var(--aurora-text-strong)] outline-none transition focus:border-[var(--aurora-sky)] focus:ring-2 focus:ring-[rgba(144,180,196,0.22)]"
+                  className="aurora-select glass-dropdown-select"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
@@ -139,64 +140,82 @@ export default function ProductsPage() {
                     </option>
                   ))}
                 </select>
-              </label>
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              {productCategories.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setCategory(option)}
-                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                    category === option
-                      ? 'border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)]'
-                      : 'border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.9)] text-[var(--aurora-text-strong)] hover:bg-[var(--aurora-primary-pale)]'
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="mt-10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                  Product lineup
-                </p>
-                <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {filteredProducts.length} coffee{filteredProducts.length === 1 ? '' : 's'} matching your view
-                </h2>
               </div>
-              <p className="max-w-xl text-sm leading-7 text-[var(--aurora-text)]">
-                Out-of-stock coffees remain visible for the demo, but their cart
-                actions are disabled.
-              </p>
-            </div>
+            </label>
+          </div>
 
-            {filteredProducts.length ? (
-              <div className="mt-10 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-                {filteredProducts.map((product) => (
-                  <ProductCard key={product.id} product={product} compact />
-                ))}
-              </div>
-            ) : (
-              <div className="mt-10 rounded-[2rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.72)] px-6 py-12 text-center">
-                <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                  No coffees match that search
-                </p>
-                <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                  Try a broader search term or switch to another category.
-                </p>
-              </div>
-            )}
-          </section>
+          <div className="mt-5 flex flex-wrap gap-3">
+            {categories.map((option) => (
+              <LiquidGlassButton
+                key={option}
+                type="button"
+                variant="chip"
+                size="compact"
+                selected={category === option}
+                onClick={() => setCategory(option)}
+              >
+                {option}
+              </LiquidGlassButton>
+            ))}
+          </div>
+        </LiquidGlassFrame>
+
+        <AuroraWidget
+          title={`${filteredProducts.length} products`}
+          subtitle="Catalog view"
+          icon="package"
+          className="aurora-operational-card h-fit rounded-[2rem] p-6"
+        >
+          <p className="text-sm leading-8 text-[var(--aurora-text)]">
+            {loading
+              ? 'Loading the live catalog.'
+              : error
+                ? error
+                : 'Results are coming directly from the backend product feed.'}
+          </p>
+        </AuroraWidget>
+      </section>
+
+      <section className="aurora-stack-6">
+        <div>
+          <p className="aurora-kicker">Catalog results</p>
+          <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
+            {loading ? 'Loading products' : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'}`}
+          </h2>
         </div>
-      </main>
 
-      <Footer />
-    </div>
+        {loading ? (
+          <div className="aurora-solid-plate rounded-[2rem] px-6 py-12 text-center">
+            <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+              Loading products
+            </p>
+          </div>
+        ) : error ? (
+          <div className="aurora-solid-plate rounded-[2rem] px-6 py-12 text-center">
+            <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+              Catalog unavailable
+            </p>
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              {error}
+            </p>
+          </div>
+        ) : filteredProducts.length ? (
+          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.slug} product={product} compact />
+            ))}
+          </div>
+        ) : (
+          <div className="aurora-solid-plate rounded-[2rem] px-6 py-12 text-center">
+            <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+              No products match that search
+            </p>
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              Try a broader term or a different category.
+            </p>
+          </div>
+        )}
+      </section>
+    </StorefrontLayout>
   )
 }

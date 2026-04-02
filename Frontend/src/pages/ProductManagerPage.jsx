@@ -1,110 +1,91 @@
 import { Link } from 'react-router-dom'
+import LiquidGlassButton from '../components/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
-import {
-  getProductAvailability,
-  products,
-} from '../data/products'
-
-function formatCurrency(amount) {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  }).format(amount)
-}
+import { formatCurrency } from '../lib/currency'
+import { getProductAvailability, getProductCategories, useProductCatalog } from '../lib/products'
 
 export default function ProductManagerPage() {
-  const totalVariants = products.reduce(
-    (total, product) => total + product.variants.length,
-    0,
-  )
-  const lowStockVariants = products.flatMap((product) =>
-    product.variants
-      .filter((variant) => variant.stock > 0 && variant.stock <= 3)
-      .map((variant) => ({
-        ...variant,
-        productName: product.name,
-      })),
+  const { products, loading, error } = useProductCatalog()
+  const lowStockProducts = products.filter(
+    (product) => product.stock > 0 && product.stock <= 3,
   )
   const soldOutProducts = products.filter(
     (product) => !getProductAvailability(product).hasStock,
   )
-  const categoryCount = new Set(products.map((product) => product.category)).size
-  const featuredCount = products.filter((product) => product.featured).length
-  const highestStockProduct = [...products]
-    .sort(
-      (left, right) =>
-        getProductAvailability(right).totalStock - getProductAvailability(left).totalStock,
-    )[0]
+  const categories = getProductCategories(products)
+  const highestStockProduct = [...products].sort((left, right) => right.stock - left.stock)[0]
 
   return (
     <RoleOverviewLayout
       eyebrow="Product manager"
       title="Keep the catalog coherent, stocked, and ready to extend"
-      description="This landing page is centered on catalog health: product coverage, low-stock visibility, and the structure needed for future variant and merchandising work."
+      description="This landing page is centered on the live catalog: product coverage, low-stock visibility, and current inventory state."
     >
       <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-8">
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-6 shadow-[0_24px_70px_rgba(108,69,51,0.1)]">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                Products
-              </p>
-              <p className="mt-4 font-display text-3xl text-[var(--aurora-text-strong)]">
-                {products.length}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                Distinct coffees currently visible in the storefront.
-              </p>
+          <section className="aurora-summary-strip">
+            <div className="aurora-summary-lead p-6">
+              <div className="aurora-widget-body">
+                <div className="aurora-widget-heading">
+                  <p className="aurora-kicker">Catalog health</p>
+                  <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                    {loading ? 'Loading' : `${lowStockProducts.length} low-stock product${lowStockProducts.length === 1 ? '' : 's'}`}
+                  </h2>
+                </div>
+                <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                  {error || 'Inventory risk is derived from the current backend product feed.'}
+                </p>
+              </div>
             </div>
 
-            <div className="rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-6 shadow-[0_24px_70px_rgba(108,69,51,0.1)]">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                Variants
-              </p>
-              <p className="mt-4 font-display text-3xl text-[var(--aurora-text-strong)]">
-                {totalVariants}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                Weight and grind combinations currently defined.
-              </p>
+            <div className="aurora-summary-card p-6">
+              <div className="aurora-widget-body">
+                <div className="aurora-widget-heading">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                    Products
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                    {products.length}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-6 shadow-[0_24px_70px_rgba(108,69,51,0.1)]">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                Low stock
-              </p>
-              <p className="mt-4 font-display text-3xl text-[var(--aurora-text-strong)]">
-                {lowStockVariants.length}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                Variants with 3 or fewer bags remaining.
-              </p>
+            <div className="aurora-summary-card p-6">
+              <div className="aurora-widget-body">
+                <div className="aurora-widget-heading">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                    Categories
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                    {Math.max(0, categories.length - 1)}
+                  </p>
+                </div>
+              </div>
             </div>
 
-            <div className="rounded-[2rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-6 shadow-[0_24px_70px_rgba(108,69,51,0.1)]">
-              <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                Sold out
-              </p>
-              <p className="mt-4 font-display text-3xl text-[var(--aurora-text-strong)]">
-                {soldOutProducts.length}
-              </p>
-              <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                Products with no remaining stock across all variants.
-              </p>
+            <div className="aurora-summary-card p-6">
+              <div className="aurora-widget-body">
+                <div className="aurora-widget-heading">
+                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                    Sold out
+                  </p>
+                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                    {soldOutProducts.length}
+                  </p>
+                </div>
+              </div>
             </div>
           </section>
 
-          <section
-            id="stock-watch"
-            className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_24px_70px_rgba(108,69,51,0.1)] backdrop-blur"
-          >
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
+          <section id="stock-watch" className="aurora-ops-panel p-8">
+            <div className="aurora-widget-header">
+              <div className="aurora-widget-heading">
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                   Stock watch
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  Variants that need attention first
+                  Products that need attention first
                 </h2>
               </div>
               <Link
@@ -115,36 +96,30 @@ export default function ProductManagerPage() {
               </Link>
             </div>
 
-            {!lowStockVariants.length ? (
-              <div className="mt-8 rounded-[2rem] border border-dashed border-[rgba(138,144,119,0.35)] bg-[rgba(255,247,242,0.72)] px-6 py-10 text-center">
+            {!lowStockProducts.length ? (
+              <div className="aurora-ops-card mt-8 border-dashed px-6 py-10 text-center">
                 <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                  No low-stock variants right now
-                </p>
-                <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                  The current demo catalog has breathing room across its variant mix.
+                  No low-stock products right now
                 </p>
               </div>
             ) : (
               <div className="mt-8 space-y-4">
-                {lowStockVariants
+                {lowStockProducts
                   .sort((left, right) => left.stock - right.stock)
                   .slice(0, 6)
-                  .map((variant) => (
-                    <article
-                      key={variant.id}
-                      className="rounded-[1.75rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] p-5"
-                    >
-                      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                        <div>
+                  .map((product) => (
+                    <article key={product.slug} className="aurora-ops-card p-5">
+                      <div className="aurora-widget-header">
+                        <div className="aurora-widget-heading">
                           <p className="font-semibold text-[var(--aurora-text-strong)]">
-                            {variant.productName}
+                            {product.name}
                           </p>
-                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            {variant.weight} / {variant.grind}
+                          <p className="text-sm text-[var(--aurora-text)]">
+                            {product.categoryName || product.parentCategoryName || 'Catalog'}
                           </p>
                         </div>
                         <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                          {variant.stock} left
+                          {product.stock} left
                         </p>
                       </div>
                     </article>
@@ -155,58 +130,56 @@ export default function ProductManagerPage() {
         </div>
 
         <div className="space-y-8">
-          <section className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_24px_70px_rgba(108,69,51,0.1)] backdrop-blur">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-              Catalog pulse
-            </p>
-            <div className="mt-6 space-y-4 text-sm leading-7 text-[var(--aurora-text)]">
-              <div className="rounded-[1.5rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4">
-                <p className="font-semibold text-[var(--aurora-text-strong)]">
-                  Category coverage
+          <section className="aurora-ops-panel p-8">
+            <div className="aurora-widget-body">
+              <div className="aurora-widget-heading">
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                  Catalog pulse
                 </p>
-                <p className="mt-2">{categoryCount} customer-facing categories are currently represented.</p>
               </div>
-              <div className="rounded-[1.5rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4">
-                <p className="font-semibold text-[var(--aurora-text-strong)]">
-                  Featured releases
-                </p>
-                <p className="mt-2">{featuredCount} coffees are carrying the curated first-screen placement.</p>
-              </div>
-              <div className="rounded-[1.5rem] border border-[rgba(138,144,119,0.18)] bg-[rgba(255,247,242,0.94)] px-5 py-4">
-                <p className="font-semibold text-[var(--aurora-text-strong)]">
-                  Highest stock product
-                </p>
-                <p className="mt-2">
-                  {highestStockProduct?.name || 'No product data'} ·{' '}
-                  {formatCurrency(highestStockProduct ? highestStockProduct.variants.reduce((total, variant) => total + variant.price, 0) : 0)}
-                </p>
+              <div className="space-y-4 text-sm leading-7 text-[var(--aurora-text)]">
+                <div className="aurora-ops-card px-5 py-4">
+                  <p className="font-semibold text-[var(--aurora-text-strong)]">
+                    Category coverage
+                  </p>
+                  <p className="mt-2">{Math.max(0, categories.length - 1)} customer-facing categories are currently represented.</p>
+                </div>
+                <div className="aurora-ops-card px-5 py-4">
+                  <p className="font-semibold text-[var(--aurora-text-strong)]">
+                    Highest stock product
+                  </p>
+                  <p className="mt-2">
+                    {highestStockProduct?.name || 'No product data'} · {highestStockProduct ? formatCurrency(highestStockProduct.price) : formatCurrency(0)}
+                  </p>
+                </div>
+                <div className="aurora-ops-card px-5 py-4">
+                  <p className="font-semibold text-[var(--aurora-text-strong)]">
+                    Loading state
+                  </p>
+                  <p className="mt-2">{loading ? 'Syncing backend catalog.' : error || 'Backend-backed catalog is active.'}</p>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="rounded-[2.5rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.44)] p-8 shadow-[0_24px_70px_rgba(138,144,119,0.1)] backdrop-blur">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-              Quick actions
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <a
-                href="#stock-watch"
-                className="rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-5 py-3 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
-              >
-                Review low stock
-              </a>
-              <Link
-                to="/products"
-                className="rounded-full border border-[#d89270] bg-[var(--aurora-primary)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] shadow-[0_10px_24px_rgba(235,176,144,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-primary-soft)]"
-              >
-                Open catalog
-              </Link>
-              <Link
-                to="/"
-                className="rounded-full border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.92)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
-              >
-                Browse storefront
-              </Link>
+          <section className="aurora-solid-plate rounded-[2.5rem] p-8">
+            <div className="aurora-widget-body">
+              <div className="aurora-widget-heading">
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                  Quick actions
+                </p>
+              </div>
+              <div className="aurora-widget-actions">
+                <LiquidGlassButton as="a" href="#stock-watch" variant="secondary">
+                  Review low stock
+                </LiquidGlassButton>
+                <LiquidGlassButton as={Link} to="/products" variant="secondary">
+                  Open catalog
+                </LiquidGlassButton>
+                <LiquidGlassButton as={Link} to="/" variant="quiet">
+                  Browse site
+                </LiquidGlassButton>
+              </div>
             </div>
           </section>
         </div>

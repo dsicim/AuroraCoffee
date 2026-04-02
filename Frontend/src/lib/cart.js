@@ -1,4 +1,10 @@
 import { getAuthStorageMode } from './auth'
+import {
+  getProductCategoryLabel,
+  getProductFlavorNotes,
+  getProductMetaLine,
+  getProductTypeLabel,
+} from './products'
 
 export const cartStorageKeys = {
   local: 'auroraCartLocal',
@@ -24,8 +30,36 @@ function parseCartItems(rawValue) {
   }
 }
 
+function normalizeStoredCartItem(item) {
+  if (!item || typeof item !== 'object') {
+    return null
+  }
+
+  const productSlug = typeof item.productSlug === 'string' ? item.productSlug : ''
+
+  if (!productSlug) {
+    return null
+  }
+
+  return {
+    id: productSlug,
+    productId: Number(item.productId) || null,
+    productSlug,
+    name: item.name || 'Product',
+    category: item.category || '',
+    typeLabel: item.typeLabel || '',
+    metaLine: item.metaLine || '',
+    description: item.description || '',
+    notes: Array.isArray(item.notes) ? item.notes : [],
+    price: normalizeProductPrice(item.price),
+    quantity: Math.max(1, Math.floor(item.quantity) || 1),
+  }
+}
+
 function readCartItems(mode) {
   return parseCartItems(getStorage(mode).getItem(cartStorageKeys[mode]))
+    .map(normalizeStoredCartItem)
+    .filter(Boolean)
 }
 
 function writeCartItems(mode, items) {
@@ -69,17 +103,18 @@ function normalizeProductPrice(product) {
   return 0
 }
 
-function buildCartItem(product, variant, quantity = 1) {
+function buildCartItem(product, quantity = 1) {
   return {
-    id: variant.id,
+    id: product.slug,
     productId: product.id,
+    productSlug: product.slug,
     name: product.name,
-    roast: product.roast,
+    category: getProductCategoryLabel(product),
+    typeLabel: getProductTypeLabel(product),
+    metaLine: getProductMetaLine(product),
     description: product.description,
-    notes: product.notes || [],
-    weight: variant.weight,
-    grind: variant.grind,
-    price: normalizeProductPrice(variant),
+    notes: getProductFlavorNotes(product),
+    price: normalizeProductPrice(product.price),
     quantity: Math.max(1, Math.floor(quantity) || 1),
   }
 }
@@ -140,19 +175,23 @@ export function getCartSubtotal() {
   )
 }
 
-export function addCartItem(product, variant) {
-  return addCartVariant(product, variant, 1)
+export function addCartItem(product, quantity = 1) {
+  return addCartProduct(product, quantity)
 }
 
-export function addCartVariant(product, variant, quantity = 1) {
+export function addCartProduct(product, quantity = 1) {
+  if (!product?.slug) {
+    return getCartItems()
+  }
+
   const storageMode = getCartStorageMode()
   const existingItems = readCartItems(storageMode)
-  const existingItem = existingItems.find((item) => item.id === variant.id)
+  const existingItem = existingItems.find((item) => item.id === product.slug)
   const nextQuantity = Math.max(1, Math.floor(quantity) || 1)
 
   if (existingItem) {
     const nextItems = existingItems.map((item) =>
-      item.id === variant.id
+      item.id === product.slug
         ? { ...item, quantity: item.quantity + nextQuantity }
         : item,
     )
@@ -162,7 +201,7 @@ export function addCartVariant(product, variant, quantity = 1) {
     return nextItems
   }
 
-  const nextItems = [...existingItems, buildCartItem(product, variant, nextQuantity)]
+  const nextItems = [...existingItems, buildCartItem(product, nextQuantity)]
   writeCartItems(storageMode, nextItems)
   dispatchCartChange()
   return nextItems
@@ -174,12 +213,12 @@ export function addCartVariants(entries) {
   const merged = new Map(existingItems.map((item) => [item.id, { ...item }]))
 
   for (const entry of entries) {
-    if (!entry?.product || !entry?.variant) {
+    if (!entry?.product?.slug) {
       continue
     }
 
     const quantity = Math.max(1, Math.floor(entry.quantity) || 1)
-    const existingItem = merged.get(entry.variant.id)
+    const existingItem = merged.get(entry.product.slug)
 
     if (existingItem) {
       existingItem.quantity += quantity
@@ -187,8 +226,8 @@ export function addCartVariants(entries) {
     }
 
     merged.set(
-      entry.variant.id,
-      buildCartItem(entry.product, entry.variant, quantity),
+      entry.product.slug,
+      buildCartItem(entry.product, quantity),
     )
   }
 

@@ -1,7 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import AccountPage from './pages/AccountPage'
 import AddressesPage from './pages/AddressesPage'
-import AboutPage from './pages/AboutPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
 import ProtectedRoleRoute from './components/ProtectedRoleRoute'
@@ -26,7 +25,6 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/about" element={<AboutPage />} />
         <Route
           path="/account"
           element={(
@@ -88,7 +86,7 @@ export default function App() {
         <Route path="/dashboard" element={<RoleLandingRedirect />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/products" element={<ProductsPage />} />
-        <Route path="/products/:productId" element={<ProductDetailPage />} />
+        <Route path="/products/:slug" element={<ProductDetailPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgotpassword" element={<ForgotPasswordPage />} />
         <Route path="/resetpassword" element={<ResetPasswordPage />} />

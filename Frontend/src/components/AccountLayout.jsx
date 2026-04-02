@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import CoffeeBeanDecor from './CoffeeBeanDecor'
+import AuroraAtmosphere from './AuroraAtmosphere'
 import Footer from './Footer'
 import Header from './Header'
+import LiquidGlassButton from './LiquidGlassButton'
+import LiquidGlassDefs from './LiquidGlassDefs'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 
@@ -55,21 +57,24 @@ export default function AccountLayout({
 
   if (!hasSession) {
     return (
-      <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_center,#f7e6d9_0%,#efd3bf_34%,#e0b495_64%,#cf9877_100%)]">
-        <CoffeeBeanDecor />
+      <div className="aurora-page">
+        <LiquidGlassDefs />
+        <AuroraAtmosphere opacityClassName="opacity-65" />
         <Header />
 
-        <main className="relative z-10 px-6 pb-16 pt-6 lg:px-10">
-          <div className="mx-auto max-w-4xl rounded-[2.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] p-10 text-center shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-              Redirecting
-            </p>
-            <h1 className="mt-4 font-display text-5xl text-[var(--aurora-text-strong)]">
-              Sending you to login
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-              Sign in to reach your saved account tools.
-            </p>
+        <main className="aurora-main">
+          <div className="aurora-container">
+            <div className="aurora-showcase-band mx-auto max-w-4xl p-10 text-center">
+              <p className="aurora-kicker">
+                Redirecting
+              </p>
+              <h1 className="aurora-heading mt-4 text-5xl">
+                Sending you to login
+              </h1>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
+                Sign in to reach your saved account tools.
+              </p>
+            </div>
           </div>
         </main>
 
@@ -79,50 +84,79 @@ export default function AccountLayout({
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_center,#f7e6d9_0%,#efd3bf_34%,#e0b495_64%,#cf9877_100%)]">
-      <CoffeeBeanDecor />
+    <div className="aurora-page">
+      <LiquidGlassDefs />
+      <AuroraAtmosphere opacityClassName="opacity-65" />
       <Header />
 
-      <main className="relative z-10 px-6 pb-16 pt-6 lg:px-10">
-        <div className="mx-auto max-w-7xl">
-          <section className="rounded-[2.75rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.88)] p-8 shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur lg:p-10">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+      <main className="aurora-main">
+        <div className="aurora-container aurora-page-rail">
+          <section className="aurora-shell aurora-shell-soft rounded-[2.3rem] p-6 sm:p-8 lg:p-9">
+            <div className="aurora-page-intro-split lg:items-start">
               <div className="max-w-3xl">
-                <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-                  {eyebrow}
-                </p>
-                <h1 className="mt-4 font-display text-5xl text-[var(--aurora-text-strong)]">
+                <p className="aurora-kicker">{eyebrow}</p>
+                <h1 className="aurora-heading mt-4 text-5xl md:text-6xl">
                   {title}
                 </h1>
-                <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
+                <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
                   {description}
                 </p>
               </div>
 
-              <div className="flex flex-wrap gap-3">
-                {accountLinks.map((item) => {
-                  const isActive = location.pathname === item.to
-
-                  return (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                        isActive
-                          ? 'border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] text-[var(--aurora-cream)] shadow-[0_10px_24px_rgba(144,180,196,0.22)]'
-                          : 'border border-[rgba(138,144,119,0.24)] bg-[rgba(255,247,242,0.9)] text-[var(--aurora-text-strong)] hover:bg-[var(--aurora-primary-pale)]'
-                      }`}
-                    >
-                      {item.label}
-                    </Link>
-                  )
-                })}
+              <div className="aurora-operational-card rounded-[1.8rem] p-5">
+                <p className="aurora-kicker">Workspace context</p>
+                <h2 className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">
+                  {accountLinks.find((item) => item.to === location.pathname)?.label || 'Customer tools'}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                  Navigation stays in one stable column so the main workspace can focus on the
+                  active task instead of repeating navigation-like controls at the top.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <LiquidGlassButton as={Link} to="/customer" variant="secondary" size="compact">
+                    Customer home
+                  </LiquidGlassButton>
+                  <LiquidGlassButton as={Link} to="/products" variant="quiet" size="compact">
+                    Open catalog
+                  </LiquidGlassButton>
+                </div>
               </div>
             </div>
           </section>
 
-          <section className="mt-10">
-            {children}
+          <section className="aurora-content-split xl:grid-cols-[16.5rem_minmax(0,1fr)]">
+            <aside className="aurora-operational-card h-fit rounded-[2rem] p-5">
+              <p className="aurora-kicker">Navigate</p>
+              <nav className="mt-5 grid gap-2">
+                {accountLinks.map((item) => {
+                  const isActive = location.pathname === item.to
+
+                  return (
+                    <LiquidGlassButton
+                      as={Link}
+                      key={item.to}
+                      to={item.to}
+                      variant={isActive ? 'secondary' : 'quiet'}
+                      size="compact"
+                      className="w-full"
+                      contentClassName="w-full justify-start"
+                    >
+                      {item.label}
+                    </LiquidGlassButton>
+                  )
+                })}
+              </nav>
+
+              <div className="aurora-divider my-5" />
+
+              <div className="space-y-3 text-sm leading-7 text-[var(--aurora-text)]">
+                <p>Saved addresses stay ready for checkout.</p>
+                <p>Order history stays available in the current browser.</p>
+                <p>Favorites and cart shortcuts stay within quick reach.</p>
+              </div>
+            </aside>
+
+            <div className="min-w-0">{children}</div>
           </section>
         </div>
       </main>

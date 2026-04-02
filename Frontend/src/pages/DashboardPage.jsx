@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   clearAuthSession,
   fetchCurrentUser,
@@ -76,12 +77,15 @@ export default function DashboardPage() {
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
               Sign in first so the dashboard can read your saved session token.
             </p>
-            <Link
+            <LiquidGlassButton
+              as={Link}
               to="/login"
-              className="mt-8 inline-flex rounded-full border border-[var(--aurora-sky)] bg-[var(--aurora-sky)] px-6 py-3.5 text-sm font-semibold text-[var(--aurora-cream)] shadow-[0_14px_36px_rgba(144,180,196,0.24)] transition hover:-translate-y-0.5 hover:bg-[var(--aurora-sky-deep)]"
+              variant="secondary"
+              size="hero"
+              className="mt-8"
             >
               Go to login
-            </Link>
+            </LiquidGlassButton>
           </div>
         </div>
       </div>
@@ -120,13 +124,13 @@ export default function DashboardPage() {
             <span className="rounded-full border border-[rgba(255,247,242,0.24)] bg-[rgba(255,247,242,0.12)] px-4 py-2 text-sm font-semibold text-[var(--aurora-cream)]">
               {displayName}
             </span>
-            <button
+            <LiquidGlassButton
               type="button"
+              variant="quiet"
               onClick={handleLogout}
-              className="rounded-full border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.72)] px-5 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] transition hover:bg-[var(--aurora-cream)]"
             >
               Log out
-            </button>
+            </LiquidGlassButton>
           </div>
         </header>
 
