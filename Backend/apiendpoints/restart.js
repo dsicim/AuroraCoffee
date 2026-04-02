@@ -39,6 +39,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + err.toString() });
                     });
                 }
+                else if (body.data.action === "stop") {
+                    setTimeout(() => process.exit(0), 2000);
+                    return { s: 200, j: false, d: "Server stop initiated. Server will be unresponsive immediately. Only one person can bring the server back up. Goodbye." };
+                }
                 else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
                     const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8").replaceAll("USE 308_db;", "").replaceAll("CREATE DATABASE IF NOT EXISTS 308_db;", "") : body.data.code);
                     return await sql.runCode(code).then(res => {
