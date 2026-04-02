@@ -117,12 +117,12 @@
                         localStorage.removeItem("auroraAuth");
                         return;
                     }
-                    const currentUser = await fetch("/api/users/me", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => null);
+                    const currentUser = await fetch("/api/users/me", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => {e: err.toString()});
                     if (!currentUser || currentUser.e) {
                         document.getElementById("currentUser").innerText = "Current User: Not logged in";
                         document.getElementById("login").style.display = "block";
                         initlogin(alreadypresent);
-                        localStorage.removeItem("auroraAuth");
+                        if (!currentUser && !currentUser.e) localStorage.removeItem("auroraAuth");
                     }
                     else if (currentUser.user.role !== "Admin") {
                         document.getElementById("currentUser").innerText = "Current User: " + currentUser.user.displayname + " (Unauthorized)";
