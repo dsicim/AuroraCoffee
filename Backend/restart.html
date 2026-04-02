@@ -89,7 +89,7 @@
                         });
                     }
                 }
-                const token = JSON.parse(localStorage.getItem("auroraAuth") || "{e:\"Missing token\"}") || { e: "Malformed token" };
+                const token = pjs(localStorage.getItem("auroraAuth") || "{e:\"Missing token\"}") || { e: "Malformed token" };
                 if (token.e) {
                     document.getElementById("currentUser").innerText = "Current User: Not logged in";
                     document.getElementById("login").style.display = "block";
