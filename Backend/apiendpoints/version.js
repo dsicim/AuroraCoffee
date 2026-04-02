@@ -1,4 +1,4 @@
-const version = require('./version.js');
+const version = require('../version.js');
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "latest") {
         const uptodate = await version.getUpToDateVersion().then(res => res.s ? res.v : null).catch(err => null);
