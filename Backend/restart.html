@@ -72,6 +72,11 @@
             catch (e) {
                 function initlogin(alreadypresent) {
                     if (!alreadypresent) {
+                        window.addEventListener("keydown", (e) => {
+                            if (e.key === "Enter" && document.getElementById("login").style.display === "block") {
+                                document.getElementById("loginButton").click();
+                            }
+                        });
                         document.getElementById("loginButton").addEventListener("click", async () => {
                             const username = document.getElementById("usernameInput").value;
                             const password = document.getElementById("passwordInput").value;
