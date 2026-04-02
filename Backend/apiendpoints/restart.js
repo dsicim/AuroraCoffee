@@ -12,7 +12,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (body.data.action === "restart" || body.data.action === "update") {
                     return await new Promise((resolve) => {
                         const child = spawn("node", ["version.js", "--action", body.data.action], {
-                            cwd: path.join(__dirname, "../"),
+                            cwd: path.join(__dirname, ".."),
                             detached: true,
                             stdio: ["ignore", "pipe", "ignore"],
                         });
