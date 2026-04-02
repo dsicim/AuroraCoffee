@@ -86,7 +86,6 @@
                                 return;
                             }
                             const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ u: username, p: password }) }).then(res => res.json()).catch(err => ({ e: err.toString() }));
-                            document.getElementById("login").disabled = false;
                             if (res.e) {
                                 alert("Login failed: " + res.e);
                                 return;
@@ -144,6 +143,7 @@
                         document.getElementById("panel").style.display = "block";
                     }
                 }
+                document.getElementById("login").disabled = false;
             }
         }
         init();
