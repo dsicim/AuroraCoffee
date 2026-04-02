@@ -79,7 +79,7 @@
                                 alert("Please enter both email and password.");
                                 return;
                             }
-                            const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: username, password }) }).then(res => res.json()).catch(err => ({ e: err.toString() }));
+                            const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ u: username, p: password }) }).then(res => res.json()).catch(err => ({ e: err.toString() }));
                             if (res.e) {
                                 alert("Login failed: " + res.e);
                                 return;
