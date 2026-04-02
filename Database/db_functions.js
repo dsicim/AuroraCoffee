@@ -194,7 +194,7 @@ func.getProductsByIds = async function (productId) {
     }
     try {
         productId = Array.isArray(productId) ? productId : [productId];
-        const [rows] = await pool.execute(`
+        const [rows] = await pool.query(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
