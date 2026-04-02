@@ -93,7 +93,7 @@
                 if (token.e) {
                     document.getElementById("currentUser").innerText = "Current User: Not logged in";
                     document.getElementById("login").style.display = "block";
-                        initlogin(alreadypresent);
+                    initlogin(alreadypresent);
                     localStorage.removeItem("auroraAuth");
                 }
                 else {
@@ -127,7 +127,14 @@
                         document.getElementById("login").style.display = "none";
                         const innerHTML = await fetch("/api/restart/getpanel", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => null);
                         document.getElementById("panel").innerHTML = innerHTML || "<h3>Failed to load admin panel.</h3>";
-                        portalinit();
+                        const oldScript = document.getElementById('newscript');
+                        if (oldScript) {
+                            const newScript = document.createElement('script');
+                            newScript.textContent = oldScript.textContent;
+                            document.head.appendChild(newScript);
+                            document.head.removeChild(newScript);
+                            portalinit();
+                        }
                     }
                 }
             }

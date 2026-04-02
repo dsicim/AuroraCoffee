@@ -40,7 +40,7 @@
     <label>Stopping the software will shut down the service. <b>This will invalidate all active
             sessions and email verification links. Only one person can bring the server back up.</b></label>
 </div>
-<script>
+<script id="newscript">
     const key = new URLSearchParams(window.location.search).get("key") || "";
     async function fetchVersion() {
         if (document.getElementById("version").innerText.includes("{version}")) {
@@ -85,42 +85,42 @@
             if (!confirm("Are you sure you want to restart the software? This will invalidate all active sessions and email verification links.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Restarting software...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "restart" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "restart" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("updateButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to update the software? This will invalidate all active sessions and email verification links. This will also take some time to reinstall and compile the source code.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Requesting Update...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "update" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "update" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("executeSqlButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to execute SQL? MAKE SURE YOU KNOW WHAT YOU ARE DOING.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Executing SQL...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "sql", code: document.getElementById("sqlEdit").value }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "sql", code: document.getElementById("sqlEdit").value }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("rerunSQLCode").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to re-run SQL? THIS WILL EXECUTE THE SQL CODE AGAIN.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Re-executing SQL...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "sqlrerun" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "sqlrerun" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("resetDatabaseButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to reset the database? THIS WILL DELETE ALL DATA.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Resetting Database...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "reset" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "reset" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("stopButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to stop the software? This will invalidate all active sessions and email verification links. Only one person can bring the server back up.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Stopping software...");
-            await fetch("/api/restart?key=" + key, { method: "POST", body: JSON.stringify({ action: "stop" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "stop" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         fetchVersion();
