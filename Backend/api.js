@@ -208,7 +208,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
-                                    emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "password", user: result.user });
+                                    emailtokens.set(emailToken, { id: result.user.id, expires: emailExpires, for: "password", user: result.user });
                                     return { s: 200, j: true, d: { m: "We've sent a password reset email to your address. Please check your inbox." } };
                                 }).catch(err => {
                                     console.error("Email sending error:", err);
@@ -229,7 +229,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                 else return { s: 400, j: true, d: { e: "Invalid Request" } };
             }
             else if (method === "PATCH") { // Change password
-                if (body && body.exists && body.json && !body.err && body.data.t && body.data.p) {
+                if (body && body.exists && body.json && !body.err && body.data.t && body.data.p && !body.data.n) {
                     const token = body.data.t;
                     const password = body.data.p;
                     if (emailtokens.has(token)) {
@@ -275,7 +275,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         }
                         else {
                             const userId = tokens.get(token).id;
-                            const email = await sql.findUserById(userId).then(res => {
+                            const email = await sql.findUser(userId, true).then(res => {
                                 return res.success ? res.user : null;
                             }).catch(err => {
                                 return null;

@@ -80,6 +80,7 @@
         output.innerText = text;
     }
     function portalinit() {
+        document.getElementById("panel").style.display = "block";
         document.getElementById("restartButton").addEventListener("click", async () => {
             if (!confirm("Are you sure you want to restart the software? This will invalidate all active sessions and email verification links.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);

@@ -52,15 +52,81 @@
     <h3 id="currentUser">Current User: Loading...</h3>
     <div id="login" style="display: none;">
         <input type="text" id="usernameInput" placeholder="Enter your email" style="padding: 8px; font-size: 16px;">
-        <input type="password" id="passwordInput" placeholder="Enter your password" style="padding: 8px; font-size: 16px;">
+        <input type="password" id="passwordInput" placeholder="Enter your password"
+            style="padding: 8px; font-size: 16px;">
         <button id="loginButton">Login</button>
     </div>
     <div id="panel" style="display: none;">{inner}</div>
     <script>
-        async function init() {
-            //const currentUser = await fetch("/api/restart/auth", {method: "GET", headers: {authorization:""}}).then(res => res.json()).catch(err => null);
-            document.getElementById("panel").style.display = "block";
-            portalinit();
+        function pjs(text) {
+            try {
+                return JSON.parse(text);
+            }
+            catch (e) { return { e: "Malformed JSON", raw: text } };
+        }
+        async function init(alreadypresent = false) {
+            try {
+                portalinit();
+                document.getElementById("currentUser").innerText = "Current User: Manual Restart Token";
+            }
+            catch (e) {
+                function initlogin() {
+                    if (!alreadypresent) {
+                        document.getElementById("loginButton").addEventListener("click", async () => {
+                            const username = document.getElementById("usernameInput").value;
+                            const password = document.getElementById("passwordInput").value;
+                            if (!username || !password) {
+                                alert("Please enter both email and password.");
+                                return;
+                            }
+                            const res = await fetch("/api/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: username, password }) }).then(res => res.json()).catch(err => ({ e: err.toString() }));
+                            if (res.e) {
+                                alert("Login failed: " + res.e);
+                                return;
+                            }
+                            localStorage.setItem("auroraAuth", JSON.stringify({ email: username, token: res.token, expires: res.expires }));
+                            init(true)
+                        });
+                    }
+                }
+                const token = JSON.parse(localStorage.getItem("auroraAuth") || "{e:\"Missing token\"}") || { e: "Malformed token" };
+                if (token.e) {
+                    document.getElementById("currentUser").innerText = "Current User: Not logged in";
+                    document.getElementById("login").style.display = "block";
+                    localStorage.removeItem("auroraAuth");
+                }
+                else {
+                    if (token.expires && new Date(token.expires) < new Date()) {
+                        document.getElementById("currentUser").innerText = "Current User: Session expired";
+                        document.getElementById("login").style.display = "block";
+                        localStorage.removeItem("auroraAuth");
+                        return;
+                    }
+                    if (!token.token) {
+                        document.getElementById("currentUser").innerText = "Current User: Not logged in";
+                        document.getElementById("login").style.display = "block";
+                        localStorage.removeItem("auroraAuth");
+                        return;
+                    }
+                    const currentUser = await fetch("/api/users/me", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => null);
+                    if (!currentUser || currentUser.e) {
+                        document.getElementById("currentUser").innerText = "Current User: Not logged in";
+                        document.getElementById("login").style.display = "block";
+                        localStorage.removeItem("auroraAuth");
+                    }
+                    else if (currentUser.role !== "admin") {
+                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.displayname + " (Unauthorized)";
+                        document.getElementById("login").style.display = "none";
+                    }
+                    else {
+                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.displayname;
+                        document.getElementById("login").style.display = "none";
+                        const innerHTML = await fetch("/api/restart", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => null);
+                        document.getElementById("panel").innerHTML = innerHTML || "<h3>Failed to load admin panel.</h3>";
+                        portalinit();
+                    }
+                }
+            }
         }
         init();
     </script>
