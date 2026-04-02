@@ -188,26 +188,29 @@ func.getAllProducts = async function () {
     }
 };
 
-func.getProductById = async function (productId) {
+func.getProductsByIds = async function (productId) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
     try {
+        productId = Array.isArray(productId) ? productId : [productId];
         const [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
-            WHERE p.id = ?
+            WHERE p.id IN (?)
         `, [productId]);
         if (rows.length === 0) {
-            throw new DBError(404, 'Product not found');
+            throw new DBError(404, 'No products found');
         }
-        return { success: true, product: rows[0] };
+        const foundIds = rows.map(r => r.id);
+        const missingIds = productId.filter(id => !foundIds.includes(id));
+        return { success: true, products: rows, idsnotfound: missingIds };
     } catch (error) {
         if (error instanceof DBError) throw error;
-        console.error('Get product by ID error:', error);
-        throw new DBError(500, 'Failed to fetch product');
+        console.error('Get products by IDs error:', error);
+        throw new DBError(500, 'Failed to fetch products');
     }
 };
 

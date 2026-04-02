@@ -1,4 +1,4 @@
-const sql = require("../Database/server.js");
+const sql = require("../../Database/server.js");
 async function handleAPI(method, endpoint, query, body, headers, currentUser) {
     if (!currentUser || currentUser.e) {
         console.log("Unauthorized access: "+currentUser.e);
