@@ -3,9 +3,12 @@ const sql = require("../../Database/server.js");
 const fs = require("fs");
 const path = require("path");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
-    if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
+    if (endpoint[0] === "auth") {
+
+    }
+    else if ((query && Object.keys(query).length && query.key && query.key === config.restarttoken) || (!currentUser.e && currentUser.role === "admin")) {
         if (method === "GET") {
-            return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
+            return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8").replaceAll("{inner}",fs.readFileSync("./innerrestart.html", "utf-8")), h: { "Content-Type": "text/html" } };
         }
         else if (method === "POST") {
             if (body && body.exists && body.json && !body.err && body.data.action) {
@@ -67,6 +70,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: false, d: "Method Not Allowed" };
     }
-    else return { s: 401, j: true, d: { e: "Unauthorized" } };
+    else return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
 }
 module.exports = { handleAPI };

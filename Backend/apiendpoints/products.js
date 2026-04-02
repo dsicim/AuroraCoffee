@@ -47,5 +47,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "add") {
         return { s: 501, j: true, d: { e: "Not Implemented" } };
     }
+    else return { s: 404, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI };
