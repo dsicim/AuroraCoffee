@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const sql = require("../../Database/server.js");
 const fs = require("fs");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
