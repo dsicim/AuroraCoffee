@@ -108,7 +108,7 @@ export default function LoginPage() {
         expires: payload.expires,
       }
 
-      saveAuthSession(nextSession, rememberMe)
+      saveAuthSession(nextSession, true)
       reconcileAccountStorageWithAuth()
       reconcileCartStorageWithAuth()
       navigate(nextPath || '/', { replace: true })
@@ -206,11 +206,10 @@ export default function LoginPage() {
 
             {feedback ? (
               <div
-                className={`mt-6 rounded-[1.75rem] border p-4 text-sm font-medium leading-7 ${
-                  feedbackKind === 'success'
+                className={`mt-6 rounded-[1.75rem] border p-4 text-sm font-medium leading-7 ${feedbackKind === 'success'
                     ? 'border-[rgba(138,144,119,0.28)] bg-[rgba(230,232,222,0.5)] text-[var(--aurora-olive-deep)]'
                     : 'border-[rgba(217,144,107,0.42)] bg-[rgba(248,227,214,0.72)] text-[var(--aurora-text-strong)]'
-                }`}
+                  }`}
               >
                 {feedback}
               </div>
