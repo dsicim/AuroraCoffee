@@ -70,7 +70,7 @@
                 document.getElementById("currentUser").innerText = "Current User: Manual Restart Token";
             }
             catch (e) {
-                function initlogin() {
+                function initlogin(alreadypresent) {
                     if (!alreadypresent) {
                         document.getElementById("loginButton").addEventListener("click", async () => {
                             const username = document.getElementById("usernameInput").value;
@@ -93,18 +93,21 @@
                 if (token.e) {
                     document.getElementById("currentUser").innerText = "Current User: Not logged in";
                     document.getElementById("login").style.display = "block";
+                        initlogin(alreadypresent);
                     localStorage.removeItem("auroraAuth");
                 }
                 else {
                     if (token.expires && new Date(token.expires) < new Date()) {
                         document.getElementById("currentUser").innerText = "Current User: Session expired";
                         document.getElementById("login").style.display = "block";
+                        initlogin(alreadypresent);
                         localStorage.removeItem("auroraAuth");
                         return;
                     }
                     if (!token.token) {
                         document.getElementById("currentUser").innerText = "Current User: Not logged in";
                         document.getElementById("login").style.display = "block";
+                        initlogin(alreadypresent);
                         localStorage.removeItem("auroraAuth");
                         return;
                     }
@@ -112,6 +115,7 @@
                     if (!currentUser || currentUser.e) {
                         document.getElementById("currentUser").innerText = "Current User: Not logged in";
                         document.getElementById("login").style.display = "block";
+                        initlogin(alreadypresent);
                         localStorage.removeItem("auroraAuth");
                     }
                     else if (currentUser.role !== "admin") {
