@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const sql = require("../../Database/server.js");
 const fs = require("fs");
+const path = require("path");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
         if (method === "GET") {
@@ -11,7 +12,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (body.data.action === "restart" || body.data.action === "update") {
                     return await new Promise((resolve) => {
                         const child = spawn("node", ["version.js", "--action", body.data.action], {
-                            cwd: __dirname,
+                            cwd: path.join(__dirname, "../"),
                             detached: true,
                             stdio: ["ignore", "pipe", "ignore"],
                         });
