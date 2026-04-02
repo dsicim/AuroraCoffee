@@ -184,7 +184,7 @@ func.getAllProducts = async function () {
         return { success: true, products: rows };
     } catch (error) {
         console.error('Get all products error:', error);
-        throw new DBError(500, 'Failed to fetch products');
+        throw new DBError(500, 'Failed to fetch products: ' + error.message);
     }
 };
 
@@ -210,7 +210,7 @@ func.getProductsByIds = async function (productId) {
     } catch (error) {
         if (error instanceof DBError) throw error;
         console.error('Get products by IDs error:', error);
-        throw new DBError(500, 'Failed to fetch products');
+        throw new DBError(500, 'Failed to fetch products: '+ error.message);
     }
 };
 
