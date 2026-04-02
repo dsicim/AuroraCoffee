@@ -118,12 +118,12 @@
                         initlogin(alreadypresent);
                         localStorage.removeItem("auroraAuth");
                     }
-                    else if (currentUser.role !== "admin") {
-                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.displayname + " (Unauthorized)";
+                    else if (currentUser.user.role !== "Admin") {
+                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.user.displayname + " (Unauthorized)";
                         document.getElementById("login").style.display = "none";
                     }
                     else {
-                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.displayname;
+                        document.getElementById("currentUser").innerText = "Current User: " + currentUser.user.displayname;
                         document.getElementById("login").style.display = "none";
                         const innerHTML = await fetch("/api/restart/getpanel", { method: "GET", headers: { authorization: token.token } }).then(res => res.json()).catch(err => null);
                         document.getElementById("panel").innerHTML = innerHTML || "<h3>Failed to load admin panel.</h3>";
