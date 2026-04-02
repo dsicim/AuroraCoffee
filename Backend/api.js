@@ -1,14 +1,17 @@
 const sql = require("../Database/server.js");
 const fs = require("fs");
 const crypto = require('crypto');
-const version = require('./version.js');
 const tokens = new Map();
 const emailtokens = new Map();
 const emailids = new Map();
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
-const { spawn } = require("child_process");
 const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
 const emailsrv = require("./email.js");
+const APIEndpoints = {
+    version: require("./apiendpoints/version.js"),
+    restart: require("./apiendpoints/restart.js"),
+    users: require("./apiendpoints/users.js"),
+};
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
     token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
@@ -56,15 +59,29 @@ async function handleAPI(method, endpoint, query, body, headers) {
     console.log(endpoint);
     console.log(query);
     console.log(body);
-    if (endpoint[0] === "version") {
-        endpoint.shift();
-        if (endpoint[0] === "latest") {
-            const uptodate = await version.getUpToDateVersion().then(res => res.s ? res.v : null).catch(err => null);
-            return { s: 200, j: false, d: uptodate || "Error: Failed to fetch latest version", h: { "Access-Control-Allow-Origin": "*" } };
+    let currentUser = { e: "No token provided" };
+    const token = headers.authorization;
+    if (token) {
+        if (tokens.has(token)) {
+            if (tokens.get(token).expires < new Date().getTime()) {
+                currentUser = { e: "Token expired" };
+                tokens.delete(token);
+            }
+            else currentUser = await sql.findUser(tokens.get(token).id, true).then(res => {
+                if (res.success) return res.user;
+                else {
+                    console.error("Find user of token error:", err);
+                    return { e: "SQL response failure" };
+                }
+            }).catch(err => {
+                console.error("Find user of token error:", err);
+                if (err instanceof sql.DBError) return { e: "SQL threw " + err.error || "SQL threw an error" };
+                else return { e: "SQL threw " + err.toString() };
+            });
         }
-        return { s: 200, j: false, d: config.version, h: { "Access-Control-Allow-Origin": "*" } };
+        else currentUser = { e: "Invalid token" };
     }
-    else if (endpoint[0] === "auth") {
+    if (endpoint[0] === "auth") {
         endpoint.shift();
         if (endpoint[0] === "login") {
             if (method === "POST") { // Login
@@ -295,38 +312,6 @@ async function handleAPI(method, endpoint, query, body, headers) {
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
     }
-    else if (endpoint[0] === "users") {
-        endpoint.shift();
-        const token = headers.authorization;
-        if (!token) return { s: 401, j: true, d: { e: "Unauthorized" } };
-        if (tokens.has(token)) {
-            if (tokens.get(token).expires < new Date().getTime()) {
-                tokens.delete(token);
-                return { s: 401, j: true, d: { e: "Unauthorized" } };
-            }
-        }
-        else return { s: 401, j: true, d: { e: "Unauthorized" } };
-        if (endpoint[0] === "me") {
-            if (method === "GET") {
-                const userId = tokens.get(token).id;
-                return await sql.findUser(userId, true).then(res => {
-                    if (res.success) {
-                        return { s: 200, j: true, d: { user: res.user } };
-                    }
-                    else {
-                        console.error("Find user error:", err);
-                        return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-                    }
-                }).catch(err => {
-                    console.error("Find user error:", err);
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-                });
-            }
-            else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-        }
-        else return { s: 400, j: true, d: { e: "Not Found" } };
-    }
     else if (endpoint[0] === "verify") {
         if (method === "GET") {
             if (query && query.token && query.purpose) {
@@ -368,69 +353,9 @@ async function handleAPI(method, endpoint, query, body, headers) {
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
-    else if (endpoint[0] === "restart") {
-        if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
-            if (method === "GET") {
-                return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
-            }
-            else if (method === "POST") {
-                if (body && body.exists && body.json && !body.err && body.data.action) {
-                    if (body.data.action === "restart" || body.data.action === "update") {
-                        return await new Promise((resolve) => {
-                            const child = spawn("node", ["version.js", "--action", body.data.action], {
-                                cwd: __dirname,
-                                detached: true,
-                                stdio: ["ignore", "pipe", "ignore"],
-                            });
-                            let buffer = "";
-                            child.stdout.on("data", chunk => {
-                                buffer += chunk.toString("utf8");
-                                const newlineIndex = buffer.indexOf("\n");
-                                if (newlineIndex !== -1) {
-                                    const firstLine = buffer.slice(0, newlineIndex).trim();
-                                    if (firstLine.startsWith("GOTIT:")) {
-                                        setTimeout(() => process.exit(0), 2000);
-                                    }
-                                    else {
-                                        console.error("Unexpected child output:", firstLine);
-                                    }
-                                    child.stdout.removeAllListeners("data");
-                                    child.stdout.destroy();
-                                    child.unref();
-                                    if (!firstLine.startsWith("GOTIT:")) resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + firstLine });
-                                    const actualoutput = firstLine.substring(6);
-                                    resolve({ s: 200, j: false, d: "Server " + body.data.action + " initiated. Server will be unresponsive for a few " + (body.data.action === "update" ? "minutes" : "seconds") + ".\n" + actualoutput });
-                                }
-                            });
-                        }).catch(err => {
-                            resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + err.toString() });
-                        });
-                    }
-                    else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
-                        const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8").replaceAll("USE 308_db;","").replaceAll("CREATE DATABASE IF NOT EXISTS 308_db;","") : body.data.code);
-                        return await sql.runCode(code).then(res => {
-                            if (res.success) {
-                                return { s: 200, j: false, d: "Response from SQL:\n"+JSON.stringify(res.result) };
-                            }
-                            else {
-                                return { s: 200, j: false, d: "Unknown Error from SQL:\n"+JSON.stringify(res) }
-                            }
-                        }).catch(err => {
-                            if (err instanceof sql.DBError) return { s: 200, j: false, d: "Error from SQL:\n"+err.error };
-                            else return { s: 200, j: false, d: "An unknown error occurred"+err.toString() };
-                        });
-                    }
-                    else if (body.data.action === "reset") {
-                        return { s: 500, j: false, d: "Not implemented yet" };
-                    }
-                    else return { s: 400, j: false, d: "Invalid action" };
-                }
-                else return { s: 400, j: false, d: "Invalid request body" };
-            }
-            else return { s: 405, j: false, d: "Method Not Allowed" };
-        }
-        else return { s: 401, j: true, d: { e: "Unauthorized" } };
-    }
+    else if (endpoint[0] === "version") return await APIEndpoints.version.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "users") return await APIEndpoints.users.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI, initDB: sql.initDB };
