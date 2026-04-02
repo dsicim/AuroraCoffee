@@ -78,25 +78,23 @@ export default function AccountPage() {
 
   return (
     <AccountLayout
-      eyebrow="Account tools"
-      title="Manage saved shopping details"
-      description="Use this area for your deeper customer tools: order history, saved addresses, and favorites built around the shopping experience."
+      eyebrow="Account"
+      title="Saved details"
+      description="Orders, addresses, and favorites."
     >
       <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-8">
-          <section className="aurora-summary-strip">
+          <section className="grid gap-4 md:grid-cols-3">
             <div className="aurora-summary-lead p-6">
               <div className="aurora-widget-body">
                 <div className="aurora-widget-heading">
-                  <p className="aurora-kicker">Account snapshot</p>
+                  <p className="aurora-kicker">Orders</p>
                   <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                    {mostRecentOrder ? mostRecentOrder.reference : 'No orders yet'}
+                    {orders.length}
                   </h2>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {mostRecentOrder
-                    ? `Latest order totals ${formatCurrency(mostRecentOrder.total)} and stays ready for quick reorder.`
-                    : 'Complete checkout once and this area becomes the fastest route back into saved shopping details.'}
+                  {mostRecentOrder ? mostRecentOrder.reference : 'No orders yet'}
                 </p>
               </div>
             </div>
@@ -112,9 +110,7 @@ export default function AccountPage() {
                   </p>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {defaultAddress
-                    ? `${defaultAddress.label || defaultAddress.fullName} is ready for checkout.`
-                    : 'Add a default address to speed up delivery details.'}
+                  {defaultAddress ? defaultAddress.label || defaultAddress.fullName : 'No default set'}
                 </p>
               </div>
             </div>
@@ -130,67 +126,10 @@ export default function AccountPage() {
                   </p>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  Return to saved coffees and add a package when ready.
+                  Saved products
                 </p>
               </div>
             </div>
-          </section>
-
-          <section className="aurora-ops-panel p-8">
-            <div className="aurora-widget-header">
-              <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Quick actions
-                </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  Back to shopping fast
-                </h2>
-              </div>
-              <Link
-                to="/products"
-                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-              >
-                Browse all coffees
-              </Link>
-            </div>
-
-            <div className="aurora-widget-actions mt-8">
-              <LiquidGlassButton
-                as={Link}
-                to="/products"
-              >
-                Continue shopping
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                as={Link}
-                to="/cart"
-                variant="secondary"
-              >
-                View cart
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                as={Link}
-                to="/account/favorites"
-                variant="quiet"
-              >
-                Go to favorites
-              </LiquidGlassButton>
-              {mostRecentOrder ? (
-                <LiquidGlassButton
-                  type="button"
-                  variant="soft"
-                  onClick={handleReorderLatest}
-                >
-                  Reorder latest
-                </LiquidGlassButton>
-              ) : null}
-            </div>
-
-            {feedback ? (
-              <p className="aurora-message aurora-message-success mt-6">
-                {feedback}
-              </p>
-            ) : null}
           </section>
         </div>
 
@@ -202,17 +141,15 @@ export default function AccountPage() {
                   Latest order
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {mostRecentOrder ? mostRecentOrder.reference : 'Nothing placed yet'}
+                  {mostRecentOrder ? mostRecentOrder.reference : 'No orders yet'}
                 </h2>
               </div>
-              {mostRecentOrder ? (
-                <Link
-                  to="/account/orders"
-                  className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-                >
-                  View all orders
-                </Link>
-              ) : null}
+              <Link
+                to="/account/orders"
+                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+              >
+                View orders
+              </Link>
             </div>
 
             {mostRecentOrder ? (
@@ -243,11 +180,32 @@ export default function AccountPage() {
                     </div>
                   ))}
                 </div>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <LiquidGlassButton
+                    type="button"
+                    variant="soft"
+                    onClick={handleReorderLatest}
+                  >
+                    Reorder latest
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/cart"
+                    variant="secondary"
+                  >
+                    View cart
+                  </LiquidGlassButton>
+                </div>
               </>
             ) : (
-              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Complete checkout once and the latest order summary will appear here with a direct reorder shortcut.
-              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <LiquidGlassButton as={Link} to="/products">
+                  Browse products
+                </LiquidGlassButton>
+                <LiquidGlassButton as={Link} to="/cart" variant="secondary">
+                  View cart
+                </LiquidGlassButton>
+              </div>
             )}
           </section>
 
@@ -284,13 +242,21 @@ export default function AccountPage() {
                 </p>
               </div>
             ) : (
-              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Save a default delivery address to prefill checkout automatically.
-              </p>
+              <div className="mt-4">
+                <LiquidGlassButton as={Link} to="/account/addresses" variant="quiet">
+                  Add address
+                </LiquidGlassButton>
+              </div>
             )}
           </section>
         </div>
       </div>
+
+      {feedback ? (
+        <p className="aurora-message aurora-message-success mt-6">
+          {feedback}
+        </p>
+      ) : null}
     </AccountLayout>
   )
 }

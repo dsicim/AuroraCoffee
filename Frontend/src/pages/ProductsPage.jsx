@@ -63,32 +63,8 @@ export default function ProductsPage() {
     [category, normalizedSearch, products, sortBy],
   )
 
-  const hero = (
-    <section className="aurora-showcase-band p-6 sm:p-8 lg:p-10">
-      <div className="aurora-page-intro-split">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-            Product catalog
-          </p>
-          <h1 className="mt-4 max-w-4xl font-display text-5xl leading-[0.98] text-[var(--aurora-text-strong)] md:text-6xl">
-            Explore the live Aurora product feed.
-          </h1>
-          <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-            Search the current catalog, filter by category, and open each product by name-based route.
-          </p>
-        </div>
-
-        <div className="aurora-summary-strip xl:grid-cols-3">
-          <AuroraWidget title={String(products.length)} subtitle="Products" icon="package" className="aurora-summary-card p-5" />
-          <AuroraWidget title={String(Math.max(0, categories.length - 1))} subtitle="Categories" icon="grid" className="aurora-summary-card p-5" />
-          <AuroraWidget title={String(filteredProducts.length)} subtitle="Current results" icon="search" className="aurora-summary-card p-5" />
-        </div>
-      </div>
-    </section>
-  )
-
   return (
-    <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
+    <StorefrontLayout contentClassName="aurora-stack-12">
       <section className="aurora-content-split">
         <LiquidGlassFrame
           as="div"

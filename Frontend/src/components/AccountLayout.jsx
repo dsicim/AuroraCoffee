@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuroraAtmosphere from './AuroraAtmosphere'
 import Footer from './Footer'
 import Header from './Header'
-import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassDefs from './LiquidGlassDefs'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
@@ -92,42 +91,21 @@ export default function AccountLayout({
       <main className="aurora-main">
         <div className="aurora-container aurora-page-rail">
           <section className="aurora-shell aurora-shell-soft rounded-[2.3rem] p-6 sm:p-8 lg:p-9">
-            <div className="aurora-page-intro-split lg:items-start">
-              <div className="max-w-3xl">
-                <p className="aurora-kicker">{eyebrow}</p>
-                <h1 className="aurora-heading mt-4 text-5xl md:text-6xl">
-                  {title}
-                </h1>
-                <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-                  {description}
-                </p>
-              </div>
-
-              <div className="aurora-operational-card rounded-[1.8rem] p-5">
-                <p className="aurora-kicker">Workspace context</p>
-                <h2 className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">
-                  {accountLinks.find((item) => item.to === location.pathname)?.label || 'Customer tools'}
-                </h2>
-                <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-                  Navigation stays in one stable column so the main workspace can focus on the
-                  active task instead of repeating navigation-like controls at the top.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-3">
-                  <LiquidGlassButton as={Link} to="/customer" variant="secondary" size="compact">
-                    Customer home
-                  </LiquidGlassButton>
-                  <LiquidGlassButton as={Link} to="/products" variant="quiet" size="compact">
-                    Open catalog
-                  </LiquidGlassButton>
-                </div>
-              </div>
+            <div className="max-w-3xl">
+              <p className="aurora-kicker">{eyebrow}</p>
+              <h1 className="aurora-heading mt-4 text-5xl md:text-6xl">
+                {title}
+              </h1>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
+                {description}
+              </p>
             </div>
           </section>
 
           <section className="aurora-content-split xl:grid-cols-[16.5rem_minmax(0,1fr)]">
-            <aside className="aurora-operational-card h-fit rounded-[2rem] p-5">
+            <aside className="aurora-operational-card aurora-account-sidebar h-fit rounded-[2rem] p-5">
               <p className="aurora-kicker">Navigate</p>
-              <nav className="mt-5 grid gap-2">
+              <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">
                 {accountLinks.map((item) => {
                   const isActive = location.pathname === item.to
 
@@ -148,12 +126,9 @@ export default function AccountLayout({
               </nav>
 
               <div className="aurora-divider my-5" />
-
-              <div className="space-y-3 text-sm leading-7 text-[var(--aurora-text)]">
-                <p>Saved addresses stay ready for checkout.</p>
-                <p>Order history stays available in the current browser.</p>
-                <p>Favorites and cart shortcuts stay within quick reach.</p>
-              </div>
+              <p className="text-sm text-[var(--aurora-text)]">
+                Keep the main account tools in one place.
+              </p>
             </aside>
 
             <div className="min-w-0">{children}</div>

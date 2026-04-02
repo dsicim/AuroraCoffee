@@ -261,6 +261,7 @@ export default function Header() {
                     aria-expanded={menuOpen}
                     onClick={() => setMenuOpen((current) => !current)}
                     selected={menuOpen}
+                    className="aurora-account-trigger"
                   >
                     <span className="hidden sm:inline">{displayName}</span>
                     <span className="rounded-full bg-[rgba(255,255,255,0.14)] px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-[var(--aurora-olive-deep)] sm:hidden">
@@ -282,11 +283,11 @@ export default function Header() {
 
                   {menuOpen ? (
                     <div className="absolute right-0 top-full z-30 w-72 pt-4">
-                      <div className="aurora-showcase-band p-3">
+                      <div className="aurora-showcase-band aurora-account-menu p-3">
                         <Link
                           to={resolvedRole === userRoles.customer ? '/account' : getRoleLandingPath(resolvedRole)}
                           onClick={() => setMenuOpen(false)}
-                          className="aurora-solid-plate block rounded-[1.5rem] px-4 py-4"
+                          className="aurora-solid-plate aurora-account-menu-profile block rounded-[1.5rem] px-4 py-4"
                         >
                           <p className="aurora-kicker">{resolvedRole}</p>
                           <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
@@ -316,7 +317,7 @@ export default function Header() {
                           onClick={handleLogout}
                           variant="danger"
                           size="compact"
-                          className="mt-3 w-full"
+                          className="aurora-logout-button mt-3 w-full"
                           contentClassName="w-full justify-start"
                         >
                           Logout
