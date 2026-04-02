@@ -354,10 +354,10 @@ async function handleAPI(method, endpoint, query, body, headers) {
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
-    else if (endpoint[0] === "version") return await APIEndpoints.version.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
-    else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
-    else if (endpoint[0] === "users") return await APIEndpoints.users.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
-    else if (endpoint[0] === "products") return await APIEndpoints.products.handleAPI(method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "version") return await APIEndpoints.version.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "users") return await APIEndpoints.users.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "products") return await APIEndpoints.products.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI, initDB: sql.initDB };

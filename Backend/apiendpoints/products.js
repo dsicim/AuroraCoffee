@@ -1,5 +1,5 @@
 const sql = require("../../Database/server.js");
-async function handleAPI(method, endpoint, query, body, headers, currentUser) {
+async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0) {
         if (method === "GET") {
             if (query.ids) {

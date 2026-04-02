@@ -1,7 +1,5 @@
 const { spawn } = require("child_process");
-const fs = require("fs");
-const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
-async function handleAPI(method, endpoint, query, body, headers, currentUser) {
+async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (query && Object.keys(query).length && query.key && query.key === config.restarttoken) {
         if (method === "GET") {
             return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
