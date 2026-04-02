@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     verified BOOLEAN DEFAULT FALSE,
-    role VARCHAR(50) DEFAULT 'Customer',
+    role VARCHAR(50) NOT NULL DEFAULT 'Customer',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
