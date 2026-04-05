@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../lib/currency'
 import {
@@ -14,32 +13,11 @@ import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
 
 export default function ProductCard({ product, compact = false }) {
-  const [feedback, setFeedback] = useState('')
   const availability = getProductAvailability(product)
   const isOutOfStock = !availability.hasStock
   const notes = getProductFlavorNotes(product)
   const metaLine = getProductMetaLine(product)
   const detailRoute = `/products/${product.slug}`
-
-  useEffect(() => {
-    if (!feedback) {
-      return undefined
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setFeedback('')
-    }, 2200)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [feedback])
-
-  const handleOpenProduct = () => {
-    setFeedback(
-      isOutOfStock ? 'Currently unavailable' : `Open ${product.name} to view full product details.`,
-    )
-  }
 
   return (
     <LiquidGlassFrame
@@ -139,8 +117,8 @@ export default function ProductCard({ product, compact = false }) {
               View details
             </Link>
             <LiquidGlassButton
-              type="button"
-              onClick={handleOpenProduct}
+              as={Link}
+              to={detailRoute}
               size="compact"
               className="w-full sm:w-auto"
             >
@@ -149,12 +127,6 @@ export default function ProductCard({ product, compact = false }) {
           </div>
         </div>
       </div>
-
-      {feedback ? (
-        <p className="aurora-message aurora-message-success mt-4">
-          {feedback}
-        </p>
-      ) : null}
     </LiquidGlassFrame>
   )
 }

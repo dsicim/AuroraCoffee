@@ -117,7 +117,7 @@ export default function ProductDetailPage() {
         <span className="font-semibold text-[var(--aurora-text-strong)]">{product.name}</span>
       </div>
 
-      <div className="mt-6 aurora-page-intro-split">
+      <div className="mt-6 aurora-page-intro-split lg:items-start">
         <AuroraWidget
           title={product.name}
           subtitle={getProductTypeLabel(product)}
@@ -133,50 +133,29 @@ export default function ProductDetailPage() {
               {product.description}
             </p>
           </AuroraInset>
-
-          <div className="aurora-summary-strip xl:grid-cols-3">
-            <AuroraWidget
-              title={availability.hasStock ? String(availability.totalStock) : 'Sold out'}
-              subtitle="Stock"
-              icon="package"
-              className="aurora-summary-card p-4"
-            />
-            <AuroraWidget
-              title={formatCurrency(product.price)}
-              subtitle="Price"
-              icon="chart"
-              className="aurora-summary-card p-4"
-            />
-            <AuroraWidget
-              title={getProductCategoryLabel(product)}
-              subtitle="Category"
-              icon="grid"
-              className="aurora-summary-card p-4"
-            />
-          </div>
         </AuroraWidget>
 
         <AuroraWidget
           title="Product details"
-          subtitle="Live catalog entry"
+          subtitle={getProductCategoryLabel(product)}
           icon="spark"
           className="aurora-showroom-panel p-6 sm:p-8"
           headerAside={<FavoriteToggleButton productId={product.slug} productName={product.name} />}
         >
           <AuroraInset className="mt-1">
-            <p className="text-base leading-8 text-[var(--aurora-text)]">
-              {product.description}
-            </p>
-
             {notes.length ? (
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2">
                 {notes.map((note) => (
                   <span key={note} className="aurora-chip">
                     {note}
                   </span>
                 ))}
               </div>
-            ) : null}
+            ) : (
+              <p className="text-base leading-8 text-[var(--aurora-text)]">
+                {product.description}
+              </p>
+            )}
           </AuroraInset>
 
           <AuroraInset className="mt-6">
@@ -215,7 +194,7 @@ export default function ProductDetailPage() {
             ) : null}
           </AuroraInset>
 
-          <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             {attributeCards.map((card) => (
               <AuroraWidget
                 key={card.subtitle}
