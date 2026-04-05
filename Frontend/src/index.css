@@ -1363,26 +1363,133 @@ img {
     -moz-appearance: none;
   }
 
-  .aurora-preview-select-wrap {
+  .aurora-preview-dropdown {
     position: relative;
   }
 
-  .aurora-preview-select {
+  .aurora-preview-trigger {
+    position: relative;
+    width: 100%;
     min-height: 4.1rem;
-    padding-right: 4rem;
+    border: 1px solid rgba(255, 248, 241, 0.4);
     border-radius: 1.5rem;
+    padding-right: 4rem;
+    padding-left: 1.25rem;
+    text-align: left;
+    color: var(--aurora-text-strong);
     background:
       radial-gradient(circle at 12% 16%, rgba(255, 255, 255, 0.56), transparent 24%),
       linear-gradient(180deg, rgba(255, 255, 255, 0.44), rgba(255, 250, 245, 0.22) 58%, rgba(247, 239, 232, 0.16)),
       rgba(255, 252, 248, 0.24);
-    font-size: 1.05rem;
-    font-weight: 600;
-    letter-spacing: -0.02em;
     box-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.72),
       inset 0 -1px 0 rgba(255, 255, 255, 0.16),
       0 16px 30px rgba(47, 29, 19, 0.08),
       0 3px 8px rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(10px) saturate(122%);
+    -webkit-backdrop-filter: blur(10px) saturate(122%);
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease,
+      background 160ms ease,
+      transform 160ms ease;
+  }
+
+  .aurora-preview-trigger:hover {
+    transform: translateY(-1px);
+    border-color: rgba(134, 169, 185, 0.48);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.74),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+      0 18px 34px rgba(83, 116, 141, 0.12),
+      0 3px 8px rgba(255, 255, 255, 0.24);
+  }
+
+  .aurora-preview-trigger.is-open {
+    border-color: rgba(134, 169, 185, 0.64);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.74),
+      inset 0 -1px 0 rgba(255, 255, 255, 0.18),
+      0 18px 34px rgba(83, 116, 141, 0.14),
+      0 0 0 4px rgba(134, 169, 185, 0.1);
+  }
+
+  .aurora-preview-trigger-label {
+    display: block;
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  .aurora-preview-trigger-label.is-placeholder {
+    color: rgba(88, 69, 58, 0.66);
+  }
+
+  .aurora-preview-menu {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(100% + 0.7rem);
+    z-index: 30;
+    display: grid;
+    gap: 0.55rem;
+    padding: 0.8rem;
+    border: 1px solid rgba(255, 248, 241, 0.42);
+    border-radius: 1.5rem;
+    background:
+      radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.58), transparent 22%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(252, 246, 240, 0.3) 58%, rgba(247, 239, 232, 0.24)),
+      rgba(255, 251, 247, 0.76);
+    backdrop-filter: blur(16px) saturate(126%);
+    -webkit-backdrop-filter: blur(16px) saturate(126%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      0 20px 36px rgba(47, 29, 19, 0.12);
+  }
+
+  .aurora-preview-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(255, 248, 241, 0.26);
+    border-radius: 1.15rem;
+    text-align: left;
+    color: var(--aurora-text-strong);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 250, 245, 0.14)),
+      rgba(255, 252, 248, 0.22);
+    transition:
+      transform 140ms ease,
+      border-color 140ms ease,
+      background 140ms ease,
+      box-shadow 140ms ease;
+  }
+
+  .aurora-preview-option:hover {
+    transform: translateY(-1px);
+    border-color: rgba(134, 169, 185, 0.36);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(245, 251, 255, 0.16)),
+      rgba(239, 246, 249, 0.28);
+    box-shadow: 0 12px 24px rgba(83, 116, 141, 0.1);
+  }
+
+  .aurora-preview-option.is-selected {
+    border-color: rgba(134, 169, 185, 0.46);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.54), rgba(241, 249, 252, 0.18)),
+      rgba(230, 239, 244, 0.34);
+  }
+
+  .aurora-preview-check {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--aurora-olive-deep);
   }
 
   .aurora-preview-select-icon {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
@@ -38,6 +38,73 @@ function buildAttributeCards(product) {
 const placeholderWeightOptions = ['250 g', '500 g', '1 kg']
 const placeholderGrindOptions = ['Whole bean', 'Pour over', 'Espresso']
 
+function PreviewDropdown({
+  value,
+  placeholder,
+  options,
+  open,
+  onToggle,
+  onSelect,
+}) {
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const handlePointerDown = (event) => {
+      if (!wrapperRef.current?.contains(event.target)) {
+        onToggle(false)
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [onToggle, open])
+
+  return (
+    <div ref={wrapperRef} className="aurora-preview-dropdown mt-3">
+      <button
+        type="button"
+        className={`aurora-preview-trigger ${open ? 'is-open' : ''}`}
+        onClick={() => onToggle(!open)}
+        aria-expanded={open ? 'true' : 'false'}
+      >
+        <span className={`aurora-preview-trigger-label ${value ? '' : 'is-placeholder'}`}>
+          {value || placeholder}
+        </span>
+        <span className="aurora-preview-select-icon" aria-hidden="true">
+          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 7 5 5 5-5" />
+          </svg>
+        </span>
+      </button>
+
+      {open ? (
+        <div className="aurora-preview-menu">
+          {options.map((option) => (
+            <button
+              key={option}
+              type="button"
+              className={`aurora-preview-option ${value === option ? 'is-selected' : ''}`}
+              onClick={() => {
+                onSelect(option)
+                onToggle(false)
+              }}
+            >
+              <span>{option}</span>
+              {value === option ? <span className="aurora-preview-check">Selected</span> : null}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function ProductDetailPage() {
   const { slug } = useParams()
   const { product, loading, error } = useProductBySlug(slug)
@@ -47,6 +114,10 @@ export default function ProductDetailPage() {
     productSlug: '',
     grind: '',
     weight: '',
+  })
+  const [openPreviewMenu, setOpenPreviewMenu] = useState({
+    productSlug: '',
+    menu: '',
   })
 
   useEffect(() => {
@@ -107,6 +178,7 @@ export default function ProductDetailPage() {
   const attributeCards = buildAttributeCards(product)
   const previewGrind = previewSelection.productSlug === product.slug ? previewSelection.grind : ''
   const previewWeight = previewSelection.productSlug === product.slug ? previewSelection.weight : ''
+  const activePreviewMenu = openPreviewMenu.productSlug === product.slug ? openPreviewMenu.menu : ''
 
   const handleAddToCart = () => {
     if (!availability.hasStock) {
@@ -180,31 +252,25 @@ export default function ProductDetailPage() {
                       To be implemented
                     </span>
                   </div>
-                  <div className="aurora-preview-select-wrap mt-3">
-                    <select
-                      value={previewGrind}
-                      onChange={(event) => {
-                        setPreviewSelection({
-                          productSlug: product.slug,
-                          grind: event.target.value,
-                          weight: '',
-                        })
-                      }}
-                      className="aurora-select aurora-preview-select"
-                    >
-                      <option value="">Select grind</option>
-                      {placeholderGrindOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="aurora-preview-select-icon" aria-hidden="true">
-                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m5 7 5 5 5-5" />
-                      </svg>
-                    </span>
-                  </div>
+                  <PreviewDropdown
+                    value={previewGrind}
+                    placeholder="Select grind"
+                    options={placeholderGrindOptions}
+                    open={activePreviewMenu === 'grind'}
+                    onToggle={(nextOpen) => {
+                      setOpenPreviewMenu({
+                        productSlug: product.slug,
+                        menu: nextOpen ? 'grind' : '',
+                      })
+                    }}
+                    onSelect={(option) => {
+                      setPreviewSelection({
+                        productSlug: product.slug,
+                        grind: option,
+                        weight: '',
+                      })
+                    }}
+                  />
                 </div>
 
                 {previewGrind ? (
@@ -217,31 +283,25 @@ export default function ProductDetailPage() {
                         To be implemented
                       </span>
                     </div>
-                    <div className="aurora-preview-select-wrap mt-3">
-                      <select
-                        value={previewWeight}
-                        onChange={(event) => {
-                          setPreviewSelection((current) => ({
-                            productSlug: product.slug,
-                            grind: current.productSlug === product.slug ? current.grind : '',
-                            weight: event.target.value,
-                          }))
-                        }}
-                        className="aurora-select aurora-preview-select"
-                      >
-                        <option value="">Select weight</option>
-                        {placeholderWeightOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="aurora-preview-select-icon" aria-hidden="true">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="m5 7 5 5 5-5" />
-                        </svg>
-                      </span>
-                    </div>
+                    <PreviewDropdown
+                      value={previewWeight}
+                      placeholder="Select weight"
+                      options={placeholderWeightOptions}
+                      open={activePreviewMenu === 'weight'}
+                      onToggle={(nextOpen) => {
+                        setOpenPreviewMenu({
+                          productSlug: product.slug,
+                          menu: nextOpen ? 'weight' : '',
+                        })
+                      }}
+                      onSelect={(option) => {
+                        setPreviewSelection((current) => ({
+                          productSlug: product.slug,
+                          grind: current.productSlug === product.slug ? current.grind : '',
+                          weight: option,
+                        }))
+                      }}
+                    />
                   </div>
                 ) : null}
               </div>
