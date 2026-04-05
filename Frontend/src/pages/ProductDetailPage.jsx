@@ -240,9 +240,9 @@ export default function ProductDetailPage() {
             )}
           </AuroraInset>
 
-          <AuroraInset className="mt-6">
+          <AuroraInset className="relative mt-6 overflow-visible">
             {isCoffeeProduct(product) ? (
-              <div className="mb-6 grid gap-5">
+              <div className="relative z-20 mb-6 grid gap-5">
                 <div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
@@ -307,7 +307,7 @@ export default function ProductDetailPage() {
               </div>
             ) : null}
 
-            <div className="flex items-start justify-between gap-4">
+            <div className="relative z-10 flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                   Current price
