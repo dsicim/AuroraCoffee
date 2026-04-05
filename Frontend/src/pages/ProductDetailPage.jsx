@@ -180,24 +180,31 @@ export default function ProductDetailPage() {
                       To be implemented
                     </span>
                   </div>
-                  <select
-                    value={previewGrind}
-                    onChange={(event) => {
-                      setPreviewSelection({
-                        productSlug: product.slug,
-                        grind: event.target.value,
-                        weight: '',
-                      })
-                    }}
-                    className="aurora-select mt-3"
-                  >
-                    <option value="">Select grind</option>
-                    {placeholderGrindOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="aurora-preview-select-wrap mt-3">
+                    <select
+                      value={previewGrind}
+                      onChange={(event) => {
+                        setPreviewSelection({
+                          productSlug: product.slug,
+                          grind: event.target.value,
+                          weight: '',
+                        })
+                      }}
+                      className="aurora-select aurora-preview-select"
+                    >
+                      <option value="">Select grind</option>
+                      {placeholderGrindOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                    <span className="aurora-preview-select-icon" aria-hidden="true">
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m5 7 5 5 5-5" />
+                      </svg>
+                    </span>
+                  </div>
                 </div>
 
                 {previewGrind ? (
@@ -210,24 +217,31 @@ export default function ProductDetailPage() {
                         To be implemented
                       </span>
                     </div>
-                    <select
-                      value={previewWeight}
-                      onChange={(event) => {
-                        setPreviewSelection((current) => ({
-                          productSlug: product.slug,
-                          grind: current.productSlug === product.slug ? current.grind : '',
-                          weight: event.target.value,
-                        }))
-                      }}
-                      className="aurora-select mt-3"
-                    >
-                      <option value="">Select weight</option>
-                      {placeholderWeightOptions.map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="aurora-preview-select-wrap mt-3">
+                      <select
+                        value={previewWeight}
+                        onChange={(event) => {
+                          setPreviewSelection((current) => ({
+                            productSlug: product.slug,
+                            grind: current.productSlug === product.slug ? current.grind : '',
+                            weight: event.target.value,
+                          }))
+                        }}
+                        className="aurora-select aurora-preview-select"
+                      >
+                        <option value="">Select weight</option>
+                        {placeholderWeightOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      <span className="aurora-preview-select-icon" aria-hidden="true">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m5 7 5 5 5-5" />
+                        </svg>
+                      </span>
+                    </div>
                   </div>
                 ) : null}
               </div>
