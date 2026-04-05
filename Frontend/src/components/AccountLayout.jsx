@@ -103,8 +103,8 @@ export default function AccountLayout({
             </div>
           </section>
 
-          <section className="aurora-content-split xl:grid-cols-[16.5rem_minmax(0,1fr)]">
-            <aside className="aurora-operational-card aurora-account-sidebar h-fit rounded-[2rem] p-5">
+          <section className="aurora-content-split relative isolate xl:grid-cols-[16.5rem_minmax(0,1fr)]">
+            <aside className="aurora-operational-card aurora-account-sidebar relative z-20 h-fit rounded-[2rem] p-5">
               <p className="aurora-kicker">Navigate</p>
               <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">
                 {accountLinks.map((item) => {
@@ -132,7 +132,7 @@ export default function AccountLayout({
               </p>
             </aside>
 
-            <div className="min-w-0">{children}</div>
+            <div className="relative z-0 min-w-0">{children}</div>
           </section>
         </div>
       </main>
