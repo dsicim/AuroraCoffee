@@ -15,7 +15,7 @@ import {
   getOrderStatus,
   restoreOrderItemsToCart,
 } from '../lib/accountActions'
-import { cartChangeEvent, getCartCount, getCartItems, getCartSubtotal } from '../lib/cart'
+import { cartChangeEvent, getCartCount, getCartSubtotal } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import { useProductCatalog } from '../lib/products'
 
@@ -31,7 +31,6 @@ export default function CustomerPage() {
   const [orders, setOrders] = useState(() => getOrderHistory())
   const [addresses, setAddresses] = useState(() => getSavedAddresses())
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
-  const [cartItems, setCartItems] = useState(() => getCartItems())
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
   const [feedback, setFeedback] = useState('')
@@ -44,7 +43,6 @@ export default function CustomerPage() {
     }
 
     const syncCartState = () => {
-      setCartItems(getCartItems())
       setCartCount(getCartCount())
       setCartSubtotal(getCartSubtotal())
     }
@@ -135,197 +133,77 @@ export default function CustomerPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-8">
-          <section className="aurora-summary-strip">
-            <div className="aurora-summary-lead p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="aurora-kicker">Customer snapshot</p>
-                  <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                    {mostRecentOrder ? currentStatus : 'No order yet'}
-                  </h2>
-                </div>
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {mostRecentOrder
-                    ? `${mostRecentOrder.reference} is currently ${currentStatus?.toLowerCase()}.`
-                    : 'Place your first order to start tracking it here.'}
-                </p>
-              </div>
-            </div>
+      <section className="aurora-ops-panel p-8">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+              At a glance
+            </p>
+            <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+              Keep the next step simple.
+            </h2>
+          </div>
 
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Cart
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {cartCount} item{cartCount === 1 ? '' : 's'}
-                  </p>
-                </div>
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {cartCount
-                    ? `${formatCurrency(cartSubtotal)} ready for checkout.`
-                    : 'Your cart is ready for the next coffee you add.'}
-                </p>
-              </div>
-            </div>
-
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Favorites
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {favoriteIds.length}
-                  </p>
-                </div>
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  Return to your saved coffees and add a package fast.
-                </p>
-              </div>
-            </div>
-
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Default address
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {defaultAddress ? defaultAddress.label || 'Ready' : 'Missing'}
-                  </p>
-                </div>
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {defaultAddress
-                    ? `${defaultAddress.city}, ${defaultAddress.postalCode}`
-                    : 'Add a default address to speed up checkout.'}
-                </p>
-              </div>
-            </div>
-          </section>
-
-          <section className="aurora-ops-panel p-8">
-            <div className="aurora-widget-header">
-              <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Quick actions
-                </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  What do you want to do next?
-                </h2>
-              </div>
-              <Link
-                to="/account"
-                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-              >
-                Open account tools
-              </Link>
-            </div>
-
-            <div className="aurora-widget-actions mt-8">
-              <LiquidGlassButton
-                as={Link}
-                to="/products"
-              >
-                Continue shopping
+          <div className="aurora-widget-actions">
+            <LiquidGlassButton as={Link} to="/products">
+              Continue shopping
+            </LiquidGlassButton>
+            <LiquidGlassButton as={Link} to="/cart" variant="secondary">
+              Open cart
+            </LiquidGlassButton>
+            {mostRecentOrder ? (
+              <LiquidGlassButton type="button" variant="soft" onClick={handleReorderLatest}>
+                Reorder latest
               </LiquidGlassButton>
-              <LiquidGlassButton
-                as={Link}
-                to="/cart"
-                variant="secondary"
-              >
-                Open cart
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                as={Link}
-                to="/account/orders"
-                variant="quiet"
-              >
-                Order history
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                as={Link}
-                to="/account/favorites"
-                variant="quiet"
-              >
-                Go to favorites
-              </LiquidGlassButton>
-              {mostRecentOrder ? (
-                <LiquidGlassButton
-                  type="button"
-                  variant="soft"
-                  onClick={handleReorderLatest}
-                >
-                  Reorder latest order
-                </LiquidGlassButton>
-              ) : null}
-            </div>
-          </section>
-
-          <section className="aurora-ops-panel p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Favorites at a glance
-                </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  Saved products ready to return
-                </h2>
-              </div>
-              <Link
-                to="/account/favorites"
-                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-              >
-                View all favorites
-              </Link>
-            </div>
-
-            {!favoriteProducts.length ? (
-              <p className="mt-6 text-sm leading-7 text-[var(--aurora-text)]">
-                Save a few products from the catalog and they will appear here with one-click add shortcuts.
-              </p>
-            ) : (
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                {favoriteProducts.map((product) => (
-                  <div
-                    key={product.slug}
-                    className="aurora-ops-card p-5"
-                  >
-                    <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      {product.categoryName || product.parentCategoryName || 'Product'}
-                    </p>
-                    <h3 className="mt-3 font-display text-2xl text-[var(--aurora-text-strong)]">
-                      {product.name}
-                    </h3>
-                    <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-                      {product.description}
-                    </p>
-                    <div className="mt-5 flex flex-wrap gap-3">
-                      <Link
-                        to={`/products/${product.slug}`}
-                        className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-                      >
-                        View product
-                      </Link>
-                      <LiquidGlassButton
-                        type="button"
-                        variant="soft"
-                        size="compact"
-                        onClick={() => handleQuickAddFavorite(product.slug)}
-                      >
-                        Add to cart
-                      </LiquidGlassButton>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
+            ) : null}
+          </div>
         </div>
 
+        <div className="mt-8 grid gap-4 md:grid-cols-3">
+          <div className="aurora-ops-card p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+              Latest order
+            </p>
+            <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+              {mostRecentOrder ? currentStatus : 'No order'}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+              {mostRecentOrder
+                ? `${mostRecentOrder.reference} is the latest order on this account.`
+                : 'Place your first order and it will appear here.'}
+            </p>
+          </div>
+
+          <div className="aurora-ops-card p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+              Cart
+            </p>
+            <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+              {cartCount ? formatCurrency(cartSubtotal) : 'Empty'}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+              {cartCount
+                ? `${cartCount} item${cartCount === 1 ? '' : 's'} ready for checkout.`
+                : 'Your cart is ready for the next product you add.'}
+            </p>
+          </div>
+
+          <div className="aurora-ops-card p-5">
+            <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+              Saved tools
+            </p>
+            <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+              {favoriteIds.length} / {defaultAddress ? 'Ready' : 'Add one'}
+            </p>
+            <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+              {favoriteIds.length} favorite{favoriteIds.length === 1 ? '' : 's'} and{' '}
+              {defaultAddress ? 'a default address are in place.' : 'no default address yet.'}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-8 grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
           <section className="aurora-ops-panel p-8">
             <div className="flex items-end justify-between gap-4">
@@ -383,6 +261,64 @@ export default function CustomerPage() {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                  Favorites
+                </p>
+                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                  Saved products
+                </h2>
+              </div>
+              <Link
+                to="/account/favorites"
+                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+              >
+                View all
+              </Link>
+            </div>
+
+            {!favoriteProducts.length ? (
+              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                Save products from the catalog and they will appear here for a quick return.
+              </p>
+            ) : (
+              <div className="mt-6 space-y-3">
+                {favoriteProducts.slice(0, 2).map((product) => (
+                  <div key={product.slug} className="aurora-ops-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--aurora-text-strong)]">
+                        {product.name}
+                      </p>
+                      <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                        {product.categoryName || product.parentCategoryName || 'Product'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Link
+                        to={`/products/${product.slug}`}
+                        className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                      >
+                        View product
+                      </Link>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="soft"
+                        size="compact"
+                        onClick={() => handleQuickAddFavorite(product.slug)}
+                      >
+                        Add to cart
+                      </LiquidGlassButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <div className="space-y-8">
+          <section className="aurora-ops-panel p-8">
+            <div className="flex items-end justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                   Checkout readiness
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -414,47 +350,15 @@ export default function CustomerPage() {
                 Add a default saved address so delivery details can prefill automatically during checkout.
               </p>
             )}
-          </section>
 
-          <section className="aurora-ops-panel p-8">
-            <div className="flex items-end justify-between gap-4">
-              <div>
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Cart snapshot
-                </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {cartCount ? formatCurrency(cartSubtotal) : 'Empty cart'}
-                </h2>
-              </div>
-              <Link
-                to="/cart"
-                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-              >
-                Open cart
-              </Link>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <LiquidGlassButton as={Link} to="/account/addresses" variant="quiet">
+                Manage addresses
+              </LiquidGlassButton>
+              <LiquidGlassButton as={Link} to="/account/orders" variant="quiet">
+                Order history
+              </LiquidGlassButton>
             </div>
-
-            {cartItems.length ? (
-              <div className="mt-6 space-y-3">
-                {cartItems.slice(0, 3).map((item) => (
-                  <div
-                    key={item.id}
-                    className="aurora-ops-card px-4 py-3"
-                  >
-                    <p className="font-semibold text-[var(--aurora-text-strong)]">
-                      {item.name}
-                    </p>
-                    <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                      {item.metaLine || item.category || 'Product'} · Qty {item.quantity}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Once you add a few coffees, the latest cart snapshot will appear here for a quick return to checkout.
-              </p>
-            )}
           </section>
         </div>
       </div>
