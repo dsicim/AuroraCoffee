@@ -31,20 +31,20 @@ export default function AuthLayout({
   children,
 }) {
   return (
-    <div className="aurora-page px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
+    <div className="aurora-page px-3 py-4 sm:px-6 lg:px-10 lg:py-8">
       <LiquidGlassDefs />
       <AuroraAtmosphere sketch />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-7xl flex-col">
-        <header className="flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-4">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-7xl flex-col">
+        <header className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
+          <Link to="/" className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
               src={auroraLogo}
               alt="Aurora Coffee Roastery logo"
-              className="h-18 w-18 rounded-[1.8rem] border border-white/20 object-cover shadow-[0_22px_52px_rgba(31,19,13,0.14)] sm:h-20 sm:w-20"
+              className="h-14 w-14 rounded-[1.4rem] border border-white/20 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.14)] sm:h-20 sm:w-20 sm:rounded-[1.8rem]"
             />
-            <div>
-              <p className="font-display text-2xl text-[var(--aurora-text-strong)]">
+            <div className="min-w-0">
+              <p className="font-display text-[1.15rem] leading-tight text-[var(--aurora-text-strong)] sm:text-2xl">
                 Aurora Coffee
               </p>
               <p className="aurora-kicker mt-1">Account access</p>
@@ -55,22 +55,26 @@ export default function AuthLayout({
             as={Link}
             to={topLinkTo}
             variant="quiet"
-            size="default"
+            size="compact"
+            className="shrink-0"
+            contentClassName="whitespace-nowrap"
           >
             {topLinkLabel}
           </LiquidGlassButton>
         </header>
 
-        <main className="grid flex-1 items-center gap-8 py-8 lg:grid-cols-[0.76fr_1.24fr] lg:py-10">
-          <section className="aurora-stack-6">
-            <div className="aurora-stack-4">
+        <main className="grid flex-1 items-start gap-6 py-5 sm:py-8 lg:grid-cols-[0.76fr_1.24fr] lg:items-center lg:gap-8 lg:py-10">
+          <section className="order-2 aurora-stack-5 px-1 lg:order-1">
+            <div className="aurora-stack-3 sm:aurora-stack-4">
               <p className="aurora-kicker">{eyebrow}</p>
-              <h1 className="aurora-heading text-5xl md:text-6xl">{title}</h1>
-              <p className="aurora-copy max-w-xl text-lg">{description}</p>
+              <h1 className="aurora-heading text-[clamp(2.85rem,13vw,5rem)] leading-[0.92] md:text-6xl">
+                {title}
+              </h1>
+              <p className="aurora-copy max-w-xl text-base sm:text-lg">{description}</p>
             </div>
 
             {chips.length ? (
-              <div className="flex flex-wrap gap-3">
+              <div className="hidden flex-wrap gap-3 sm:flex">
                 {chips.map((chip) => (
                   <span key={chip} className="aurora-chip">
                     {chip}
@@ -79,18 +83,18 @@ export default function AuthLayout({
               </div>
             ) : null}
 
-            {aside ? <div>{aside}</div> : null}
+            {aside ? <div className="hidden md:block">{aside}</div> : null}
           </section>
 
           <LiquidGlassFrame
             as="section"
-            className="aurora-showcase-band glass-form"
-            contentClassName="p-6 sm:p-8 lg:p-10"
+            className="order-1 aurora-showcase-band glass-form lg:order-2"
+            contentClassName="p-5 sm:p-8 lg:p-10"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="aurora-kicker">{cardEyebrow}</p>
-                <h2 className="aurora-heading mt-3 text-4xl">{cardTitle}</h2>
+                <h2 className="aurora-heading mt-3 text-3xl sm:text-4xl">{cardTitle}</h2>
               </div>
               {cardBadge}
             </div>
@@ -107,12 +111,12 @@ export default function AuthLayout({
               </div>
             ) : null}
 
-            <div className="mt-8 rounded-[1.8rem] border border-white/14 bg-[rgba(255,252,248,0.74)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] sm:p-5">
+            <div className="mt-6 rounded-[1.8rem] border border-white/14 bg-[rgba(255,252,248,0.74)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] sm:mt-8 sm:p-5">
               {children}
             </div>
 
             {helper ? (
-              <div className="mt-8 aurora-solid-plate rounded-[1.7rem] p-5 text-sm leading-7 text-[var(--aurora-text)]">
+              <div className="mt-6 aurora-solid-plate rounded-[1.7rem] p-4 text-sm leading-7 text-[var(--aurora-text)] sm:mt-8 sm:p-5">
                 {helper}
               </div>
             ) : null}

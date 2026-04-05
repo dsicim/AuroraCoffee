@@ -69,7 +69,7 @@ export default function ProductsPage() {
         <LiquidGlassFrame
           as="div"
           className="aurora-glass-dock glass-search rounded-[2.2rem]"
-          contentClassName="p-5 sm:p-6 lg:p-7"
+          contentClassName="p-4 sm:p-6 lg:p-7"
         >
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <label className="block">
@@ -140,7 +140,7 @@ export default function ProductsPage() {
           title={`${filteredProducts.length} products`}
           subtitle="Catalog view"
           icon="package"
-          className="aurora-operational-card h-fit rounded-[2rem] p-6"
+          className="aurora-operational-card hidden h-fit rounded-[2rem] p-6 lg:block"
         >
           <p className="text-sm leading-8 text-[var(--aurora-text)]">
             {loading
@@ -155,7 +155,7 @@ export default function ProductsPage() {
       <section className="aurora-stack-6">
         <div>
           <p className="aurora-kicker">Catalog results</p>
-          <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
+          <h2 className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)] sm:mt-4 sm:text-4xl">
             {loading ? 'Loading products' : `${filteredProducts.length} product${filteredProducts.length === 1 ? '' : 's'}`}
           </h2>
         </div>

@@ -146,15 +146,15 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 px-4 pt-4 sm:px-6 lg:px-10 lg:pt-6">
+    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
       <div className="aurora-container">
         <LiquidGlassFrame
           className="aurora-glass-dock glass-nav relative overflow-visible rounded-[2rem]"
-          contentClassName="px-3 py-3 sm:px-4 lg:px-5"
+          contentClassName="px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-5"
         >
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
           <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
-            <div className="flex items-center gap-3 sm:gap-4">
+            <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
               <LiquidGlassIconButton
                 type="button"
                 aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
@@ -184,14 +184,14 @@ export default function Header() {
                 </svg>
               </LiquidGlassIconButton>
 
-              <Link to="/" className="flex items-center gap-3">
+              <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <img
                   src={auroraLogo}
                   alt="Aurora Coffee Roastery logo"
-                  className="h-14 w-14 rounded-[1.5rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16"
+                  className="h-12 w-12 rounded-[1.2rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
                 />
-                <div>
-                  <p className="font-display text-2xl leading-none text-[var(--aurora-text-strong)]">
+                <div className="min-w-0">
+                  <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">
                     Aurora Coffee
                   </p>
                 </div>
@@ -332,6 +332,7 @@ export default function Header() {
                   to="/login"
                   variant="secondary"
                   size="compact"
+                  contentClassName="whitespace-nowrap"
                 >
                   Login
                 </LiquidGlassButton>
