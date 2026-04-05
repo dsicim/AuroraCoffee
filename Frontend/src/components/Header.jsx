@@ -190,7 +190,7 @@ export default function Header() {
                   alt="Aurora Coffee Roastery logo"
                   className="h-12 w-12 rounded-[1.2rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
                 />
-                <div className="min-w-0">
+                <div className="hidden min-w-0 sm:block">
                   <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">
                     Aurora Coffee
                   </p>
@@ -282,8 +282,14 @@ export default function Header() {
                   </LiquidGlassButton>
 
                   {menuOpen ? (
-                    <div className="absolute right-0 top-full z-30 w-72 pt-4">
-                      <div className="aurora-showcase-band aurora-account-menu p-3">
+                    <>
+                      <div
+                        className="fixed inset-0 z-40 bg-[rgba(248,244,239,0.38)] backdrop-blur-[2px] md:hidden"
+                        onClick={() => setMenuOpen(false)}
+                        aria-hidden="true"
+                      />
+                      <div className="fixed inset-x-3 top-[6.4rem] z-50 md:absolute md:right-0 md:left-auto md:top-full md:z-30 md:w-72 md:pt-4">
+                        <div className="aurora-showcase-band aurora-account-menu p-3">
                         <Link
                           to={resolvedRole === userRoles.customer ? '/account' : getRoleLandingPath(resolvedRole)}
                           onClick={() => setMenuOpen(false)}
@@ -322,8 +328,9 @@ export default function Header() {
                         >
                           Logout
                         </LiquidGlassButton>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   ) : null}
                 </div>
               ) : (
