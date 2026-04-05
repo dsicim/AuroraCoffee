@@ -170,7 +170,7 @@ export default function ProductDetailPage() {
 
           <AuroraInset className="mt-6">
             {isCoffeeProduct(product) ? (
-              <div className="mb-6 grid gap-5 sm:grid-cols-2">
+              <div className="mb-6 grid gap-5">
                 <div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
@@ -200,37 +200,36 @@ export default function ProductDetailPage() {
                   </select>
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Weight
-                    </p>
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                      To be implemented
-                    </span>
+                {previewGrind ? (
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                        Weight
+                      </p>
+                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                        To be implemented
+                      </span>
+                    </div>
+                    <select
+                      value={previewWeight}
+                      onChange={(event) => {
+                        setPreviewSelection((current) => ({
+                          productSlug: product.slug,
+                          grind: current.productSlug === product.slug ? current.grind : '',
+                          weight: event.target.value,
+                        }))
+                      }}
+                      className="aurora-select mt-3"
+                    >
+                      <option value="">Select weight</option>
+                      {placeholderWeightOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
                   </div>
-                  <select
-                    value={previewWeight}
-                    onChange={(event) => {
-                      setPreviewSelection((current) => ({
-                        productSlug: product.slug,
-                        grind: current.productSlug === product.slug ? current.grind : '',
-                        weight: event.target.value,
-                      }))
-                    }}
-                    disabled={!previewGrind}
-                    className="aurora-select mt-3"
-                  >
-                    <option value="">
-                      {previewGrind ? 'Select weight' : 'Select grind first'}
-                    </option>
-                    {placeholderWeightOptions.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                ) : null}
               </div>
             ) : null}
 
