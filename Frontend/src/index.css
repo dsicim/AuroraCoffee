@@ -1522,12 +1522,39 @@ img {
     opacity: 0;
   }
 
+  .aurora-account-menu {
+    --aurora-liquid-tint: rgb(246, 243, 239);
+    --aurora-liquid-fill-top: rgb(255, 255, 255);
+    --aurora-liquid-fill-bottom: rgb(245, 241, 237);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.92);
+    --aurora-liquid-shadow: 0 18px 32px rgba(33, 20, 13, 0.08);
+    --aurora-liquid-blur: 0px;
+    background:
+      linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(247, 244, 240) 100%),
+      rgb(246, 243, 239);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .aurora-account-menu::before {
+    opacity: 0.34;
+  }
+
+  .aurora-account-menu::after {
+    opacity: 0;
+  }
+
   .aurora-account-menu-profile {
-    --aurora-liquid-tint: rgba(249, 246, 242, 0.96);
-    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.94);
-    --aurora-liquid-fill-bottom: rgba(247, 243, 239, 0.82);
-    --aurora-liquid-border: rgba(249, 245, 241, 0.76);
-    --aurora-liquid-blur: 18px;
+    --aurora-liquid-tint: rgb(249, 246, 242);
+    --aurora-liquid-fill-top: rgb(255, 255, 255);
+    --aurora-liquid-fill-bottom: rgb(247, 243, 239);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.84);
+    --aurora-liquid-blur: 0px;
+    background:
+      linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(248, 244, 240) 100%),
+      rgb(249, 246, 242);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .aurora-account-trigger.button-wrap.button-variant-quiet,
