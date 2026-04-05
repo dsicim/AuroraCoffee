@@ -90,14 +90,18 @@ function mergeCartItems(baseItems, incomingItems) {
   return Array.from(merged.values())
 }
 
-function normalizeProductPrice(product) {
-  if (typeof product.price === 'number') {
-    return product.price
+function normalizeProductPrice(value) {
+  if (typeof value === 'number') {
+    return value
   }
 
-  if (typeof product.price === 'string') {
-    const numericPrice = Number(product.price.replace(/[^0-9.]/g, ''))
+  if (typeof value === 'string') {
+    const numericPrice = Number(value.replace(/[^0-9.]/g, ''))
     return Number.isFinite(numericPrice) ? numericPrice : 0
+  }
+
+  if (value && typeof value === 'object') {
+    return normalizeProductPrice(value.price)
   }
 
   return 0
