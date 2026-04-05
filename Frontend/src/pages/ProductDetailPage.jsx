@@ -35,6 +35,9 @@ function buildAttributeCards(product) {
   ]
 }
 
+const placeholderWeightOptions = ['250 g', '500 g', '1 kg']
+const placeholderGrindOptions = ['Whole bean', 'Pour over', 'Espresso']
+
 export default function ProductDetailPage() {
   const { slug } = useParams()
   const { product, loading, error } = useProductBySlug(slug)
@@ -159,6 +162,60 @@ export default function ProductDetailPage() {
           </AuroraInset>
 
           <AuroraInset className="mt-6">
+            {isCoffeeProduct(product) ? (
+              <div className="mb-6 grid gap-5 sm:grid-cols-2">
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Weight
+                    </p>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                      To be implemented
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {placeholderWeightOptions.map((option) => (
+                      <LiquidGlassButton
+                        key={option}
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled
+                        className="aurora-disabled-option"
+                      >
+                        {option}
+                      </LiquidGlassButton>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Grind
+                    </p>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                      To be implemented
+                    </span>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {placeholderGrindOptions.map((option) => (
+                      <LiquidGlassButton
+                        key={option}
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled
+                        className="aurora-disabled-option"
+                      >
+                        {option}
+                      </LiquidGlassButton>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
