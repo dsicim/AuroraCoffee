@@ -43,6 +43,11 @@ export default function ProductDetailPage() {
   const { product, loading, error } = useProductBySlug(slug)
   const { products } = useProductCatalog()
   const [feedback, setFeedback] = useState('')
+  const [previewSelection, setPreviewSelection] = useState({
+    productSlug: '',
+    grind: '',
+    weight: '',
+  })
 
   useEffect(() => {
     if (!feedback) {
@@ -100,6 +105,8 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
+  const previewGrind = previewSelection.productSlug === product.slug ? previewSelection.grind : ''
+  const previewWeight = previewSelection.productSlug === product.slug ? previewSelection.weight : ''
 
   const handleAddToCart = () => {
     if (!availability.hasStock) {
@@ -167,51 +174,62 @@ export default function ProductDetailPage() {
                 <div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Weight
-                    </p>
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                      To be implemented
-                    </span>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {placeholderWeightOptions.map((option) => (
-                      <LiquidGlassButton
-                        key={option}
-                        type="button"
-                        variant="quiet"
-                        size="compact"
-                        disabled
-                        className="aurora-disabled-option"
-                      >
-                        {option}
-                      </LiquidGlassButton>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                       Grind
                     </p>
                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
                       To be implemented
                     </span>
                   </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
+                  <select
+                    value={previewGrind}
+                    onChange={(event) => {
+                      setPreviewSelection({
+                        productSlug: product.slug,
+                        grind: event.target.value,
+                        weight: '',
+                      })
+                    }}
+                    className="aurora-select mt-3"
+                  >
+                    <option value="">Select grind</option>
                     {placeholderGrindOptions.map((option) => (
-                      <LiquidGlassButton
-                        key={option}
-                        type="button"
-                        variant="quiet"
-                        size="compact"
-                        disabled
-                        className="aurora-disabled-option"
-                      >
+                      <option key={option} value={option}>
                         {option}
-                      </LiquidGlassButton>
+                      </option>
                     ))}
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Weight
+                    </p>
+                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                      To be implemented
+                    </span>
                   </div>
+                  <select
+                    value={previewWeight}
+                    onChange={(event) => {
+                      setPreviewSelection((current) => ({
+                        productSlug: product.slug,
+                        grind: current.productSlug === product.slug ? current.grind : '',
+                        weight: event.target.value,
+                      }))
+                    }}
+                    disabled={!previewGrind}
+                    className="aurora-select mt-3"
+                  >
+                    <option value="">
+                      {previewGrind ? 'Select weight' : 'Select grind first'}
+                    </option>
+                    {placeholderWeightOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             ) : null}
