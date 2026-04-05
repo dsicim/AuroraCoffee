@@ -59,7 +59,7 @@ export default function AccountLayout({
     return (
       <div className="aurora-page">
         <LiquidGlassDefs />
-        <AuroraAtmosphere opacityClassName="opacity-80" />
+        <AuroraAtmosphere opacityClassName="opacity-25" />
         <Header />
 
         <main className="aurora-main">
@@ -86,7 +86,7 @@ export default function AccountLayout({
   return (
     <div className="aurora-page">
       <LiquidGlassDefs />
-      <AuroraAtmosphere opacityClassName="opacity-65" />
+      <AuroraAtmosphere opacityClassName="opacity-25" />
       <Header />
 
       <main className="aurora-main">
