@@ -19,6 +19,7 @@
     "iyzipay": {
         "api": "https://sandbox-api.iyzipay.com",
         "key": "Insert API key from iyzico's dashboard",
-        "secret": "Insert API secret from iyzico's dashboard"
+        "secret": "Insert API secret from iyzico's dashboard",
+        "storagekey": 'run -> node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" and paste the result here'
     }
 }

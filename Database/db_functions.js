@@ -416,6 +416,40 @@ func.getUserRole = async function (userId) {
     }
 };
 
+// --- User Card Storage Management ---
+
+func.setUserCards = async function (userId, newCardToken) {
+    if (!userId || !newCardToken) {
+        throw new DBError(400, 'User ID and new card token are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE users SET cctoken = ? WHERE id = ?', [newCardToken, userId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, message: 'User card token updated successfully' };
+    } catch (error) {
+        console.error('Set user cards error:', error);
+        throw new DBError(500, 'Failed to update user card token');
+    }
+};
+
+func.getUserCards = async function (userId) {
+    if (!userId) {
+        throw new DBError(400, 'User ID is required');
+    }
+    try {
+        const [rows] = await pool.execute('SELECT cctoken FROM users WHERE id = ?', [userId]);
+        if (rows.length === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, cardTokens: rows[0].cctoken };
+    } catch (error) {
+        console.error('Get user cards error:', error);
+        throw new DBError(500, 'Failed to fetch user card tokens');
+    }
+};
+
 // --- Comment & Rating Functions ---
 
 func.addComment = async function (userId, productId, text, rating) {
