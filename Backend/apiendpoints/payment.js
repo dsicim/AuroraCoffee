@@ -19,18 +19,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint[0] === "carddetails") {
         if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.bin || !body.data.price || isNaN(parseFloat(body.data.price))) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const binresponse = await IyzipayAPI(config, "POST", "payment/bin/check", {}, {locale:"tr",binNumber: body.data.bin});
-            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"tr",price:body.data.price,binNumber: body.data.bin});
-            if (binresponse && insresponse) {
-                if (binresponse.status === "success" && insresponse.status === "success") {
-                    return { s: 200, j: true, d: { bin: binresponse, ins: insresponse } };
+            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"en",price:body.data.price,binNumber: body.data.bin});
+            if (insresponse) {
+                if (insresponse.status === "success") {
+                    return { s: 200, j: true, d: { ins: insresponse } };
                 }
                 else {
-                    return { s: 400, j: true, d: { e: "Failed to fetch card details from payment provider", bin: binresponse, ins: insresponse } };
+                    return { s: 400, j: true, d: { e: "Failed to fetch card details from payment provider", ins: insresponse } };
                 }
             }
             else {
-                return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider", bin: binresponse, ins: insresponse } };
+                return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider", ins: insresponse } };
             }
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
