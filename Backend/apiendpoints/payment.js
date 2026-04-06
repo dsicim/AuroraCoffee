@@ -22,16 +22,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint[0] === "installments") {
         if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.bin) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const insresponse = (!body.data.price || isNaN(parseFloat(body.data.price))) ? await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"en",price:body.data.price,binNumber: body.data.bin}) : await IyzipayAPI(config, "POST", "payment/bin/check", {}, {locale:"en",binNumber: body.data.bin});
+            const insresponse = (!body.data.price || isNaN(parseFloat(body.data.price))) ? await IyzipayAPI(config, "POST", "payment/bin/check", {}, {locale:"en",binNumber: body.data.bin}) : await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"en",price:body.data.price,binNumber: body.data.bin});
             if (insresponse) {
                 if (insresponse.status === "success") {
-                    if (!body.data.price || isNaN(parseFloat(body.data.price))) {
-                        if (insresponse.installmentDetails && insresponse.installmentDetails[0]) return { s: 200, j: true, d: { card: {...getCardDetailsFromResponse(insresponse.installmentDetails[0]), agriculture: insresponse.agricultureEnabled === 1 ? true : false}, features: {force3DS: insresponse.installmentDetails[0].force3ds === 1 ? true: false, forceCVC: insresponse.installmentDetails[0].forceCvc === 1 ? true: false, DCCEnabled: insresponse.installmentDetails[0].dccEnabled === 1 ? true: false}, installments: (insresponse.installmentDetails[0].installmentPrices) ? insresponse.installmentDetails[0].installmentPrices.map(x => ({ months: x.installmentNumber, total: x.totalPrice, permonth: x.installmentPrice })): [] } };
-                        else return { s: 404, j: true, d: { e: "Installment details not found" } };
-                    }
-                    else {
-                        return { s: 200, j: true, d: { card: {...getCardDetailsFromResponse(insresponse)} } };
-                    }
+                    if (!body.data.price || isNaN(parseFloat(body.data.price))) return { s: 200, j: true, d: { card: {...getCardDetailsFromResponse(insresponse)} } };
+                    else if (insresponse.installmentDetails && insresponse.installmentDetails[0]) return { s: 200, j: true, d: { card: {...getCardDetailsFromResponse(insresponse.installmentDetails[0]), agriculture: insresponse.agricultureEnabled === 1 ? true : false}, features: {force3DS: insresponse.installmentDetails[0].force3ds === 1 ? true: false, forceCVC: insresponse.installmentDetails[0].forceCvc === 1 ? true: false, DCCEnabled: insresponse.installmentDetails[0].dccEnabled === 1 ? true: false}, installments: (insresponse.installmentDetails[0].installmentPrices) ? insresponse.installmentDetails[0].installmentPrices.map(x => ({ months: x.installmentNumber, total: x.totalPrice, permonth: x.installmentPrice })): [] } };
+                    else return { s: 404, j: true, d: { e: "Installment details not found" } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "Failed to fetch details from payment provider" } };
