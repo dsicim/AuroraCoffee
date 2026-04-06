@@ -15,5 +15,10 @@
         "pass": "The app password (make an app password on google accounts dashboard!)",
         "from": "Your gmail alias (you can use cloudflare routing for this)",
         "reply": "The address users could reply to incoming emails (For contact purposes)"
+    },
+    "iyzipay": {
+        "api": "https://sandbox-api.iyzipay.com",
+        "key": "Insert API key from iyzico's dashboard",
+        "secret": "Insert API secret from iyzico's dashboard"
     }
 }
