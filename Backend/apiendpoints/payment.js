@@ -16,7 +16,7 @@ async function IyzipayAPI(config, method, url, headers, body) {
     }).then(res => res.json()).catch(err => err);
 }
 function getCardDetailsFromResponse(insresponse) {
-    return { type: {"CREDIT_CARD":"Credit Card","DEBIT_CARD":"Debit Card","PREPAID_CARD":"Prepaid Card"}[insresponse.cardType] || "Unknown Card", provider: {"VISA":"Visa","MASTER_CARD":"MasterCard","AMERICAN_EXPRESS":"American Express","TROY":"Troy"}[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || "Unknown", bank: insresponse.bankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
+    return { type: {"CREDIT_CARD":"Credit Card","DEBIT_CARD":"Debit Card","PREPAID_CARD":"Prepaid Card"}[insresponse.cardType] || "Unknown Card", provider: {"VISA":"Visa","MASTER_CARD":"MasterCard","AMERICAN_EXPRESS":"American Express","TROY":"Troy"}[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "installments") {
