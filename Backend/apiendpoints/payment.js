@@ -18,6 +18,9 @@ async function IyzipayAPI(config, method, url, headers, body) {
 function getCardDetailsFromResponse(insresponse) {
     return { type: {"CREDIT_CARD":"Credit Card","DEBIT_CARD":"Debit Card","PREPAID_CARD":"Prepaid Card"}[insresponse.cardType] || "Unknown Card", provider: {"VISA":"Visa","MASTER_CARD":"MasterCard","AMERICAN_EXPRESS":"American Express","TROY":"Troy"}[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
 }
+function validateCreditCard(card) {
+    
+}
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "installments") {
         if (method === "POST") {
@@ -41,7 +44,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "methods") {
         if (method === "GET") {
-            
         }
         else if (method === "POST") {
 
