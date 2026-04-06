@@ -231,6 +231,9 @@ func.searchProducts = async function (query, sortBy = 'newest') {
             case 'price_desc':
                 sql += ' ORDER BY p.price DESC';
                 break;
+            case 'oldest':
+                sql += ' ORDER BY p.created_at ASC';
+                break;
             case 'newest':
             default:
                 sql += ' ORDER BY p.created_at DESC';
