@@ -119,8 +119,9 @@ async function RunServerMaintenance() {
                 const output = await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err);
                 console.log(output);
                 if (output.startsWith("Success:")) {
-                    config.version = latest.v;
-                    fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(config, null, 4), "utf-8");
+                    const cfg = JSON.parse(fs.readFileSync("./AuroraCoffee/Backend/config.json", "utf-8"));
+                    cfg.version = latest.v;
+                    fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
                     console.log("Updated version in config.json to " + latest.v);
                 }
             }
