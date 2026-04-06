@@ -19,8 +19,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint[0] === "carddetails") {
         if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.bin || !body.data.price || isNaN(parseFloat(body.data.price))) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const binresponse = await IyzipayAPI(config, "POST", "payment/bin/check", {}, {locale:"tr",binNumber: body.bin});
-            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"tr",price:body.price,binNumber: body.bin});
+            const binresponse = await IyzipayAPI(config, "POST", "payment/bin/check", {}, {locale:"tr",binNumber: body.data.bin});
+            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, {locale:"tr",price:body.data.price,binNumber: body.data.bin});
             if (binresponse && insresponse) {
                 if (binresponse.status === "success" && insresponse.status === "success") {
                     return { s: 200, j: true, d: { bin: binresponse, ins: insresponse } };
