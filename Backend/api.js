@@ -11,7 +11,8 @@ const APIEndpoints = {
     version: require("./apiendpoints/version.js"),
     restart: require("./apiendpoints/restart.js"),
     users: require("./apiendpoints/users.js"),
-    products: require("./apiendpoints/products.js")
+    products: require("./apiendpoints/products.js"),
+    cart: require("./apiendpoints/cart.js")
 };
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
@@ -359,6 +360,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "users") return await APIEndpoints.users.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "products") return await APIEndpoints.products.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "cart") return await APIEndpoints.cart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI, initDB: sql.initDB };

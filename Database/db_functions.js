@@ -738,6 +738,21 @@ func.hasUserBoughtProduct = async function (userId, productId) {
     }
 };
 
+func.getCart = async function (userId) {
+    return {};
+}
+func.addToCart = async function (userId, itemId, quantity, options) {
+    return {};
+}
+func.modifyCartItem = async function (userId, itemId, quantity, options) {
+    return {};
+}
+func.deleteCartItem = async function (userId, itemId) {
+    return {};
+}
+func.clearCart = async function (userId) {
+    return {};
+}
 module.exports = { 
     DBError, 
     ...func 
