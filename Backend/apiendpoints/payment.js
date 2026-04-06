@@ -2,6 +2,7 @@ const sql = require("../../Database/server.js");
 const crypto = require("crypto");
 const fetch = require("node-fetch");
 async function IyzipayAPI(config, method, url, headers, body) {
+    console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
     const signature = crypto.createHmac("sha256", config.iyzipay.secret).update(randomKey + "/" +url + (body ? JSON.stringify(body) : ""), "utf8").digest("hex");
     return await fetch(config.iyzipay.api + "/" + url, {
@@ -12,7 +13,7 @@ async function IyzipayAPI(config, method, url, headers, body) {
             ...headers
         },
         body: body ? JSON.stringify(body) : null
-    }).then(res => res.json()).catch(err => null);
+    }).then(res => res.json()).catch(err => err);
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "carddetails") {
