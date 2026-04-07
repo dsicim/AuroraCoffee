@@ -1,6 +1,7 @@
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
 const fetch = require("node-fetch");
+const aes = require("./aes256.js");
 async function IyzipayAPI(config, method, url, headers, body) {
     console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
@@ -43,24 +44,8 @@ function validateCreditCard(card, ignorecvc = false) {
     if (sum % 10 !== 0) return { valid: false, error: "Invalid card number" };
     return { valid: true, card: {cardNumber: card.number, cardHolderName: card.holder, expireMonth: card.expiry.month, expireYear: card.expiry.year, cvc: card.cvc || undefined} };
 }
-async function createCardToken(userId, cardToken, config) {
-    const key = Buffer.from(config.iyzipay.storagekey, "base64");
-    const aad = Buffer.from("user:"+userId, "utf8");
-    const iv = crypto.randomBytes(12);
-    //const cipher = crypto.createCipheriv("aes-256-gcm", key, iv).update(String(cardToken), "utf8", "base64") + cipher.final("base64");
-    const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-    cipher.setAAD(aad);
-
-    const ciphertext = Buffer.concat([
-        cipher.update(String(cardToken), "utf8"),
-        cipher.final(),
-    ]);
-    const tag = cipher.getAuthTag();
-    const payload = {
-        tk: ciphertext.toString("base64"),
-        iv: iv.toString("base64"),
-        tg: tag.toString("base64")
-    };
+async function createCardToken(userId, cardToken) {
+    const payload = aes.encrypt(cardToken, userId);
     return await sql.setUserCards(userId, JSON.stringify(payload)).then(res => {
         if (res.success) {
             return { done: true };
@@ -72,21 +57,13 @@ async function createCardToken(userId, cardToken, config) {
         return { done: false, error: err.message };
     });
 }
-async function getCardToken(userId,config) {
+async function getCardToken(userId) {
     return await sql.getUserCards(userId).then(res => {
         if (res.success) {
             if (!res.cardTokens) return { done: true, value: null };
             res.cardTokens = JSON.parse(res.cardTokens);
-            const key = Buffer.from(config.iyzipay.storagekey, "base64");
-            const iv = Buffer.from(res.cardTokens.iv, "base64");
-            const tag = Buffer.from(res.cardTokens.tg, "base64");
-            const ciphertext = Buffer.from(res.cardTokens.tk, "base64");
-            const aad = Buffer.from("user:"+userId, "utf8");
-            const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-            decipher.setAAD(aad);
-            decipher.setAuthTag(tag);
-            const plaintext = Buffer.concat([decipher.update(ciphertext), decipher.final()]);
-            return { done: true, value: plaintext.toString("utf8") };
+            const token = aes.decrypt(res.cardTokens, userId);
+            return { done: true, value: token };
         }
         else if (res.error) {
             return { done: false, error: res.error };
@@ -119,7 +96,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "methods") {
         if (method === "GET") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            const currentToken = await getCardToken(currentUser.id, config);
+            const currentToken = await getCardToken(currentUser.id);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) return { s: 200, j: true, d: { cards: [] } };
             const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, {locale:"en",cardUserKey: currentToken.value});
@@ -137,13 +114,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.card) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const card = validateCreditCard(body.data.card, true);
             if (!card.valid) return { s: 400, j: true, d: { e: "Invalid card details: " + card.error } };
-            const currentToken = await getCardToken(currentUser.id, config);
+            const currentToken = await getCardToken(currentUser.id);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) {
                 const response = await IyzipayAPI(config, "POST", "cardstorage/card", {}, {locale:"en",email:currentUser.username,card:{cardAlias: body.data.alias, ...card.card}});
                 if (response) {
                     if (response.status === "success" && response.cardUserKey) {
-                        const storeResult = await createCardToken(currentUser.id, response.cardUserKey, config);
+                        const storeResult = await createCardToken(currentUser.id, response.cardUserKey);
                         if (storeResult.done) {
                             return { s: 200, j: true, d: { msg: "Card stored successfully" } };
                         }
@@ -169,7 +146,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "DELETE") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.cardToken) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const currentToken = await getCardToken(currentUser.id, config);
+            const currentToken = await getCardToken(currentUser.id);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) return { s: 400, j: true, d: { e: "No stored cards found for user" } };
             const response = await IyzipayAPI(config, "DELETE", "cardstorage/card", {}, {locale:"en",cardUserKey: currentToken.value, cardToken: body.data.cardToken});
@@ -186,8 +163,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "initiate") {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.card) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const currentToken = body.data.cardToken ? await getCardToken(currentUser.id, config) : null;
+            if (!body || !body.exists || body.err || !body.json || !body.data || (!body.data.card && !body.data.cardToken)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const currentToken = body.data.cardToken ? await getCardToken(currentUser.id) : null;
             if (currentToken && !currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             const card = body.data.cardToken ? {
                 "cardUserKey": currentToken.value,
