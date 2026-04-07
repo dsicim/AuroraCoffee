@@ -18,7 +18,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, body.data.opt || null).then(result => {
+                return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt || {})).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {
@@ -32,7 +32,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "PATCH") { // Update cart item (quantity or options)
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt).then(result => {
+                return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, JSON.stringify(body.data.opt || {})).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Cart item updated" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {
@@ -69,7 +69,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "POST") { // Guest cart viewing for order summary page. User sends the cart data stored in localStorage to view the order summary before checkout.
             let cartData = body && body.exists && body.json && !body.err && body.data ? body.data : null;
             if (!cartData || !Array.isArray(cartData)) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            console.log("Guest cart data:", cartData);
             const productsMentioned = [];
             cartData.forEach(item => {
                 if (item.id && !productsMentioned.includes(item.id) && !isNaN(parseInt(item.id))) productsMentioned.push(parseInt(item.id));
