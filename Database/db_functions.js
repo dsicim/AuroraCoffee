@@ -790,6 +790,24 @@ func.deleteCartItem = async function (userId, itemId) {
 func.clearCart = async function (userId) {
     return {};
 }
+
+
+func.getAddresses = async function (userId) {
+    return {};
+}
+
+func.saveAddress = async function (userId, address) {
+    return {};
+}
+
+func.editAddress = async function (userId, addressId, address) {
+    return {};
+}
+
+func.deleteAddress = async function (userId, addressId) {
+    return {};
+}
+
 module.exports = { 
     DBError, 
     ...func 
