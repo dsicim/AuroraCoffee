@@ -183,8 +183,70 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
-    else if (endpoint[0] === "") {
-        return { s: 404, j: true, d: { e: "Not Found" } };
+    else if (endpoint[0] === "initiate") {
+        if (method === "POST") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.card) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const currentToken = body.data.cardToken ? await getCardToken(currentUser.id, config) : null;
+            if (currentToken && !currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
+            const card = body.data.cardToken ? {
+                "cardUserKey": currentToken.value,
+                "cardToken": body.data.cardToken,
+                "cvc": body.data.card.cvc,
+            } : validateCreditCard(body.data.card);
+            const payload = {
+                locale: "en",
+                price: 100,
+                paidPrice: 100,
+                currency: "TRY",
+                installment: 1,
+                paymentCard: card,
+                buyer: {
+                    id: String(currentUser.id),
+                    name: currentUser.displayname.split(' ').slice(0, -1).join(' ') || currentUser.displayname,
+                    surname: currentUser.displayname.split(' ').slice(-1)[0] || ".",
+                    identityNumber: "11111111111", // Do you really need this?????
+                    email: currentUser.username,
+                    gsmNumber: "+900000000000", // Do you really need this?????
+                    registrationAddress: "N/A", // Take this from billing address!
+                    city: "N/A", // Take this from billing address!
+                    country: "N/A", // Take this from billing address!
+                },
+                shippingAddress: {
+                    contactName: currentUser.displayname,
+                    city: "N/A", // Take this from shipping address!
+                    country: "N/A", // Take this from shipping address!
+                    address: "N/A", // Take this from shipping address!
+                    zipCode: "00000" // Take this from shipping address!
+                },
+                billingAddress: {
+                    contactName: currentUser.displayname,
+                    city: "N/A", // Take this from billing address!
+                    country: "N/A", // Take this from billing address!
+                    address: "N/A", // Take this from billing address!
+                    zipCode: "00000" // Take this from billing address!
+                },
+                basketItems: [ // You should replace this with actual cart items for probably legal reasons.
+                    {
+                        id: String(currentUser.id) + ":" + "cartID",
+                        price: 100,
+                        name: "Cart Items for this guy",
+                        category1: "Cart",
+                        itemType: "PHYSICAL"
+                    }
+                ]
+            }
+            const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
+            if (response) {
+                if (response.status === "success" && response.cardDetails) {
+                    const currentCards = response.cardDetails.map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, ...getCardDetailsFromResponse(cd) }))
+                    return { s: 200, j: true, d: { response: response } };
+                }
+                else return { s: 400, j: true, d: { e: "Failed to retrieve cards from payment provider: " + response.errorMessage } };
+            }
+            else return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider" } };
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
