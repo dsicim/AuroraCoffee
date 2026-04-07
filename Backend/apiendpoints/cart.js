@@ -93,14 +93,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             cartData.forEach(item => {
                 if (item.id && productsMap[item.id]) {
+                    item.valid = true;
                     item.name = productsMap[item.id].name;
                     item.price = productsMap[item.id].price;
                     item.stock = productsMap[item.id].stock;
                     item.category = productsMap[item.id].category_name;
                     item.parentcategory = productsMap[item.id].parent_category_name;
                 }
+                else if (item.id && products.d.idsnotfound.includes(item.id)) {
+                    item.valid = false;
+                    item.e = "Product ID not found";
+                }
+                else {
+                    item.valid = false;
+                    item.e = "Product ID is missing or invalid";
+                }
             });
-            return { s: 500, j: true, d: { e: "Not implemented yet" } };
+            return { s: 200, j: true, d: { cart: cartData, idsnotfound: products.d.idsnotfound } };
         }
         else return { s: 401, j: true, d: { e: "Unauthorized" } };
     }
