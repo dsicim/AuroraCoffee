@@ -121,7 +121,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "methods") {
         if (method === "GET") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            const currentToken = await getCardToken(currentUser.id);
+            const currentToken = await getCardToken(currentUser.id, config);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) return { s: 200, j: true, d: { cards: [] } };
             const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, {locale:"en",cardUserKey: currentToken.value});
