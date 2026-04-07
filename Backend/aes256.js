@@ -1,6 +1,6 @@
 const config = require("./config.json");
 const crypto = require("crypto");
-async function encrypt(plain, userId) {
+function encrypt(plain, userId) {
     const key = Buffer.from(config.storagekey, "base64");
     const aad = Buffer.from("user:" + userId, "utf8");
     const iv = crypto.randomBytes(12);
@@ -17,7 +17,7 @@ async function encrypt(plain, userId) {
         tg: tag.toString("base64")
     };
 }
-async function decrypt(encrypted, userId) {
+function decrypt(encrypted, userId) {
     const key = Buffer.from(config.storagekey, "base64");
     const iv = Buffer.from(encrypted.iv, "base64");
     const tag = Buffer.from(encrypted.tg, "base64");
