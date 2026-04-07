@@ -133,7 +133,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.card) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const card = validateCreditCard(body.data.card);
+            const card = validateCreditCard(body.data.card, true);
             if (!card.valid) return { s: 400, j: true, d: { e: "Invalid card details: " + card.error } };
             const currentToken = await getCardToken(currentUser.id);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
