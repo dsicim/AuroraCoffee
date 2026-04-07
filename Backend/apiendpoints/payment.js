@@ -43,7 +43,7 @@ function validateCreditCard(card, ignorecvc = false) {
     if (sum % 10 !== 0) return { valid: false, error: "Invalid card number" };
     return { valid: true, card: {cardNumber: card.number, cardHolderName: card.holder, expireMonth: card.expiry.month, expireYear: card.expiry.year, cvc: card.cvc || undefined} };
 }
-async function createCardToken(userId, cardToken) {
+async function createCardToken(userId, cardToken, config) {
     const key = Buffer.from(config.iyzipay.storagekey, "base64");
     const aad = Buffer.from("user:"+userId, "utf8");
     const iv = crypto.randomBytes(12);
@@ -72,7 +72,7 @@ async function createCardToken(userId, cardToken) {
         return { done: false, error: err.message };
     });
 }
-async function getCardToken(userId) {
+async function getCardToken(userId,config) {
     return await sql.getUserCards(userId).then(res => {
         if (res.success) {
             if (!res.cardTokens) return { done: true, value: null };
@@ -135,13 +135,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.card) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const card = validateCreditCard(body.data.card, true);
             if (!card.valid) return { s: 400, j: true, d: { e: "Invalid card details: " + card.error } };
-            const currentToken = await getCardToken(currentUser.id);
+            const currentToken = await getCardToken(currentUser.id, config);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) {
                 const response = await IyzipayAPI(config, "POST", "cardstorage/card", {}, {locale:"en",email:currentUser.username,card:{cardAlias: body.data.alias, ...card.card}});
                 if (response) {
                     if (response.status === "success" && response.cardUserKey) {
-                        const storeResult = await createCardToken(currentUser.id, response.cardUserKey);
+                        const storeResult = await createCardToken(currentUser.id, response.cardUserKey, config);
                         if (storeResult.done) {
                             return { s: 200, j: true, d: { msg: "Card stored successfully" } };
                         }
@@ -167,7 +167,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "DELETE") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.cardToken) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const currentToken = await getCardToken(currentUser.id);
+            const currentToken = await getCardToken(currentUser.id, config);
             if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
             if (!currentToken.value) return { s: 400, j: true, d: { e: "No stored cards found for user" } };
             const response = await IyzipayAPI(config, "DELETE", "cardstorage/card", {}, {locale:"en",cardUserKey: currentToken.value, cardToken: body.data.cardToken});
