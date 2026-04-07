@@ -16,7 +16,7 @@ async function IyzipayAPI(config, method, url, headers, body) {
     }).then(res => res.json()).catch(err => err);
 }
 function getCardDetailsFromResponse(insresponse) {
-    return { type: {"CREDIT_CARD":"Credit Card","DEBIT_CARD":"Debit Card","PREPAID_CARD":"Prepaid Card"}[insresponse.cardType] || "Unknown Card", provider: {"VISA":"Visa","MASTER_CARD":"MasterCard","AMERICAN_EXPRESS":"American Express","TROY":"Troy"}[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
+    return { type: {"CREDIT_CARD":"Credit Card","DEBIT_CARD":"Debit Card","PREPAID_CARD":"Prepaid Card"}[insresponse.cardType] || "Unknown Card", provider: {"VISA":"Visa","MASTER_CARD":"MasterCard","AMERICAN_EXPRESS":"American Express","TROY":"Troy"}[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || insresponse.cardBankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
 }
 function validateCreditCard(card, ignorecvc = false) {
     if (!card || !card.number || !card.expiry || (!card.cvc && !ignorecvc) || !card.holder) return { valid: false, error: "Missing required card fields" };
@@ -127,7 +127,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, {locale:"en",cardUserKey: currentToken.value});
             if (response) {
                 if (response.status === "success" && response.cardDetails) {
-                    return { s: 200, j: true, d: { cards: response.cardDetails.map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, ...getCardDetailsFromResponse(cd) })) } };
+                    const currentCards = response.cardDetails.map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, ...getCardDetailsFromResponse(cd) }))
+                    return { s: 200, j: true, d: { cards: currentCards.map(cd => ({id:cd.id,alias:cd.alias,last4dig:cd.last4dig,type:cd.type,provider:cd.provider,family:cd.family,bank:cd.bank})) } };
                 }
                 else return { s: 400, j: true, d: { e: "Failed to retrieve cards from payment provider: " + response.errorMessage } };
             }
