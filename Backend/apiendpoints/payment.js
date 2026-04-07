@@ -238,11 +238,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
             if (response) {
-                if (response.status === "success" && response.cardDetails) {
-                    const currentCards = response.cardDetails.map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, ...getCardDetailsFromResponse(cd) }))
+                if (response.status === "success") {
                     return { s: 200, j: true, d: { response: response } };
                 }
-                else return { s: 400, j: true, d: { e: "Failed to retrieve cards from payment provider: " + response.errorMessage } };
+                else return { s: 400, j: true, d: { e: "Failed to retrieve payment information from payment provider: " + response.errorMessage } };
             }
             else return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider" } };
         }
