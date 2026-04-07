@@ -6,7 +6,7 @@ USE 308_db;
 
 -- Create users table
 CREATE TABLE IF NOT EXISTS users (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     displayname VARCHAR(255) NOT NULL,
     username VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
@@ -18,9 +18,9 @@ CREATE TABLE IF NOT EXISTS users (
 
 -- Create comments table
 CREATE TABLE IF NOT EXISTS comments (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
-    product_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED,
+    product_id BIGINT UNSIGNED,
     comment_text TEXT NOT NULL,
     rating INT,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
@@ -31,8 +31,8 @@ CREATE TABLE IF NOT EXISTS comments (
 
 -- Create orders table
 CREATE TABLE IF NOT EXISTS orders (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED,
     status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
     total_price DECIMAL(10, 2) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -41,9 +41,9 @@ CREATE TABLE IF NOT EXISTS orders (
 
 -- Create order_items table
 CREATE TABLE IF NOT EXISTS order_items (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT,
-    product_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED,
+    product_id BIGINT UNSIGNED,
     quantity INT NOT NULL,
     price_at_purchase DECIMAL(10, 2) NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
@@ -52,10 +52,10 @@ CREATE TABLE IF NOT EXISTS order_items (
 
 -- Create refunds table
 CREATE TABLE IF NOT EXISTS refunds (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    order_id INT,
-    product_id INT,
-    user_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED,
+    product_id BIGINT UNSIGNED,
+    user_id BIGINT UNSIGNED,
     refund_amount DECIMAL(10, 2) NOT NULL,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -66,9 +66,9 @@ CREATE TABLE IF NOT EXISTS refunds (
 
 -- Create carts table
 CREATE TABLE IF NOT EXISTS cart (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
-    product_id INT NOT NULL,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    product_id BIGINT UNSIGNED NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
     options JSON NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -77,8 +77,8 @@ CREATE TABLE IF NOT EXISTS cart (
 
 -- Create addresses table
 CREATE TABLE IF NOT EXISTS addresses (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
     address TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

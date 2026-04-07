@@ -2,20 +2,20 @@ USE 308_db;
 
 -- 1. Table for Categories (Support for Main and Subcategories)
 CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    parent_id INT DEFAULT NULL,
+    parent_id BIGINT UNSIGNED DEFAULT NULL,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- 2. Table for Products
 CREATE TABLE IF NOT EXISTS products (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     stock INT DEFAULT 0,
-    category_id INT,
+    category_id BIGINT UNSIGNED,
     weight INT, -- Weight in grams
     -- Coffee specific attributes (as mentioned in Store Overview)
     origin VARCHAR(100),

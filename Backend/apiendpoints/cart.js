@@ -17,8 +17,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 });
             }
             else if (method === "POST") { // Add item to cart
-                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.productId) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.addToCart(currentUser.id, body.data.productId, body.data.quantity || 1, body.data.options || null).then(result => {
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, body.data.opt || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {
@@ -31,8 +31,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { s: 500, j: true, d: { e: "Not implemented yet" } };
             }
             else if (method === "PATCH") { // Update cart item (quantity or options)
-                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.itemId) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.modifyCartItem(currentUser.id, body.data.itemId, body.data.quantity, body.data.options).then(result => {
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Cart item updated" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {
@@ -41,8 +41,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 });
             }
             else if (method === "DELETE") { // Remove item from cart
-                if (query.item) {
-                    return await sql.deleteCartItem(currentUser.id, query.item).then(result => {
+                if (query.id) {
+                    return await sql.deleteCartItem(currentUser.id, query.id).then(result => {
                         if (result.success) return { s: 200, j: true, d: { msg: "Item removed from cart" } };
                         else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                     }).catch(err => {
@@ -67,8 +67,39 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             return { s: 401, j: true, d: { e: "Unauthorized", msg: "Psst! Guest users can see their cart details. Just send the same request as a POST request and send the cart data stored in localStorage as the body to see the cart." } };
         }
         else if (method === "POST") { // Guest cart viewing for order summary page. User sends the cart data stored in localStorage to view the order summary before checkout.
-            const cartData = body && body.exists && body.json && !body.err && body.data ? body.data : null;
+            let cartData = body && body.exists && body.json && !body.err && body.data ? body.data : null;
+            if (!cartData || !Array.isArray(cartData)) return { s: 400, j: true, d: { e: "Invalid request body" } };
             console.log("Guest cart data:", cartData);
+            const productsMentioned = [];
+            cartData.forEach(item => {
+                if (item.id && !productsMentioned.includes(item.id) && !isNaN(parseInt(item.id))) productsMentioned.push(parseInt(item.id));
+            });
+            const products = (productsMentioned.length > 0) ? await sql.getProductsByIds(productsMentioned).then(async result => {
+                    if (result.success) {
+                        return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
+                    }
+                    else {
+                        return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                    }
+                }).catch(err => {
+                    console.error("Get products by IDs error:", err);
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            }) : { s: 200, j: true, d: {products: [], idsnotfound: [] } };
+            if (products.s !== 200) return products;
+            let productsMap = {};
+            products.d.products.forEach(p => {
+                productsMap[p.id] = p;
+            });
+            cartData.forEach(item => {
+                if (item.id && productsMap[item.id]) {
+                    item.name = productsMap[item.id].name;
+                    item.price = productsMap[item.id].price;
+                    item.stock = productsMap[item.id].stock;
+                    item.category = productsMap[item.id].category_name;
+                    item.parentcategory = productsMap[item.id].parent_category_name;
+                }
+            });
             return { s: 500, j: true, d: { e: "Not implemented yet" } };
         }
         else return { s: 401, j: true, d: { e: "Unauthorized" } };
