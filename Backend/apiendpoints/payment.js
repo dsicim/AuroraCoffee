@@ -89,9 +89,11 @@ async function getCardToken(userId,config) {
             return { done: true, value: plaintext.toString("utf8") };
         }
         else if (res.error) {
+            console.error(res.error);
             return { done: false, error: res.error };
         }
     }).catch(err => {
+        console.error(err);
         return { done: false, error: err.message };
     });
 }
