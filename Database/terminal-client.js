@@ -227,6 +227,108 @@ async function adminMenu() {
     }
 }
 
+// --- Cart Menu ---
+
+async function cartMenu() {
+    if (!sessionToken) { console.log('\x1b[31m%s\x1b[0m', 'Please login first.'); return; }
+    while (true) {
+        console.log('\n--- Cart ---');
+        console.log('1. View Cart');
+        console.log('2. Add Item to Cart');
+        console.log('3. Modify Cart Item Quantity');
+        console.log('4. Delete Cart Item');
+        console.log('5. Clear Cart');
+        console.log('6. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            const res = await apiFetch('cart');
+            if (res.ok) console.log(JSON.stringify(res.data.cart, null, 2));
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '2') {
+            const productId = await question('Product ID: ');
+            const quantity = await question('Quantity: ');
+            const res = await apiFetch('cart', 'POST', { productId: parseInt(productId), quantity: parseInt(quantity) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '3') {
+            const itemId = await question('Cart Item ID: ');
+            const quantity = await question('New Quantity: ');
+            const res = await apiFetch('cart', 'PATCH', { itemId: parseInt(itemId), quantity: parseInt(quantity) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '4') {
+            const itemId = await question('Cart Item ID: ');
+            const res = await apiFetch(`cart?item=${itemId}`, 'DELETE');
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '5') {
+            const res = await apiFetch('cart?clear=true', 'DELETE');
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '6') break;
+    }
+}
+
+// --- Address Menu ---
+
+async function addressMenu() {
+    if (!sessionToken) { console.log('\x1b[31m%s\x1b[0m', 'Please login first.'); return; }
+    while (true) {
+        console.log('\n--- Addresses ---');
+        console.log('1. View Addresses');
+        console.log('2. Add Address');
+        console.log('3. Update Address');
+        console.log('4. Delete Address');
+        console.log('5. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            const res = await apiFetch('address');
+            if (res.ok) console.log(JSON.stringify(res.data.addresses, null, 2));
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '2') {
+            const address = {
+                alias: await question('Alias (Title): '),
+                name: await question('First Name: '),
+                surname: await question('Last Name: '),
+                phone: await question('Phone: '),
+                country: await question('Country: ') || 'Turkey',
+                province: await question('Province/State: '),
+                city: await question('City: '),
+                zip: await question('ZIP Code: '),
+                address: await question('Address Line 1: '),
+                address2: await question('Address Line 2 (Optional): ')
+            };
+            const res = await apiFetch('address', 'POST', { address });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '3') {
+            const id = await question('Address ID to update: ');
+            const address = {
+                alias: await question('Alias (Title): '),
+                name: await question('First Name: '),
+                surname: await question('Last Name: '),
+                phone: await question('Phone: '),
+                country: await question('Country: ') || 'Turkey',
+                province: await question('Province/State: '),
+                city: await question('City: '),
+                zip: await question('ZIP Code: '),
+                address: await question('Address Line 1: '),
+                address2: await question('Address Line 2 (Optional): ')
+            };
+            const res = await apiFetch('address', 'PATCH', { id: parseInt(id), address });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '4') {
+            const id = await question('Address ID to delete: ');
+            const res = await apiFetch('address', 'DELETE', { id: parseInt(id) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '5') break;
+    }
+}
+
 async function mainMenu() {
     console.log('\n' + '='.repeat(30));
     console.log('   AURORA COFFEE TERMINAL   ');
@@ -242,8 +344,10 @@ async function mainMenu() {
     console.log('3. Products');
     console.log('4. Orders & Refunds');
     console.log('5. Comments');
-    console.log('6. Administrative');
-    console.log('7. Exit');
+    console.log('6. Cart');
+    console.log('7. Address Management');
+    console.log('8. Administrative');
+    console.log('9. Exit');
 
     const choice = await question('\nSelect an option: ');
 
@@ -254,8 +358,10 @@ async function mainMenu() {
             case '3': await productsMenu(); break;
             case '4': await ordersMenu(); break;
             case '5': await commentsMenu(); break;
-            case '6': await adminMenu(); break;
-            case '7':
+            case '6': await cartMenu(); break;
+            case '7': await addressMenu(); break;
+            case '8': await adminMenu(); break;
+            case '9':
                 console.log('Goodbye!');
                 rl.close();
                 process.exit(0);

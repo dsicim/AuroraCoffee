@@ -17,25 +17,47 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 });
             }
             else if (method === "POST") { // Add item to cart
-                console.log("Add to cart body:", body);
-                return { s: 500, j: true, d: { e: "Not implemented yet" } };
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.productId) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                return await sql.addToCart(currentUser.id, body.data.productId, body.data.quantity || 1, body.data.options || null).then(result => {
+                    if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
+                    else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
             }
             else if (method === "PUT") { // Replace entire cart
                 console.log("Replace cart body:", body);
                 return { s: 500, j: true, d: { e: "Not implemented yet" } };
             }
             else if (method === "PATCH") { // Update cart item (quantity or options)
-                console.log("Update cart item:", body);
-                return { s: 500, j: true, d: { e: "Not implemented yet" } };
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.itemId) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                return await sql.modifyCartItem(currentUser.id, body.data.itemId, body.data.quantity, body.data.options).then(result => {
+                    if (result.success) return { s: 200, j: true, d: { msg: "Cart item updated" } };
+                    else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
             }
             else if (method === "DELETE") { // Remove item from cart
                 if (query.item) {
-                    console.log("Delete cart item:", query.item);
-                    return { s: 500, j: true, d: { e: "Not implemented yet" } };
+                    return await sql.deleteCartItem(currentUser.id, query.item).then(result => {
+                        if (result.success) return { s: 200, j: true, d: { msg: "Item removed from cart" } };
+                        else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                    }).catch(err => {
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 else if (query.clear && query.clear === "true") {
-                    console.log("Clear the entire cart");
-                    return { s: 500, j: true, d: { e: "Not implemented yet" } };
+                    return await sql.clearCart(currentUser.id).then(result => {
+                        if (result.success) return { s: 200, j: true, d: { msg: "Cart cleared" } };
+                        else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                    }).catch(err => {
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 return { s: 400, j: true, d: { e: "Invalid query parameters" } };
             }

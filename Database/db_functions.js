@@ -776,37 +776,163 @@ func.hasUserBoughtProduct = async function (userId, productId) {
 };
 
 func.getCart = async function (userId) {
-    return {};
+    if (!userId) throw new DBError(400, 'User ID is required');
+    try {
+        const [rows] = await pool.execute(`
+            SELECT c.*, p.name AS product_name, p.price AS product_price, p.image_url 
+            FROM cart c 
+            JOIN products p ON c.product_id = p.id 
+            WHERE c.user_id = ?
+        `, [userId]);
+        return { success: true, cart: rows };
+    } catch (error) {
+        console.error('Get cart error:', error);
+        throw new DBError(500, 'Failed to fetch cart');
+    }
 }
-func.addToCart = async function (userId, itemId, quantity, options) {
-    return {};
+
+func.addToCart = async function (userId, productId, quantity = 1, options = null) {
+    if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    try {
+        const optionsStr = options ? JSON.stringify(options) : null;
+        let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?';
+        let params = [userId, productId];
+        
+        if (optionsStr) {
+            sql += " AND JSON_EXTRACT(options, '$') = CAST(? AS JSON)";
+            params.push(optionsStr);
+        } else {
+            sql += " AND options IS NULL";
+        }
+        
+        const [existing] = await pool.execute(sql, params);
+        
+        if (existing.length > 0) {
+            await pool.execute('UPDATE cart SET quantity = quantity + ? WHERE id = ?', [quantity, existing[0].id]);
+        } else {
+            await pool.execute('INSERT INTO cart (user_id, product_id, quantity, options) VALUES (?, ?, ?, ?)', [userId, productId, quantity, optionsStr]);
+        }
+        return { success: true, message: 'Item added to cart' };
+    } catch (error) {
+        console.error('Add to cart error:', error);
+        throw new DBError(500, 'Failed to add item to cart');
+    }
 }
+
 func.modifyCartItem = async function (userId, itemId, quantity, options) {
-    return {};
+    if (!userId || !itemId) throw new DBError(400, 'User ID and Item ID are required');
+    try {
+        let sql = 'UPDATE cart SET ';
+        let params = [];
+        let updates = [];
+        
+        if (quantity !== undefined) {
+            updates.push('quantity = ?');
+            params.push(quantity);
+        }
+        if (options !== undefined) {
+            updates.push('options = ?');
+            params.push(options ? JSON.stringify(options) : null);
+        }
+        
+        if (updates.length > 0) {
+            sql += updates.join(', ') + ' WHERE id = ? AND user_id = ?';
+            params.push(itemId, userId);
+            const [result] = await pool.execute(sql, params);
+            if (result.affectedRows === 0) throw new DBError(404, 'Cart item not found');
+        }
+        return { success: true, message: 'Cart item updated' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Modify cart item error:', error);
+        throw new DBError(500, 'Failed to modify cart item');
+    }
 }
+
 func.deleteCartItem = async function (userId, itemId) {
-    return {};
+    if (!userId || !itemId) throw new DBError(400, 'User ID and Item ID are required');
+    try {
+        const [result] = await pool.execute('DELETE FROM cart WHERE id = ? AND user_id = ?', [itemId, userId]);
+        if (result.affectedRows === 0) throw new DBError(404, 'Cart item not found');
+        return { success: true, message: 'Cart item removed' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Delete cart item error:', error);
+        throw new DBError(500, 'Failed to delete cart item');
+    }
 }
+
 func.clearCart = async function (userId) {
-    return {};
+    if (!userId) throw new DBError(400, 'User ID is required');
+    try {
+        await pool.execute('DELETE FROM cart WHERE user_id = ?', [userId]);
+        return { success: true, message: 'Cart cleared' };
+    } catch (error) {
+        console.error('Clear cart error:', error);
+        throw new DBError(500, 'Failed to clear cart');
+    }
 }
 
-
-func.getAddresses = async function (userId, addressId) {
-    // If addressId is provided, fetch specific address, otherwise fetch all addresses for the user
-    return {};
+func.getAddresses = async function (userId, addressId = null) {
+    if (!userId) throw new DBError(400, 'User ID is required');
+    try {
+        let sql = 'SELECT * FROM addresses WHERE user_id = ?';
+        let params = [userId];
+        if (addressId) {
+            sql += ' AND id = ?';
+            params.push(addressId);
+        }
+        const [rows] = await pool.execute(sql, params);
+        if (addressId && rows.length === 0) throw new DBError(404, 'Address not found');
+        return { success: true, addresses: rows };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Get addresses error:', error);
+        throw new DBError(500, 'Failed to fetch addresses');
+    }
 }
 
-func.saveAddress = async function (userId, address) {
-    return {};
+func.saveAddress = async function (userId, addressEnc) {
+    if (!userId || !addressEnc) throw new DBError(400, 'User ID and address are required');
+    try {
+        const [result] = await pool.execute(
+            'INSERT INTO addresses (user_id, address) VALUES (?, ?)', 
+            [userId, addressEnc]
+        );
+        return { success: true, message: 'Address saved successfully', addressId: result.insertId };
+    } catch (error) {
+        console.error('Save address error:', error);
+        throw new DBError(500, 'Failed to save address');
+    }
 }
 
-func.editAddress = async function (userId, addressId, address) {
-    return {};
+func.editAddress = async function (userId, addressId, addressEnc) {
+    if (!userId || !addressId || !addressEnc) throw new DBError(400, 'All fields are required');
+    try {
+        const [result] = await pool.execute(
+            'UPDATE addresses SET address = ? WHERE id = ? AND user_id = ?', 
+            [addressEnc, addressId, userId]
+        );
+        if (result.affectedRows === 0) throw new DBError(404, 'Address not found');
+        return { success: true, message: 'Address updated successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Edit address error:', error);
+        throw new DBError(500, 'Failed to edit address');
+    }
 }
 
 func.deleteAddress = async function (userId, addressId) {
-    return {};
+    if (!userId || !addressId) throw new DBError(400, 'User ID and Address ID are required');
+    try {
+        const [result] = await pool.execute('DELETE FROM addresses WHERE id = ? AND user_id = ?', [addressId, userId]);
+        if (result.affectedRows === 0) throw new DBError(404, 'Address not found');
+        return { success: true, message: 'Address deleted successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Delete address error:', error);
+        throw new DBError(500, 'Failed to delete address');
+    }
 }
 
 module.exports = { 

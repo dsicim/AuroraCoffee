@@ -1,4 +1,6 @@
 -- Create database if it doesn't exist
+SET FOREIGN_KEY_CHECKS=0;
+
 CREATE DATABASE IF NOT EXISTS 308_db;
 USE 308_db;
 
@@ -72,3 +74,14 @@ CREATE TABLE IF NOT EXISTS cart (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
+
+-- Create addresses table
+CREATE TABLE IF NOT EXISTS addresses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    address TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+SET FOREIGN_KEY_CHECKS=1;

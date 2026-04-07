@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS products (
     price DECIMAL(10, 2) NOT NULL,
     stock INT DEFAULT 0,
     category_id INT,
+    weight INT, -- Weight in grams
     -- Coffee specific attributes (as mentioned in Store Overview)
     origin VARCHAR(100),
     roast_level VARCHAR(50), 
