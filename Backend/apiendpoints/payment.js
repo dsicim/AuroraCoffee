@@ -61,7 +61,7 @@ async function createCardToken(userId, cardToken, config) {
         iv: iv.toString("base64"),
         tg: tag.toString("base64")
     };
-    return await sql.setUserCards(userId, payload).then(res => {
+    return await sql.setUserCards(userId, JSON.stringify(payload)).then(res => {
         if (res.success) {
             return { done: true };
         }
@@ -76,6 +76,7 @@ async function getCardToken(userId,config) {
     return await sql.getUserCards(userId).then(res => {
         if (res.success) {
             if (!res.cardTokens) return { done: true, value: null };
+            res.cardTokens = JSON.parse(res.cardTokens);
             const key = Buffer.from(config.iyzipay.storagekey, "base64");
             const iv = Buffer.from(res.cardTokens.iv, "base64");
             const tag = Buffer.from(res.cardTokens.tg, "base64");
