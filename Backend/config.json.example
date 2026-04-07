@@ -10,7 +10,7 @@
     "restarttoken": "Insert a random key here for server maintenance.",
     "version": "{version}",
     "gitrepo": "https://github.com/dsicim/AuroraCoffee.git",
-    "storagekey": 'run -> node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" and paste the result here'
+    "storagekey": 'run -> node -e "console.log(require('crypto').randomBytes(32).toString('base64'))" and paste the result here',
     "mail": {
         "user": "Your gmail address (make an alt gmail account for this!)",
         "pass": "The app password (make an app password on google accounts dashboard!)",
