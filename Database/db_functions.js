@@ -792,7 +792,8 @@ func.clearCart = async function (userId) {
 }
 
 
-func.getAddresses = async function (userId) {
+func.getAddresses = async function (userId, addressId) {
+    // If addressId is provided, fetch specific address, otherwise fetch all addresses for the user
     return {};
 }
 

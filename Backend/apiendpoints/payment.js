@@ -63,7 +63,8 @@ async function getCardToken(userId) {
             if (!res.cardTokens) return { done: true, value: null };
             res.cardTokens = JSON.parse(res.cardTokens);
             const token = aes.decrypt(res.cardTokens, userId);
-            return { done: true, value: token };
+            if (token.s) return { done: true, value: token.value };
+            else return { done: false, error: token.e };
         }
         else if (res.error) {
             return { done: false, error: res.error };
