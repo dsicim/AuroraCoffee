@@ -66,7 +66,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "PATCH") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.address) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            body.data.address = body.data.address.map(x => typeof x === "string" ? x.trim() : x);
             const address = {
                 alias: body.data.address.alias.trim() || undefined,
                 name: body.data.address.name.trim(),
