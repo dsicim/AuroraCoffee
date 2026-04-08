@@ -10,7 +10,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "POST") {
             if (body && body.exists && body.json && !body.err && body.data.action) {
-                if (body.data.action === "restart" || body.data.action === "update") {
+                if (body.data.action === "restart" || body.data.action === "update" || body.data.action === "reset") {
                     return await new Promise((resolve) => {
                         const child = spawn("node", ["version.js", "--action", body.data.action], {
                             cwd: path.join(__dirname, ".."),
@@ -59,7 +59,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         else return { s: 200, j: false, d: "An unknown error occurred" + err.toString() };
                     });
                 }
-                else if (body.data.action === "reset") {
+                else if (body.data.action === "resetdb") {
                     return { s: 500, j: false, d: "Not implemented yet" };
                 }
                 else return { s: 400, j: false, d: "Invalid action" };

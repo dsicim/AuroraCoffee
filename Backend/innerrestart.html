@@ -18,6 +18,12 @@
             active sessions and email verification links.</b> This will take a while.</label>
 </div>
 <div class="optionbox">
+    <button id="resetButton">Reset Software</button>
+    <label>Resetting the software will reinstall the latest version from the repository. <b>This will invalidate
+            all
+            active sessions and email verification links.</b> This will take a while.</label>
+</div>
+<div class="optionbox">
     <textarea id="sqlEdit" placeholder="SQL edit code" style="width: calc(100% - 20px); height: 100px;"></textarea><br>
     <button id="executeSqlButton">Execute SQL Edit</button>
     <label><b>Warning: This will execute the above SQL code. Only use this if you know exactly what the code
@@ -89,10 +95,17 @@
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("updateButton").addEventListener("click", async () => {
-            if (!confirm("Are you sure you want to update the software? This will invalidate all active sessions and email verification links. This will also take some time to reinstall and compile the source code.")) return;
+            if (!confirm("Are you sure you want to update the software? This will invalidate all active sessions and email verification links. This will also take some time.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Requesting Update...");
             await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "update" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("resetButton").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to reset the software? This will reinstall the latest version from the repository. This will invalidate all active sessions and email verification links. This will also take some time to reinstall and compile the source code.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Requesting Reset...");
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "reset" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("executeSqlButton").addEventListener("click", async () => {
@@ -113,7 +126,7 @@
             if (!confirm("Are you sure you want to reset the database? THIS WILL DELETE ALL DATA.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Resetting Database...");
-            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "reset" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "resetdb" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("stopButton").addEventListener("click", async () => {
