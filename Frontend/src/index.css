@@ -1952,11 +1952,34 @@ img {
       grid-template-columns: minmax(0, 1.08fr) minmax(18rem, 0.92fr);
       align-items: start;
     }
+
+    .aurora-account-intro {
+      padding-block: 1.75rem;
+    }
+
+    .aurora-account-intro .aurora-heading {
+      font-size: 3.5rem;
+      line-height: 0.98;
+    }
+
+    .aurora-account-intro p:last-child {
+      margin-top: 1rem;
+      font-size: 1rem;
+      line-height: 1.9;
+    }
+
+    .aurora-account-content {
+      gap: 1.5rem;
+    }
   }
 
   @media (min-width: 1280px) {
     .aurora-summary-strip {
       grid-template-columns: minmax(0, 1.3fr) repeat(3, minmax(0, 0.9fr));
+    }
+
+    .aurora-account-intro .aurora-heading {
+      font-size: 4rem;
     }
   }
 

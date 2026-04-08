@@ -91,7 +91,7 @@ export default function AccountPage() {
       title="Saved details"
       description="Orders, addresses, and favorites."
     >
-      <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
+      <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-8">
           <section className="grid gap-4 md:grid-cols-3">
             <div className="aurora-summary-lead p-6">
@@ -245,9 +245,15 @@ export default function AccountPage() {
                   <br />
                   {defaultAddress.email}
                   <br />
-                  {defaultAddress.address}
+                  {defaultAddress.addressLine1 || defaultAddress.address}
+                  {defaultAddress.addressLine2 ? (
+                    <>
+                      <br />
+                      {defaultAddress.addressLine2}
+                    </>
+                  ) : null}
                   <br />
-                  {defaultAddress.city}, {defaultAddress.postalCode}
+                  {defaultAddress.district || defaultAddress.city}, {defaultAddress.province} {defaultAddress.postalCode}
                 </p>
               </div>
             ) : (

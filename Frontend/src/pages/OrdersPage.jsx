@@ -152,7 +152,7 @@ export default function OrdersPage() {
                     {getOrderStatus(order)}
                   </p>
                   <p className="mt-2">
-                    {order.delivery.city}, {order.delivery.postalCode}
+                    {order.delivery.district || order.delivery.city}, {order.delivery.province || ''} {order.delivery.postalCode}
                   </p>
                 </div>
               </div>
@@ -205,15 +205,16 @@ export default function OrdersPage() {
                       <br />
                       {order.delivery.email}
                       <br />
-                      {order.delivery.address}
+                      {order.delivery.addressLine1 || order.delivery.address}
+                      {order.delivery.addressLine2 ? (
+                        <>
+                          <br />
+                          {order.delivery.addressLine2}
+                        </>
+                      ) : null}
                       <br />
-                      {order.delivery.city}, {order.delivery.postalCode}
+                      {order.delivery.district || order.delivery.city}, {order.delivery.province || ''} {order.delivery.postalCode}
                     </p>
-                    {order.delivery.notes ? (
-                      <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                        Notes: {order.delivery.notes}
-                      </p>
-                    ) : null}
                   </div>
 
                   <div className="aurora-ops-card p-5">

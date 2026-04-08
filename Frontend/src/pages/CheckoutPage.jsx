@@ -48,12 +48,14 @@ const checkoutSteps = [
 ]
 
 const initialDelivery = {
-  fullName: '',
+  firstName: '',
+  lastName: '',
   email: '',
-  address: '',
-  city: '',
+  addressLine1: '',
+  addressLine2: '',
+  province: '',
+  district: '',
   postalCode: '',
-  notes: '',
 }
 
 const initialPayment = {
@@ -69,13 +71,23 @@ function buildDeliveryFromAddress(address) {
   }
 
   return {
-    fullName: address.fullName || '',
+    firstName: address.firstName || '',
+    lastName: address.lastName || '',
     email: address.email || '',
-    address: address.address || '',
-    city: address.city || '',
+    addressLine1: address.addressLine1 || '',
+    addressLine2: address.addressLine2 || '',
+    province: address.province || '',
+    district: address.district || '',
     postalCode: address.postalCode || '',
-    notes: address.notes || '',
   }
+}
+
+function getDeliveryFullName(delivery) {
+  return [delivery.firstName, delivery.lastName].filter(Boolean).join(' ').trim()
+}
+
+function getDeliveryAddressLines(delivery) {
+  return [delivery.addressLine1, delivery.addressLine2].filter(Boolean)
 }
 
 function formatCardNumber(value) {
@@ -111,8 +123,12 @@ function createOrderReference() {
 function validateDeliveryForm(delivery) {
   const errors = {}
 
-  if (!delivery.fullName.trim()) {
-    errors.fullName = 'Full name is required'
+  if (!delivery.firstName.trim()) {
+    errors.firstName = 'First name is required'
+  }
+
+  if (!delivery.lastName.trim()) {
+    errors.lastName = 'Last name is required'
   }
 
   const emailValidation = validateEmail(delivery.email)
@@ -120,22 +136,26 @@ function validateDeliveryForm(delivery) {
     errors.email = emailValidation.e
   }
 
-  if (!delivery.address.trim()) {
-    errors.address = 'Address is required'
+  if (!delivery.addressLine1.trim()) {
+    errors.addressLine1 = 'Address line 1 is required'
   }
 
-  const cityValidation = validateTurkishCity(delivery.city)
+  if (!delivery.district.trim()) {
+    errors.district = 'District is required'
+  }
+
+  const cityValidation = validateTurkishCity(delivery.province)
   if (!cityValidation.s) {
-    errors.city = cityValidation.e
+    errors.province = cityValidation.e
   }
 
   const cityPostalValidation = validateCityPostalCode(
-    delivery.city,
+    delivery.province,
     delivery.postalCode,
   )
   if (!cityPostalValidation.s) {
-    if (!errors.city && cityPostalValidation.e === 'Select a valid city from the list') {
-      errors.city = cityPostalValidation.e
+    if (!errors.province && cityPostalValidation.e === 'Select a valid city from the list') {
+      errors.province = cityPostalValidation.e
     } else {
       errors.postalCode = cityPostalValidation.e
     }
@@ -337,10 +357,10 @@ export default function CheckoutPage() {
     setSelectedAddressId('')
     setDelivery((current) => ({ ...current, [field]: value }))
     setErrors((current) => {
-      if (field === 'city' || field === 'postalCode') {
+      if (field === 'province' || field === 'postalCode') {
         return {
           ...current,
-          city: '',
+          province: '',
           postalCode: '',
         }
       }
@@ -412,7 +432,12 @@ export default function CheckoutPage() {
           reference: createOrderReference(),
           submittedAt: new Date().toISOString(),
           items,
-          delivery,
+          delivery: {
+            ...delivery,
+            fullName: getDeliveryFullName(delivery),
+            address: getDeliveryAddressLines(delivery).join('\n'),
+            city: delivery.district,
+          },
           payment: selectedSavedCardId
             ? {
                 cardholder: 'Saved card',
@@ -474,7 +499,7 @@ export default function CheckoutPage() {
       </p>
     ) : null
 
-  const cityOptions = getCityOptions(delivery.city)
+  const cityOptions = getCityOptions(delivery.province)
 
   if (!items.length && !submittedOrder) {
     const hero = (
@@ -637,17 +662,30 @@ export default function CheckoutPage() {
                 </div>
               ) : null}
 
-              <label className="block sm:col-span-2">
+              <label className="block">
                 <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Full name
+                  First name
                 </span>
                 <input
                   type="text"
-                  value={delivery.fullName}
-                  onChange={(event) => handleDeliveryChange('fullName', event.target.value)}
+                  value={delivery.firstName}
+                  onChange={(event) => handleDeliveryChange('firstName', event.target.value)}
                   className="aurora-input"
                 />
-                {renderFieldError('fullName')}
+                {renderFieldError('firstName')}
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                  Last name
+                </span>
+                <input
+                  type="text"
+                  value={delivery.lastName}
+                  onChange={(event) => handleDeliveryChange('lastName', event.target.value)}
+                  className="aurora-input"
+                />
+                {renderFieldError('lastName')}
               </label>
 
               <label className="block sm:col-span-2">
@@ -665,34 +703,59 @@ export default function CheckoutPage() {
 
               <label className="block sm:col-span-2">
                 <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Delivery address
+                  Address line 1
                 </span>
                 <input
                   type="text"
-                  value={delivery.address}
-                  onChange={(event) => handleDeliveryChange('address', event.target.value)}
+                  value={delivery.addressLine1}
+                  onChange={(event) => handleDeliveryChange('addressLine1', event.target.value)}
                   className="aurora-input"
                 />
-                {renderFieldError('address')}
+                {renderFieldError('addressLine1')}
+              </label>
+
+              <label className="block sm:col-span-2">
+                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                  Address line 2 (optional)
+                </span>
+                <input
+                  type="text"
+                  value={delivery.addressLine2}
+                  onChange={(event) => handleDeliveryChange('addressLine2', event.target.value)}
+                  className="aurora-input"
+                />
               </label>
 
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  City
+                  Province
                 </span>
                 <select
-                  value={delivery.city}
-                  onChange={(event) => handleDeliveryChange('city', event.target.value)}
+                  value={delivery.province}
+                  onChange={(event) => handleDeliveryChange('province', event.target.value)}
                   className="aurora-select"
                 >
-                  <option value="">Select a city</option>
+                  <option value="">Select a province</option>
                   {cityOptions.map((option) => (
                     <option key={option} value={getCityOptionValue(option)}>
                       {option}
                     </option>
                   ))}
                 </select>
-                {renderFieldError('city')}
+                {renderFieldError('province')}
+              </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                  District
+                </span>
+                <input
+                  type="text"
+                  value={delivery.district}
+                  onChange={(event) => handleDeliveryChange('district', event.target.value)}
+                  className="aurora-input"
+                />
+                {renderFieldError('district')}
               </label>
 
               <label className="block">
@@ -713,18 +776,6 @@ export default function CheckoutPage() {
                   className="aurora-input"
                 />
                 {renderFieldError('postalCode')}
-              </label>
-
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Delivery notes
-                </span>
-                <textarea
-                  value={delivery.notes}
-                  onChange={(event) => handleDeliveryChange('notes', event.target.value)}
-                  rows="4"
-                  className="aurora-textarea"
-                />
               </label>
             </div>
           ) : null}
@@ -929,20 +980,19 @@ export default function CheckoutPage() {
                   <div className="aurora-widget-subsurface p-5">
                     <p className="text-sm leading-8 text-[var(--aurora-text)]">
                       <span className="font-semibold text-[var(--aurora-text-strong)]">
-                        {delivery.fullName}
+                        {getDeliveryFullName(delivery)}
                       </span>
                       <br />
                       {delivery.email}
+                      {getDeliveryAddressLines(delivery).map((line) => (
+                        <span key={line}>
+                          <br />
+                          {line}
+                        </span>
+                      ))}
                       <br />
-                      {delivery.address}
-                      <br />
-                      {delivery.city}, {delivery.postalCode}
+                      {delivery.district}, {delivery.province} {delivery.postalCode}
                     </p>
-                    {delivery.notes ? (
-                      <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                        Notes: {delivery.notes}
-                      </p>
-                    ) : null}
                   </div>
                 </div>
               </div>
@@ -1047,7 +1097,7 @@ export default function CheckoutPage() {
                     Delivery
                   </p>
                   <p className="mt-3 text-base font-semibold text-[var(--aurora-text-strong)]">
-                    {submittedOrder.delivery.city}
+                    {submittedOrder.delivery.district || submittedOrder.delivery.city}
                   </p>
                 </div>
               </div>

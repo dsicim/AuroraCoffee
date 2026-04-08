@@ -91,10 +91,10 @@ export default function AccountLayout({
 
       <main className="aurora-main">
         <div className="aurora-container aurora-page-rail">
-          <section className="aurora-shell aurora-shell-soft rounded-[2.3rem] p-6 sm:p-8 lg:p-9">
+          <section className="aurora-shell aurora-shell-soft aurora-account-intro rounded-[2.3rem] p-6 sm:p-8 lg:p-7 xl:p-9">
             <div className="max-w-3xl">
               <p className="aurora-kicker">{eyebrow}</p>
-              <h1 className="aurora-heading mt-4 text-5xl md:text-6xl">
+              <h1 className="aurora-heading mt-4 text-5xl md:text-6xl lg:text-5xl xl:text-6xl">
                 {title}
               </h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
@@ -103,7 +103,7 @@ export default function AccountLayout({
             </div>
           </section>
 
-          <section className="aurora-content-split relative isolate xl:grid-cols-[16.5rem_minmax(0,1fr)]">
+          <section className="aurora-content-split aurora-account-content relative isolate lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:grid-cols-[16.5rem_minmax(0,1fr)]">
             <aside className="aurora-operational-card aurora-account-sidebar relative z-20 h-fit rounded-[2rem] p-5">
               <p className="aurora-kicker">Navigate</p>
               <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">

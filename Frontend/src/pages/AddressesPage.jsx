@@ -23,21 +23,27 @@ import {
 const initialFormState = {
   id: '',
   label: '',
-  fullName: '',
+  firstName: '',
+  lastName: '',
   email: '',
-  address: '',
-  city: '',
+  addressLine1: '',
+  addressLine2: '',
+  province: '',
+  district: '',
   postalCode: '',
   phone: '',
-  notes: '',
   isDefault: false,
 }
 
 function validateAddressForm(form) {
   const errors = {}
 
-  if (!form.fullName.trim()) {
-    errors.fullName = 'Recipient name is required'
+  if (!form.firstName.trim()) {
+    errors.firstName = 'First name is required'
+  }
+
+  if (!form.lastName.trim()) {
+    errors.lastName = 'Last name is required'
   }
 
   const emailValidation = validateEmail(form.email)
@@ -45,23 +51,27 @@ function validateAddressForm(form) {
     errors.email = emailValidation.e
   }
 
-  if (!form.address.trim()) {
-    errors.address = 'Address is required'
+  if (!form.addressLine1.trim()) {
+    errors.addressLine1 = 'Address line 1 is required'
   }
 
   if (!form.phone.trim()) {
     errors.phone = 'Phone is required'
   }
 
-  const cityValidation = validateTurkishCity(form.city)
-  if (!cityValidation.s) {
-    errors.city = cityValidation.e
+  if (!form.district.trim()) {
+    errors.district = 'District is required'
   }
 
-  const cityPostalValidation = validateCityPostalCode(form.city, form.postalCode)
+  const cityValidation = validateTurkishCity(form.province)
+  if (!cityValidation.s) {
+    errors.province = cityValidation.e
+  }
+
+  const cityPostalValidation = validateCityPostalCode(form.province, form.postalCode)
   if (!cityPostalValidation.s) {
-    if (!errors.city && cityPostalValidation.e === 'Select a valid city from the list') {
-      errors.city = cityPostalValidation.e
+    if (!errors.province && cityPostalValidation.e === 'Select a valid city from the list') {
+      errors.province = cityPostalValidation.e
     } else {
       errors.postalCode = cityPostalValidation.e
     }
@@ -100,10 +110,10 @@ export default function AddressesPage() {
       [field]: value,
     }))
     setErrors((current) => {
-      if (field === 'city' || field === 'postalCode') {
+      if (field === 'province' || field === 'postalCode') {
         return {
           ...current,
-          city: '',
+          province: '',
           postalCode: '',
         }
       }
@@ -147,13 +157,15 @@ export default function AddressesPage() {
     setForm({
       id: address.id,
       label: address.label || '',
-      fullName: address.fullName,
+      firstName: address.firstName || '',
+      lastName: address.lastName || '',
       email: address.email,
-      address: address.address,
-      city: address.city,
+      addressLine1: address.addressLine1 || '',
+      addressLine2: address.addressLine2 || '',
+      province: address.province || '',
+      district: address.district || '',
       postalCode: address.postalCode,
       phone: address.phone || '',
-      notes: address.notes || '',
       isDefault: Boolean(address.isDefault),
     })
     setErrors({})
@@ -167,7 +179,7 @@ export default function AddressesPage() {
       </p>
     ) : null
 
-  const cityOptions = getCityOptions(form.city)
+  const cityOptions = getCityOptions(form.province)
 
   return (
     <AccountLayout
@@ -211,17 +223,30 @@ export default function AddressesPage() {
               />
             </label>
 
-            <label className="block sm:col-span-2">
+            <label className="block">
               <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                Recipient full name
+                First name
               </span>
               <input
                 type="text"
-                value={form.fullName}
-                onChange={(event) => handleChange('fullName', event.target.value)}
+                value={form.firstName}
+                onChange={(event) => handleChange('firstName', event.target.value)}
                 className="aurora-input"
               />
-              {renderFieldError('fullName')}
+              {renderFieldError('firstName')}
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Last name
+              </span>
+              <input
+                type="text"
+                value={form.lastName}
+                onChange={(event) => handleChange('lastName', event.target.value)}
+                className="aurora-input"
+              />
+              {renderFieldError('lastName')}
             </label>
 
             <label className="block sm:col-span-2">
@@ -239,15 +264,62 @@ export default function AddressesPage() {
 
             <label className="block sm:col-span-2">
               <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                Delivery address
+                Address line 1
               </span>
               <input
                 type="text"
-                value={form.address}
-                onChange={(event) => handleChange('address', event.target.value)}
+                value={form.addressLine1}
+                onChange={(event) => handleChange('addressLine1', event.target.value)}
                 className="aurora-input"
               />
-              {renderFieldError('address')}
+              {renderFieldError('addressLine1')}
+            </label>
+
+            <label className="block sm:col-span-2">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Address line 2 (optional)
+              </span>
+              <input
+                type="text"
+                value={form.addressLine2}
+                onChange={(event) => handleChange('addressLine2', event.target.value)}
+                className="aurora-input"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Province
+              </span>
+              <select
+                value={form.province}
+                onChange={(event) => handleChange('province', event.target.value)}
+                className="aurora-select"
+              >
+                <option value="">Select a province</option>
+                {cityOptions.map((option) => (
+                  <option
+                    key={option}
+                    value={getCityOptionValue(option)}
+                  >
+                    {option}
+                  </option>
+                ))}
+              </select>
+              {renderFieldError('province')}
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                District
+              </span>
+              <input
+                type="text"
+                value={form.district}
+                onChange={(event) => handleChange('district', event.target.value)}
+                className="aurora-input"
+              />
+              {renderFieldError('district')}
             </label>
 
             <label className="block">
@@ -266,28 +338,6 @@ export default function AddressesPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                City
-              </span>
-              <select
-                value={form.city}
-                onChange={(event) => handleChange('city', event.target.value)}
-                className="aurora-select"
-              >
-                <option value="">Select a city</option>
-                {cityOptions.map((option) => (
-                  <option
-                    key={option}
-                    value={getCityOptionValue(option)}
-                  >
-                    {option}
-                  </option>
-                ))}
-              </select>
-              {renderFieldError('city')}
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
                 Postal code
               </span>
               <input
@@ -301,18 +351,6 @@ export default function AddressesPage() {
                 className="aurora-input"
               />
               {renderFieldError('postalCode')}
-            </label>
-
-            <label className="block sm:col-span-2">
-              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                Delivery notes
-              </span>
-              <textarea
-                rows="4"
-                value={form.notes}
-                onChange={(event) => handleChange('notes', event.target.value)}
-                className="aurora-textarea"
-              />
             </label>
 
             <label className="glass-toggle sm:col-span-2">
@@ -396,15 +434,16 @@ export default function AddressesPage() {
                         <br />
                         {address.email}
                         <br />
-                        {address.address}
+                        {address.addressLine1}
+                        {address.addressLine2 ? (
+                          <>
+                            <br />
+                            {address.addressLine2}
+                          </>
+                        ) : null}
                         <br />
-                        {address.city}, {address.postalCode}
+                        {address.district}, {address.province} {address.postalCode}
                       </p>
-                      {address.notes ? (
-                        <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-                          Notes: {address.notes}
-                        </p>
-                      ) : null}
                     </div>
 
                     <div className="flex flex-wrap gap-2">

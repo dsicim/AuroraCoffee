@@ -216,7 +216,7 @@ export default function CustomerPage() {
         </div>
       </section>
 
-      <div className="mt-8 grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
           <section className="aurora-ops-panel p-8">
             <div className="flex items-end justify-between gap-4">
@@ -354,9 +354,15 @@ export default function CustomerPage() {
                 <br />
                 {defaultAddress.email}
                 <br />
-                {defaultAddress.address}
+                {defaultAddress.addressLine1 || defaultAddress.address}
+                {defaultAddress.addressLine2 ? (
+                  <>
+                    <br />
+                    {defaultAddress.addressLine2}
+                  </>
+                ) : null}
                 <br />
-                {defaultAddress.city}, {defaultAddress.postalCode}
+                {defaultAddress.district || defaultAddress.city}, {defaultAddress.province} {defaultAddress.postalCode}
               </p>
             ) : (
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
