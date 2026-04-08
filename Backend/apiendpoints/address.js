@@ -17,9 +17,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     const addresses = result.addresses.map(addr => {
                         try {
                             if (specificaddress && specificaddress != addr.id) return undefined;
+                            addr.address = aes.pjs(addr.address);
+                            if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
                             const decrypted = aes.decrypt(addr.address);
                             if (!decrypted.s) throw new Error("Decryption failed");
-                            const address = JSON.parse(decrypted.value);
+                            const address = aes.pjs(decrypted.value);
+                            if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                             if (typeof address !== "object" || !address.name || !address.surname || !address.address || !address.city || !address.province || !address.country || !address.zip || !address.phone) {
                                 throw new Error("Decrypted data is not a valid address");
                             }

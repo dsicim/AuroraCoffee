@@ -54,4 +54,4 @@ function decrypt(encrypted, userId) {
         return { s:false, e: "Decryption failed: " + err.message};
     }
 }
-module.exports = { encrypt, decrypt };
+module.exports = { pjs, encrypt, decrypt };

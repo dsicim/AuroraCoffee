@@ -61,7 +61,8 @@ async function getCardToken(userId) {
     return await sql.getUserCards(userId).then(res => {
         if (res.success) {
             if (!res.cardTokens) return { done: true, value: null };
-            res.cardTokens = JSON.parse(res.cardTokens);
+            res.cardTokens = aes.pjs(res.cardTokens);
+            if (res.cardTokens.e && res.cardTokens.e.startsWith("Failed to parse JSON: ")) return { done: false, error: "Malformed data found on database" };
             const token = aes.decrypt(res.cardTokens, userId);
             if (token.s) return { done: true, value: token.value };
             else return { done: false, error: token.e };
