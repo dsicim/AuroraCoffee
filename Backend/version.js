@@ -39,11 +39,11 @@ function execute(command, options = {}, logfile = null) {
         }
 
         if (child.stdout) {
-            if (log) child.stdout.pipe(process.stdout);
+            if (log && logconsole) child.stdout.pipe(process.stdout);
             if (logStream) child.stdout.pipe(logStream, { end: false });
         }
         if (child.stderr) {
-            if (log) child.stderr.pipe(process.stderr);
+            if (log && logconsole) child.stderr.pipe(process.stderr);
             if (logStream) child.stderr.pipe(logStream, { end: false });
         }
 
@@ -57,10 +57,11 @@ function execute(command, options = {}, logfile = null) {
     });
 }
 const log = true;
+let logconsole = true;
 function logtext(text) {
     if (log) {
         fs.appendFileSync("./resetlog.log", text + "\n");
-        console.log(text);
+        if (logconsole) console.log(text);
     }
 }
 async function runResetScript(repoParent,gitrepo) {
@@ -129,6 +130,8 @@ async function RunServerMaintenance() {
         console.log("NOWAIT: No action specified, skipping maintenance");
         return null;
     }
+    const logs = args.indexOf("--nologs") !== -1;
+    if (logs) logconsole = false;
     const action = args[index + 1];
     if (action === "restart" || action === "update" || action === "reset") {
         let updateneeded = false;
