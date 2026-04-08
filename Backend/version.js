@@ -108,11 +108,11 @@ async function runUpdateScript(repoParent) {
         await execute("git fetch origin", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git reset --hard origin/main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         logtext("Updated git repo.");
-        await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json"), { force: true }, err => { });
-        await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => { });
-        await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
+        await fs.rm(path.join(cwd, "/AuroraCoffee/Backend/config.json"), { force: true }, err => { });
+        await fs.copyFile("./config.json", path.join(cwd, "/AuroraCoffee/Backend/config.json"), err => { });
+        await fs.rm(path.join(cwd, "/AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
         logtext("Copied config file.");
-        await fs.rm(path.join(cwd, "AuroraCoffee/Frontend/dist"), { force: true }, err => { });
+        await fs.rm(path.join(cwd, "/AuroraCoffee/Frontend/dist"), { force: true }, err => { });
         await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         logtext("Built frontend.");
