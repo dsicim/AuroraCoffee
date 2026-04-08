@@ -33,7 +33,7 @@ export async function restoreOrderItemsToCart(items) {
 
   if (validEntries.length) {
     for (const entry of validEntries) {
-      addCartItem(entry.product, entry.quantity)
+      await addCartItem(entry.product, entry.quantity)
     }
   }
 
@@ -56,7 +56,7 @@ export async function addDefaultProductToCart(productReference) {
     return { status: 'sold-out', product }
   }
 
-  addCartItem(product, 1)
+  await addCartItem(product, 1)
 
   return {
     status: 'added',

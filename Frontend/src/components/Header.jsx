@@ -52,15 +52,20 @@ export default function Header() {
 
   useEffect(() => {
     const syncSessionState = () => {
-      setSession(getAuthSession())
-      setUser(null)
-      reconcileAccountStorageWithAuth()
-      reconcileCartStorageWithAuth()
-      setCartCount(getCartCount())
+      void (async () => {
+        setSession(getAuthSession())
+        setUser(null)
+        reconcileAccountStorageWithAuth()
+        await reconcileCartStorageWithAuth()
+        setCartCount(getCartCount())
+      })()
     }
 
     const syncCartState = () => {
-      setCartCount(getCartCount())
+      void (async () => {
+        await reconcileCartStorageWithAuth()
+        setCartCount(getCartCount())
+      })()
     }
 
     window.addEventListener('storage', syncSessionState)
@@ -135,22 +140,24 @@ export default function Header() {
   }, [location.pathname, location.search])
 
   const handleLogout = () => {
-    setMenuOpen(false)
-    setMobileNavOpen(false)
-    clearAuthSession()
-    reconcileCartStorageWithAuth()
-    setSession(getAuthSession())
-    setUser(null)
-    setCartCount(getCartCount())
-    navigate('/', { replace: true })
+    void (async () => {
+      setMenuOpen(false)
+      setMobileNavOpen(false)
+      clearAuthSession()
+      await reconcileCartStorageWithAuth()
+      setSession(getAuthSession())
+      setUser(null)
+      setCartCount(getCartCount())
+      navigate('/', { replace: true })
+    })()
   }
 
   return (
-    <header className="sticky top-0 z-40 px-3 pt-3 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
+    <header className="sticky top-0 z-40 px-2 pt-2 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
       <div className="aurora-container">
         <LiquidGlassFrame
           className="aurora-glass-dock glass-nav relative overflow-visible rounded-[2rem]"
-          contentClassName="px-2.5 py-2.5 sm:px-4 sm:py-3 lg:px-5"
+          contentClassName="px-2 py-2 sm:px-4 sm:py-3 lg:px-5"
         >
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
           <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
@@ -349,30 +356,32 @@ export default function Header() {
         </LiquidGlassFrame>
 
         {mobileNavOpen ? (
-          <LiquidGlassFrame
-            className="aurora-glass-dock glass-nav mt-3 rounded-[1.8rem] md:hidden"
-            contentClassName="p-3"
-          >
-            <div className="grid gap-2">
-              {navItems.map((item) => {
-                const isActive = location.pathname === item.to
+          <div className="mt-2 flex md:hidden">
+            <LiquidGlassFrame
+              className="aurora-glass-dock glass-nav w-fit max-w-full rounded-[1.5rem]"
+              contentClassName="p-2.5"
+            >
+              <div className="flex flex-col gap-2">
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.to
 
-                return (
-                  <LiquidGlassButton
-                    as={Link}
-                    key={item.label}
-                    to={item.to}
-                    variant="chip"
-                    size="compact"
-                    selected={isActive}
-                    onClick={() => setMobileNavOpen(false)}
-                  >
-                    {item.label}
-                  </LiquidGlassButton>
-                )
-              })}
-            </div>
-          </LiquidGlassFrame>
+                  return (
+                    <LiquidGlassButton
+                      as={Link}
+                      key={item.label}
+                      to={item.to}
+                      variant="chip"
+                      size="compact"
+                      selected={isActive}
+                      onClick={() => setMobileNavOpen(false)}
+                    >
+                      {item.label}
+                    </LiquidGlassButton>
+                  )
+                })}
+              </div>
+            </LiquidGlassFrame>
+          </div>
         ) : null}
       </div>
     </header>

@@ -3,6 +3,7 @@ import { buildApiUrl } from './api'
 
 let cachedProducts = null
 let productsPromise = null
+const cachedProductsById = new Map()
 
 function slugify(value) {
   return String(value || '')
@@ -35,9 +36,10 @@ function buildSlugMap(rawProducts) {
 
   return rawProducts.map((product) => {
     const baseSlug = slugify(product.name) || 'product'
-    const slug = (baseSlugCounts.get(baseSlug) || 0) > 1
-      ? `${baseSlug}-${product.id}`
-      : baseSlug
+    const slug =
+      (baseSlugCounts.get(baseSlug) || 0) > 1
+        ? `${baseSlug}-${product.id}`
+        : baseSlug
 
     return { ...product, slug }
   })
@@ -64,16 +66,59 @@ function normalizeProduct(rawProduct) {
   }
 }
 
-async function requestProducts() {
-  const response = await fetch(buildApiUrl('/products/all'))
-  const payload = await response.json().catch(() => ({}))
+function storeProducts(products, { replace = false } = {}) {
+  const normalizedProducts = products.map(normalizeProduct)
 
-  if (!response.ok || payload?.e) {
-    throw new Error(payload?.e || 'Could not load products')
+  if (replace || !cachedProducts) {
+    cachedProducts = normalizedProducts
+  } else {
+    const merged = new Map(cachedProducts.map((product) => [product.id, product]))
+    for (const product of normalizedProducts) {
+      merged.set(product.id, product)
+    }
+    cachedProducts = Array.from(merged.values())
   }
 
-  const normalizedProducts = buildSlugMap(payload?.products || []).map(normalizeProduct)
-  cachedProducts = normalizedProducts
+  cachedProductsById.clear()
+  for (const product of cachedProducts) {
+    cachedProductsById.set(product.id, product)
+  }
+
+  return normalizedProducts
+}
+
+function hydrateWithKnownSlugs(rawProducts) {
+  if (!cachedProducts?.length) {
+    return buildSlugMap(rawProducts)
+  }
+
+  return rawProducts.map((product) => {
+    const existing = cachedProductsById.get(Number(product.id))
+    return {
+      ...product,
+      slug: existing?.slug || slugify(product.name) || `product-${product.id}`,
+    }
+  })
+}
+
+async function requestJson(path) {
+  const response = await fetch(buildApiUrl(path))
+  const payload = await response.json().catch(() => ({}))
+  const data = payload?.d ?? payload
+
+  if (!response.ok || data?.e || payload?.e) {
+    throw new Error(data?.e || payload?.e || 'Request failed')
+  }
+
+  return data
+}
+
+async function requestProducts() {
+  const payload = await requestJson('/products/all')
+  const normalizedProducts = storeProducts(
+    buildSlugMap(payload?.products || []),
+    { replace: true },
+  )
   return normalizedProducts
 }
 
@@ -93,6 +138,60 @@ export async function fetchAllProducts({ force = false } = {}) {
   return productsPromise
 }
 
+export async function fetchProductsByIds(ids) {
+  const normalizedIds = Array.from(
+    new Set(
+      (ids || [])
+        .map((id) => Number(id))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
+  )
+
+  if (!normalizedIds.length) {
+    return []
+  }
+
+  const cachedMatches = normalizedIds
+    .map((id) => cachedProductsById.get(id))
+    .filter(Boolean)
+
+  if (cachedMatches.length === normalizedIds.length) {
+    return cachedMatches
+  }
+
+  const payload = await requestJson(`/products?ids=${normalizedIds.join(',')}`)
+  const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
+  storeProducts(hydratedProducts)
+
+  return normalizedIds
+    .map((id) => cachedProductsById.get(id))
+    .filter(Boolean)
+}
+
+export async function searchProducts(query, sortBy = 'newest') {
+  const normalizedQuery = String(query || '').trim()
+
+  if (!normalizedQuery) {
+    return fetchAllProducts()
+  }
+
+  const backendSort =
+    sortBy === 'price-asc'
+      ? 'price_asc'
+      : sortBy === 'price-desc'
+        ? 'price_desc'
+        : sortBy === 'oldest'
+          ? 'oldest'
+          : 'newest'
+
+  const payload = await requestJson(
+    `/products/search?q=${encodeURIComponent(normalizedQuery)}&s=${encodeURIComponent(backendSort)}`,
+  )
+  const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
+  storeProducts(hydratedProducts)
+  return hydratedProducts.map(normalizeProduct)
+}
+
 export function getCachedProducts() {
   return cachedProducts || []
 }
@@ -107,6 +206,15 @@ export async function findProductByReference(reference) {
 
   if (!normalizedReference) {
     return null
+  }
+
+  const numericReference = Number(normalizedReference)
+
+  if (Number.isFinite(numericReference) && numericReference > 0) {
+    const byId = await fetchProductsByIds([numericReference])
+    if (byId[0]) {
+      return byId[0]
+    }
   }
 
   const products = await fetchAllProducts()

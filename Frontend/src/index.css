@@ -1783,6 +1783,29 @@ img {
     text-shadow: none;
   }
 
+  @media (max-width: 639px) {
+    .aurora-product-hero-card .aurora-widget-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: flex-start;
+      gap: 0.8rem;
+    }
+
+    .aurora-product-hero-card .aurora-widget-title {
+      font-size: 1.95rem;
+      line-height: 1;
+    }
+
+    .aurora-product-hero-card .aurora-widget-subtitle {
+      font-size: 0.92rem;
+      line-height: 1.4;
+    }
+
+    .aurora-product-hero-card .aurora-widget-heading {
+      gap: 0.2rem;
+    }
+  }
+
   .aurora-logout-button.button-wrap.button-variant-danger {
     --button-fill-start: rgba(255, 239, 240, 0.48);
     --button-fill-mid: rgba(224, 80, 87, 0.94);

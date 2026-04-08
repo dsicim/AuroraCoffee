@@ -11,10 +11,14 @@ import {
 import {
   accountDataChangeEvent,
   addOrderHistoryEntry,
-  getDefaultSavedAddress,
-  getSavedAddresses,
   reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
+import {
+  addressBookChangeEvent,
+  fetchSavedAddresses,
+  getDefaultSavedAddress,
+  getSavedAddresses,
+} from '../lib/addressBook'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
@@ -22,6 +26,14 @@ import {
   getCartItems,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
+import {
+  deletePaymentMethod,
+  fetchInstallmentInfo,
+  fetchPaymentMethods,
+  initiatePayment,
+  maskSavedCard,
+  savePaymentMethod,
+} from '../lib/payment'
 import {
   validateCityPostalCode,
   validateEmail,
@@ -157,6 +169,17 @@ function validatePaymentForm(payment) {
   return errors
 }
 
+function validateSavedCardForm(payment) {
+  const errors = {}
+  const cvcDigits = payment.cvc.replace(/\D/g, '')
+
+  if (cvcDigits.length < 3) {
+    errors.cvc = 'CVC must be at least 3 digits'
+  }
+
+  return errors
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const initialDefaultAddress = getDefaultSavedAddress()
@@ -171,6 +194,11 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState(
     initialDefaultAddress?.id || '',
   )
+  const [savedCards, setSavedCards] = useState([])
+  const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
+  const [saveCardForLater, setSaveCardForLater] = useState(false)
+  const [installmentInfo, setInstallmentInfo] = useState(null)
+  const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
 
@@ -185,27 +213,37 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     const syncFromStorage = () => {
-      reconcileAccountStorageWithAuth()
-      reconcileCartStorageWithAuth()
-      setItems(getCartItems())
-      setSession(getAuthSession())
-      setSavedAddresses(getSavedAddresses())
+      void (async () => {
+        reconcileAccountStorageWithAuth()
+        await reconcileCartStorageWithAuth()
+        await fetchSavedAddresses({ force: true }).catch(() => [])
+        setItems(getCartItems())
+        setSession(getAuthSession())
+        setSavedAddresses(getSavedAddresses())
+      })()
     }
 
     const syncCartState = () => {
-      setItems(getCartItems())
-      setSession(getAuthSession())
+      void (async () => {
+        await reconcileCartStorageWithAuth()
+        setItems(getCartItems())
+        setSession(getAuthSession())
+      })()
     }
 
     const syncAccountState = () => {
-      setSession(getAuthSession())
-      setSavedAddresses(getSavedAddresses())
+      void (async () => {
+        setSession(getAuthSession())
+        await fetchSavedAddresses({ force: true }).catch(() => [])
+        setSavedAddresses(getSavedAddresses())
+      })()
     }
 
     window.addEventListener('storage', syncFromStorage)
     window.addEventListener(authChangeEvent, syncAccountState)
     window.addEventListener(cartChangeEvent, syncCartState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
+    window.addEventListener(addressBookChangeEvent, syncAccountState)
     const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
@@ -213,9 +251,82 @@ export default function CheckoutPage() {
       window.removeEventListener(authChangeEvent, syncAccountState)
       window.removeEventListener(cartChangeEvent, syncCartState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
+      window.removeEventListener(addressBookChangeEvent, syncAccountState)
       window.clearTimeout(initialSyncId)
     }
   }, [])
+
+  useEffect(() => {
+    if (!isLoggedIn) {
+      setSavedCards([])
+      setSelectedSavedCardId('')
+      return
+    }
+
+    let active = true
+
+    const loadSavedCards = async () => {
+      try {
+        const cards = await fetchPaymentMethods()
+
+        if (!active) {
+          return
+        }
+
+        setSavedCards(cards)
+        setSelectedSavedCardId((current) =>
+          current && cards.some((card) => card.id === current)
+            ? current
+            : cards[0]?.id || '',
+        )
+      } catch (paymentError) {
+        if (active) {
+          setErrors((current) => ({
+            ...current,
+            payment: paymentError.message || 'Could not load saved cards',
+          }))
+        }
+      }
+    }
+
+    loadSavedCards()
+
+    return () => {
+      active = false
+    }
+  }, [isLoggedIn])
+
+  useEffect(() => {
+    const cardDigits = payment.cardNumber.replace(/\D/g, '')
+
+    if (selectedSavedCardId || cardDigits.length < 6 || currentStep.key !== 'payment') {
+      setInstallmentInfo(null)
+      return undefined
+    }
+
+    let active = true
+    const timeoutId = window.setTimeout(() => {
+      fetchInstallmentInfo({
+        bin: cardDigits.slice(0, 6),
+        price: total,
+      })
+        .then((info) => {
+          if (active) {
+            setInstallmentInfo(info)
+          }
+        })
+        .catch(() => {
+          if (active) {
+            setInstallmentInfo(null)
+          }
+        })
+    }, 250)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [currentStep.key, payment.cardNumber, selectedSavedCardId, total])
 
   useEffect(() => {
     if (submittedOrder || !items.length || isLoggedIn) {
@@ -243,7 +354,7 @@ export default function CheckoutPage() {
 
   const handlePaymentChange = (field, value) => {
     setPayment((current) => ({ ...current, [field]: value }))
-    setErrors((current) => ({ ...current, [field]: '' }))
+    setErrors((current) => ({ ...current, [field]: '', payment: '' }))
   }
 
   const handleNextStep = () => {
@@ -257,7 +368,9 @@ export default function CheckoutPage() {
     }
 
     if (currentStep.key === 'payment') {
-      const paymentErrors = validatePaymentForm(payment)
+      const paymentErrors = selectedSavedCardId
+        ? validateSavedCardForm(payment)
+        : validatePaymentForm(payment)
 
       if (Object.keys(paymentErrors).length) {
         setErrors(paymentErrors)
@@ -275,28 +388,69 @@ export default function CheckoutPage() {
   }
 
   const handleSubmitOrder = () => {
-    const submittedOrderSnapshot = {
-      reference: createOrderReference(),
-      submittedAt: new Date().toISOString(),
-      items,
-      delivery,
-      payment: {
-        cardholder: payment.cardholder,
-        maskedCardNumber: maskCardNumber(payment.cardNumber),
-        expiry: payment.expiry,
-      },
-      subtotal,
-      serviceFee,
-      total,
-      status: 'Demo order placed',
-    }
+    void (async () => {
+      setPaymentBusy(true)
+      setErrors((current) => ({ ...current, payment: '' }))
 
-    addOrderHistoryEntry(submittedOrderSnapshot)
-    setSubmittedOrder(submittedOrderSnapshot)
-    clearCart()
-    setItems([])
-    setErrors({})
-    setStepIndex(3)
+      try {
+        const paymentResponse = await initiatePayment(
+          selectedSavedCardId
+            ? {
+                cardToken: selectedSavedCardId,
+                cvc: payment.cvc,
+              }
+            : {
+                card: payment,
+              },
+        )
+
+        if (!selectedSavedCardId && saveCardForLater) {
+          await savePaymentMethod({
+            alias: payment.cardholder || 'Saved card',
+            card: payment,
+          }).catch(() => null)
+        }
+
+        const submittedOrderSnapshot = {
+          reference: createOrderReference(),
+          submittedAt: new Date().toISOString(),
+          items,
+          delivery,
+          payment: selectedSavedCardId
+            ? {
+                cardholder: 'Saved card',
+                maskedCardNumber:
+                  maskSavedCard(savedCards.find((card) => card.id === selectedSavedCardId)) ||
+                  'Saved card',
+                expiry: '',
+              }
+            : {
+                cardholder: payment.cardholder,
+                maskedCardNumber: maskCardNumber(payment.cardNumber),
+                expiry: payment.expiry,
+              },
+          subtotal,
+          serviceFee,
+          total,
+          status: 'Payment initiated',
+          paymentResponse,
+        }
+
+        addOrderHistoryEntry(submittedOrderSnapshot)
+        setSubmittedOrder(submittedOrderSnapshot)
+        await clearCart()
+        setItems([])
+        setErrors({})
+        setStepIndex(3)
+      } catch (submitError) {
+        setErrors((current) => ({
+          ...current,
+          payment: submitError.message || 'Payment could not be submitted',
+        }))
+      } finally {
+        setPaymentBusy(false)
+      }
+    })()
   }
 
   const handleApplySavedAddress = (addressId) => {
@@ -580,52 +734,126 @@ export default function CheckoutPage() {
 
           {currentStep.key === 'payment' ? (
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Cardholder name
-                </span>
-                <input
-                  type="text"
-                  value={payment.cardholder}
-                  onChange={(event) => handlePaymentChange('cardholder', event.target.value)}
-                  className="aurora-input"
-                />
-                {renderFieldError('cardholder')}
-              </label>
+              {savedCards.length ? (
+                <div className="aurora-showroom-subpanel p-5 sm:col-span-2">
+                  <div className="aurora-widget-header">
+                    <div className="aurora-widget-heading">
+                      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                        Saved cards
+                      </p>
+                      <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                        Select a saved card or enter a new one for this order.
+                      </p>
+                    </div>
+                    {selectedSavedCardId ? (
+                      <button
+                        type="button"
+                        className="aurora-link text-sm"
+                        onClick={() => setSelectedSavedCardId('')}
+                      >
+                        Use a new card
+                      </button>
+                    ) : null}
+                  </div>
 
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Card number
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={payment.cardNumber}
-                  onChange={(event) =>
-                    handlePaymentChange('cardNumber', formatCardNumber(event.target.value))
-                  }
-                  placeholder="1234 5678 9012 3456"
-                  className="aurora-input"
-                />
-                {renderFieldError('cardNumber')}
-              </label>
+                  <div className="mt-4 space-y-3">
+                    {savedCards.map((card) => (
+                      <div key={card.id} className="aurora-ops-card flex items-center justify-between gap-3 px-4 py-3">
+                        <button
+                          type="button"
+                          className="min-w-0 flex-1 text-left"
+                          onClick={() => setSelectedSavedCardId(card.id)}
+                        >
+                          <p className="font-semibold text-[var(--aurora-text-strong)]">
+                            {card.alias || card.family || 'Saved card'}
+                          </p>
+                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                            {maskSavedCard(card)} · {card.provider || card.bank || 'Card'}
+                          </p>
+                        </button>
+                        <div className="flex items-center gap-3">
+                          {selectedSavedCardId === card.id ? (
+                            <span className="aurora-chip">Selected</span>
+                          ) : null}
+                          <button
+                            type="button"
+                            className="aurora-link text-sm"
+                            onClick={() => {
+                              void (async () => {
+                                await deletePaymentMethod(card.id)
+                                const nextCards = await fetchPaymentMethods()
+                                setSavedCards(nextCards)
+                                setSelectedSavedCardId((current) =>
+                                  current === card.id ? '' : current,
+                                )
+                              })()
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
 
-              <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
-                  Expiry
-                </span>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={payment.expiry}
-                  onChange={(event) =>
-                    handlePaymentChange('expiry', formatExpiry(event.target.value))
-                  }
-                  placeholder="MM/YY"
-                  className="aurora-input"
-                />
-                {renderFieldError('expiry')}
-              </label>
+              {!selectedSavedCardId ? (
+                <>
+                  <label className="block sm:col-span-2">
+                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                      Cardholder name
+                    </span>
+                    <input
+                      type="text"
+                      value={payment.cardholder}
+                      onChange={(event) => handlePaymentChange('cardholder', event.target.value)}
+                      className="aurora-input"
+                    />
+                    {renderFieldError('cardholder')}
+                  </label>
+
+                  <label className="block sm:col-span-2">
+                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                      Card number
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={payment.cardNumber}
+                      onChange={(event) =>
+                        handlePaymentChange('cardNumber', formatCardNumber(event.target.value))
+                      }
+                      placeholder="1234 5678 9012 3456"
+                      className="aurora-input"
+                    />
+                    {renderFieldError('cardNumber')}
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                      Expiry
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={payment.expiry}
+                      onChange={(event) =>
+                        handlePaymentChange('expiry', formatExpiry(event.target.value))
+                      }
+                      placeholder="MM/YY"
+                      className="aurora-input"
+                    />
+                    {renderFieldError('expiry')}
+                  </label>
+                </>
+              ) : (
+                <div className="aurora-showroom-subpanel p-5 sm:col-span-2">
+                  <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                    Using {maskSavedCard(savedCards.find((card) => card.id === selectedSavedCardId))}.
+                  </p>
+                </div>
+              )}
 
               <label className="block">
                 <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
@@ -647,9 +875,48 @@ export default function CheckoutPage() {
                 {renderFieldError('cvc')}
               </label>
 
-              <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)] sm:col-span-2">
-                This payment step is for interface preview only. No real card data is processed or sent to a payment gateway.
-              </div>
+              {!selectedSavedCardId ? (
+                <label className="glass-toggle sm:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={saveCardForLater}
+                    onChange={(event) => setSaveCardForLater(event.target.checked)}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-track">
+                    <span className="glass-filter" />
+                    <span className="glass-overlay" />
+                    <span className="glass-specular" />
+                    <span className="toggle-thumb">
+                      <span className="glass-filter" />
+                      <span className="glass-overlay" />
+                      <span className="glass-specular" />
+                    </span>
+                  </span>
+                  <span className="toggle-label">Save this card for next time</span>
+                </label>
+              ) : null}
+
+              {installmentInfo?.card ? (
+                <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)] sm:col-span-2">
+                  <p className="font-semibold text-[var(--aurora-text-strong)]">
+                    {installmentInfo.card.provider || 'Card'} · {installmentInfo.card.type || 'Card'}
+                  </p>
+                  {installmentInfo.installments?.length ? (
+                    <p className="mt-2">
+                      Installments available: {installmentInfo.installments.map((item) => `${item.months}x`).join(', ')}
+                    </p>
+                  ) : (
+                    <p className="mt-2">No installment options were returned for this card.</p>
+                  )}
+                </div>
+              ) : null}
+
+              {errors.payment ? (
+                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
+                  {errors.payment}
+                </p>
+              ) : null}
             </div>
           ) : null}
 
@@ -693,12 +960,18 @@ export default function CheckoutPage() {
                   <div className="aurora-widget-subsurface p-5">
                     <p className="text-sm leading-8 text-[var(--aurora-text)]">
                       <span className="font-semibold text-[var(--aurora-text-strong)]">
-                        {payment.cardholder}
+                        {selectedSavedCardId ? 'Saved card' : payment.cardholder}
                       </span>
                       <br />
-                      {maskCardNumber(payment.cardNumber)}
-                      <br />
-                      Expires {payment.expiry}
+                      {selectedSavedCardId
+                        ? maskSavedCard(savedCards.find((card) => card.id === selectedSavedCardId))
+                        : maskCardNumber(payment.cardNumber)}
+                      {!selectedSavedCardId ? (
+                        <>
+                          <br />
+                          Expires {payment.expiry}
+                        </>
+                      ) : null}
                     </p>
                   </div>
                 </div>
@@ -811,9 +1084,10 @@ export default function CheckoutPage() {
                 <LiquidGlassButton
                   type="button"
                   onClick={handleSubmitOrder}
+                  disabled={paymentBusy}
                   size="hero"
                 >
-                  Place order
+                  {paymentBusy ? 'Submitting order' : 'Place order'}
                 </LiquidGlassButton>
               ) : (
                 <LiquidGlassButton
@@ -886,7 +1160,7 @@ export default function CheckoutPage() {
             <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)]">
               {currentStep.key === 'success'
                 ? 'The cart has been cleared and the success step now reflects the submitted order snapshot.'
-                : 'Review your order before final submission. Payment data is not sent to a live processor in this build.'}
+                : 'Review the current cart, delivery details, and payment method before sending the order to the payment endpoint.'}
             </div>
           </div>
         </aside>

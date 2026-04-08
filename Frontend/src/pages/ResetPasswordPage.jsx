@@ -92,7 +92,7 @@ export default function ResetPasswordPage() {
 
         saveAuthSession(nextSession, false)
         reconcileAccountStorageWithAuth()
-        reconcileCartStorageWithAuth()
+        await reconcileCartStorageWithAuth()
         navigate('/', { replace: true })
         return
       }

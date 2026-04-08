@@ -4,10 +4,8 @@ import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   accountDataChangeEvent,
-  getDefaultSavedAddress,
   getFavoriteProductIds,
   getOrderHistory,
-  getSavedAddresses,
 } from '../lib/accountData'
 import {
   addDefaultProductToCart,
@@ -15,9 +13,20 @@ import {
   getOrderStatus,
   restoreOrderItemsToCart,
 } from '../lib/accountActions'
-import { cartChangeEvent, getCartCount, getCartSubtotal } from '../lib/cart'
+import {
+  cartChangeEvent,
+  getCartCount,
+  getCartSubtotal,
+  reconcileCartStorageWithAuth,
+} from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import { useProductCatalog } from '../lib/products'
+import {
+  addressBookChangeEvent,
+  fetchSavedAddresses,
+  getDefaultSavedAddress,
+  getSavedAddresses,
+} from '../lib/addressBook'
 
 function formatTimestamp(value) {
   return new Date(value).toLocaleString('en-GB', {
@@ -37,18 +46,25 @@ export default function CustomerPage() {
 
   useEffect(() => {
     const syncAccountState = () => {
-      setOrders(getOrderHistory())
-      setAddresses(getSavedAddresses())
-      setFavoriteIds(getFavoriteProductIds())
+      void (async () => {
+        setOrders(getOrderHistory())
+        await fetchSavedAddresses({ force: true })
+        setAddresses(getSavedAddresses())
+        setFavoriteIds(getFavoriteProductIds())
+      })()
     }
 
     const syncCartState = () => {
-      setCartCount(getCartCount())
-      setCartSubtotal(getCartSubtotal())
+      void (async () => {
+        await reconcileCartStorageWithAuth()
+        setCartCount(getCartCount())
+        setCartSubtotal(getCartSubtotal())
+      })()
     }
 
     window.addEventListener('storage', syncAccountState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
+    window.addEventListener(addressBookChangeEvent, syncAccountState)
     window.addEventListener(cartChangeEvent, syncCartState)
     const initialSyncId = window.setTimeout(() => {
       syncAccountState()
@@ -58,6 +74,7 @@ export default function CustomerPage() {
     return () => {
       window.removeEventListener('storage', syncAccountState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
+      window.removeEventListener(addressBookChangeEvent, syncAccountState)
       window.removeEventListener(cartChangeEvent, syncCartState)
       window.clearTimeout(initialSyncId)
     }

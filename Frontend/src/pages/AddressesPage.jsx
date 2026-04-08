@@ -7,12 +7,13 @@ import {
   sanitizePostalCode,
 } from '../lib/address'
 import {
-  accountDataChangeEvent,
+  addressBookChangeEvent,
   deleteSavedAddress,
+  fetchSavedAddresses,
   getSavedAddresses,
   saveSavedAddress,
   setDefaultSavedAddress,
-} from '../lib/accountData'
+} from '../lib/addressBook'
 import {
   validateCityPostalCode,
   validateEmail,
@@ -27,6 +28,7 @@ const initialFormState = {
   address: '',
   city: '',
   postalCode: '',
+  phone: '',
   notes: '',
   isDefault: false,
 }
@@ -45,6 +47,10 @@ function validateAddressForm(form) {
 
   if (!form.address.trim()) {
     errors.address = 'Address is required'
+  }
+
+  if (!form.phone.trim()) {
+    errors.phone = 'Phone is required'
   }
 
   const cityValidation = validateTurkishCity(form.city)
@@ -71,16 +77,19 @@ export default function AddressesPage() {
 
   useEffect(() => {
     const syncAddresses = () => {
-      setAddresses(getSavedAddresses())
+      void (async () => {
+        await fetchSavedAddresses({ force: true })
+        setAddresses(getSavedAddresses())
+      })()
     }
 
     window.addEventListener('storage', syncAddresses)
-    window.addEventListener(accountDataChangeEvent, syncAddresses)
+    window.addEventListener(addressBookChangeEvent, syncAddresses)
     const initialSyncId = window.setTimeout(syncAddresses, 0)
 
     return () => {
       window.removeEventListener('storage', syncAddresses)
-      window.removeEventListener(accountDataChangeEvent, syncAddresses)
+      window.removeEventListener(addressBookChangeEvent, syncAddresses)
       window.clearTimeout(initialSyncId)
     }
   }, [])
@@ -113,17 +122,25 @@ export default function AddressesPage() {
 
   const handleSubmit = (event) => {
     event.preventDefault()
+    void (async () => {
+      const nextErrors = validateAddressForm(form)
 
-    const nextErrors = validateAddressForm(form)
+      if (Object.keys(nextErrors).length) {
+        setErrors(nextErrors)
+        return
+      }
 
-    if (Object.keys(nextErrors).length) {
-      setErrors(nextErrors)
-      return
-    }
-
-    const nextAddresses = saveSavedAddress(form)
-    setAddresses(nextAddresses)
-    resetForm()
+      try {
+        const nextAddresses = await saveSavedAddress(form)
+        setAddresses(nextAddresses)
+        resetForm()
+      } catch (saveError) {
+        setErrors((current) => ({
+          ...current,
+          form: saveError.message || 'Could not save address',
+        }))
+      }
+    })()
   }
 
   const handleEdit = (address) => {
@@ -135,6 +152,7 @@ export default function AddressesPage() {
       address: address.address,
       city: address.city,
       postalCode: address.postalCode,
+      phone: address.phone || '',
       notes: address.notes || '',
       isDefault: Boolean(address.isDefault),
     })
@@ -234,6 +252,20 @@ export default function AddressesPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                Phone
+              </span>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={(event) => handleChange('phone', event.target.value)}
+                placeholder="+90 5xx xxx xx xx"
+                className="aurora-input"
+              />
+              {renderFieldError('phone')}
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
                 City
               </span>
               <select
@@ -311,6 +343,12 @@ export default function AddressesPage() {
             >
               {form.id ? 'Save address changes' : 'Add saved address'}
             </LiquidGlassButton>
+
+            {errors.form ? (
+              <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
+                {errors.form}
+              </p>
+            ) : null}
           </form>
         </section>
 
@@ -393,12 +431,14 @@ export default function AddressesPage() {
                         variant="danger"
                         size="compact"
                         onClick={() => {
-                          const nextAddresses = deleteSavedAddress(address.id)
-                          setAddresses(nextAddresses)
+                          void (async () => {
+                            const nextAddresses = await deleteSavedAddress(address.id)
+                            setAddresses(nextAddresses)
 
-                          if (form.id === address.id) {
-                            resetForm()
-                          }
+                            if (form.id === address.id) {
+                              resetForm()
+                            }
+                          })()
                         }}
                       >
                         Delete

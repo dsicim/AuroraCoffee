@@ -24,14 +24,19 @@ export default function CartPage() {
 
   useEffect(() => {
     const syncFromStorage = () => {
-      reconcileCartStorageWithAuth()
-      setItems(getCartItems())
-      setSession(getAuthSession())
+      void (async () => {
+        await reconcileCartStorageWithAuth()
+        setItems(getCartItems())
+        setSession(getAuthSession())
+      })()
     }
 
     const syncCartState = () => {
-      setItems(getCartItems())
-      setSession(getAuthSession())
+      void (async () => {
+        await reconcileCartStorageWithAuth()
+        setItems(getCartItems())
+        setSession(getAuthSession())
+      })()
     }
 
     window.addEventListener('storage', syncFromStorage)
@@ -126,7 +131,9 @@ export default function CartPage() {
                         <LiquidGlassStepperButton
                           type="button"
                           aria-label={`Decrease ${item.name} quantity`}
-                          onClick={() => updateCartItemQuantity(item.id, item.quantity - 1)}
+                          onClick={() => {
+                            void updateCartItemQuantity(item.id, item.quantity - 1)
+                          }}
                         >
                           -
                         </LiquidGlassStepperButton>
@@ -136,7 +143,9 @@ export default function CartPage() {
                         <LiquidGlassStepperButton
                           type="button"
                           aria-label={`Increase ${item.name} quantity`}
-                          onClick={() => updateCartItemQuantity(item.id, item.quantity + 1)}
+                          onClick={() => {
+                            void updateCartItemQuantity(item.id, item.quantity + 1)
+                          }}
                         >
                           +
                         </LiquidGlassStepperButton>
@@ -144,7 +153,9 @@ export default function CartPage() {
 
                       <LiquidGlassButton
                         type="button"
-                        onClick={() => removeCartItem(item.id)}
+                        onClick={() => {
+                          void removeCartItem(item.id)
+                        }}
                         variant="quiet"
                         size="compact"
                         className="w-full"

@@ -180,17 +180,17 @@ export default function ProductDetailPage() {
   const previewWeight = previewSelection.productSlug === product.slug ? previewSelection.weight : ''
   const activePreviewMenu = openPreviewMenu.productSlug === product.slug ? openPreviewMenu.menu : ''
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     if (!availability.hasStock) {
       return
     }
 
-    addCartItem(product)
+    await addCartItem(product)
     setFeedback(`${product.name} was added to cart.`)
   }
 
   const hero = (
-    <section className="aurora-showcase-band p-6 sm:p-8 lg:p-10">
+    <section className="aurora-showcase-band px-4 py-6 sm:p-8 lg:p-10">
       <div className="aurora-crumbs">
         <Link to="/">Home</Link>
         <span>/</span>
@@ -204,10 +204,15 @@ export default function ProductDetailPage() {
           title={product.name}
           subtitle={getProductTypeLabel(product)}
           icon="coffee"
-          className="aurora-summary-lead p-6 sm:p-8"
-          headerAside={<span className="aurora-chip">{getProductCategoryLabel(product)}</span>}
+          className="aurora-summary-lead aurora-product-hero-card mx-auto w-full p-5 sm:p-8"
+          headerAside={
+            <span className="hidden sm:inline-flex aurora-chip">{getProductCategoryLabel(product)}</span>
+          }
         >
           <AuroraInset className="mb-6">
+            <div className="mb-4 sm:hidden">
+              <span className="aurora-chip">{getProductCategoryLabel(product)}</span>
+            </div>
             {getProductMetaLine(product) ? (
               <p className="text-sm text-[var(--aurora-text)]">{getProductMetaLine(product)}</p>
             ) : null}
@@ -221,7 +226,7 @@ export default function ProductDetailPage() {
           title="Product details"
           subtitle={getProductCategoryLabel(product)}
           icon="spark"
-          className="aurora-showroom-panel p-6 sm:p-8"
+          className="aurora-showroom-panel mx-auto w-full p-5 sm:p-8"
           headerAside={<FavoriteToggleButton productId={product.slug} productName={product.name} />}
         >
           <AuroraInset className="mt-1">
@@ -329,7 +334,9 @@ export default function ProductDetailPage() {
 
             <LiquidGlassButton
               type="button"
-              onClick={handleAddToCart}
+            onClick={() => {
+              void handleAddToCart()
+            }}
               disabled={!availability.hasStock}
               size="hero"
               className="mt-6 w-full"
@@ -361,7 +368,7 @@ export default function ProductDetailPage() {
   return (
     <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
       {relatedProducts.length ? (
-        <section className="aurora-showroom-panel p-6 sm:p-8">
+        <section className="aurora-showroom-panel mx-auto w-full p-5 sm:p-8">
           <p className="aurora-kicker">Related products</p>
           <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
             More from the catalog

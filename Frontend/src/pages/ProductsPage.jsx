@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AuroraWidget from '../components/AuroraWidget'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import LiquidGlassFrame from '../components/LiquidGlassFrame'
@@ -7,7 +7,7 @@ import StorefrontLayout from '../components/StorefrontLayout'
 import {
   getProductCategories,
   getProductCategoryLabel,
-  getProductSearchText,
+  searchProducts,
   useProductCatalog,
 } from '../lib/products'
 
@@ -43,24 +43,67 @@ export default function ProductsPage() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [sortBy, setSortBy] = useState('newest')
+  const [remoteResults, setRemoteResults] = useState(null)
+  const [searchLoading, setSearchLoading] = useState(false)
+  const [searchError, setSearchError] = useState('')
 
   const categories = useMemo(() => getProductCategories(products), [products])
   const normalizedSearch = search.trim().toLowerCase()
+  const sourceProducts = remoteResults || products
+
+  useEffect(() => {
+    if (!normalizedSearch) {
+      const frameId = window.requestAnimationFrame(() => {
+        setRemoteResults(null)
+        setSearchError('')
+        setSearchLoading(false)
+      })
+
+      return () => {
+        window.cancelAnimationFrame(frameId)
+      }
+    }
+
+    let active = true
+    const timeoutId = window.setTimeout(() => {
+      setSearchLoading(true)
+      searchProducts(normalizedSearch, sortBy === 'name' ? 'newest' : sortBy)
+        .then((nextProducts) => {
+          if (!active) {
+            return
+          }
+
+          setRemoteResults(nextProducts)
+          setSearchError('')
+        })
+        .catch((requestError) => {
+          if (!active) {
+            return
+          }
+
+          setSearchError(requestError.message || 'Search unavailable')
+          setRemoteResults([])
+        })
+        .finally(() => {
+          if (active) {
+            setSearchLoading(false)
+          }
+        })
+    }, 220)
+
+    return () => {
+      active = false
+      window.clearTimeout(timeoutId)
+    }
+  }, [normalizedSearch, sortBy])
+
   const filteredProducts = useMemo(
     () =>
       sortProducts(
-        products.filter((product) => {
-          const matchesCategory =
-            category === 'All' || getProductCategoryLabel(product) === category
-          const matchesSearch =
-            !normalizedSearch ||
-            getProductSearchText(product).includes(normalizedSearch)
-
-          return matchesCategory && matchesSearch
-        }),
+        sourceProducts.filter((product) => category === 'All' || getProductCategoryLabel(product) === category),
         sortBy,
       ),
-    [category, normalizedSearch, products, sortBy],
+    [category, sourceProducts, sortBy],
   )
 
   return (
@@ -143,10 +186,10 @@ export default function ProductsPage() {
           className="aurora-operational-card hidden h-fit rounded-[2rem] p-6 lg:block"
         >
           <p className="text-sm leading-8 text-[var(--aurora-text)]">
-            {loading
-              ? 'Loading the live catalog.'
-              : error
-                ? error
+              {loading || searchLoading
+                ? 'Loading the live catalog.'
+              : error || searchError
+                ? error || searchError
                 : 'Results are coming directly from the backend product feed.'}
           </p>
         </AuroraWidget>
@@ -160,19 +203,19 @@ export default function ProductsPage() {
           </h2>
         </div>
 
-        {loading ? (
+        {loading || searchLoading ? (
           <div className="aurora-solid-plate rounded-[2rem] px-6 py-12 text-center">
             <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
               Loading products
             </p>
           </div>
-        ) : error ? (
+        ) : error || searchError ? (
           <div className="aurora-solid-plate rounded-[2rem] px-6 py-12 text-center">
             <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
               Catalog unavailable
             </p>
             <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-              {error}
+              {error || searchError}
             </p>
           </div>
         ) : filteredProducts.length ? (

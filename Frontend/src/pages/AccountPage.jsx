@@ -5,12 +5,16 @@ import LiquidGlassButton from '../components/LiquidGlassButton'
 import { formatCurrency } from '../lib/currency'
 import {
   accountDataChangeEvent,
-  getDefaultSavedAddress,
   getFavoriteProductIds,
   getOrderHistory,
-  getSavedAddresses,
 } from '../lib/accountData'
 import { buildRestoreMessage, restoreOrderItemsToCart } from '../lib/accountActions'
+import {
+  addressBookChangeEvent,
+  fetchSavedAddresses,
+  getDefaultSavedAddress,
+  getSavedAddresses,
+} from '../lib/addressBook'
 
 function formatTimestamp(value) {
   return new Date(value).toLocaleString('en-GB', {
@@ -27,18 +31,23 @@ export default function AccountPage() {
 
   useEffect(() => {
     const syncAccountState = () => {
-      setOrders(getOrderHistory())
-      setAddresses(getSavedAddresses())
-      setFavoriteIds(getFavoriteProductIds())
+      void (async () => {
+        setOrders(getOrderHistory())
+        await fetchSavedAddresses({ force: true })
+        setAddresses(getSavedAddresses())
+        setFavoriteIds(getFavoriteProductIds())
+      })()
     }
 
     window.addEventListener('storage', syncAccountState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
+    window.addEventListener(addressBookChangeEvent, syncAccountState)
     const initialSyncId = window.setTimeout(syncAccountState, 0)
 
     return () => {
       window.removeEventListener('storage', syncAccountState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
+      window.removeEventListener(addressBookChangeEvent, syncAccountState)
       window.clearTimeout(initialSyncId)
     }
   }, [])

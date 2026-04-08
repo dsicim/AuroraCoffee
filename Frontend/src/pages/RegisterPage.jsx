@@ -116,7 +116,7 @@ export default function RegisterPage() {
 
         saveAuthSession(nextSession, false)
         reconcileAccountStorageWithAuth()
-        reconcileCartStorageWithAuth()
+        await reconcileCartStorageWithAuth()
         navigate('/', { replace: true })
         return
       }
