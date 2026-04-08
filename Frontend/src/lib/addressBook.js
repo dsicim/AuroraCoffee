@@ -144,13 +144,53 @@ function splitFullName(value) {
   }
 
   if (parts.length === 1) {
-    return { name: parts[0], surname: '.' }
+    return { name: parts[0], surname: '' }
   }
 
   return {
     name: parts.slice(0, -1).join(' '),
     surname: parts.slice(-1)[0] || '.',
   }
+}
+
+function joinName(firstName, lastName) {
+  return [String(firstName || '').trim(), String(lastName || '').trim()]
+    .filter(Boolean)
+    .join(' ')
+    .trim()
+}
+
+function splitAddressLines(value) {
+  const raw = String(value || '').trim()
+
+  if (!raw) {
+    return { addressLine1: '', addressLine2: '' }
+  }
+
+  const lines = raw
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean)
+
+  if (!lines.length) {
+    return { addressLine1: '', addressLine2: '' }
+  }
+
+  if (lines.length === 1) {
+    return { addressLine1: lines[0], addressLine2: '' }
+  }
+
+  return {
+    addressLine1: lines[0],
+    addressLine2: lines.slice(1).join(', '),
+  }
+}
+
+function joinAddressLines(addressLine1, addressLine2) {
+  return [String(addressLine1 || '').trim(), String(addressLine2 || '').trim()]
+    .filter(Boolean)
+    .join('\n')
+    .trim()
 }
 
 function parseSummaryAddress(summaryAddress) {
@@ -168,19 +208,33 @@ function parseSummaryAddress(summaryAddress) {
 
 function mergeAddressRecord(summaryAddress, shadowAddress, defaultAddressId) {
   const summary = parseSummaryAddress(summaryAddress)
+  const nameParts = splitFullName(shadowAddress?.fullName || summaryAddress.title || '')
+  const addressLines = splitAddressLines(shadowAddress?.address || '')
+  const district = shadowAddress?.district || shadowAddress?.city || summary.city
+  const province = shadowAddress?.province || summary.province
 
   return {
     id: String(summaryAddress.id),
     label: shadowAddress?.label || summaryAddress.title || '',
-    fullName: shadowAddress?.fullName || summaryAddress.title || '',
+    firstName: shadowAddress?.firstName || nameParts.name || '',
+    lastName: shadowAddress?.lastName || nameParts.surname || '',
+    fullName: joinName(
+      shadowAddress?.firstName || nameParts.name || '',
+      shadowAddress?.lastName || nameParts.surname || '',
+    ),
     email: shadowAddress?.email || '',
-    address: shadowAddress?.address || '',
-    city: shadowAddress?.city || summary.city,
-    province: shadowAddress?.province || summary.province,
+    addressLine1: shadowAddress?.addressLine1 || addressLines.addressLine1 || '',
+    addressLine2: shadowAddress?.addressLine2 || addressLines.addressLine2 || '',
+    address: joinAddressLines(
+      shadowAddress?.addressLine1 || addressLines.addressLine1 || '',
+      shadowAddress?.addressLine2 || addressLines.addressLine2 || '',
+    ),
+    district,
+    city: district,
+    province,
     country: shadowAddress?.country || summary.country,
     postalCode: shadowAddress?.postalCode || '',
     phone: shadowAddress?.phone || '',
-    notes: shadowAddress?.notes || '',
     isDefault: defaultAddressId
       ? String(summaryAddress.id) === String(defaultAddressId)
       : false,
@@ -275,18 +329,29 @@ export async function fetchSavedAddresses({ force = false } = {}) {
 }
 
 function normalizeAddressInput(addressInput) {
+  const firstName = String(addressInput.firstName || '').trim()
+  const lastName = String(addressInput.lastName || '').trim()
+  const addressLine1 = String(addressInput.addressLine1 || '').trim()
+  const addressLine2 = String(addressInput.addressLine2 || '').trim()
+  const district = String(addressInput.district || addressInput.city || '').trim()
+  const province = String(addressInput.province || addressInput.city || '').trim()
+
   return {
     id: addressInput.id ? String(addressInput.id) : '',
     label: String(addressInput.label || '').trim(),
-    fullName: String(addressInput.fullName || '').trim(),
+    firstName,
+    lastName,
+    fullName: joinName(firstName, lastName),
     email: String(addressInput.email || '').trim(),
-    address: String(addressInput.address || '').trim(),
-    city: String(addressInput.city || '').trim(),
-    province: String(addressInput.province || addressInput.city || '').trim(),
+    addressLine1,
+    addressLine2,
+    address: joinAddressLines(addressLine1, addressLine2),
+    district,
+    city: district,
+    province,
     country: String(addressInput.country || 'Turkey').trim(),
     postalCode: String(addressInput.postalCode || '').trim(),
     phone: String(addressInput.phone || '').trim(),
-    notes: String(addressInput.notes || '').trim(),
     isDefault: Boolean(addressInput.isDefault),
   }
 }
