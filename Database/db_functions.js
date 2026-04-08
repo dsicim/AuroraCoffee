@@ -791,19 +791,11 @@ func.getCart = async function (userId) {
     }
 }
 
-func.addToCart = async function (userId, productId, quantity = 1, options = null) {
+func.addToCart = async function (userId, productId, quantity = 1, options) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
     try {
-        const optionsStr = options ? JSON.stringify(options) : null;
-        let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?';
-        let params = [userId, productId];
-        
-        if (optionsStr) {
-            sql += " AND JSON_EXTRACT(options, '$') = CAST(? AS JSON)";
-            params.push(optionsStr);
-        } else {
-            sql += " AND options IS NULL";
-        }
+        let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ? AND options = ?';
+        let params = [userId, productId, options];
         
         const [existing] = await pool.execute(sql, params);
         
@@ -832,7 +824,7 @@ func.modifyCartItem = async function (userId, itemId, quantity, options) {
         }
         if (options !== undefined) {
             updates.push('options = ?');
-            params.push(options ? JSON.stringify(options) : null);
+            params.push(options);
         }
         
         if (updates.length > 0) {
