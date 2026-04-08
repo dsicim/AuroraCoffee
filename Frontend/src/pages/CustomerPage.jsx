@@ -17,7 +17,6 @@ import {
   cartChangeEvent,
   getCartCount,
   getCartSubtotal,
-  reconcileCartStorageWithAuth,
 } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import { useProductCatalog } from '../lib/products'
