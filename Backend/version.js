@@ -103,6 +103,7 @@ async function runResetScript(repoParent,gitrepo) {
 async function runUpdateScript(repoParent) {
     try {
         const cwd = repoParent;
+        if (log) fs.writeFileSync("./resetlog.log", "");
         await execute("git switch main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git fetch origin", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git reset --hard origin/main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
