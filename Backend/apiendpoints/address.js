@@ -37,18 +37,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.address) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            body.data.address = body.data.address.map(x => typeof x === "string" ? x.trim() : x);
             const address = {
-                alias: body.data.address.alias || undefined,
-                name: body.data.address.name,
-                surname: body.data.address.surname,
-                address: body.data.address.address,
-                address2: body.data.address.address2 || undefined,
-                city: body.data.address.city,
-                province: body.data.address.province,
-                country: body.data.address.country,
-                zip: body.data.address.zip,
-                phone: body.data.address.phone
+                alias: body.data.address.alias.trim() || undefined,
+                name: body.data.address.name.trim(),
+                surname: body.data.address.surname.trim(),
+                address: body.data.address.address.trim(),
+                address2: body.data.address.address2.trim() || undefined,
+                city: body.data.address.city.trim(),
+                province: body.data.address.province.trim(),
+                country: body.data.address.country.trim(),
+                zip: body.data.address.zip.trim(),
+                phone: body.data.address.phone.trim()
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
             const addressEnc = aes.encrypt(JSON.stringify(address));
@@ -69,16 +68,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.address) return { s: 400, j: true, d: { e: "Invalid request body" } };
             body.data.address = body.data.address.map(x => typeof x === "string" ? x.trim() : x);
             const address = {
-                alias: body.data.address.alias || undefined,
-                name: body.data.address.name,
-                surname: body.data.address.surname,
-                address: body.data.address.address,
-                address2: body.data.address.address2 || undefined,
-                city: body.data.address.city,
-                province: body.data.address.province,
-                country: body.data.address.country,
-                zip: body.data.address.zip,
-                phone: body.data.address.phone
+                alias: body.data.address.alias.trim() || undefined,
+                name: body.data.address.name.trim(),
+                surname: body.data.address.surname.trim(),
+                address: body.data.address.address.trim(),
+                address2: body.data.address.address2.trim() || undefined,
+                city: body.data.address.city.trim(),
+                province: body.data.address.province.trim(),
+                country: body.data.address.country.trim(),
+                zip: body.data.address.zip.trim(),
+                phone: body.data.address.phone.trim()
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
             const addressEnc = aes.encrypt(JSON.stringify(address));
