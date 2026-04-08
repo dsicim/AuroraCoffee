@@ -1788,21 +1788,51 @@ img {
       display: grid;
       grid-template-columns: minmax(0, 1fr);
       align-items: flex-start;
-      gap: 0.8rem;
+      gap: 0.65rem;
     }
 
     .aurora-product-hero-card .aurora-widget-title {
-      font-size: 1.95rem;
-      line-height: 1;
+      font-size: 1.65rem;
+      line-height: 1.05;
     }
 
     .aurora-product-hero-card .aurora-widget-subtitle {
-      font-size: 0.92rem;
+      font-size: 0.88rem;
       line-height: 1.4;
     }
 
     .aurora-product-hero-card .aurora-widget-heading {
       gap: 0.2rem;
+    }
+
+    .aurora-product-category-chip {
+      align-self: flex-start;
+      max-width: 100%;
+      white-space: nowrap;
+    }
+
+    .aurora-crumbs {
+      gap: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    .aurora-mobile-nav-panel {
+      display: inline-block;
+      width: auto;
+      max-width: min(15rem, calc(100vw - 1rem));
+    }
+
+    .aurora-mobile-nav-panel .glass-content {
+      width: auto;
+    }
+
+    .aurora-mobile-nav-panel .button-wrap {
+      width: 100%;
+    }
+
+    .aurora-mobile-nav-panel .button-wrap > .liquid-glass-control {
+      min-width: 0;
+      justify-content: flex-start;
     }
   }
 
