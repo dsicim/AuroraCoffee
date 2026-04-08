@@ -57,7 +57,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
             const addressEnc = aes.encrypt(JSON.stringify(address));
-            return await sql.saveAddress(currentUser.id, addressEnc).then(async result => {
+            return await sql.saveAddress(currentUser.id, JSON.stringify(addressEnc)).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: "Address added successfully" } };
                 }
@@ -86,7 +86,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
             const addressEnc = aes.encrypt(JSON.stringify(address));
-            return await sql.editAddress(currentUser.id, body.data.id, addressEnc).then(async result => {
+            return await sql.editAddress(currentUser.id, body.data.id, JSON.stringify(addressEnc)).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: "Address updated successfully" } };
                 }
