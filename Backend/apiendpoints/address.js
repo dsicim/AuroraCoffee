@@ -14,6 +14,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const specificaddress = Boolean(query.id) ? query.id : null;
             return await sql.getAddresses(currentUser.id, specificaddress).then(async result => {
                 if (result.success) {
+                    const errors = [];
                     const addresses = result.addresses.map(addr => {
                         try {
                             if (specificaddress && specificaddress != addr.id) return undefined;
@@ -29,11 +30,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             return { id: addr.id, title: address.alias || address.address.split(" ")[0], desc: address.city + ", " + address.province + ", " + address.country };
                         } catch (err) {
                             console.error("Decrypt address error:", err);
+                            errors.push({ id: addr.id, e: err.toString() });
                             return { address: undefined, e: err.toString() };
                         }
                     }).filter(addr => addr.address !== undefined);
                     if (addresses.length === 0 && specificaddress) return { s: 404, j: true, d: { e: "Address not found" } };
-                    return specificaddress ? { s: 200, j: true, d: { address: addresses[0] } } : { s: 200, j: true, d: { addresses } };
+                    return specificaddress ? { s: 200, j: true, d: { address: addresses[0] } } : { s: 200, j: true, d: { addresses, errors } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
