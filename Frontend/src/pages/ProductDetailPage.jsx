@@ -205,13 +205,10 @@ export default function ProductDetailPage() {
           subtitle={getProductTypeLabel(product)}
           icon="coffee"
           className="aurora-summary-lead aurora-product-hero-card mx-auto w-full p-5 sm:p-8"
-          headerAside={
-            <span className="hidden sm:inline-flex aurora-chip">{getProductCategoryLabel(product)}</span>
-          }
         >
           <AuroraInset className="mb-6">
-            <div className="mb-4 sm:hidden">
-              <span className="aurora-chip">{getProductCategoryLabel(product)}</span>
+            <div className="mb-4 flex justify-start sm:justify-end">
+              <span className="aurora-chip aurora-product-category-chip">{getProductCategoryLabel(product)}</span>
             </div>
             {getProductMetaLine(product) ? (
               <p className="text-sm text-[var(--aurora-text)]">{getProductMetaLine(product)}</p>

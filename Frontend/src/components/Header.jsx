@@ -150,11 +150,11 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-40 px-2 pt-2 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
+    <header className="sticky top-0 z-40 px-2 pt-1 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
       <div className="aurora-container">
         <LiquidGlassFrame
           className="aurora-glass-dock glass-nav relative overflow-visible rounded-[2rem]"
-          contentClassName="px-2 py-2 sm:px-4 sm:py-3 lg:px-5"
+          contentClassName="px-2 py-1.5 sm:px-4 sm:py-3 lg:px-5"
         >
           <div className="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/70 to-transparent" />
           <div className="grid gap-3 lg:grid-cols-[auto_1fr_auto] lg:items-center">
@@ -192,7 +192,7 @@ export default function Header() {
                 <img
                   src={auroraLogo}
                   alt="Aurora Coffee Roastery logo"
-                  className="h-12 w-12 rounded-[1.2rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
+                  className="h-11 w-11 rounded-[1.1rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
                 />
                 <div className="hidden min-w-0 sm:block">
                   <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">
@@ -353,10 +353,10 @@ export default function Header() {
         </LiquidGlassFrame>
 
         {mobileNavOpen ? (
-          <div className="mt-2 flex md:hidden">
+          <div className="mt-2 md:hidden">
             <LiquidGlassFrame
-              className="aurora-glass-dock glass-nav w-fit max-w-full rounded-[1.5rem]"
-              contentClassName="p-2.5"
+              className="aurora-glass-dock aurora-mobile-nav-panel glass-nav rounded-[1.5rem]"
+              contentClassName="p-2"
             >
               <div className="flex flex-col gap-2">
                 {navItems.map((item) => {
