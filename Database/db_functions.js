@@ -802,7 +802,7 @@ func.addToCart = async function (userId, productId, quantity = 1, options) {
         if (existing.length > 0) {
             await pool.execute('UPDATE cart SET quantity = quantity + ? WHERE id = ?', [quantity, existing[0].id]);
         } else {
-            await pool.execute('INSERT INTO cart (user_id, product_id, quantity, options) VALUES (?, ?, ?, ?)', [userId, productId, quantity, optionsStr]);
+            await pool.execute('INSERT INTO cart (user_id, product_id, quantity, options) VALUES (?, ?, ?, ?)', [userId, productId, quantity, options]);
         }
         return { success: true, message: 'Item added to cart' };
     } catch (error) {
