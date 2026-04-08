@@ -55,11 +55,8 @@ export default function CustomerPage() {
     }
 
     const syncCartState = () => {
-      void (async () => {
-        await reconcileCartStorageWithAuth()
-        setCartCount(getCartCount())
-        setCartSubtotal(getCartSubtotal())
-      })()
+      setCartCount(getCartCount())
+      setCartSubtotal(getCartSubtotal())
     }
 
     window.addEventListener('storage', syncAccountState)

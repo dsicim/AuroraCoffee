@@ -62,10 +62,7 @@ export default function Header() {
     }
 
     const syncCartState = () => {
-      void (async () => {
-        await reconcileCartStorageWithAuth()
-        setCartCount(getCartCount())
-      })()
+      setCartCount(getCartCount())
     }
 
     window.addEventListener('storage', syncSessionState)

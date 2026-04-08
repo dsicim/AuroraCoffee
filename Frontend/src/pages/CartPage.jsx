@@ -32,11 +32,8 @@ export default function CartPage() {
     }
 
     const syncCartState = () => {
-      void (async () => {
-        await reconcileCartStorageWithAuth()
-        setItems(getCartItems())
-        setSession(getAuthSession())
-      })()
+      setItems(getCartItems())
+      setSession(getAuthSession())
     }
 
     window.addEventListener('storage', syncFromStorage)

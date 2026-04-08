@@ -224,11 +224,8 @@ export default function CheckoutPage() {
     }
 
     const syncCartState = () => {
-      void (async () => {
-        await reconcileCartStorageWithAuth()
-        setItems(getCartItems())
-        setSession(getAuthSession())
-      })()
+      setItems(getCartItems())
+      setSession(getAuthSession())
     }
 
     const syncAccountState = () => {

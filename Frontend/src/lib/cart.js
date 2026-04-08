@@ -18,6 +18,7 @@ export const cartStorageKeys = {
 export const cartChangeEvent = 'aurora-cart-change'
 
 let cachedServerCartItems = []
+let serverCartPromise = null
 
 function getStorage(mode) {
   return mode === 'session' ? window.sessionStorage : window.localStorage
@@ -296,10 +297,22 @@ async function hydrateServerCartRows(rows) {
   }).filter(Boolean)
 }
 
-async function fetchServerCart() {
-  const payload = await requestCartJson('/cart', { method: 'GET' })
-  const hydratedItems = await hydrateServerCartRows(payload?.cart || [])
-  return persistServerCartItems(hydratedItems)
+async function fetchServerCart({ force = false } = {}) {
+  if (serverCartPromise && !force) {
+    return serverCartPromise
+  }
+
+  serverCartPromise = (async () => {
+    const payload = await requestCartJson('/cart', { method: 'GET' })
+    const hydratedItems = await hydrateServerCartRows(payload?.cart || [])
+    return persistServerCartItems(hydratedItems)
+  })()
+
+  try {
+    return await serverCartPromise
+  } finally {
+    serverCartPromise = null
+  }
 }
 
 async function mergeGuestCartIntoServer(items) {
