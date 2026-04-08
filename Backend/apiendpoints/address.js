@@ -23,7 +23,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             const decrypted = aes.decrypt(addr.address);
                             if (!decrypted.s) throw new Error("Decryption failed");
                             const address = aes.pjs(decrypted.value);
-                            if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                            if (address.e && address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                             if (typeof address !== "object" || !address.name || !address.surname || !address.address || !address.city || !address.province || !address.country || !address.zip || !address.phone) {
                                 throw new Error("Decrypted data is not a valid address");
                             }
@@ -33,7 +33,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             errors.push({ id: addr.id, e: err.toString() });
                             return { address: undefined, e: err.toString() };
                         }
-                    }).filter(addr => addr.address !== undefined);
+                    }).filter(addr => addr !== undefined);
                     if (addresses.length === 0 && specificaddress) return { s: 404, j: true, d: { e: "Address not found" } };
                     return specificaddress ? { s: 200, j: true, d: { address: addresses[0] } } : { s: 200, j: true, d: { addresses, errors } };
                 }
