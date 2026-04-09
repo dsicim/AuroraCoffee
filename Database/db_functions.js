@@ -555,7 +555,7 @@ func.reserveOrderNumber = async function (userId, details) {
             const random = crypto.randomBytes(20).toString("base64").replaceAll("+","").replaceAll("/","").toUpperCase().substring(0,20);
             try {
                 const [result] = await pool.execute('INSERT INTO orders (id, user_id, details) VALUES (?, ?, ?)', [random, userId, details]);
-                orderId = result.insertId;
+                if (result.affectedRows !== 0) orderId = random;
             }
             catch (error) {
                 if (error.code !== 'ER_DUP_ENTRY') {
