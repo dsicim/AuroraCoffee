@@ -450,7 +450,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, { locale: "en", cardUserKey: currentToken.value });
                 if (response) {
                     if (response.status === "success" && response.cardDetails) {
-                        const currentCards = response.cardDetails.filter(cd => cd.id === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd) }));
+                        const currentCards = response.cardDetails.filter(cd => cd.cardToken === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd) }));
                         if (currentCards.length === 0) return { s: 409, j: true, d: { success: false, e: { what: "Credit Card", why: "Saved card not found", resolution: "Please choose a valid card from your saved cards or manually enter your card details" } } };
                         else cardDetails = currentCards[0];
                     }
