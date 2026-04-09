@@ -326,6 +326,24 @@ function getInstallmentSelectionLabel(installmentInfo, selectedInstallments) {
   return `${selectedMonths} installments · ${formatCurrency(selectedOption.permonth)} / month`
 }
 
+function getInstallmentSelectionDescription(installmentInfo, selectedInstallments, total) {
+  const selectedMonths = normalizeInstallmentMonths(selectedInstallments)
+
+  if (!selectedMonths) {
+    return `Pay in full · ${formatCurrency(total)} today`
+  }
+
+  const selectedOption = getInstallmentOptions(installmentInfo).find(
+    (item) => Number(item.months) === selectedMonths,
+  )
+
+  if (!selectedOption) {
+    return `${selectedMonths} installments`
+  }
+
+  return `${formatCurrency(selectedOption.permonth)} / month · total ${formatCurrency(selectedOption.total)}`
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const initialSession = getAuthSession()
@@ -363,6 +381,11 @@ export default function CheckoutPage() {
   const activeInstallmentLabel = getInstallmentSelectionLabel(
     installmentInfo,
     selectedInstallments,
+  )
+  const activeInstallmentDescription = getInstallmentSelectionDescription(
+    installmentInfo,
+    selectedInstallments,
+    total,
   )
 
   useEffect(() => {
@@ -1498,50 +1521,61 @@ export default function CheckoutPage() {
 
               {installmentInfo?.card ? (
                 <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)] sm:col-span-2">
-                  <p className="font-semibold text-[var(--aurora-text-strong)]">
-                    {installmentInfo.card.provider || 'Card'} · {installmentInfo.card.type || 'Card'}
-                  </p>
+                  <div className="aurora-installment-header">
+                    <div>
+                      <p className="aurora-field-label">Installments</p>
+                      <p className="mt-2 font-semibold text-[var(--aurora-text-strong)]">
+                        {installmentInfo.card.provider || 'Card'} · {installmentInfo.card.type || 'Card'}
+                      </p>
+                    </div>
+                    <div className="aurora-installment-summary">
+                      <span className="aurora-chip">
+                        {selectedInstallments
+                          ? `${selectedInstallments} installments`
+                          : 'Pay in full'}
+                      </span>
+                    </div>
+                  </div>
                   {installmentOptions.length ? (
                     <>
-                      <p className="mt-2">
+                      <p className="mt-3">
                         Choose how you want to split this payment.
                       </p>
-                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                        <LiquidGlassButton
+                      <div className="aurora-installment-grid mt-4">
+                        <button
                           type="button"
-                          variant="chip"
-                          size="compact"
-                          selected={!selectedInstallments}
-                          className="h-full"
-                          contentClassName="flex w-full flex-col items-start gap-1 text-left"
+                          className={`aurora-installment-option${!selectedInstallments ? ' is-selected' : ''}`}
                           onClick={() => setSelectedInstallments('')}
+                          aria-pressed={!selectedInstallments}
                         >
-                          <span className="font-semibold text-[var(--aurora-text-strong)]">
-                            Pay in full
+                          <span className="aurora-installment-option__meta">Single charge</span>
+                          <span className="aurora-installment-option__title">Pay in full</span>
+                          <span className="aurora-installment-option__price">
+                            {formatCurrency(total)}
                           </span>
-                          <span className="text-xs tracking-[0.08em] text-[var(--aurora-text)]">
-                            {formatCurrency(total)} today
-                          </span>
-                        </LiquidGlassButton>
+                          <span className="aurora-installment-option__caption">Charged today</span>
+                        </button>
 
                         {installmentOptions.map((item) => (
-                          <LiquidGlassButton
+                          <button
                             key={item.months}
                             type="button"
-                            variant="chip"
-                            size="compact"
-                            selected={String(item.months) === selectedInstallments}
-                            className="h-full"
-                            contentClassName="flex w-full flex-col items-start gap-1 text-left"
+                            className={`aurora-installment-option${String(item.months) === selectedInstallments ? ' is-selected' : ''}`}
                             onClick={() => setSelectedInstallments(String(item.months))}
+                            aria-pressed={String(item.months) === selectedInstallments}
                           >
-                            <span className="font-semibold text-[var(--aurora-text-strong)]">
+                            <span className="aurora-installment-option__meta">Flexible plan</span>
+                            <span className="aurora-installment-option__title">
                               {item.months} installments
                             </span>
-                            <span className="text-xs tracking-[0.08em] text-[var(--aurora-text)]">
-                              {formatCurrency(item.permonth)} / month · total {formatCurrency(item.total)}
+                            <span className="aurora-installment-option__price">
+                              {formatCurrency(item.permonth)}
+                              <span className="aurora-installment-option__price-unit"> / month</span>
                             </span>
-                          </LiquidGlassButton>
+                            <span className="aurora-installment-option__caption">
+                              Total {formatCurrency(item.total)}
+                            </span>
+                          </button>
                         ))}
                       </div>
                     </>
@@ -1645,6 +1679,8 @@ export default function CheckoutPage() {
                         <>
                           <br />
                           {activePaymentSummary.installmentLabel}
+                          <br />
+                          {activeInstallmentDescription}
                         </>
                       ) : null}
                     </p>
