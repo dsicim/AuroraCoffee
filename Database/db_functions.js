@@ -637,7 +637,7 @@ func.getOrderByPayment = async function (orderId, paymentId) {
         throw new DBError(400, 'Order ID and payment ID are required');
     }
     try {
-        const [orders] = await pool.execute('SELECT id FROM orders WHERE id = ? AND payment_id = ?', [orderId, paymentId]);
+        const [orders] = await pool.execute('SELECT id FROM orders WHERE id = ? AND purchaseId = ?', [orderId, paymentId]);
         if (orders.length === 0) {
             throw new DBError(404, 'Order not found');
         }
