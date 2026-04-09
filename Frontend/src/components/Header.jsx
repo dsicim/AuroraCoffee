@@ -45,13 +45,22 @@ export default function Header() {
   const roleLandingPath = isRoleKnown ? getRoleLandingPath(normalizedRole) : '/'
   const roleBadgeLabel = roleLabel || 'Loading'
 
+  const customerAccountLinks = [
+    { label: 'Customer Home', to: '/customer' },
+    { label: 'Account', to: '/account' },
+    { label: 'Orders', to: '/account/orders' },
+    { label: 'Saved Addresses', to: '/account/addresses' },
+    { label: 'Favorites', to: '/account/favorites' },
+  ]
+
   const accountLinks = normalizedRole === userRoles.customer
+    ? customerAccountLinks
+    : normalizedRole === userRoles.admin
     ? [
-      { label: 'Customer Home', to: '/customer' },
-      { label: 'Account', to: '/account' },
-      { label: 'Orders', to: '/account/orders' },
-      { label: 'Saved Addresses', to: '/account/addresses' },
-      { label: 'Favorites', to: '/account/favorites' },
+      { label: 'Admin Home', to: '/' },
+      ...customerAccountLinks,
+      { label: 'Sales Manager Home', to: '/sales-manager' },
+      { label: 'Product Manager Home', to: '/product-manager' },
     ]
     : isRoleKnown
       ? [
