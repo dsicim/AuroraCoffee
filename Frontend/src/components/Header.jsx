@@ -18,7 +18,13 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { getRoleLandingPath, getRoleLabel, normalizeUserRole, userRoles } from '../lib/roles'
+import {
+  getRoleLandingPath,
+  getRoleLabel,
+  normalizeUserRole,
+  openRolePopup,
+  userRoles,
+} from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -57,7 +63,7 @@ export default function Header() {
     ? customerAccountLinks
     : normalizedRole === userRoles.admin
     ? [
-      { label: 'Admin Home', to: '/' },
+      { label: 'Admin Home', to: '/', popupRole: userRoles.admin },
       ...customerAccountLinks,
       { label: 'Sales Manager Home', to: '/sales-manager' },
       { label: 'Product Manager Home', to: '/product-manager' },
@@ -326,18 +332,35 @@ export default function Header() {
 
                         <div className="mt-3 space-y-1.5">
                           {accountLinks.map((item) => (
-                            <LiquidGlassButton
-                              as={Link}
-                              key={item.to}
-                              to={item.to}
-                              onClick={() => setMenuOpen(false)}
-                              variant="quiet"
-                              size="compact"
-                              className="w-full"
-                              contentClassName="w-full justify-start"
-                            >
-                              {item.label}
-                            </LiquidGlassButton>
+                            item.popupRole ? (
+                              <LiquidGlassButton
+                                type="button"
+                                key={item.label}
+                                onClick={() => {
+                                  openRolePopup(item.popupRole)
+                                  setMenuOpen(false)
+                                }}
+                                variant="quiet"
+                                size="compact"
+                                className="w-full"
+                                contentClassName="w-full justify-start"
+                              >
+                                {item.label}
+                              </LiquidGlassButton>
+                            ) : (
+                              <LiquidGlassButton
+                                as={Link}
+                                key={item.to}
+                                to={item.to}
+                                onClick={() => setMenuOpen(false)}
+                                variant="quiet"
+                                size="compact"
+                                className="w-full"
+                                contentClassName="w-full justify-start"
+                              >
+                                {item.label}
+                              </LiquidGlassButton>
+                            )
                           ))}
                         </div>
 
