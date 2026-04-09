@@ -319,7 +319,7 @@ export default function ProductDetailPage() {
                 </p>
               </div>
               <span
-                className={`aurora-stock-badge px-4 py-2 text-sm font-semibold ${
+                className={`aurora-stock-badge aurora-stock-badge-detail ${
                   availability.hasStock ? 'is-in-stock' : 'is-out-of-stock'
                 }`}
               >

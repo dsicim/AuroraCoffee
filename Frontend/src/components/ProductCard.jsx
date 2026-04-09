@@ -43,7 +43,7 @@ export default function ProductCard({ product, compact = false }) {
 
           <div className="aurora-widget-meta text-sm">
             <span
-              className={`aurora-stock-badge px-3 py-1 text-xs font-semibold ${
+              className={`aurora-stock-badge aurora-stock-badge-compact ${
                 isOutOfStock ? 'is-out-of-stock' : 'is-in-stock'
               }`}
             >

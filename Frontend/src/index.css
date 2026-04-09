@@ -1444,6 +1444,23 @@ img {
       box-shadow 160ms ease;
   }
 
+  .aurora-stock-badge-detail {
+    min-height: 2.75rem;
+    min-width: 11.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  .aurora-stock-badge-compact {
+    min-height: 2rem;
+    min-width: 8.75rem;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+    line-height: 1.1;
+  }
+
   .aurora-stock-badge.is-in-stock {
     border-color: rgba(198, 220, 201, 0.5);
     background:
