@@ -586,14 +586,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
-                                const errObj = PaymentError(response.errorGroup, tvoyBank);
+                                const errObj = PaymentError(response.errorGroup, "your bank");
                                 return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                             }
                         }
                         else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                     }
                     else {
-                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        const errObj = PaymentError(response.errorGroup, "your bank");
                         return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
                 }
