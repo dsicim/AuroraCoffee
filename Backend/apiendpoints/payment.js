@@ -592,13 +592,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             if (tryIn3DS) {
                 const random = generateToken();
-                payload.p.conversationId = random;
-                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, payload.p);
+                const newpayload = { ...payload.p, conversationId: random };
+                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, newpayload);
                 if (response) {
                     if (response.status === "success") {
-                        payload.o.payment = response.paymentId;
-                        payload.o.timeout = new Date().getTime() + (10 * 60 * 1000);
-                        tokens.set(random, payload.o);
+                        const attempt = {...payload.o, payment: response.paymentId, timeout: new Date().getTime() + (10 * 60 * 1000) };
+                        tokens.set(random, attempt);
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
                     else {
