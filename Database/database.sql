@@ -31,10 +31,11 @@ CREATE TABLE IF NOT EXISTS comments (
 
 -- Create orders table
 CREATE TABLE IF NOT EXISTS orders (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id VARCHAR(20) PRIMARY KEY,
+    purchaseId VARCHAR(255),
     user_id BIGINT UNSIGNED,
-    status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
-    total_price DECIMAL(10, 2) NOT NULL,
+    status ENUM('initialized', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'initialized',
+    details JSON NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS orders (
 -- Create order_items table
 CREATE TABLE IF NOT EXISTS order_items (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED,
+    order_id VARCHAR(20),
     product_id BIGINT UNSIGNED,
     quantity INT NOT NULL,
     price_at_purchase DECIMAL(10, 2) NOT NULL,
@@ -53,7 +54,7 @@ CREATE TABLE IF NOT EXISTS order_items (
 -- Create refunds table
 CREATE TABLE IF NOT EXISTS refunds (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED,
+    order_id VARCHAR(20),
     product_id BIGINT UNSIGNED,
     user_id BIGINT UNSIGNED,
     refund_amount DECIMAL(10, 2) NOT NULL,

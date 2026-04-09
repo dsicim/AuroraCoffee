@@ -97,8 +97,31 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     }
     billingAddress.open = billingAddress.address + ", " + (billingAddress.address2 ? billingAddress.address2 + ", " : "") + billingAddress.city;
     shippingAddress.open = shippingAddress.address + ", " + (shippingAddress.address2 ? shippingAddress.address2 + ", " : "") + shippingAddress.city;
+    const details = {
+        products: cart,
+        shippingAddress,
+        billingAddress,
+        card: cardDetails,
+        installment,
+        price: {
+            subtotal: subtotal,
+            total: realPrice
+        },
+        currency: currency
+    };
+    let orderNumber = await sql.reserveOrderNumber(currentUser.id, JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))).then(result => {
+        if (result.success) return { s: true, n: result.valids };
+        else return { s: false, e: "An unknown error occurred" };
+    }).catch(err => {
+        console.error("Get order number error:", err);
+        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+        else return { s: false, e: "An unknown error occurred" };
+    });
+    if (orderNumber.s) ordernumber = orderNumber.oID;
+    else return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
     const payload = {
         locale: "en",
+        conversationId: orderNumber,
         price: subtotal,
         paidPrice: subtotal,
         currency: currency,
@@ -132,34 +155,35 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
-    return payload;
+    return {s: true, p: payload, o: orderNumber};
 }
-function PaymentError(err,errorMsg,tvoyBank = "your bank") {
+function PaymentError(err, errorMsg, tvoyBank = "your bank") {
+    console.error("Payment error:", err, errorMsg);
     return {
-        "DO_NOT_HONOUR": {why:"The transaction was declined by the card issuer.",resolution:"Please use a different card or contact " + tvoyBank + "."},
-        "INVALID_TRANSACTION": {why:"The transaction is invalid.",resolution:"Please use a different card or contact " + tvoyBank + "."},
-        "FRAUD_SUSPECT": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
-        "PICKUP_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
-        "LOST_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
-        "STOLEN_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
-        "NOT_SUFFICIENT_FUNDS": {why:"The card has insufficient funds.",resolution:"Please add more money to the card's account or use a different card."},
-        "EXPIRED_CARD": {why:"The card has expired.",resolution:"Please use a different card or contact " + tvoyBank + "."},
-        "NOT_PERMITTED_TO_CARDHOLDER": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " has restricted this card's ability to make purchases.",resolution:"Contact " + tvoyBank + " for further information."},
-        "NOT_PERMITTED_TO_TERMINAL": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " has restricted our ability to process this transaction.",resolution:"Use a different card of contact the developers."},
-        "INVALID_CVC2": {why:"The CVC code is invalid.",resolution:"Please check the CVC code and try again."},
-        "INVALID_CAVV": {why:"The CVC code is invalid.",resolution:"Please check the CVC code and try again."},
-        "RESTRICTED_BY_LAW": {why:"This card is not able to make online purchases.",resolution:"Contact " + tvoyBank + " or use it's mobile app to enable online purchases on this card and try again."},
-        "CARD_NOT_PERMITTED": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
-        "UNKNOWN": {why:"An unknown error occurred.",resolution:"Contact the developers for further information."},
-        "INVALID_XML_END_TAG": {why:"An unknown error occurred.",resolution:"Contact the developers for further information."},
-        "INVALID_CHARS_IN_EMAIL": {why:"The email address contains invalid characters.",resolution:"Please check the email address and try again."},
-        "REFER_TO_CARD_ISSUER": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " needs confirmation from the cardholder.",resolution:"Contact " + tvoyBank + " for them to approve the transaction."},
-        "INVALID_MERCHANT_OR_SP": {why:"The merchant or service provider is invalid.",resolution:"Contact the developers for further information."},
-        "BLOCKED_CARD": {why:"This card is blocked for purchases.",resolution:"Contact " + tvoyBank + " for further information."},
-        "INVALID_ECI": {why:"There's an issue with your card's security information.",resolution:"Contact " + tvoyBank + " for further information."},
-        "CVC2_MAX_ATTEMPT": {why:"The CVC code has been entered incorrectly too many times.",resolution:"Contact " + tvoyBank + " for further verification."},
-        "BIN_NOT_FOUND": {why:"Your bank doesn't exist.",resolution:"Contact the developers for further information."},
-    } [err] || { why: errorMsg || "Unknown error", resolution: "Please try again later or contact the developers" };
+        "DO_NOT_HONOUR": { why: "The transaction was declined by the card issuer.", resolution: "Please use a different card or contact " + tvoyBank + "." },
+        "INVALID_TRANSACTION": { why: "The transaction is invalid.", resolution: "Please use a different card or contact " + tvoyBank + "." },
+        "FRAUD_SUSPECT": { why: "The transaction was blocked by " + tvoyBank + ".", resolution: "Contact " + tvoyBank + " for further information." },
+        "PICKUP_CARD": { why: "The transaction was blocked by " + tvoyBank + ".", resolution: "Contact " + tvoyBank + " for further information." },
+        "LOST_CARD": { why: "The transaction was blocked by " + tvoyBank + ".", resolution: "Contact " + tvoyBank + " for further information." },
+        "STOLEN_CARD": { why: "The transaction was blocked by " + tvoyBank + ".", resolution: "Contact " + tvoyBank + " for further information." },
+        "NOT_SUFFICIENT_FUNDS": { why: "The card has insufficient funds.", resolution: "Please add more money to the card's account or use a different card." },
+        "EXPIRED_CARD": { why: "The card has expired.", resolution: "Please use a different card or contact " + tvoyBank + "." },
+        "NOT_PERMITTED_TO_CARDHOLDER": { why: tvoyBank.substring(0, 1).toUpperCase() + tvoyBank.substring(1) + " has restricted this card's ability to make purchases.", resolution: "Contact " + tvoyBank + " for further information." },
+        "NOT_PERMITTED_TO_TERMINAL": { why: tvoyBank.substring(0, 1).toUpperCase() + tvoyBank.substring(1) + " has restricted our ability to process this transaction.", resolution: "Use a different card of contact the developers." },
+        "INVALID_CVC2": { why: "The CVC code is invalid.", resolution: "Please check the CVC code and try again." },
+        "INVALID_CAVV": { why: "The CVC code is invalid.", resolution: "Please check the CVC code and try again." },
+        "RESTRICTED_BY_LAW": { why: "This card is not able to make online purchases.", resolution: "Contact " + tvoyBank + " or use it's mobile app to enable online purchases on this card and try again." },
+        "CARD_NOT_PERMITTED": { why: "The transaction was blocked by " + tvoyBank + ".", resolution: "Contact " + tvoyBank + " for further information." },
+        "UNKNOWN": { why: "An unknown error occurred.", resolution: "Contact the developers for further information." },
+        "INVALID_XML_END_TAG": { why: "An unknown error occurred.", resolution: "Contact the developers for further information." },
+        "INVALID_CHARS_IN_EMAIL": { why: "The email address contains invalid characters.", resolution: "Please check the email address and try again." },
+        "REFER_TO_CARD_ISSUER": { why: tvoyBank.substring(0, 1).toUpperCase() + tvoyBank.substring(1) + " needs confirmation from the cardholder.", resolution: "Contact " + tvoyBank + " for them to approve the transaction." },
+        "INVALID_MERCHANT_OR_SP": { why: "The merchant or service provider is invalid.", resolution: "Contact the developers for further information." },
+        "BLOCKED_CARD": { why: "This card is blocked for purchases.", resolution: "Contact " + tvoyBank + " for further information." },
+        "INVALID_ECI": { why: "There's an issue with your card's security information.", resolution: "Contact " + tvoyBank + " for further information." },
+        "CVC2_MAX_ATTEMPT": { why: "The CVC code has been entered incorrectly too many times.", resolution: "Contact " + tvoyBank + " for further verification." },
+        "BIN_NOT_FOUND": { why: "Your bank doesn't exist.", resolution: "Contact the developers for further information." },
+    }[err] || { why: errorMsg || "Unknown error", resolution: "Please try again later or contact the developers" };
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "installments") {
@@ -397,7 +421,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
 
-            async function parseAddress(result,token) {
+            async function parseAddress(result, token) {
                 if (result.success) {
                     if (result.addresses.length === 0) return { s: false, e: "Address not found" };
                     const addr = result.addresses[0];
@@ -487,7 +511,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { success: false, e: { what: "Credit Card", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
             // Installment Validation
-            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, { locale: "en", price: totalPrice, binNumber: currentToken ? cardDetails.binNumber : body.data.card.number.substring(0,8) });
+            const insresponse = await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, { locale: "en", price: totalPrice, binNumber: currentToken ? cardDetails.binNumber : body.data.card.number.substring(0, 8) });
             if (insresponse) {
                 if (insresponse.status === "success") {
                     if (insresponse.installmentDetails && insresponse.installmentDetails[0]) {
@@ -511,25 +535,46 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
 
             // All validations passed, create order and initiate payment
             const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
+            if (!payload.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Creation", why: "Failed to create order", resolution: "Please try again later or contact the developers" } } };
             const tvoyBank = cardDetails.bank || "your bank";
             let tryIn3DS = true;
             if (body.data.avoid3DS && !cardDetails.features.force3DS) tryIn3DS = false;
             if (!tryIn3DS) {
-                const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
+                const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload.p);
                 let failed = false;
                 if (response) {
                     if (response.status === "success") {
-                        // PAYMENT ID CREATED HERE. WE LINK THE PAYMENT ID WITH THE ORDER ID IN OUR DATABASE HERE.
-                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:response.paymentId});
+                        let updateResult = await sql.updateOrderStatus(payload.o, "pending", response.paymentId).then(result => {
+                            if (result.success) return { s: true };
+                            else return { s: false, e: "An unknown error occurred" };
+                        }).catch(err => {
+                            console.error("Update order status error:", err);
+                            if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                            else return { s: false, e: "An unknown error occurred" };
+                        });
+                        if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
+                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: response.paymentId });
                         if (authChecker) {
                             if (authChecker.status === "success") {
-                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker } };
+                                if (authChecker.paymentStatus === "SUCCESS") {
+                                    updateResult = await sql.updateOrderStatus(payload.o, "confirmed").then(result => {
+                                        if (result.success) return { s: true };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    }).catch(err => {
+                                        console.error("Update order status error:", err);
+                                        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    });
+                                    if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
+                                    await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
+                                    return { s: 200, j: true, d: { success: true, orderNumber: payload.o, response: authChecker } };
+                                }
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
                                 failed = true;
-                                if (authChecker.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
-                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage,tvoyBank);
+                                if (authChecker.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") { failed = false; tryIn3DS = true; }
+                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage, tvoyBank);
                                 if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                             }
                         }
@@ -537,7 +582,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                     else {
                         failed = true;
-                        if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
+                        if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") { failed = false; tryIn3DS = true; }
                         const errObj = PaymentError(response.errorGroup, response.errorMessage, tvoyBank);
                         if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
@@ -545,14 +590,22 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
             if (tryIn3DS) {
-                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, payload);
+                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, payload.p);
                 if (response) {
                     if (response.status === "success") {
-                        // PAYMENT ID CREATED HERE. WE LINK THE PAYMENT ID WITH THE ORDER ID IN OUR DATABASE HERE.
-                        return { s: 202, j: true, d: { success: true, redirect3DS: true, e: {what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to "+ tvoyBank + "'s payment page to complete the transaction."}, target:"data:text/html;base64,"+response.threeDSHtmlContent}};
+                        let updateResult = await sql.updateOrderStatus(payload.o, "pending", response.paymentId).then(result => {
+                            if (result.success) return { s: true };
+                            else return { s: false, e: "An unknown error occurred" };
+                        }).catch(err => {
+                            console.error("Update order status error:", err);
+                            if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                            else return { s: false, e: "An unknown error occurred" };
+                        });
+                        if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
+                        return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
                     else {
-                        const errObj = PaymentError(response.errorGroup, response.errorMessage,tvoyBank);
+                        const errObj = PaymentError(response.errorGroup, response.errorMessage, tvoyBank);
                         return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
                 }
@@ -564,7 +617,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "3dscallback") {
         if (method === "POST") {
-            if (!body || body.json || !body.exists) return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid data" } };
+            if (!body || body.json || !body.exists) return { s: 400, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
             body.data = body.data.split("&").map(pair => {
                 const p = pair.split("=");
                 return { key: p[0], value: p[1] };
@@ -573,20 +626,41 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             body.data.forEach(pair => {
                 form[pair.key] = pair.value;
             });
-            if (form.status && form.status === "success" && form.mdStatus !== undefined && form.mdStatus === "1") {
-                let payload = {locale:"en",paymentId:form.paymentId};
+            if (form.status && form.status === "success" && form.mdStatus !== undefined && form.mdStatus === "1" && form.conversationId && form.paymentId) {
+                const order = await sql.getOrderByPayment(form.conversationId, form.paymentId).then(result => {
+                    if (result.success) return { s: true, order: result.order };
+                    else return { s: false, e: "An unknown error occurred" };
+                }).catch(err => {
+                    console.error("Update order status error:", err);
+                    if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                    else return { s: false, e: "An unknown error occurred" };
+                });
+                if (!order.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Retrieval", why: "Failed to retrieve order information: " + order.e, resolution: "Please try again later or contact the developers" } } };
+                let payload = { locale: "en", paymentId: form.paymentId };
                 if (form.conversationData) payload.conversationData = form.conversationData;
                 const response = await IyzipayAPI(config, "POST", "payment/3dsecure/auth", {}, payload);
                 if (response) {
                     if (response.status === "success") {
-                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:form.paymentId});
+                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: form.paymentId });
                         if (authChecker) {
                             if (authChecker.status === "success") {
-                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker } };
+                                if (authChecker.paymentStatus === "SUCCESS") {
+                                    const updateResult = await sql.updateOrderStatus(order.order, "confirmed").then(result => {
+                                        if (result.success) return { s: true };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    }).catch(err => {
+                                        console.error("Update order status error:", err);
+                                        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    });
+                                    if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
+                                    await sql.clearCart(order.user_id).then(result => {}).catch(err => {});
+                                    return { s: 200, j: true, d: { success: true, orderNumber: order.order, response: authChecker } };
+                                }
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
-                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage,"your bank");
+                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage, "your bank");
                                 return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                             }
                         }
@@ -599,11 +673,22 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
-            else if (form.status && form.status === "failure" && form.mdStatus !== undefined && form.mdStatus !== "1") {
-                return { s: 400, j: true, d: { e: "3DS Failure", details: {"-1":"3DS signature invalid","0":"3DS signature invalid","2":"Cardholder or bank not registered to 3DS","3":"Bank not participating in 3DS","4":"Cardholder registered to 3DS after transaction","5":"Unable to verify","6":"3DS Error","7":"Payment Processor Error","8":"Unknown Card Number"}[form.mdStatus] } };
+            else if (form.status && form.status === "failure" && form.mdStatus !== undefined && form.mdStatus !== "1" && form.conversationId) {
+                const errObj = {
+                    "-1": { why: "3DS signature invalid", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "0": { why: "3DS signature invalid", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "2": { why: "Cardholder or bank not registered to 3DS", res: "If possible, register your card to 3D Secure through your bank and then try again. If your card is already registered, please contact your bank for more information." },
+                    "3": { why: "Bank not participating in 3DS", res: "Please use a different card from a different bank or contact your bank for more information." },
+                    "4": { why: "Cardholder registered to 3DS after transaction", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "5": { why: "Unable to verify", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "6": { why: "3DS Error", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "7": { why: "Payment Processor Error", res: "Please try again. If the problem persists, please contact the developers." },
+                    "8": { why: "Unknown Card Number", res: "Please use a different card and try again." }
+                }[form.mdStatus]
+                return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.res } } };
             }
             else {
-                return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid data" } };
+                return { s: 400, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
             }
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };

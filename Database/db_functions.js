@@ -1,6 +1,7 @@
 const fs = require('fs');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const path = require('path');
 
 // Load config from the Backend directory relative to this file
@@ -544,7 +545,32 @@ func.getAverageRating = async function (productId) {
 }
 
 // --- Ordering Functions ---
-
+func.reserveOrderNumber = async function (userId, details) {
+    if (!userId || !details) {
+        throw new DBError(400, 'User ID and details are required');
+    }
+    let orderId = null;
+    try {
+        while (!orderId) {
+            const random = crypto.randomBytes(20).toString("base64").replaceAll("+","").replaceAll("/","").toUpperCase().substring(0,20);
+            try {
+                const [result] = await pool.execute('INSERT INTO orders (id, user_id, details) VALUES (?, ?, ?)', [random, userId, details]);
+                orderId = result.insertId;
+            }
+            catch (error) {
+                if (error.code !== 'ER_DUP_ENTRY') {
+                    console.error('Reserve order number error:', error);
+                    throw new DBError(500, 'Failed to reserve order number');
+                }
+            }
+        }
+        return { success: true, oID: orderId };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Reserve order number error:', error);
+        throw new DBError(500, 'Failed to check existing order');
+    }
+};
 func.createOrder = async function (userId, items) {
     if (!userId || !items || !items.length) {
         throw new DBError(400, 'User ID and items are required');
@@ -591,12 +617,12 @@ func.createOrder = async function (userId, items) {
     }
 };
 
-func.updateOrderStatus = async function (orderId, status) {
+func.updateOrderStatus = async function (orderId, status, paymentId = null) {
     if (!orderId || !status) {
         throw new DBError(400, 'Order ID and status are required');
     }
     try {
-        const [result] = await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
+        const [result] = paymentId ? await pool.execute('UPDATE orders SET status = ?, payment_id = ? WHERE id = ?', [status, paymentId, orderId]) : await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Order not found');
         }
@@ -606,7 +632,21 @@ func.updateOrderStatus = async function (orderId, status) {
         throw new DBError(500, 'Failed to update order status');
     }
 };
-
+func.getOrderByPayment = async function (orderId, paymentId) {
+    if (!orderId || !paymentId) {
+        throw new DBError(400, 'Order ID and payment ID are required');
+    }
+    try {
+        const [orders] = await pool.execute('SELECT id FROM orders WHERE id = ? AND payment_id = ?', [orderId, paymentId]);
+        if (orders.length === 0) {
+            throw new DBError(404, 'Order not found');
+        }
+        return { success: true, order: orders[0].id, userId: orders[0].user_id };
+    } catch (error) {
+        console.error('Get user orders error:', error);
+        throw new DBError(500, 'Failed to fetch user orders');
+    }
+};
 func.getUserOrders = async function (userId) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
