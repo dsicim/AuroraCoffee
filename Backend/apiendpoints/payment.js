@@ -447,7 +447,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (token != addr.id) return { s: false, e: "Address token mismatch" };
                         addr.address = aes.pjs(addr.address);
                         if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) return { s: false, e: "Malformed data on database" };
-                        const decrypted = aes.decrypt(addr.address);
+                        const decrypted = aes.decrypt(addr.address, currentUser.id);
                         if (!decrypted.s) return { s: false, e: "Failed to decrypt data on database" };
                         const address = aes.pjs(decrypted.value);
                         if (address.e && address.e.startsWith("Failed to parse JSON: ")) return { s: false, e: "Malformed decrypted data found on database" };
