@@ -622,7 +622,7 @@ func.updateOrderStatus = async function (orderId, status, paymentId = null) {
         throw new DBError(400, 'Order ID and status are required');
     }
     try {
-        const [result] = paymentId ? await pool.execute('UPDATE orders SET status = ?, payment_id = ? WHERE id = ?', [status, paymentId, orderId]) : await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
+        const [result] = paymentId ? await pool.execute('UPDATE orders SET status = ?, purchaseId = ? WHERE id = ?', [status, paymentId, orderId]) : await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Order not found');
         }
