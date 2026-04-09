@@ -187,7 +187,26 @@ function PaymentError(err, errorMsg, tvoyBank = "your bank") {
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "installments") {
         if (method === "POST") {
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.bin) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || (!body.data.bin && !body.data.token)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (body.data.token) {
+                if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+                const currentToken = await getCardToken(currentUser.id);
+                if (!currentToken.done) return { s: 500, j: true, d: { e: "Failed to retrieve stored card information: " + currentToken.error } };
+                if (!currentToken.value) return { s: 200, j: true, d: { e: "Card not found" } };
+                const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, { locale: "en", cardUserKey: currentToken.value });
+                if (response) {
+                    if (response.status === "success" && response.cardDetails) {
+                        response.cardDetails.forEach(cd => {
+                            if (cd.cardToken === body.data.token) {
+                                body.data.bin = cd.binNumber;
+                            }
+                        });
+                        if (!body.data.bin || body.data.bin.length < 6) return { s: 404, j: true, d: { e: "Card not found" } };
+                    }
+                    else return { s: 400, j: true, d: { e: "Failed to retrieve cards from payment provider: " + response.errorMessage } };
+                }
+                else return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider" } };
+            }
             const insresponse = (!body.data.price || isNaN(parseFloat(body.data.price))) ? await IyzipayAPI(config, "POST", "payment/bin/check", {}, { locale: "en", binNumber: body.data.bin }) : await IyzipayAPI(config, "POST", "payment/iyzipos/installment", {}, { locale: "en", price: body.data.price, binNumber: body.data.bin });
             if (insresponse) {
                 if (insresponse.status === "success") {
