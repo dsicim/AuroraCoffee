@@ -558,7 +558,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!orderNumber.s) return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
-                                    const updateResult = await sql.updateOrderStatus(orderNumber.oID, "confirmed", response.paymentId).then(result => {
+                                    const updateResult = await sql.updateOrderStatus(orderNumber.n, "confirmed", response.paymentId).then(result => {
                                         if (result.success) return { s: true };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
@@ -690,7 +690,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!orderNumber.s) return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
-                                    const updateResult = await sql.updateOrderStatus(orderNumber.oID, "confirmed", form.paymentId).then(result => {
+                                    const updateResult = await sql.updateOrderStatus(orderNumber.n, "confirmed", form.paymentId).then(result => {
                                         if (result.success) return { s: true };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
