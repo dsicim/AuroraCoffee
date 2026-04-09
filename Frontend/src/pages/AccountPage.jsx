@@ -32,7 +32,7 @@ export default function AccountPage() {
     const syncAccountState = () => {
       void (async () => {
         setOrders(getOrderHistory())
-        await fetchSavedAddresses({ force: true })
+        await fetchSavedAddresses()
         setAddresses(getSavedAddresses())
         setFavoriteIds(getFavoriteProductIds())
       })()
