@@ -1,41 +1,47 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   accountDataChangeEvent,
   getFavoriteProductIds,
-  getOrderHistory,
 } from '../lib/accountData'
+import { addDefaultProductToCart } from '../lib/accountActions'
 import {
-  addDefaultProductToCart,
-  buildRestoreMessage,
-  getOrderStatus,
-  restoreOrderItemsToCart,
-} from '../lib/accountActions'
+  addressBookChangeEvent,
+  fetchSavedAddresses,
+  getSavedAddresses,
+} from '../lib/addressBook'
+import { authChangeEvent } from '../lib/auth'
 import {
   cartChangeEvent,
   getCartCount,
   getCartSubtotal,
 } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
-import { useProductCatalog } from '../lib/products'
 import {
-  addressBookChangeEvent,
-  fetchSavedAddresses,
-  getSavedAddresses,
-} from '../lib/addressBook'
+  fetchOrders,
+  getCachedOrders,
+  getOrderStatusPresentation,
+  ordersChangeEvent,
+} from '../lib/orders'
+import { useProductCatalog } from '../lib/products'
 
 function formatTimestamp(value) {
-  return new Date(value).toLocaleString('en-GB', {
+  const timestamp = Date.parse(value || '')
+
+  if (!Number.isFinite(timestamp)) {
+    return 'Time unavailable'
+  }
+
+  return new Date(timestamp).toLocaleString('en-GB', {
     hour12: false,
   })
 }
 
 export default function CustomerPage() {
   const { products } = useProductCatalog()
-  const navigate = useNavigate()
-  const [orders, setOrders] = useState(() => getOrderHistory())
+  const [orders, setOrders] = useState(() => getCachedOrders())
   const [addresses, setAddresses] = useState(() => getSavedAddresses())
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
   const [cartCount, setCartCount] = useState(() => getCartCount())
@@ -43,35 +49,54 @@ export default function CustomerPage() {
   const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
+    let active = true
+
     const syncAccountState = () => {
-      void (async () => {
-        setOrders(getOrderHistory())
-        await fetchSavedAddresses()
-        setAddresses(getSavedAddresses())
-        setFavoriteIds(getFavoriteProductIds())
-      })()
+      if (!active) {
+        return
+      }
+
+      setOrders(getCachedOrders())
+      setAddresses(getSavedAddresses())
+      setFavoriteIds(getFavoriteProductIds())
     }
 
     const syncCartState = () => {
+      if (!active) {
+        return
+      }
+
       setCartCount(getCartCount())
       setCartSubtotal(getCartSubtotal())
     }
 
-    window.addEventListener('storage', syncAccountState)
-    window.addEventListener(accountDataChangeEvent, syncAccountState)
-    window.addEventListener(addressBookChangeEvent, syncAccountState)
-    window.addEventListener(cartChangeEvent, syncCartState)
-    const initialSyncId = window.setTimeout(() => {
+    const loadAccountState = async () => {
+      await Promise.allSettled([fetchOrders(), fetchSavedAddresses()])
+
+      if (!active) {
+        return
+      }
+
       syncAccountState()
       syncCartState()
-    }, 0)
+    }
+
+    window.addEventListener('storage', loadAccountState)
+    window.addEventListener(authChangeEvent, loadAccountState)
+    window.addEventListener(accountDataChangeEvent, syncAccountState)
+    window.addEventListener(addressBookChangeEvent, loadAccountState)
+    window.addEventListener(ordersChangeEvent, syncAccountState)
+    window.addEventListener(cartChangeEvent, syncCartState)
+    void loadAccountState()
 
     return () => {
-      window.removeEventListener('storage', syncAccountState)
+      active = false
+      window.removeEventListener('storage', loadAccountState)
+      window.removeEventListener(authChangeEvent, loadAccountState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
-      window.removeEventListener(addressBookChangeEvent, syncAccountState)
+      window.removeEventListener(addressBookChangeEvent, loadAccountState)
+      window.removeEventListener(ordersChangeEvent, syncAccountState)
       window.removeEventListener(cartChangeEvent, syncCartState)
-      window.clearTimeout(initialSyncId)
     }
   }, [])
 
@@ -90,24 +115,17 @@ export default function CustomerPage() {
   }, [feedback])
 
   const mostRecentOrder = orders[0] || null
+  const latestOrderPath = mostRecentOrder
+    ? `/account/orders/${encodeURIComponent(mostRecentOrder.id)}`
+    : '/account/orders'
+  const latestOrderStatus = mostRecentOrder
+    ? getOrderStatusPresentation(mostRecentOrder)
+    : null
   const hasSavedAddresses = addresses.length > 0
   const favoriteProducts = useMemo(
     () => products.filter((product) => favoriteIds.includes(product.slug)).slice(0, 3),
     [favoriteIds, products],
   )
-
-  const handleReorderLatest = async () => {
-    if (!mostRecentOrder) {
-      return
-    }
-
-    const result = await restoreOrderItemsToCart(mostRecentOrder.items)
-    setFeedback(buildRestoreMessage(result, 'Latest order'))
-
-    if (result.addedCount) {
-      navigate('/cart')
-    }
-  }
 
   const handleQuickAddFavorite = async (productSlug) => {
     const result = await addDefaultProductToCart(productSlug)
@@ -124,8 +142,6 @@ export default function CustomerPage() {
 
     setFeedback('That coffee is no longer available.')
   }
-
-  const currentStatus = mostRecentOrder ? getOrderStatus(mostRecentOrder) : null
 
   return (
     <AccountLayout
@@ -158,8 +174,8 @@ export default function CustomerPage() {
               Open cart
             </LiquidGlassButton>
             {mostRecentOrder ? (
-              <LiquidGlassButton type="button" variant="soft" onClick={handleReorderLatest}>
-                Reorder latest
+              <LiquidGlassButton as={Link} to={latestOrderPath} variant="soft">
+                Open latest order
               </LiquidGlassButton>
             ) : null}
           </div>
@@ -171,11 +187,11 @@ export default function CustomerPage() {
               Latest order
             </p>
             <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {mostRecentOrder ? currentStatus : 'No order'}
+              {mostRecentOrder ? latestOrderStatus.label : 'No order'}
             </p>
             <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
               {mostRecentOrder
-                ? `${mostRecentOrder.reference} is the latest order on this account.`
+                ? `${mostRecentOrder.id} is the latest backend order on this account.`
                 : 'Place your first order and it will appear here.'}
             </p>
           </div>
@@ -217,15 +233,15 @@ export default function CustomerPage() {
                   Latest order status
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {mostRecentOrder ? currentStatus : 'No order yet'}
+                  {mostRecentOrder ? latestOrderStatus.label : 'No order yet'}
                 </h2>
               </div>
               {mostRecentOrder ? (
                 <Link
-                  to="/account/orders"
+                  to={latestOrderPath}
                   className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
                 >
-                  Track in orders
+                  Open order
                 </Link>
               ) : null}
             </div>
@@ -233,31 +249,24 @@ export default function CustomerPage() {
             {mostRecentOrder ? (
               <>
                 <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                  {mostRecentOrder.reference} was placed on {formatTimestamp(mostRecentOrder.submittedAt)} and currently shows as{' '}
+                  {mostRecentOrder.id} was placed on {formatTimestamp(mostRecentOrder.submittedAt)} and currently shows as{' '}
                   <span className="font-semibold text-[var(--aurora-text-strong)]">
-                    {currentStatus}
+                    {latestOrderStatus.label}
                   </span>
                   .
                 </p>
-                <div className="mt-6 space-y-3">
-                  {mostRecentOrder.items.slice(0, 3).map((item) => (
-                    <div
-                      key={`${mostRecentOrder.reference}-${item.id}`}
-                      className="aurora-ops-card px-4 py-3"
-                    >
-                      <p className="font-semibold text-[var(--aurora-text-strong)]">
-                        {item.name}
-                      </p>
-                      <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                        {item.metaLine || item.category || 'Product'} · Qty {item.quantity}
-                      </p>
-                    </div>
-                  ))}
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <LiquidGlassButton as={Link} to={latestOrderPath} variant="soft">
+                    Open order detail
+                  </LiquidGlassButton>
+                  <LiquidGlassButton as={Link} to="/account/orders" variant="secondary">
+                    Order history
+                  </LiquidGlassButton>
                 </div>
               </>
             ) : (
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Complete checkout once and the latest order summary will appear here.
+                Complete checkout once and the latest backend order summary will appear here.
               </p>
             )}
           </section>

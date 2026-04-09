@@ -4,10 +4,10 @@ import AuroraAtmosphere from '../components/AuroraAtmosphere'
 import Footer from '../components/Footer'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import LiquidGlassDefs from '../components/LiquidGlassDefs'
-import { addOrderHistoryEntry } from '../lib/accountData'
 import { getAuthSession } from '../lib/auth'
 import { clearCart, reconcileCartStorageWithAuth } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
+import { fetchOrderById, fetchOrders } from '../lib/orders'
 import { formatPaymentError } from '../lib/payment'
 import {
   buildSubmittedOrderSnapshotFromPending,
@@ -104,8 +104,19 @@ export default function Checkout3DSCallbackPage() {
         return
       }
 
+      if (getAuthSession()?.token) {
+        if (callbackResult?.orderNumber) {
+          await fetchOrderById(String(callbackResult.orderNumber), { force: true }).catch(() => null)
+        } else {
+          await fetchOrders({ force: true }).catch(() => null)
+        }
+      }
+
+      if (!active) {
+        return
+      }
+
       if (nextOrder) {
-        addOrderHistoryEntry(nextOrder)
         setSubmittedOrder(nextOrder)
         setOrderNumber(String(nextOrder.orderNumber || callbackResult.orderNumber || ''))
       } else {
@@ -238,8 +249,13 @@ export default function Checkout3DSCallbackPage() {
 
             <div className="mt-8 flex flex-wrap gap-4">
               {hasSession ? (
-                <LiquidGlassButton as={Link} to="/account/orders" variant="secondary" size="hero">
-                  View order history
+                <LiquidGlassButton
+                  as={Link}
+                  to={orderNumber ? `/account/orders/${encodeURIComponent(orderNumber)}` : '/account/orders'}
+                  variant="secondary"
+                  size="hero"
+                >
+                  {orderNumber ? 'View order detail' : 'View order history'}
                 </LiquidGlassButton>
               ) : null}
               <LiquidGlassButton as={Link} to="/products" size="hero">
@@ -276,7 +292,7 @@ export default function Checkout3DSCallbackPage() {
               )}
               {submittedOrder ? (
                 <p className="mt-3">
-                  Your local order history and cart have been updated to match the confirmed transaction.
+                  The cart has been cleared and the backend order cache has been refreshed for your account views.
                 </p>
               ) : null}
             </div>

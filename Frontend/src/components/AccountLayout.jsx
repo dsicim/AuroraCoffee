@@ -109,7 +109,9 @@ export default function AccountLayout({
               <p className="aurora-kicker">Navigate</p>
               <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">
                 {accountLinks.map((item) => {
-                  const isActive = location.pathname === item.to
+                  const isActive =
+                    location.pathname === item.to ||
+                    (item.to !== '/account' && location.pathname.startsWith(`${item.to}/`))
 
                   return (
                     <LiquidGlassButton

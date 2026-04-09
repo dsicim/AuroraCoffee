@@ -1,85 +1,89 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
-import { formatCurrency } from '../lib/currency'
 import {
   accountDataChangeEvent,
   getFavoriteProductIds,
-  getOrderHistory,
 } from '../lib/accountData'
-import { buildRestoreMessage, restoreOrderItemsToCart } from '../lib/accountActions'
 import {
   addressBookChangeEvent,
   fetchSavedAddresses,
   getSavedAddresses,
 } from '../lib/addressBook'
+import { authChangeEvent } from '../lib/auth'
+import {
+  fetchOrders,
+  getCachedOrders,
+  getOrderStatusPresentation,
+  ordersChangeEvent,
+} from '../lib/orders'
 
 function formatTimestamp(value) {
-  return new Date(value).toLocaleString('en-GB', {
+  const timestamp = Date.parse(value || '')
+
+  if (!Number.isFinite(timestamp)) {
+    return 'Time unavailable'
+  }
+
+  return new Date(timestamp).toLocaleString('en-GB', {
     hour12: false,
   })
 }
 
 export default function AccountPage() {
-  const navigate = useNavigate()
-  const [orders, setOrders] = useState(() => getOrderHistory())
+  const [orders, setOrders] = useState(() => getCachedOrders())
   const [addresses, setAddresses] = useState(() => getSavedAddresses())
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
-  const [feedback, setFeedback] = useState('')
 
   useEffect(() => {
+    let active = true
+
     const syncAccountState = () => {
-      void (async () => {
-        setOrders(getOrderHistory())
-        await fetchSavedAddresses()
-        setAddresses(getSavedAddresses())
-        setFavoriteIds(getFavoriteProductIds())
-      })()
+      if (!active) {
+        return
+      }
+
+      setOrders(getCachedOrders())
+      setAddresses(getSavedAddresses())
+      setFavoriteIds(getFavoriteProductIds())
     }
 
-    window.addEventListener('storage', syncAccountState)
+    const loadAccountState = async () => {
+      await Promise.allSettled([fetchOrders(), fetchSavedAddresses()])
+
+      if (!active) {
+        return
+      }
+
+      syncAccountState()
+    }
+
+    window.addEventListener('storage', loadAccountState)
+    window.addEventListener(authChangeEvent, loadAccountState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
-    window.addEventListener(addressBookChangeEvent, syncAccountState)
-    const initialSyncId = window.setTimeout(syncAccountState, 0)
+    window.addEventListener(addressBookChangeEvent, loadAccountState)
+    window.addEventListener(ordersChangeEvent, syncAccountState)
+    void loadAccountState()
 
     return () => {
-      window.removeEventListener('storage', syncAccountState)
+      active = false
+      window.removeEventListener('storage', loadAccountState)
+      window.removeEventListener(authChangeEvent, loadAccountState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
-      window.removeEventListener(addressBookChangeEvent, syncAccountState)
-      window.clearTimeout(initialSyncId)
+      window.removeEventListener(addressBookChangeEvent, loadAccountState)
+      window.removeEventListener(ordersChangeEvent, syncAccountState)
     }
   }, [])
 
-  useEffect(() => {
-    if (!feedback) {
-      return undefined
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setFeedback('')
-    }, 2800)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [feedback])
-
   const mostRecentOrder = orders[0] || null
+  const mostRecentOrderStatus = mostRecentOrder
+    ? getOrderStatusPresentation(mostRecentOrder)
+    : null
   const hasSavedAddresses = addresses.length > 0
-
-  const handleReorderLatest = async () => {
-    if (!mostRecentOrder) {
-      return
-    }
-
-    const result = await restoreOrderItemsToCart(mostRecentOrder.items)
-    setFeedback(buildRestoreMessage(result, 'Latest order'))
-
-    if (result.addedCount) {
-      navigate('/cart')
-    }
-  }
+  const latestOrderPath = mostRecentOrder
+    ? `/account/orders/${encodeURIComponent(mostRecentOrder.id)}`
+    : '/account/orders'
 
   return (
     <AccountLayout
@@ -99,7 +103,7 @@ export default function AccountPage() {
                   </h2>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {mostRecentOrder ? mostRecentOrder.reference : 'No orders yet'}
+                  {mostRecentOrder ? mostRecentOrder.id : 'No orders yet'}
                 </p>
               </div>
             </div>
@@ -146,14 +150,14 @@ export default function AccountPage() {
                   Latest order
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {mostRecentOrder ? mostRecentOrder.reference : 'No orders yet'}
+                  {mostRecentOrder ? mostRecentOrder.id : 'No orders yet'}
                 </h2>
               </div>
               <Link
-                to="/account/orders"
+                to={latestOrderPath}
                 className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
               >
-                View orders
+                {mostRecentOrder ? 'Open order' : 'View orders'}
               </Link>
             </div>
 
@@ -161,44 +165,28 @@ export default function AccountPage() {
               <>
                 <div className="aurora-widget-subsurface mt-4 p-5">
                   <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                    Submitted on {formatTimestamp(mostRecentOrder.submittedAt)} with{' '}
-                    {mostRecentOrder.items.reduce((total, item) => total + item.quantity, 0)} item
-                    {mostRecentOrder.items.reduce((total, item) => total + item.quantity, 0) === 1 ? '' : 's'} for{' '}
-                    <span className="font-semibold text-[var(--aurora-text-strong)]">
-                      {formatCurrency(mostRecentOrder.total)}
-                    </span>
-                    .
+                    Submitted on {formatTimestamp(mostRecentOrder.submittedAt)}.
                   </p>
-                </div>
-                <div className="aurora-widget-list mt-6">
-                  {mostRecentOrder.items.slice(0, 3).map((item) => (
-                    <div
-                      key={`${mostRecentOrder.reference}-${item.id}`}
-                      className="aurora-ops-card px-4 py-3"
-                    >
-                      <p className="font-semibold text-[var(--aurora-text-strong)]">
-                        {item.name}
-                      </p>
-                      <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                        {item.metaLine || item.category || 'Product'} · Qty {item.quantity}
-                      </p>
-                    </div>
-                  ))}
+                  <div className="mt-4">
+                    <span className={`aurora-order-status-chip is-${mostRecentOrderStatus.key}`}>
+                      {mostRecentOrderStatus.label}
+                    </span>
+                  </div>
                 </div>
                 <div className="mt-6 flex flex-wrap gap-3">
                   <LiquidGlassButton
-                    type="button"
+                    as={Link}
+                    to={latestOrderPath}
                     variant="soft"
-                    onClick={handleReorderLatest}
                   >
-                    Reorder latest
+                    Open latest order
                   </LiquidGlassButton>
                   <LiquidGlassButton
                     as={Link}
-                    to="/cart"
+                    to="/account/orders"
                     variant="secondary"
                   >
-                    View cart
+                    View all orders
                   </LiquidGlassButton>
                 </div>
               </>
@@ -249,12 +237,6 @@ export default function AccountPage() {
           </section>
         </div>
       </div>
-
-      {feedback ? (
-        <p className="aurora-message aurora-message-success mt-6">
-          {feedback}
-        </p>
-      ) : null}
     </AccountLayout>
   )
 }

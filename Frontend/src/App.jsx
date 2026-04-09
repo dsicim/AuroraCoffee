@@ -13,6 +13,7 @@ import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
 import PaymentMethodsPage from './pages/PaymentMethodsPage'
 import OrdersPage from './pages/OrdersPage'
+import OrderDetailPage from './pages/OrderDetailPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ProductManagerPage from './pages/ProductManagerPage'
 import ProductsPage from './pages/ProductsPage'
@@ -56,6 +57,14 @@ export default function App() {
           element={(
             <ProtectedRoleRoute requiredRole={userRoles.customer}>
               <OrdersPage />
+            </ProtectedRoleRoute>
+          )}
+        />
+        <Route
+          path="/account/orders/:orderId"
+          element={(
+            <ProtectedRoleRoute requiredRole={userRoles.customer}>
+              <OrderDetailPage />
             </ProtectedRoleRoute>
           )}
         />
