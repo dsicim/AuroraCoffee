@@ -3,6 +3,7 @@ import AccountPage from './pages/AccountPage'
 import AddressesPage from './pages/AddressesPage'
 import CartPage from './pages/CartPage'
 import CheckoutPage from './pages/CheckoutPage'
+import Checkout3DSCallbackPage from './pages/Checkout3DSCallbackPage'
 import ProtectedRoleRoute from './components/ProtectedRoleRoute'
 import RoleLandingRedirect from './components/RoleLandingRedirect'
 import FavoritesPage from './pages/FavoritesPage'
@@ -68,6 +69,7 @@ export default function App() {
         />
         <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/checkout/3dscallback" element={<Checkout3DSCallbackPage />} />
         <Route
           path="/customer"
           element={(

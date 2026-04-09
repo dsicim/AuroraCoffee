@@ -38,6 +38,13 @@ import {
   savePaymentMethod,
 } from '../lib/payment'
 import {
+  buildPaymentSummary,
+  consumeCheckout3DSReturnState,
+  createPending3DSCheckoutSnapshot,
+  createOrderReference,
+  savePending3DSCheckoutSnapshot,
+} from '../lib/payment3ds'
+import {
   validateCityPostalCode,
   validateEmail,
   validateTurkishCity,
@@ -171,11 +178,6 @@ function maskCardNumber(value) {
   }
 
   return `•••• •••• •••• ${digits.slice(-4)}`
-}
-
-function createOrderReference() {
-  const seed = Date.now().toString(36).toUpperCase()
-  return `AUR-${seed.slice(-6)}`
 }
 
 function validateDeliveryForm(delivery) {
@@ -326,6 +328,7 @@ export default function CheckoutPage() {
   const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
+  const [paymentSummaryOverride, setPaymentSummaryOverride] = useState(null)
 
   const subtotal = items.reduce(
     (total, item) => total + item.price * item.quantity,
@@ -434,6 +437,42 @@ export default function CheckoutPage() {
   }, [session?.email])
 
   useEffect(() => {
+    const returnState = consumeCheckout3DSReturnState()
+
+    if (!returnState) {
+      return
+    }
+
+    const snapshot = returnState.snapshot || null
+
+    if (snapshot?.deliveryForm) {
+      setDelivery(snapshot.deliveryForm)
+    }
+
+    if (snapshot?.billingForm) {
+      setBilling(snapshot.billingForm)
+    }
+
+    if (typeof snapshot?.useShippingAsBilling === 'boolean') {
+      setUseShippingAsBilling(snapshot.useShippingAsBilling)
+    }
+
+    setSelectedAddressId(snapshot?.selectedAddressId || '')
+    setSelectedSavedCardId(snapshot?.selectedSavedCardId || '')
+    setSaveCardForLater(Boolean(snapshot?.saveCardForLater))
+    setPaymentSummaryOverride(snapshot?.paymentSummary || null)
+    setPayment({
+      ...initialPayment,
+      cardholder: snapshot?.paymentForm?.cardholder || '',
+      expiry: snapshot?.paymentForm?.expiry || '',
+    })
+    setStepIndex(2)
+    setErrors({
+      payment: returnState.message || '3D Secure authentication did not complete.',
+    })
+  }, [])
+
+  useEffect(() => {
     const cardDigits = payment.cardNumber.replace(/\D/g, '')
 
     if (selectedSavedCardId || cardDigits.length < 6 || currentStep.key !== 'payment') {
@@ -518,6 +557,7 @@ export default function CheckoutPage() {
   }
 
   const handlePaymentChange = (field, value) => {
+    setPaymentSummaryOverride(null)
     setPayment((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: '', payment: '' }))
   }
@@ -654,6 +694,22 @@ export default function CheckoutPage() {
         })
 
         if (paymentResponse?.redirect3DS && paymentResponse?.target) {
+          savePending3DSCheckoutSnapshot(
+            createPending3DSCheckoutSnapshot({
+              items,
+              delivery,
+              billing,
+              useShippingAsBilling,
+              selectedAddressId,
+              selectedSavedCardId,
+              payment,
+              savedCards,
+              saveCardForLater,
+              subtotal,
+              serviceFee,
+              total,
+            }),
+          )
           window.location.assign(paymentResponse.target)
           return
         }
@@ -743,6 +799,11 @@ export default function CheckoutPage() {
 
   const cityOptions = getCityOptions(delivery.province)
   const billingCityOptions = getCityOptions(billing.province)
+  const activePaymentSummary = paymentSummaryOverride || buildPaymentSummary({
+    payment,
+    savedCards,
+    selectedSavedCardId,
+  })
 
   if (!items.length && !submittedOrder) {
     const hero = (
@@ -1242,7 +1303,10 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         className="aurora-link text-sm"
-                        onClick={() => setSelectedSavedCardId('')}
+                        onClick={() => {
+                          setPaymentSummaryOverride(null)
+                          setSelectedSavedCardId('')
+                        }}
                       >
                         Use a new card
                       </button>
@@ -1255,7 +1319,10 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           className="min-w-0 flex-1 text-left"
-                          onClick={() => setSelectedSavedCardId(card.id)}
+                          onClick={() => {
+                            setPaymentSummaryOverride(null)
+                            setSelectedSavedCardId(card.id)
+                          }}
                         >
                           <p className="font-semibold text-[var(--aurora-text-strong)]">
                             {card.alias || card.family || 'Saved card'}
@@ -1277,6 +1344,7 @@ export default function CheckoutPage() {
                                   await deletePaymentMethod(card.id)
                                   const nextCards = await fetchPaymentMethods()
                                   setSavedCards(nextCards)
+                                  setPaymentSummaryOverride(null)
                                   setSelectedSavedCardId((current) =>
                                     current === card.id ? '' : current,
                                   )
@@ -1492,22 +1560,26 @@ export default function CheckoutPage() {
                   <div className="aurora-widget-subsurface p-5">
                     <p className="text-sm leading-8 text-[var(--aurora-text)]">
                       <span className="font-semibold text-[var(--aurora-text-strong)]">
-                        {selectedSavedCardId ? 'Saved card' : payment.cardholder}
+                        {activePaymentSummary.cardholder || 'Payment method'}
                       </span>
                       <br />
-                      {selectedSavedCardId
-                        ? maskSavedCard(savedCards.find((card) => card.id === selectedSavedCardId))
-                        : maskCardNumber(payment.cardNumber)}
-                      {!selectedSavedCardId ? (
+                      {activePaymentSummary.maskedCardNumber}
+                      {!selectedSavedCardId && activePaymentSummary.expiry ? (
                         <>
                           <br />
-                          Expires {payment.expiry}
+                          Expires {activePaymentSummary.expiry}
                         </>
                       ) : null}
                     </p>
                   </div>
                 </div>
               </div>
+
+              {errors.payment ? (
+                <div className="aurora-message aurora-message-error">
+                  {errors.payment}
+                </div>
+              ) : null}
 
               <div className="aurora-solid-plate rounded-[1.9rem] p-6">
                 <div className="aurora-widget-body">
