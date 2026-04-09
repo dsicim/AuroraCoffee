@@ -319,8 +319,8 @@ export default function ProductDetailPage() {
                 </p>
               </div>
               <span
-                className={`aurora-pill px-4 py-2 text-sm font-semibold ${
-                  availability.hasStock ? 'aurora-pill-active' : ''
+                className={`aurora-stock-badge px-4 py-2 text-sm font-semibold ${
+                  availability.hasStock ? 'is-in-stock' : 'is-out-of-stock'
                 }`}
               >
                 {availability.hasStock ? `${availability.totalStock} available` : 'Currently unavailable'}

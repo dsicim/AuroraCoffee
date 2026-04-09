@@ -1424,6 +1424,42 @@ img {
     box-shadow: 0 12px 28px rgba(91, 129, 97, 0.18);
   }
 
+  .aurora-stock-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.75rem;
+    min-width: 11.5rem;
+    border: 1px solid rgba(255, 248, 241, 0.28);
+    border-radius: 999px;
+    backdrop-filter: blur(8px) saturate(118%);
+    -webkit-backdrop-filter: blur(8px) saturate(118%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 10px 22px rgba(33, 20, 13, 0.08);
+    transition:
+      background 160ms ease,
+      border-color 160ms ease,
+      color 160ms ease,
+      box-shadow 160ms ease;
+  }
+
+  .aurora-stock-badge.is-in-stock {
+    border-color: rgba(198, 220, 201, 0.5);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0.08)),
+      rgba(164, 201, 171, 0.52);
+    color: var(--aurora-olive-deep);
+  }
+
+  .aurora-stock-badge.is-out-of-stock {
+    border-color: rgba(217, 144, 107, 0.32);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06)),
+      rgba(217, 144, 107, 0.18);
+    color: var(--aurora-text-strong);
+  }
+
   .aurora-card {
     border: 1px solid rgba(255, 248, 241, 0.18);
     background:
@@ -2738,6 +2774,29 @@ img {
       rgba(78, 120, 88, 0.56);
     color: var(--aurora-cream);
     box-shadow: 0 12px 28px rgba(24, 43, 29, 0.28);
+  }
+
+  [data-theme='dark'] .aurora-stock-badge {
+    border-color: rgba(205, 223, 244, 0.16);
+    box-shadow:
+      inset 0 1px 0 rgba(241, 248, 255, 0.12),
+      0 12px 24px rgba(0, 7, 18, 0.22);
+  }
+
+  [data-theme='dark'] .aurora-stock-badge.is-in-stock {
+    border-color: rgba(142, 183, 149, 0.34);
+    background:
+      linear-gradient(135deg, rgba(236, 247, 239, 0.12), rgba(255, 255, 255, 0.03)),
+      rgba(62, 98, 69, 0.7);
+    color: #edf6ef;
+  }
+
+  [data-theme='dark'] .aurora-stock-badge.is-out-of-stock {
+    border-color: rgba(205, 137, 126, 0.26);
+    background:
+      linear-gradient(135deg, rgba(242, 232, 228, 0.08), rgba(255, 255, 255, 0.02)),
+      rgba(100, 51, 45, 0.56);
+    color: rgba(248, 238, 235, 0.92);
   }
 
   [data-theme='dark'] .aurora-divider {
