@@ -121,7 +121,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     else return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
     const payload = {
         locale: "en",
-        conversationId: orderNumber,
+        conversationId: orderNumber.n,
         price: subtotal,
         paidPrice: subtotal,
         currency: currency,
@@ -155,7 +155,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
-    return {s: true, p: payload, o: orderNumber};
+    return {s: true, p: payload, o: orderNumber.n};
 }
 function PaymentError(err, errorMsg, tvoyBank = "your bank") {
     console.error("Payment error:", err, errorMsg);
