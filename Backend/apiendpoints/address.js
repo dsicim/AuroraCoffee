@@ -20,7 +20,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (specificaddress && specificaddress != addr.id) return undefined;
                             addr.address = aes.pjs(addr.address);
                             if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
-                            const decrypted = aes.decrypt(addr.address);
+                            const decrypted = aes.decrypt(addr.address, currentUser.id);
                             if (!decrypted.s) throw new Error("Decryption failed");
                             const address = aes.pjs(decrypted.value);
                             if (address.e && address.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
@@ -61,7 +61,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 phone: checkTrim(body.data.address.phone)
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
-            const addressEnc = aes.encrypt(JSON.stringify(address));
+            const addressEnc = aes.encrypt(JSON.stringify(address), currentUser.id);
             return await sql.saveAddress(currentUser.id, JSON.stringify(addressEnc)).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: "Address added successfully" } };
@@ -90,7 +90,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 phone: checkTrim(body.data.address.phone)
             }
             if (!address.name || !address.surname || !address.address || !address.city || !address.country || !address.zip || !address.phone || !address.province) return { s: 400, j: true, d: { e: "Missing required address fields" } };
-            const addressEnc = aes.encrypt(JSON.stringify(address));
+            const addressEnc = aes.encrypt(JSON.stringify(address), currentUser.id);
             return await sql.editAddress(currentUser.id, body.data.id, JSON.stringify(addressEnc)).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: "Address updated successfully" } };

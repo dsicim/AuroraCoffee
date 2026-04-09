@@ -15,6 +15,7 @@ const APIEndpoints = {
     cart: require("./apiendpoints/cart.js"),
     payment: require("./apiendpoints/payment.js"),
     address: require("./apiendpoints/address.js"),
+    orders: require("./apiendpoints/orders.js"),
 };
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);

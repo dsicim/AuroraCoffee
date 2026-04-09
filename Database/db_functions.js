@@ -647,23 +647,12 @@ func.getOrderByPayment = async function (orderId, paymentId) {
         throw new DBError(500, 'Failed to fetch user orders');
     }
 };
-func.getUserOrders = async function (userId) {
+func.getUserOrders = async function (userId, orderId = null) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
     }
     try {
-        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC', [userId]);
-        
-        for (let order of orders) {
-            const [items] = await pool.execute(`
-                SELECT oi.*, p.name as product_name 
-                FROM order_items oi
-                LEFT JOIN products p ON oi.product_id = p.id
-                WHERE oi.order_id = ?
-            `, [order.id]);
-            order.items = items;
-        }
-
+        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ?'+(orderId ? ' AND id = ?' : ' ORDER BY created_at DESC'), orderId?[userId, orderId] : [userId]);
         return { success: true, orders: orders };
     } catch (error) {
         console.error('Get user orders error:', error);
