@@ -10,7 +10,6 @@ import {
 } from '../lib/address'
 import {
   accountDataChangeEvent,
-  addOrderHistoryEntry,
   reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
 import {
@@ -22,7 +21,6 @@ import {
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
-  clearCart,
   formatCartOptionLabel,
   getCartItems,
   getCartOptionEntries,
@@ -41,7 +39,6 @@ import {
   buildPaymentSummary,
   consumeCheckout3DSReturnState,
   createPending3DSCheckoutSnapshot,
-  createOrderReference,
   savePending3DSCheckoutSnapshot,
 } from '../lib/payment3ds'
 import {
@@ -168,16 +165,6 @@ function formatExpiry(value) {
   }
 
   return `${digits.slice(0, 2)}/${digits.slice(2)}`
-}
-
-function maskCardNumber(value) {
-  const digits = value.replace(/\D/g, '')
-
-  if (digits.length < 4) {
-    return 'Demo card'
-  }
-
-  return `•••• •••• •••• ${digits.slice(-4)}`
 }
 
 function validateDeliveryForm(delivery) {
@@ -327,7 +314,7 @@ export default function CheckoutPage() {
   const [installmentInfo, setInstallmentInfo] = useState(null)
   const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
-  const [submittedOrder, setSubmittedOrder] = useState(null)
+  const [submittedOrder] = useState(null)
   const [paymentSummaryOverride, setPaymentSummaryOverride] = useState(null)
 
   const subtotal = items.reduce(
@@ -714,42 +701,15 @@ export default function CheckoutPage() {
           return
         }
 
-        const submittedOrderSnapshot = {
-          reference: createOrderReference(),
-          submittedAt: new Date().toISOString(),
-          items,
-          delivery: {
-            ...delivery,
-            fullName: getDeliveryFullName(delivery),
-            address: getDeliveryAddressLines(delivery).join('\n'),
-            city: delivery.district,
-          },
-          payment: selectedSavedCardId
-            ? {
-                cardholder: 'Saved card',
-                maskedCardNumber:
-                  maskSavedCard(savedCards.find((card) => card.id === selectedSavedCardId)) ||
-                  'Saved card',
-                expiry: '',
-              }
-            : {
-                cardholder: payment.cardholder,
-                maskedCardNumber: maskCardNumber(payment.cardNumber),
-                expiry: payment.expiry,
-              },
-          subtotal,
-          serviceFee,
-          total,
-          status: 'Payment initiated',
-          paymentResponse,
+        if (paymentResponse?.redirect3DS && !paymentResponse?.target) {
+          throw new Error(
+            '3D Secure was requested, but the payment page could not be opened.',
+          )
         }
 
-        addOrderHistoryEntry(submittedOrderSnapshot)
-        setSubmittedOrder(submittedOrderSnapshot)
-        await clearCart()
-        setItems([])
-        setErrors({})
-        setStepIndex(3)
+        throw new Error(
+          'The secure payment handoff was not started. Please try again.',
+        )
       } catch (submitError) {
         setErrors((current) => ({
           ...current,
