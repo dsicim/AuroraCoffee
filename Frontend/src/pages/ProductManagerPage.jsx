@@ -5,7 +5,7 @@ import { formatCurrency } from '../lib/currency'
 import { getProductAvailability, getProductCategories, useProductCatalog } from '../lib/products'
 
 export default function ProductManagerPage() {
-  const { products, loading, error } = useProductCatalog()
+  const { products, loaded, loading, error } = useProductCatalog()
   const lowStockProducts = products.filter(
     (product) => product.stock > 0 && product.stock <= 3,
   )
@@ -45,7 +45,7 @@ export default function ProductManagerPage() {
                     Products
                   </p>
                   <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {products.length}
+                    {loaded ? products.length : '—'}
                   </p>
                 </div>
               </div>
@@ -58,7 +58,7 @@ export default function ProductManagerPage() {
                     Categories
                   </p>
                   <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {Math.max(0, categories.length - 1)}
+                    {loaded ? Math.max(0, categories.length - 1) : '—'}
                   </p>
                 </div>
               </div>
@@ -71,7 +71,7 @@ export default function ProductManagerPage() {
                     Sold out
                   </p>
                   <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {soldOutProducts.length}
+                    {loaded ? soldOutProducts.length : '—'}
                   </p>
                 </div>
               </div>

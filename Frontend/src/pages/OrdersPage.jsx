@@ -5,7 +5,7 @@ import LiquidGlassButton from '../components/LiquidGlassButton'
 import { authChangeEvent } from '../lib/auth'
 import {
   fetchOrders,
-  getCachedOrders,
+  getOrdersSnapshot,
   getOrderStatusPresentation,
   ordersChangeEvent,
 } from '../lib/orders'
@@ -23,8 +23,9 @@ function formatTimestamp(value) {
 }
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState(() => getCachedOrders())
-  const [loading, setLoading] = useState(() => !getCachedOrders().length)
+  const [orders, setOrders] = useState(() => getOrdersSnapshot().orders)
+  const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
+  const [loading, setLoading] = useState(() => !getOrdersSnapshot().loaded)
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -35,11 +36,17 @@ export default function OrdersPage() {
         return
       }
 
-      setOrders(getCachedOrders())
+      const snapshot = getOrdersSnapshot()
+      setOrders(snapshot.orders)
+      setOrdersLoaded(snapshot.loaded)
+
+      if (snapshot.loaded) {
+        setLoading(false)
+      }
     }
 
     const loadOrders = async () => {
-      if (active) {
+      if (active && !getOrdersSnapshot().loaded) {
         setLoading(true)
       }
 
@@ -51,13 +58,16 @@ export default function OrdersPage() {
         }
 
         setOrders(nextOrders)
+        setOrdersLoaded(true)
         setError('')
       } catch (loadError) {
         if (!active) {
           return
         }
 
-        setOrders(getCachedOrders())
+        const snapshot = getOrdersSnapshot()
+        setOrders(snapshot.orders)
+        setOrdersLoaded(snapshot.loaded)
         setError(loadError instanceof Error ? loadError.message : 'Orders could not be loaded.')
       } finally {
         if (active) {
@@ -91,7 +101,7 @@ export default function OrdersPage() {
         </div>
       ) : null}
 
-      {loading && !orders.length ? (
+      {loading && !ordersLoaded ? (
         <div className="aurora-ops-card border-dashed px-6 py-12 text-center">
           <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
             Loading orders
@@ -100,7 +110,7 @@ export default function OrdersPage() {
             Pulling the latest order timeline from the backend.
           </p>
         </div>
-      ) : !orders.length ? (
+      ) : ordersLoaded && !orders.length ? (
         <div className="aurora-ops-card border-dashed px-6 py-12 text-center">
           <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
             No orders yet

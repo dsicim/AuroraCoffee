@@ -11,9 +11,10 @@ import {
   deleteSavedAddress,
   fetchSavedAddressById,
   fetchSavedAddresses,
-  getSavedAddresses,
+  getAddressBookSnapshot,
   saveSavedAddress,
 } from '../lib/addressBook'
+import { authChangeEvent } from '../lib/auth'
 import {
   validateCityPostalCode,
   validateTurkishCity,
@@ -73,24 +74,55 @@ function validateAddressForm(form) {
 }
 
 export default function AddressesPage() {
-  const [addresses, setAddresses] = useState(() => getSavedAddresses())
+  const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
+  const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
+  const [loading, setLoading] = useState(() => !getAddressBookSnapshot().loaded)
   const [form, setForm] = useState(initialFormState)
   const [errors, setErrors] = useState({})
 
   useEffect(() => {
+    let active = true
+
     const syncAddresses = () => {
-      void (async () => {
-        await fetchSavedAddresses()
-        setAddresses(getSavedAddresses())
-      })()
+      if (!active) {
+        return
+      }
+
+      const snapshot = getAddressBookSnapshot()
+      setAddresses(snapshot.addresses)
+      setAddressesLoaded(snapshot.loaded)
+
+      if (snapshot.loaded) {
+        setLoading(false)
+      }
     }
 
-    window.addEventListener('storage', syncAddresses)
+    const loadAddresses = async () => {
+      syncAddresses()
+
+      if (!getAddressBookSnapshot().loaded && active) {
+        setLoading(true)
+      }
+
+      await fetchSavedAddresses().catch(() => [])
+
+      if (!active) {
+        return
+      }
+
+      syncAddresses()
+      setLoading(false)
+    }
+
+    window.addEventListener('storage', loadAddresses)
+    window.addEventListener(authChangeEvent, loadAddresses)
     window.addEventListener(addressBookChangeEvent, syncAddresses)
-    const initialSyncId = window.setTimeout(syncAddresses, 0)
+    const initialSyncId = window.setTimeout(loadAddresses, 0)
 
     return () => {
-      window.removeEventListener('storage', syncAddresses)
+      active = false
+      window.removeEventListener('storage', loadAddresses)
+      window.removeEventListener(authChangeEvent, loadAddresses)
       window.removeEventListener(addressBookChangeEvent, syncAddresses)
       window.clearTimeout(initialSyncId)
     }
@@ -367,10 +399,20 @@ export default function AddressesPage() {
             Address book
           </p>
           <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-            {addresses.length} saved address{addresses.length === 1 ? '' : 'es'}
+            {addressesLoaded ? addresses.length : '—'} saved address
+            {addressesLoaded && addresses.length === 1 ? '' : 'es'}
           </h2>
 
-          {!addresses.length ? (
+          {loading && !addressesLoaded ? (
+            <div className="aurora-ops-card mt-8 border-dashed px-6 py-10 text-center">
+              <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+                Loading saved addresses
+              </p>
+              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                Pulling the latest saved addresses for this account.
+              </p>
+            </div>
+          ) : !addresses.length ? (
             <div className="aurora-ops-card mt-8 border-dashed px-6 py-10 text-center">
               <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
                 No saved addresses yet

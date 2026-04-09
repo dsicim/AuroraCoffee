@@ -1,9 +1,37 @@
 import { useEffect, useMemo, useState } from 'react'
 import { buildApiUrl } from './api'
 
-let cachedProducts = null
+export const productCatalogChangeEvent = 'aurora-product-catalog-change'
+
+let cachedProducts = []
+let cachedProductsLoaded = false
 let productsPromise = null
 const cachedProductsById = new Map()
+
+function dispatchProductCatalogChange(type = 'sync') {
+  window.dispatchEvent(
+    new CustomEvent(productCatalogChangeEvent, {
+      detail: { type },
+    }),
+  )
+}
+
+function clearProductsCache({ emit = true } = {}) {
+  const hadState =
+    cachedProducts.length > 0 ||
+    cachedProductsLoaded ||
+    productsPromise !== null ||
+    cachedProductsById.size > 0
+
+  cachedProducts = []
+  cachedProductsLoaded = false
+  productsPromise = null
+  cachedProductsById.clear()
+
+  if (emit && hadState) {
+    dispatchProductCatalogChange('clear')
+  }
+}
 
 function slugify(value) {
   return String(value || '')
@@ -66,10 +94,11 @@ function normalizeProduct(rawProduct) {
   }
 }
 
-function storeProducts(products, { replace = false } = {}) {
+function storeProducts(products, { replace = false, markLoaded = cachedProductsLoaded } = {}) {
   const normalizedProducts = products.map(normalizeProduct)
+  const nextLoaded = markLoaded || cachedProductsLoaded
 
-  if (replace || !cachedProducts) {
+  if (replace || !cachedProducts.length) {
     cachedProducts = normalizedProducts
   } else {
     const merged = new Map(cachedProducts.map((product) => [product.id, product]))
@@ -84,11 +113,14 @@ function storeProducts(products, { replace = false } = {}) {
     cachedProductsById.set(product.id, product)
   }
 
+  cachedProductsLoaded = nextLoaded
+  dispatchProductCatalogChange(nextLoaded ? 'list' : 'partial')
+
   return normalizedProducts
 }
 
 function hydrateWithKnownSlugs(rawProducts) {
-  if (!cachedProducts?.length) {
+  if (!cachedProducts.length) {
     return buildSlugMap(rawProducts)
   }
 
@@ -117,17 +149,17 @@ async function requestProducts() {
   const payload = await requestJson('/products/all')
   const normalizedProducts = storeProducts(
     buildSlugMap(payload?.products || []),
-    { replace: true },
+    { replace: true, markLoaded: true },
   )
   return normalizedProducts
 }
 
-export async function fetchAllProducts({ force = false } = {}) {
-  if (cachedProducts && !force) {
+export async function fetchAllProducts({ force = false, revalidate = true } = {}) {
+  if (!revalidate && cachedProductsLoaded && !force) {
     return cachedProducts
   }
 
-  if (productsPromise && !force) {
+  if (productsPromise) {
     return productsPromise
   }
 
@@ -161,7 +193,7 @@ export async function fetchProductsByIds(ids) {
 
   const payload = await requestJson(`/products?ids=${normalizedIds.join(',')}`)
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  storeProducts(hydratedProducts)
+  storeProducts(hydratedProducts, { markLoaded: false })
 
   return normalizedIds
     .map((id) => cachedProductsById.get(id))
@@ -188,12 +220,23 @@ export async function searchProducts(query, sortBy = 'newest') {
     `/products/search?q=${encodeURIComponent(normalizedQuery)}&s=${encodeURIComponent(backendSort)}`,
   )
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  storeProducts(hydratedProducts)
+  storeProducts(hydratedProducts, { markLoaded: false })
   return hydratedProducts.map(normalizeProduct)
 }
 
 export function getCachedProducts() {
-  return cachedProducts || []
+  return cachedProducts
+}
+
+export function getProductCatalogSnapshot() {
+  return {
+    products: getCachedProducts(),
+    loaded: cachedProductsLoaded,
+  }
+}
+
+export function invalidateProductCatalogCache() {
+  clearProductsCache()
 }
 
 export async function findProductBySlug(slug) {
@@ -317,12 +360,27 @@ export function getRelatedProducts(products, targetProduct, limit = 3) {
 }
 
 export function useProductCatalog() {
-  const [products, setProducts] = useState(() => getCachedProducts())
-  const [loading, setLoading] = useState(() => !getCachedProducts().length)
+  const [snapshot, setSnapshot] = useState(() => getProductCatalogSnapshot())
+  const [loading, setLoading] = useState(() => !getProductCatalogSnapshot().loaded)
   const [error, setError] = useState('')
 
   useEffect(() => {
     let active = true
+    const syncSnapshot = () => {
+      if (!active) {
+        return
+      }
+
+      const nextSnapshot = getProductCatalogSnapshot()
+      setSnapshot(nextSnapshot)
+
+      if (nextSnapshot.loaded) {
+        setLoading(false)
+      }
+    }
+
+    window.addEventListener(productCatalogChangeEvent, syncSnapshot)
+    syncSnapshot()
 
     fetchAllProducts()
       .then((nextProducts) => {
@@ -330,7 +388,10 @@ export function useProductCatalog() {
           return
         }
 
-        setProducts(nextProducts)
+        setSnapshot({
+          products: nextProducts,
+          loaded: true,
+        })
         setError('')
       })
       .catch((fetchError) => {
@@ -348,10 +409,16 @@ export function useProductCatalog() {
 
     return () => {
       active = false
+      window.removeEventListener(productCatalogChangeEvent, syncSnapshot)
     }
   }, [])
 
-  return { products, loading, error }
+  return {
+    products: snapshot.products,
+    loaded: snapshot.loaded,
+    loading,
+    error,
+  }
 }
 
 export function useProductBySlug(slug) {

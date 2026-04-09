@@ -180,7 +180,7 @@ export default function ProductsPage() {
         </LiquidGlassFrame>
 
         <AuroraWidget
-          title={`${filteredProducts.length} products`}
+          title={loading || searchLoading ? 'Loading products' : `${filteredProducts.length} products`}
           subtitle="Catalog view"
           icon="package"
           className="aurora-operational-card hidden h-fit rounded-[2rem] p-6 lg:block"

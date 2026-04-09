@@ -54,7 +54,15 @@ function getOrdersScope() {
   return encodeURIComponent(scopeSource)
 }
 
-function clearOrdersCache() {
+function clearOrdersCache({ emit = false, type = 'clear' } = {}) {
+  const hadState =
+    cachedOrders.length > 0 ||
+    cachedOrdersLoaded ||
+    cachedOrdersScope !== null ||
+    cachedOrderDetails.size > 0 ||
+    inFlightOrdersPromise !== null ||
+    inFlightOrderDetailPromises.size > 0
+
   cachedOrders = []
   cachedOrdersScope = null
   cachedOrdersLoaded = false
@@ -62,6 +70,10 @@ function clearOrdersCache() {
   inFlightOrdersScope = null
   cachedOrderDetails.clear()
   inFlightOrderDetailPromises.clear()
+
+  if (emit && hadState) {
+    dispatchOrdersChange(type)
+  }
 }
 
 function dispatchOrdersChange(type, orderId = '') {
@@ -118,7 +130,7 @@ function joinName(firstName, lastName) {
 
 function ensureOrdersScope(scope) {
   if (cachedOrdersScope !== scope) {
-    clearOrdersCache()
+    clearOrdersCache({ emit: true, type: 'scope' })
     cachedOrdersScope = scope
   }
 }
@@ -372,9 +384,9 @@ async function normalizeOrderDetail(record) {
   }
 }
 
-function persistResolvedOrders(orders, scope) {
+function persistResolvedOrders(orders, scope, { loaded = false } = {}) {
   cachedOrdersScope = scope
-  cachedOrdersLoaded = true
+  cachedOrdersLoaded = loaded
   cachedOrders = sortOrders(orders)
   return cachedOrders
 }
@@ -395,11 +407,27 @@ function mergeResolvedOrder(order, scope) {
     })
   }
 
-  return persistResolvedOrders(Array.from(merged.values()), scope)
+  return persistResolvedOrders(Array.from(merged.values()), scope, {
+    loaded: cachedOrdersLoaded,
+  })
 }
 
 export function getCachedOrders() {
   return cachedOrdersScope === getOrdersScope() ? cachedOrders : []
+}
+
+export function getOrdersSnapshot() {
+  if (cachedOrdersScope !== getOrdersScope()) {
+    return {
+      orders: [],
+      loaded: false,
+    }
+  }
+
+  return {
+    orders: cachedOrders,
+    loaded: cachedOrdersLoaded,
+  }
 }
 
 export function getCachedOrderById(orderId) {
@@ -412,18 +440,18 @@ export function getCachedOrderById(orderId) {
   return cachedOrderDetails.get(`${scope}:${String(orderId)}`) || null
 }
 
-export async function fetchOrders({ force = false } = {}) {
+export async function fetchOrders({ force = false, revalidate = true } = {}) {
   const session = getAuthSession()
   const scope = getOrdersScope()
 
   if (!session?.token || !scope) {
-    clearOrdersCache()
+    clearOrdersCache({ emit: true, type: 'clear' })
     return []
   }
 
   ensureOrdersScope(scope)
 
-  if (!force && cachedOrdersLoaded) {
+  if (!revalidate && !force && cachedOrdersLoaded) {
     return cachedOrders
   }
 
@@ -443,7 +471,9 @@ export async function fetchOrders({ force = false } = {}) {
         return cachedDetail ? { ...cachedDetail, ...summary } : summary
       })
 
-      const nextOrders = persistResolvedOrders(resolvedOrders, scope)
+      const nextOrders = persistResolvedOrders(resolvedOrders, scope, {
+        loaded: true,
+      })
       dispatchOrdersChange('list')
       return nextOrders
     })
@@ -505,6 +535,5 @@ export async function fetchOrderById(orderId, { force = false } = {}) {
 }
 
 export function invalidateOrdersCache() {
-  clearOrdersCache()
-  dispatchOrdersChange('invalidate')
+  clearOrdersCache({ emit: true, type: 'invalidate' })
 }

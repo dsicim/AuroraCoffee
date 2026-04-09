@@ -5,16 +5,17 @@ import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   accountDataChangeEvent,
   getFavoriteProductIds,
+  reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
 import {
   addressBookChangeEvent,
   fetchSavedAddresses,
-  getSavedAddresses,
+  getAddressBookSnapshot,
 } from '../lib/addressBook'
 import { authChangeEvent } from '../lib/auth'
 import {
   fetchOrders,
-  getCachedOrders,
+  getOrdersSnapshot,
   getOrderStatusPresentation,
   ordersChangeEvent,
 } from '../lib/orders'
@@ -32,55 +33,73 @@ function formatTimestamp(value) {
 }
 
 export default function AccountPage() {
-  const [orders, setOrders] = useState(() => getCachedOrders())
-  const [addresses, setAddresses] = useState(() => getSavedAddresses())
+  const [orders, setOrders] = useState(() => getOrdersSnapshot().orders)
+  const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
+  const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
+  const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
 
   useEffect(() => {
     let active = true
 
-    const syncAccountState = () => {
+    const syncRemoteState = () => {
       if (!active) {
         return
       }
 
-      setOrders(getCachedOrders())
-      setAddresses(getSavedAddresses())
+      const orderSnapshot = getOrdersSnapshot()
+      const addressSnapshot = getAddressBookSnapshot()
+
+      setOrders(orderSnapshot.orders)
+      setOrdersLoaded(orderSnapshot.loaded)
+      setAddresses(addressSnapshot.addresses)
+      setAddressesLoaded(addressSnapshot.loaded)
+    }
+
+    const syncLocalState = () => {
+      if (!active) {
+        return
+      }
+
       setFavoriteIds(getFavoriteProductIds())
     }
 
     const loadAccountState = async () => {
+      reconcileAccountStorageWithAuth()
+      syncLocalState()
+      syncRemoteState()
       await Promise.allSettled([fetchOrders(), fetchSavedAddresses()])
 
       if (!active) {
         return
       }
 
-      syncAccountState()
+      syncLocalState()
+      syncRemoteState()
     }
 
     window.addEventListener('storage', loadAccountState)
     window.addEventListener(authChangeEvent, loadAccountState)
-    window.addEventListener(accountDataChangeEvent, syncAccountState)
-    window.addEventListener(addressBookChangeEvent, loadAccountState)
-    window.addEventListener(ordersChangeEvent, syncAccountState)
+    window.addEventListener(accountDataChangeEvent, syncLocalState)
+    window.addEventListener(addressBookChangeEvent, syncRemoteState)
+    window.addEventListener(ordersChangeEvent, syncRemoteState)
     void loadAccountState()
 
     return () => {
       active = false
       window.removeEventListener('storage', loadAccountState)
       window.removeEventListener(authChangeEvent, loadAccountState)
-      window.removeEventListener(accountDataChangeEvent, syncAccountState)
-      window.removeEventListener(addressBookChangeEvent, loadAccountState)
-      window.removeEventListener(ordersChangeEvent, syncAccountState)
+      window.removeEventListener(accountDataChangeEvent, syncLocalState)
+      window.removeEventListener(addressBookChangeEvent, syncRemoteState)
+      window.removeEventListener(ordersChangeEvent, syncRemoteState)
     }
   }, [])
 
-  const mostRecentOrder = orders[0] || null
+  const mostRecentOrder = ordersLoaded ? orders[0] || null : null
   const mostRecentOrderStatus = mostRecentOrder
     ? getOrderStatusPresentation(mostRecentOrder)
     : null
-  const hasSavedAddresses = addresses.length > 0
+  const hasSavedAddresses = addressesLoaded && addresses.length > 0
   const latestOrderPath = mostRecentOrder
     ? `/account/orders/${encodeURIComponent(mostRecentOrder.id)}`
     : '/account/orders'
@@ -99,11 +118,15 @@ export default function AccountPage() {
                 <div className="aurora-widget-heading">
                   <p className="aurora-kicker">Orders</p>
                   <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                    {orders.length}
+                    {ordersLoaded ? orders.length : '—'}
                   </h2>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {mostRecentOrder ? mostRecentOrder.id : 'No orders yet'}
+                  {mostRecentOrder
+                    ? mostRecentOrder.id
+                    : ordersLoaded
+                      ? 'No orders yet'
+                      : 'Loading latest order'}
                 </p>
               </div>
             </div>
@@ -115,11 +138,15 @@ export default function AccountPage() {
                     Saved addresses
                   </p>
                   <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                    {addresses.length}
+                    {addressesLoaded ? addresses.length : '—'}
                   </p>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {hasSavedAddresses ? 'Saved addresses available' : 'No saved addresses yet'}
+                  {hasSavedAddresses
+                    ? 'Saved addresses available'
+                    : addressesLoaded
+                      ? 'No saved addresses yet'
+                      : 'Loading saved addresses'}
                 </p>
               </div>
             </div>
@@ -150,7 +177,11 @@ export default function AccountPage() {
                   Latest order
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {mostRecentOrder ? mostRecentOrder.id : 'No orders yet'}
+                  {mostRecentOrder
+                    ? mostRecentOrder.id
+                    : ordersLoaded
+                      ? 'No orders yet'
+                      : 'Loading orders'}
                 </h2>
               </div>
               <Link
@@ -191,14 +222,23 @@ export default function AccountPage() {
                 </div>
               </>
             ) : (
-              <div className="mt-4 flex flex-wrap gap-3">
-                <LiquidGlassButton as={Link} to="/products">
-                  Browse products
-                </LiquidGlassButton>
-                <LiquidGlassButton as={Link} to="/cart" variant="secondary">
-                  View cart
-                </LiquidGlassButton>
-              </div>
+              <>
+                <div className="aurora-widget-subsurface mt-4 p-5">
+                  <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                    {ordersLoaded
+                      ? 'No backend orders are available on this account yet.'
+                      : 'Loading the latest backend order for this account.'}
+                  </p>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <LiquidGlassButton as={Link} to="/products">
+                    Browse products
+                  </LiquidGlassButton>
+                  <LiquidGlassButton as={Link} to="/cart" variant="secondary">
+                    View cart
+                  </LiquidGlassButton>
+                </div>
+              </>
             )}
           </section>
 
@@ -209,7 +249,11 @@ export default function AccountPage() {
                   Saved addresses
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {hasSavedAddresses ? 'Available' : 'Not set'}
+                  {hasSavedAddresses
+                    ? 'Available'
+                    : addressesLoaded
+                      ? 'Not set'
+                      : 'Loading'}
                 </h2>
               </div>
               <Link
@@ -225,6 +269,12 @@ export default function AccountPage() {
                 <p className="text-sm leading-8 text-[var(--aurora-text)]">
                   {addresses.length} saved address
                   {addresses.length === 1 ? '' : 'es'} are ready for checkout when you need them.
+                </p>
+              </div>
+            ) : !addressesLoaded ? (
+              <div className="aurora-widget-subsurface mt-4 p-5">
+                <p className="text-sm leading-8 text-[var(--aurora-text)]">
+                  Loading saved addresses for this account.
                 </p>
               </div>
             ) : (

@@ -12,6 +12,7 @@ const addressMigrationStorageKey = 'auroraAddressMigrationState'
 
 let cachedAddresses = []
 let cachedAddressScope = null
+let cachedAddressesLoaded = false
 let inFlightAddressListPromise = null
 let inFlightAddressListScope = null
 
@@ -30,11 +31,22 @@ function getAddressScope() {
   return encodeURIComponent(scopeSource)
 }
 
-function clearAddressCache() {
+function clearAddressCache({ emit = true, type = 'clear' } = {}) {
+  const hadState =
+    cachedAddresses.length > 0 ||
+    cachedAddressScope !== null ||
+    cachedAddressesLoaded ||
+    inFlightAddressListPromise !== null
+
   cachedAddresses = []
   cachedAddressScope = null
+  cachedAddressesLoaded = false
   inFlightAddressListPromise = null
   inFlightAddressListScope = null
+
+  if (emit && hadState) {
+    dispatchAddressBookChange(type)
+  }
 }
 
 function parseJson(rawValue, fallback) {
@@ -369,7 +381,9 @@ function createAddressSignature(address) {
 
 function persistResolvedAddresses(addresses) {
   cachedAddressScope = getAddressScope()
+  cachedAddressesLoaded = true
   cachedAddresses = sortAddresses(addresses)
+  dispatchAddressBookChange('list')
   return cachedAddresses
 }
 
@@ -444,6 +458,20 @@ export function getSavedAddresses() {
   return cachedAddresses
 }
 
+export function getAddressBookSnapshot() {
+  if (cachedAddressScope !== getAddressScope()) {
+    return {
+      addresses: [],
+      loaded: false,
+    }
+  }
+
+  return {
+    addresses: cachedAddresses,
+    loaded: cachedAddressesLoaded,
+  }
+}
+
 export function getDefaultSavedAddress() {
   return null
 }
@@ -456,7 +484,7 @@ export async function fetchSavedAddressById(addressId) {
   return fetchServerAddressDetail(addressId)
 }
 
-export async function fetchSavedAddresses({ force = false } = {}) {
+export async function fetchSavedAddresses({ force = false, revalidate = true } = {}) {
   const scope = getAddressScope()
 
   if (!getAuthSession()?.token || !scope) {
@@ -464,7 +492,7 @@ export async function fetchSavedAddresses({ force = false } = {}) {
     return []
   }
 
-  if (!force && cachedAddressScope === scope) {
+  if (!revalidate && !force && cachedAddressScope === scope && cachedAddressesLoaded) {
     return cachedAddresses
   }
 
@@ -549,9 +577,7 @@ export async function saveSavedAddress(addressInput) {
       }),
     })
 
-    const nextAddresses = await fetchSavedAddresses({ force: true })
-    dispatchAddressBookChange('save')
-    return nextAddresses
+    return fetchSavedAddresses({ force: true })
   }
 
   await requestAddressJson('', {
@@ -561,9 +587,7 @@ export async function saveSavedAddress(addressInput) {
     }),
   })
 
-  const nextAddresses = await fetchSavedAddresses({ force: true })
-  dispatchAddressBookChange('save')
-  return nextAddresses
+  return fetchSavedAddresses({ force: true })
 }
 
 export async function deleteSavedAddress(addressId) {
@@ -574,9 +598,7 @@ export async function deleteSavedAddress(addressId) {
     }),
   })
 
-  const nextAddresses = await fetchSavedAddresses({ force: true })
-  dispatchAddressBookChange('delete')
-  return nextAddresses
+  return fetchSavedAddresses({ force: true })
 }
 
 export function setDefaultSavedAddress() {

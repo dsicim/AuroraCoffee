@@ -5,23 +5,25 @@ import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
   accountDataChangeEvent,
   getFavoriteProductIds,
+  reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
 import { addDefaultProductToCart } from '../lib/accountActions'
 import {
   addressBookChangeEvent,
   fetchSavedAddresses,
-  getSavedAddresses,
+  getAddressBookSnapshot,
 } from '../lib/addressBook'
 import { authChangeEvent } from '../lib/auth'
 import {
   cartChangeEvent,
   getCartCount,
   getCartSubtotal,
+  reconcileCartStorageWithAuth,
 } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import {
   fetchOrders,
-  getCachedOrders,
+  getOrdersSnapshot,
   getOrderStatusPresentation,
   ordersChangeEvent,
 } from '../lib/orders'
@@ -41,8 +43,10 @@ function formatTimestamp(value) {
 
 export default function CustomerPage() {
   const { products } = useProductCatalog()
-  const [orders, setOrders] = useState(() => getCachedOrders())
-  const [addresses, setAddresses] = useState(() => getSavedAddresses())
+  const [orders, setOrders] = useState(() => getOrdersSnapshot().orders)
+  const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
+  const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
+  const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
@@ -51,13 +55,25 @@ export default function CustomerPage() {
   useEffect(() => {
     let active = true
 
+    const syncRemoteState = () => {
+      if (!active) {
+        return
+      }
+
+      const orderSnapshot = getOrdersSnapshot()
+      const addressSnapshot = getAddressBookSnapshot()
+
+      setOrders(orderSnapshot.orders)
+      setOrdersLoaded(orderSnapshot.loaded)
+      setAddresses(addressSnapshot.addresses)
+      setAddressesLoaded(addressSnapshot.loaded)
+    }
+
     const syncAccountState = () => {
       if (!active) {
         return
       }
 
-      setOrders(getCachedOrders())
-      setAddresses(getSavedAddresses())
       setFavoriteIds(getFavoriteProductIds())
     }
 
@@ -71,21 +87,29 @@ export default function CustomerPage() {
     }
 
     const loadAccountState = async () => {
-      await Promise.allSettled([fetchOrders(), fetchSavedAddresses()])
+      reconcileAccountStorageWithAuth()
+      syncAccountState()
+      syncRemoteState()
+      await Promise.allSettled([
+        reconcileCartStorageWithAuth(),
+        fetchOrders(),
+        fetchSavedAddresses(),
+      ])
 
       if (!active) {
         return
       }
 
       syncAccountState()
+      syncRemoteState()
       syncCartState()
     }
 
     window.addEventListener('storage', loadAccountState)
     window.addEventListener(authChangeEvent, loadAccountState)
     window.addEventListener(accountDataChangeEvent, syncAccountState)
-    window.addEventListener(addressBookChangeEvent, loadAccountState)
-    window.addEventListener(ordersChangeEvent, syncAccountState)
+    window.addEventListener(addressBookChangeEvent, syncRemoteState)
+    window.addEventListener(ordersChangeEvent, syncRemoteState)
     window.addEventListener(cartChangeEvent, syncCartState)
     void loadAccountState()
 
@@ -94,8 +118,8 @@ export default function CustomerPage() {
       window.removeEventListener('storage', loadAccountState)
       window.removeEventListener(authChangeEvent, loadAccountState)
       window.removeEventListener(accountDataChangeEvent, syncAccountState)
-      window.removeEventListener(addressBookChangeEvent, loadAccountState)
-      window.removeEventListener(ordersChangeEvent, syncAccountState)
+      window.removeEventListener(addressBookChangeEvent, syncRemoteState)
+      window.removeEventListener(ordersChangeEvent, syncRemoteState)
       window.removeEventListener(cartChangeEvent, syncCartState)
     }
   }, [])
@@ -114,14 +138,14 @@ export default function CustomerPage() {
     }
   }, [feedback])
 
-  const mostRecentOrder = orders[0] || null
+  const mostRecentOrder = ordersLoaded ? orders[0] || null : null
   const latestOrderPath = mostRecentOrder
     ? `/account/orders/${encodeURIComponent(mostRecentOrder.id)}`
     : '/account/orders'
   const latestOrderStatus = mostRecentOrder
     ? getOrderStatusPresentation(mostRecentOrder)
     : null
-  const hasSavedAddresses = addresses.length > 0
+  const hasSavedAddresses = addressesLoaded && addresses.length > 0
   const favoriteProducts = useMemo(
     () => products.filter((product) => favoriteIds.includes(product.slug)).slice(0, 3),
     [favoriteIds, products],
@@ -186,15 +210,21 @@ export default function CustomerPage() {
             <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
               Latest order
             </p>
-            <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {mostRecentOrder ? latestOrderStatus.label : 'No order'}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+              <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                {mostRecentOrder
+                  ? latestOrderStatus.label
+                  : ordersLoaded
+                    ? 'No order'
+                    : 'Loading'}
+              </p>
+              <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
               {mostRecentOrder
                 ? `${mostRecentOrder.id} is the latest backend order on this account.`
-                : 'Place your first order and it will appear here.'}
-            </p>
-          </div>
+                : ordersLoaded
+                  ? 'Place your first order and it will appear here.'
+                  : 'Loading the latest backend order for this account.'}
+              </p>
+            </div>
 
           <div className="aurora-ops-card p-5">
             <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
@@ -214,13 +244,17 @@ export default function CustomerPage() {
             <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
               Saved addresses
             </p>
-            <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {addresses.length}
-            </p>
-            <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-              {hasSavedAddresses ? 'Saved addresses available' : 'No saved addresses yet'}
-            </p>
-          </div>
+              <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                {addressesLoaded ? addresses.length : '—'}
+              </p>
+              <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+              {hasSavedAddresses
+                ? 'Saved addresses available'
+                : addressesLoaded
+                  ? 'No saved addresses yet'
+                  : 'Loading saved addresses'}
+              </p>
+            </div>
         </div>
       </section>
 
@@ -233,7 +267,11 @@ export default function CustomerPage() {
                   Latest order status
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {mostRecentOrder ? latestOrderStatus.label : 'No order yet'}
+                  {mostRecentOrder
+                    ? latestOrderStatus.label
+                    : ordersLoaded
+                      ? 'No order yet'
+                      : 'Loading orders'}
                 </h2>
               </div>
               {mostRecentOrder ? (
@@ -266,7 +304,9 @@ export default function CustomerPage() {
               </>
             ) : (
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Complete checkout once and the latest backend order summary will appear here.
+                {ordersLoaded
+                  ? 'Complete checkout once and the latest backend order summary will appear here.'
+                  : 'Loading the latest backend order summary for this account.'}
               </p>
             )}
           </section>
@@ -336,7 +376,11 @@ export default function CustomerPage() {
                   Saved addresses
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {hasSavedAddresses ? 'Available' : 'Not set'}
+                  {hasSavedAddresses
+                    ? 'Available'
+                    : addressesLoaded
+                      ? 'Not set'
+                      : 'Loading'}
                 </h2>
               </div>
               <Link
@@ -351,6 +395,10 @@ export default function CustomerPage() {
               <p className="mt-4 text-sm leading-8 text-[var(--aurora-text)]">
                 {addresses.length} saved address
                 {addresses.length === 1 ? '' : 'es'} are available for checkout.
+              </p>
+            ) : !addressesLoaded ? (
+              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                Loading saved addresses for this account.
               </p>
             ) : (
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
