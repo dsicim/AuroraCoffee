@@ -628,6 +628,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (form.status && form.status === "success" && form.mdStatus !== undefined && form.mdStatus === "1" && form.conversationId && form.paymentId) {
                 let why = "TIMEOUT";
                 let details = null;
+                let detailsEnc = null;
                 for (const [token, info] of tokens) {
                     if (!info || typeof info.timeout !== "number" || info.timeout <= new Date().getTime()) {
                         if (token == form.conversationId) why = "TIMEOUT";
@@ -641,7 +642,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         why = "PAYMENT_ID_MISMATCH";
                     }
                     else if (orderInfo.details) {
-                        details = aes.pjs(orderInfo.details);
+                        detailsEnc = orderInfo.details;
+                        details = aes.pjs(detailsEnc);
                         if (details.e && details.e.startsWith("Failed to parse JSON: ")) {
                             tokens.delete(form.conversationId);
                             why = "MALFORMED_ORDER_DETAILS";
@@ -679,7 +681,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (authChecker) {
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
-                                    const orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
+                                    const orderNumber = await sql.reserveOrderNumber(currentUser.id, detailsEnc).then(result => {
                                         if (result.success) return { s: true, n: result.oID };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
