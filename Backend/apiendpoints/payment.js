@@ -569,7 +569,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
                                     return { s: 200, j: true, d: { success: true, orderNumber: payload.o, response: authChecker } };
                                 }
-                                else return { s: 400, j: true, d: { success: false, response: authChecker } };
+                                else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
                             }
                             else {
                                 failed = true;
@@ -616,9 +616,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "3dscallback") {
+        function CallbackEmbed(obj) {
+            return { s: 302, j: false, d: "", h: { "Location": config.domain + "/checkout/3dscallback?result="+Buffer.from(JSON.stringify(obj)).toString("base64") } };
+        }
         if (method === "POST") {
-            if (headers.origin != config.iyzipay.api && headers.referrer != config.iyzipay.api+"/") return { s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
-            if (!body || body.json || !body.exists) return { s: 400, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
+            if (headers.origin != config.iyzipay.api && headers.referrer != config.iyzipay.api+"/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." }}});
+            if (!body || body.json || !body.exists) return CallbackEmbed({ success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } });
             body.data = body.data.split("&").map(pair => {
                 const p = pair.split("=");
                 return { key: p[0], value: p[1] };
@@ -636,7 +639,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
                     else return { s: false, e: "An unknown error occurred" };
                 });
-                if (!order.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Retrieval", why: "Failed to retrieve order information: " + order.e, resolution: "Please try again later or contact the developers" } } };
+                if (!order.s) return CallbackEmbed({ success: false, e: { what: "Order Retrieval", why: "Failed to retrieve order information: " + order.e, resolution: "Please try again later or contact the developers" } });
                 let payload = { locale: "en", paymentId: form.paymentId };
                 if (form.conversationData) payload.conversationData = form.conversationData;
                 const response = await IyzipayAPI(config, "POST", "payment/3dsecure/auth", {}, payload);
@@ -654,25 +657,25 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
-                                    if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
+                                    if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await sql.clearCart(order.userId).then(result => {}).catch(err => {});
-                                    return { s: 200, j: true, d: { success: true, orderNumber: order.order, response: authChecker } };
+                                    return CallbackEmbed({ success: true, orderNumber: order.order, response: authChecker });
                                 }
-                                else return { s: 400, j: true, d: { success: false, response: authChecker } };
+                                else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
                             }
                             else {
                                 const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage, "your bank");
-                                return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                                return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } });
                             }
                         }
-                        else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
+                        else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } });
                     }
                     else {
                         const errObj = PaymentError(response.errorGroup, response.errorMessage, "your bank");
-                        return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                        return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } });
                     }
                 }
-                else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
+                else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } });
             }
             else if (form.status && form.status === "failure" && form.mdStatus !== undefined && form.mdStatus !== "1" && form.conversationId) {
                 const errObj = {
@@ -686,10 +689,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     "7": { why: "Payment Processor Error", res: "Please try again. If the problem persists, please contact the developers." },
                     "8": { why: "Unknown Card Number", res: "Please use a different card and try again." }
                 }[form.mdStatus]
-                return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.res } } };
+                return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.res } });
             }
             else {
-                return { s: 400, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
+                return CallbackEmbed({ success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } });
             }
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
