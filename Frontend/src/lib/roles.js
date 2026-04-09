@@ -31,7 +31,7 @@ export function getRoleLandingPath(role) {
   const normalizedRole = normalizeUserRole(role)
 
   if (normalizedRole === userRoles.admin) {
-    return '/'
+    return '/api/restart'
   }
 
   if (normalizedRole === userRoles.customer) {
