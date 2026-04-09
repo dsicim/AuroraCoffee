@@ -35,7 +35,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [feedback, setFeedback] = useState('')
   const [feedbackKind, setFeedbackKind] = useState('error')
-  const [rememberMe, setRememberMe] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [callbackFeedback, setCallbackFeedback] = useState(callbackMessage || '')
 
@@ -181,17 +180,7 @@ export default function LoginPage() {
           />
         </label>
 
-        <div className="aurora-form-inline sm:flex-row sm:items-center sm:justify-between">
-          <label className="aurora-checkbox">
-            <input
-              type="checkbox"
-              checked={rememberMe}
-              onChange={(event) => setRememberMe(event.target.checked)}
-              className="aurora-checkbox-input"
-            />
-            Remember me
-          </label>
-
+        <div className="aurora-form-inline sm:flex-row sm:items-center sm:justify-end">
           <Link to="/forgotpassword" className="aurora-link">
             Forgot password?
           </Link>
