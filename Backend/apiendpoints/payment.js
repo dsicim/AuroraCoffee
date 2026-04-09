@@ -701,7 +701,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
-                                    await sql.clearCart(order.userId).then(result => {}).catch(err => {});
+                                    await sql.clearCart(user).then(result => {}).catch(err => {});
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
