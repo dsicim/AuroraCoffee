@@ -90,15 +90,6 @@ async function getCardToken(userId) {
 }
 async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
     let realPrice = subtotal;
-    if (!card.cardToken) {
-        card = {
-            cardHolderName: card.holder,
-            cardNumber: card.number,
-            expireMonth: card.expiry.month,
-            expireYear: card.expiry.year,
-            cvc: card.cvc
-        }
-    }
     if (installment && installment > 1) {
         const actualInstallment = cardDetails.installments.find(ins => ins.months === parseInt(installment));
         realPrice = actualInstallment ? actualInstallment.total : subtotal;
