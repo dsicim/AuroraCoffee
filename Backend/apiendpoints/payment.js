@@ -299,6 +299,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const shippingToken = body.data.shipping.token || null;
             if (!billingToken && (!body.data.billing.name || !body.data.billing.surname || !body.data.billing.address || !body.data.billing.city || !body.data.billing.province || !body.data.billing.country || !body.data.billing.zip || !body.data.billing.phone)) return { s: 412, j: true, d: { success: false, e: { what: "Billing Address", why: "Billing address details are missing", resolution: "Please provide valid billing address details" } } };
             if (!shippingToken && (!body.data.shipping.name || !body.data.shipping.surname || !body.data.shipping.address || !body.data.shipping.city || !body.data.shipping.province || !body.data.shipping.country || !body.data.shipping.zip || !body.data.shipping.phone)) return { s: 412, j: true, d: { success: false, e: { what: "Shipping Address", why: "Shipping address details are missing", resolution: "Please provide valid shipping address details" } } };
+            if (!body.avoid3DS && body.avoid3DS !== false) body.avoid3DS = true; // Default to true if not provided
+
 
             // Shopping Cart Validation
             if (!body.data.expected || isNaN(parseFloat(body.data.expected))) return { s: 412, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Expected cart total is missing or invalid", resolution: "Please provide the expected total price of the cart based on your session data" } } };
@@ -541,7 +543,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { s: 500, j: true, d: { success: false, e: { what: "Installments", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
-
             // All validations passed, create order and initiate payment
             const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
             if (!payload.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Creation", why: "Failed to create order", resolution: "Please try again later or contact the developers" } } };
