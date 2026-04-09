@@ -617,7 +617,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "3dscallback") {
         function CallbackEmbed(obj) {
-            return { s: 302, j: false, d: "", h: { "Location": config.domain + "/checkout/3dscallback?result="+Buffer.from(JSON.stringify(obj)).toString("base64") } };
+            return { s: 302, j: false, d: "", h: { "Location": "https://" + config.domain + "/checkout/3dscallback?result="+Buffer.from(JSON.stringify(obj)).toString("base64") } };
         }
         if (method === "POST") {
             if (headers.origin != config.iyzipay.api && headers.referrer != config.iyzipay.api+"/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." }}});
