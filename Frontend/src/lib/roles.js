@@ -74,3 +74,30 @@ export function canAccessRole(role, requiredRole) {
 
   return normalizedRole === normalizedRequiredRole
 }
+
+export function getRolePopupPath(role) {
+  const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole === userRoles.admin) {
+    return '/api/restart'
+  }
+
+  return null
+}
+
+export function openRolePopup(role) {
+  const popupPath = getRolePopupPath(role)
+
+  if (!popupPath) {
+    return false
+  }
+
+  const popupWindow = window.open(popupPath, '_blank', 'noopener,noreferrer')
+
+  if (popupWindow) {
+    popupWindow.focus()
+    return true
+  }
+
+  return false
+}

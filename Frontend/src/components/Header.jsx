@@ -18,7 +18,13 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { getRoleLandingPath, getRoleLabel, normalizeUserRole, userRoles } from '../lib/roles'
+import {
+  getRoleLandingPath,
+  getRoleLabel,
+  normalizeUserRole,
+  openRolePopup,
+  userRoles,
+} from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -45,13 +51,22 @@ export default function Header() {
   const roleLandingPath = isRoleKnown ? getRoleLandingPath(normalizedRole) : '/'
   const roleBadgeLabel = roleLabel || 'Loading'
 
+  const customerAccountLinks = [
+    { label: 'Customer Home', to: '/customer' },
+    { label: 'Account', to: '/account' },
+    { label: 'Orders', to: '/account/orders' },
+    { label: 'Saved Addresses', to: '/account/addresses' },
+    { label: 'Favorites', to: '/account/favorites' },
+  ]
+
   const accountLinks = normalizedRole === userRoles.customer
+    ? customerAccountLinks
+    : normalizedRole === userRoles.admin
     ? [
-      { label: 'Customer Home', to: '/customer' },
-      { label: 'Account', to: '/account' },
-      { label: 'Orders', to: '/account/orders' },
-      { label: 'Saved Addresses', to: '/account/addresses' },
-      { label: 'Favorites', to: '/account/favorites' },
+      { label: 'Admin Home', to: '/', popupRole: userRoles.admin },
+      ...customerAccountLinks,
+      { label: 'Sales Manager Home', to: '/sales-manager' },
+      { label: 'Product Manager Home', to: '/product-manager' },
     ]
     : isRoleKnown
       ? [
@@ -317,18 +332,35 @@ export default function Header() {
 
                         <div className="mt-3 space-y-1.5">
                           {accountLinks.map((item) => (
-                            <LiquidGlassButton
-                              as={Link}
-                              key={item.to}
-                              to={item.to}
-                              onClick={() => setMenuOpen(false)}
-                              variant="quiet"
-                              size="compact"
-                              className="w-full"
-                              contentClassName="w-full justify-start"
-                            >
-                              {item.label}
-                            </LiquidGlassButton>
+                            item.popupRole ? (
+                              <LiquidGlassButton
+                                type="button"
+                                key={item.label}
+                                onClick={() => {
+                                  openRolePopup(item.popupRole)
+                                  setMenuOpen(false)
+                                }}
+                                variant="quiet"
+                                size="compact"
+                                className="w-full"
+                                contentClassName="w-full justify-start"
+                              >
+                                {item.label}
+                              </LiquidGlassButton>
+                            ) : (
+                              <LiquidGlassButton
+                                as={Link}
+                                key={item.to}
+                                to={item.to}
+                                onClick={() => setMenuOpen(false)}
+                                variant="quiet"
+                                size="compact"
+                                className="w-full"
+                                contentClassName="w-full justify-start"
+                              >
+                                {item.label}
+                              </LiquidGlassButton>
+                            )
                           ))}
                         </div>
 

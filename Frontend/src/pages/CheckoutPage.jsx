@@ -237,7 +237,7 @@ export default function CheckoutPage() {
       void (async () => {
         reconcileAccountStorageWithAuth()
         await reconcileCartStorageWithAuth()
-        await fetchSavedAddresses({ force: true }).catch(() => [])
+        await fetchSavedAddresses().catch(() => [])
         setItems(getCartItems())
         setSession(getAuthSession())
         setSavedAddresses(getSavedAddresses())
@@ -252,7 +252,7 @@ export default function CheckoutPage() {
     const syncAccountState = () => {
       void (async () => {
         setSession(getAuthSession())
-        await fetchSavedAddresses({ force: true }).catch(() => [])
+        await fetchSavedAddresses().catch(() => [])
         setSavedAddresses(getSavedAddresses())
       })()
     }

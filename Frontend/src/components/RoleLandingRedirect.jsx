@@ -8,7 +8,7 @@ import {
   getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
-import { getRoleLandingPath } from '../lib/roles'
+import { getRoleLandingPath, normalizeUserRole, openRolePopup, userRoles } from '../lib/roles'
 
 export default function RoleLandingRedirect() {
   const navigate = useNavigate()
@@ -55,6 +55,10 @@ export default function RoleLandingRedirect() {
         }
 
         if (result.status === currentUserFetchStatus.ok) {
+          if (normalizeUserRole(result.user?.role) === userRoles.admin) {
+            openRolePopup(result.user?.role)
+            return
+          }
           navigate(getRoleLandingPath(result.user.role), { replace: true })
           return
         }
@@ -68,6 +72,10 @@ export default function RoleLandingRedirect() {
       }
 
       if (currentUserState.status === currentUserFetchStatus.ok) {
+        if (normalizeUserRole(currentUserState.user?.role) === userRoles.admin) {
+          openRolePopup(currentUserState.user?.role)
+          return
+        }
         navigate(getRoleLandingPath(currentUserState.user?.role), { replace: true })
         return
       }

@@ -80,7 +80,7 @@ export default function AddressesPage() {
   useEffect(() => {
     const syncAddresses = () => {
       void (async () => {
-        await fetchSavedAddresses({ force: true, includeDetails: true })
+        await fetchSavedAddresses()
         setAddresses(getSavedAddresses())
       })()
     }
@@ -391,23 +391,11 @@ export default function AddressesPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
-                          {address.label || address.fullName}
+                          {address.label || address.summaryTitle || `Address ${address.id}`}
                         </p>
                       </div>
-                      <p className="mt-3 text-sm leading-8 text-[var(--aurora-text)]">
-                        <span className="font-semibold text-[var(--aurora-text-strong)]">
-                          {address.fullName}
-                        </span>
-                        <br />
-                        {address.addressLine1}
-                        {address.addressLine2 ? (
-                          <>
-                            <br />
-                            {address.addressLine2}
-                          </>
-                        ) : null}
-                        <br />
-                        {address.district}, {address.province} {address.postalCode}
+                      <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                        {address.summaryDescription || [address.district, address.province].filter(Boolean).join(' / ') || 'Saved address'}
                       </p>
                     </div>
 

@@ -11,6 +11,9 @@ const legacyAddressStorageKeys = {
 const addressMigrationStorageKey = 'auroraAddressMigrationState'
 
 let cachedAddresses = []
+let cachedAddressScope = null
+let inFlightAddressListPromise = null
+let inFlightAddressListScope = null
 
 function getStorage(mode) {
   return mode === 'session' ? window.sessionStorage : window.localStorage
@@ -25,6 +28,13 @@ function getAddressScope() {
 
   const scopeSource = session.email?.trim().toLowerCase() || session.token.trim()
   return encodeURIComponent(scopeSource)
+}
+
+function clearAddressCache() {
+  cachedAddresses = []
+  cachedAddressScope = null
+  inFlightAddressListPromise = null
+  inFlightAddressListScope = null
 }
 
 function parseJson(rawValue, fallback) {
@@ -358,6 +368,7 @@ function createAddressSignature(address) {
 }
 
 function persistResolvedAddresses(addresses) {
+  cachedAddressScope = getAddressScope()
   cachedAddresses = sortAddresses(addresses)
   return cachedAddresses
 }
@@ -426,6 +437,10 @@ async function runLegacyAddressMigration() {
 }
 
 export function getSavedAddresses() {
+  if (cachedAddressScope !== getAddressScope()) {
+    return []
+  }
+
   return cachedAddresses
 }
 
@@ -441,34 +456,42 @@ export async function fetchSavedAddressById(addressId) {
   return fetchServerAddressDetail(addressId)
 }
 
-export async function fetchSavedAddresses({ force = false, includeDetails = false } = {}) {
-  if (!getAuthSession()?.token) {
-    cachedAddresses = []
+export async function fetchSavedAddresses({ force = false } = {}) {
+  const scope = getAddressScope()
+
+  if (!getAuthSession()?.token || !scope) {
+    clearAddressCache()
+    return []
+  }
+
+  if (!force && cachedAddressScope === scope) {
     return cachedAddresses
   }
 
-  if (cachedAddresses.length && !force && !includeDetails) {
-    return cachedAddresses
+  if (!force && inFlightAddressListPromise && inFlightAddressListScope === scope) {
+    return inFlightAddressListPromise
   }
 
-  await runLegacyAddressMigration()
+  inFlightAddressListScope = scope
+  inFlightAddressListPromise = (async () => {
+    await runLegacyAddressMigration()
 
-  const payload = await requestAddressJson('', { method: 'GET' })
-  const serverAddresses = Array.isArray(payload?.addresses)
-    ? payload.addresses.filter(isValidSummaryAddress)
-    : []
+    const payload = await requestAddressJson('', { method: 'GET' })
+    const serverAddresses = Array.isArray(payload?.addresses)
+      ? payload.addresses.filter(isValidSummaryAddress)
+      : []
 
-  const resolvedAddresses = includeDetails
-    ? (
-        await Promise.all(
-          serverAddresses.map((address) =>
-            fetchServerAddressDetail(address.id).catch(() => normalizeSummaryAddress(address)),
-          ),
-        )
-      ).filter(Boolean)
-    : serverAddresses.map(normalizeSummaryAddress)
+    const resolvedAddresses = serverAddresses.map(normalizeSummaryAddress)
 
-  return persistResolvedAddresses(resolvedAddresses)
+    return persistResolvedAddresses(resolvedAddresses)
+  })().finally(() => {
+    if (inFlightAddressListScope === scope) {
+      inFlightAddressListPromise = null
+      inFlightAddressListScope = null
+    }
+  })
+
+  return inFlightAddressListPromise
 }
 
 function normalizeAddressInput(addressInput) {
@@ -526,7 +549,7 @@ export async function saveSavedAddress(addressInput) {
       }),
     })
 
-    const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
+    const nextAddresses = await fetchSavedAddresses({ force: true })
     dispatchAddressBookChange('save')
     return nextAddresses
   }
@@ -538,7 +561,7 @@ export async function saveSavedAddress(addressInput) {
     }),
   })
 
-  const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
+  const nextAddresses = await fetchSavedAddresses({ force: true })
   dispatchAddressBookChange('save')
   return nextAddresses
 }
@@ -551,7 +574,7 @@ export async function deleteSavedAddress(addressId) {
     }),
   })
 
-  const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
+  const nextAddresses = await fetchSavedAddresses({ force: true })
   dispatchAddressBookChange('delete')
   return nextAddresses
 }
