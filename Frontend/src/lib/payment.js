@@ -9,6 +9,9 @@ class PaymentRequestError extends Error {
   }
 }
 
+const installmentInfoCache = new Map()
+const inFlightInstallmentInfoRequests = new Map()
+
 function getAuthorizationHeaders() {
   const session = getAuthSession()
   return session?.token ? { authorization: session.token } : {}
@@ -88,6 +91,13 @@ function sanitizeCardCvc(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 4)
 }
 
+function buildInstallmentInfoCacheKey(bin, price) {
+  const normalizedBin = String(bin || '').replace(/\D/g, '').slice(0, 6)
+  const normalizedPrice = Number(price)
+
+  return `${normalizedBin}:${Number.isFinite(normalizedPrice) ? normalizedPrice : ''}`
+}
+
 export async function fetchInstallmentInfo({ bin, price }) {
   const normalizedBin = String(bin || '').replace(/\D/g, '').slice(0, 6)
 
@@ -95,19 +105,39 @@ export async function fetchInstallmentInfo({ bin, price }) {
     return null
   }
 
-  const payload = await requestPaymentJson('/payment/installments', {
+  const cacheKey = buildInstallmentInfoCacheKey(normalizedBin, price)
+
+  if (installmentInfoCache.has(cacheKey)) {
+    return installmentInfoCache.get(cacheKey)
+  }
+
+  if (inFlightInstallmentInfoRequests.has(cacheKey)) {
+    return inFlightInstallmentInfoRequests.get(cacheKey)
+  }
+
+  const request = requestPaymentJson('/payment/installments', {
     method: 'POST',
     body: JSON.stringify({
       bin: normalizedBin,
       price,
     }),
   })
+    .then((payload) => {
+      const result = {
+        card: payload?.card || null,
+        features: payload?.features || null,
+        installments: Array.isArray(payload?.installments) ? payload.installments : [],
+      }
 
-  return {
-    card: payload?.card || null,
-    features: payload?.features || null,
-    installments: Array.isArray(payload?.installments) ? payload.installments : [],
-  }
+      installmentInfoCache.set(cacheKey, result)
+      return result
+    })
+    .finally(() => {
+      inFlightInstallmentInfoRequests.delete(cacheKey)
+    })
+
+  inFlightInstallmentInfoRequests.set(cacheKey, request)
+  return request
 }
 
 export async function fetchPaymentMethods() {

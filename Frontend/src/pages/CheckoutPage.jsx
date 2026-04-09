@@ -325,6 +325,7 @@ export default function CheckoutPage() {
   const total = subtotal + serviceFee
   const currentStep = checkoutSteps[stepIndex]
   const isLoggedIn = Boolean(session?.token)
+  const installmentBin = payment.cardNumber.replace(/\D/g, '').slice(0, 6)
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -460,9 +461,7 @@ export default function CheckoutPage() {
   }, [])
 
   useEffect(() => {
-    const cardDigits = payment.cardNumber.replace(/\D/g, '')
-
-    if (selectedSavedCardId || cardDigits.length < 6 || currentStep.key !== 'payment') {
+    if (selectedSavedCardId || installmentBin.length < 6 || currentStep.key !== 'payment') {
       setInstallmentInfo(null)
       return undefined
     }
@@ -470,7 +469,7 @@ export default function CheckoutPage() {
     let active = true
     const timeoutId = window.setTimeout(() => {
       fetchInstallmentInfo({
-        bin: cardDigits.slice(0, 6),
+        bin: installmentBin,
         price: total,
       })
         .then((info) => {
@@ -489,7 +488,7 @@ export default function CheckoutPage() {
       active = false
       window.clearTimeout(timeoutId)
     }
-  }, [currentStep.key, payment.cardNumber, selectedSavedCardId, total])
+  }, [currentStep.key, installmentBin, selectedSavedCardId, total])
 
   useEffect(() => {
     if (submittedOrder || !items.length || isLoggedIn) {
