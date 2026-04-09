@@ -203,7 +203,7 @@ export default function Header() {
             </div>
 
             <nav className="hidden justify-center md:flex">
-              <div className="inline-flex items-center gap-2 rounded-[1.6rem] border border-white/18 bg-[rgba(255,251,247,0.14)] px-2 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur">
+              <div className="aurora-desktop-nav-shell inline-flex items-center gap-2 rounded-[1.6rem] px-2 py-2">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.to
 
@@ -288,7 +288,7 @@ export default function Header() {
                   {menuOpen ? (
                     <>
                       <div
-                        className="fixed inset-0 z-40 bg-[rgba(248,244,239,0.38)] backdrop-blur-[2px] md:hidden"
+                        className="aurora-menu-backdrop fixed inset-0 z-40 md:hidden"
                         onClick={() => setMenuOpen(false)}
                         aria-hidden="true"
                       />
@@ -376,6 +376,7 @@ export default function Header() {
                     </LiquidGlassButton>
                   )
                 })}
+
               </div>
             </LiquidGlassFrame>
           </div>

@@ -150,7 +150,7 @@ export default function LoginPage() {
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Email address
           </span>
           <input
@@ -166,7 +166,7 @@ export default function LoginPage() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Password
           </span>
           <input
@@ -181,13 +181,13 @@ export default function LoginPage() {
           />
         </label>
 
-        <div className="flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <label className="flex items-center gap-2 text-[var(--aurora-text)]">
+        <div className="aurora-form-inline sm:flex-row sm:items-center sm:justify-between">
+          <label className="aurora-checkbox">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(event) => setRememberMe(event.target.checked)}
-              className="h-4 w-4 rounded border-[var(--aurora-border)] accent-[var(--aurora-sky)]"
+              className="aurora-checkbox-input"
             />
             Remember me
           </label>

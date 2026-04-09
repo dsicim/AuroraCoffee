@@ -116,7 +116,7 @@ export default function ProductsPage() {
         >
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+              <span className="aurora-field-label">
                 Search products
               </span>
               <div className="glass-search-field">
@@ -138,20 +138,20 @@ export default function ProductsPage() {
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search by name, category, notes, or description"
-                  className="aurora-input glass-search-input"
+                  className="glass-search-input"
                 />
               </div>
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+              <span className="aurora-field-label">
                 Sort results
               </span>
               <div className="glass-dropdown-surface">
                 <select
                   value={sortBy}
                   onChange={(event) => setSortBy(event.target.value)}
-                  className="aurora-select glass-dropdown-select"
+                  className="glass-dropdown-select"
                 >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>

@@ -134,7 +134,7 @@ export default function ResetPasswordPage() {
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             New password
           </span>
           <input
@@ -150,7 +150,7 @@ export default function ResetPasswordPage() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Confirm new password
           </span>
           <input

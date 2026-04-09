@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Email address
           </span>
           <input

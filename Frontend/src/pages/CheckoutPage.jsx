@@ -642,7 +642,7 @@ export default function CheckoutPage() {
                   </div>
 
                   <label className="mt-4 block">
-                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                    <span className="aurora-field-label">
                       Apply a saved address
                     </span>
                     <select
@@ -663,7 +663,7 @@ export default function CheckoutPage() {
               ) : null}
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   First name
                 </span>
                 <input
@@ -676,7 +676,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Last name
                 </span>
                 <input
@@ -689,7 +689,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Email
                 </span>
                 <input
@@ -702,7 +702,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Address line 1
                 </span>
                 <input
@@ -715,7 +715,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Address line 2 (optional)
                 </span>
                 <input
@@ -727,7 +727,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Province
                 </span>
                 <select
@@ -746,7 +746,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   District
                 </span>
                 <input
@@ -759,7 +759,7 @@ export default function CheckoutPage() {
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   Postal code
                 </span>
                 <input
@@ -849,7 +849,7 @@ export default function CheckoutPage() {
               {!selectedSavedCardId ? (
                 <>
                   <label className="block sm:col-span-2">
-                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                    <span className="aurora-field-label">
                       Cardholder name
                     </span>
                     <input
@@ -862,7 +862,7 @@ export default function CheckoutPage() {
                   </label>
 
                   <label className="block sm:col-span-2">
-                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                    <span className="aurora-field-label">
                       Card number
                     </span>
                     <input
@@ -879,7 +879,7 @@ export default function CheckoutPage() {
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                    <span className="aurora-field-label">
                       Expiry
                     </span>
                     <input
@@ -904,7 +904,7 @@ export default function CheckoutPage() {
               )}
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+                <span className="aurora-field-label">
                   CVC
                 </span>
                 <input

@@ -1,13 +1,13 @@
-import { Link } from 'react-router-dom'
-import LiquidGlassButton from './LiquidGlassButton'
-
-const footerLinks = [
-  { label: 'Home', to: '/' },
-  { label: 'Products', to: '/products' },
-  { label: 'Account', to: '/account' },
-]
+import LiquidThemeToggle from './LiquidThemeToggle'
+import { useTheme } from '../lib/theme-context'
 
 export default function Footer() {
+  const { themePreference, resolvedTheme, setThemePreference } = useTheme()
+  const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
+  const themeStatusCopy = themePreference === 'system'
+    ? `Following system: ${currentThemeLabel}`
+    : `Manual theme: ${currentThemeLabel}`
+
   return (
     <footer id="footer" className="relative z-10 px-4 pb-6 pt-2 sm:px-6 lg:px-10">
       <div className="aurora-container">
@@ -25,19 +25,17 @@ export default function Footer() {
           </div>
 
           <div>
-            <p className="aurora-kicker">Browse</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {footerLinks.map((item) => (
-                <LiquidGlassButton
-                  key={item.to}
-                  as={Link}
-                  to={item.to}
-                  variant="chip"
-                  size="compact"
-                >
-                  {item.label}
-                </LiquidGlassButton>
-              ))}
+            <p className="aurora-kicker">Theme</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--aurora-text)]">
+              {themeStatusCopy}
+            </p>
+            <div className="mt-3">
+              <LiquidThemeToggle
+                value={themePreference}
+                onValueChange={setThemePreference}
+                size="panel"
+                ariaLabel="Choose theme"
+              />
             </div>
           </div>
 

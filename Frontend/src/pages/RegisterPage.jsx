@@ -143,7 +143,7 @@ export default function RegisterPage() {
       description="Create an account to save favorites, keep delivery details on hand, and move through checkout with less friction next time."
       chips={['Favorites', 'Saved addresses', 'Order history']}
       aside={(
-        <div className="rounded-[1.25rem] bg-white/12 p-4 text-sm text-[#f7ece6]">
+        <div className="aurora-solid-plate rounded-[1.25rem] p-4 text-sm leading-7 text-[var(--aurora-text)]">
           Accounts are designed for repeat visits: save your preferred coffees,
           reopen past orders, and keep checkout details close.
         </div>
@@ -164,7 +164,7 @@ export default function RegisterPage() {
     >
       <form className="space-y-5" onSubmit={handleSubmit} noValidate>
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Full name
           </span>
           <input
@@ -181,7 +181,7 @@ export default function RegisterPage() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Email address
           </span>
           <input
@@ -198,7 +198,7 @@ export default function RegisterPage() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Password
           </span>
           <input
@@ -215,7 +215,7 @@ export default function RegisterPage() {
         </label>
 
         <label className="block">
-          <span className="mb-2 block text-sm font-medium text-[var(--aurora-text-strong)]">
+          <span className="aurora-field-label">
             Confirm password
           </span>
           <input

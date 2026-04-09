@@ -35,7 +35,7 @@ export default function AuthLayout({
       <LiquidGlassDefs />
       <AuroraAtmosphere sketch />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-7xl flex-col">
+      <div className="aurora-auth-shell relative z-10 mx-auto flex min-h-[calc(100vh-2rem)] w-full flex-col">
         <header className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
           <Link to="/" className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
@@ -63,7 +63,7 @@ export default function AuthLayout({
           </LiquidGlassButton>
         </header>
 
-        <main className="grid flex-1 items-start gap-6 py-5 sm:py-8 lg:grid-cols-[0.76fr_1.24fr] lg:items-center lg:gap-8 lg:py-10">
+        <main className="grid flex-1 items-start gap-6 py-5 sm:py-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-center lg:gap-8 lg:py-10 xl:grid-cols-[minmax(0,0.88fr)_minmax(0,1.12fr)]">
           <section className="order-2 aurora-stack-5 px-1 lg:order-1">
             <div className="aurora-stack-3 sm:aurora-stack-4">
               <p className="aurora-kicker">{eyebrow}</p>
@@ -111,12 +111,12 @@ export default function AuthLayout({
               </div>
             ) : null}
 
-            <div className="mt-6 rounded-[1.8rem] border border-white/14 bg-[rgba(255,252,248,0.74)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)] sm:mt-8 sm:p-5">
+            <div className="aurora-form-surface sm:mt-8 sm:p-5">
               {children}
             </div>
 
             {helper ? (
-              <div className="mt-6 aurora-solid-plate rounded-[1.7rem] p-4 text-sm leading-7 text-[var(--aurora-text)] sm:mt-8 sm:p-5">
+              <div className="aurora-form-helper aurora-solid-plate rounded-[1.7rem] sm:mt-8 sm:p-5">
                 {helper}
               </div>
             ) : null}
