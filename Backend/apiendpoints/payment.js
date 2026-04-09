@@ -545,12 +545,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let failed = false;
                 if (response) {
                     if (response.status === "success") {
-                        if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: response.paymentId });
                         if (authChecker) {
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
-                                    let orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
+                                    const orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
                                         if (result.success) return { s: true, n: result.oID };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
@@ -559,7 +558,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!orderNumber.s) return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
-                                    updateResult = await sql.updateOrderStatus(payload.o, "confirmed", response.paymentId).then(result => {
+                                    const updateResult = await sql.updateOrderStatus(payload.o, "confirmed", response.paymentId).then(result => {
                                         if (result.success) return { s: true };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
@@ -600,7 +599,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         payload.o.payment = response.paymentId;
                         payload.o.timeout = new Date().getTime() + (10 * 60 * 1000);
                         tokens.set(random, payload.o);
-                        if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
                     else {
@@ -683,7 +681,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (authChecker) {
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
-                                    let orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
+                                    const orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
                                         if (result.success) return { s: true, n: result.oID };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
