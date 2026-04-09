@@ -1,9 +1,39 @@
 import { buildApiUrl } from './api'
 import { getAuthSession } from './auth'
 
+class PaymentRequestError extends Error {
+  constructor(message, details = null) {
+    super(message)
+    this.name = 'PaymentRequestError'
+    this.details = details
+  }
+}
+
 function getAuthorizationHeaders() {
   const session = getAuthSession()
   return session?.token ? { authorization: session.token } : {}
+}
+
+function buildPaymentErrorMessage(details, fallback = 'Payment request failed') {
+  if (!details) {
+    return fallback
+  }
+
+  if (typeof details === 'string') {
+    return details
+  }
+
+  if (typeof details === 'object') {
+    const parts = [details.what, details.why, details.resolution]
+      .map((value) => String(value || '').trim())
+      .filter(Boolean)
+
+    if (parts.length) {
+      return parts.join(' — ')
+    }
+  }
+
+  return fallback
 }
 
 async function requestPaymentJson(path, options = {}) {
@@ -18,9 +48,14 @@ async function requestPaymentJson(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}))
   const data = payload?.d ?? payload
+  const errorDetails = data?.e || payload?.e || null
+  const isExplicitSuccess = data?.success === true || payload?.success === true
 
-  if (!response.ok || data?.e || payload?.e) {
-    throw new Error(data?.e || payload?.e || 'Payment request failed')
+  if (!response.ok || (errorDetails && !isExplicitSuccess)) {
+    throw new PaymentRequestError(
+      buildPaymentErrorMessage(errorDetails),
+      errorDetails,
+    )
   }
 
   return data
@@ -47,6 +82,10 @@ function buildCardPayload(card) {
     expiry,
     cvc: String(card.cvc || '').replace(/\D/g, '').slice(0, 4),
   }
+}
+
+function sanitizeCardCvc(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 4)
 }
 
 export async function fetchInstallmentInfo({ bin, price }) {
@@ -98,17 +137,33 @@ export async function deletePaymentMethod(cardToken) {
   })
 }
 
-export async function initiatePayment({ card, cardToken, cvc }) {
-  const body = cardToken
-    ? {
-        cardToken,
-        card: {
-          cvc: String(cvc || '').replace(/\D/g, '').slice(0, 4),
-        },
-      }
-    : {
-        card: buildCardPayload(card),
-      }
+export async function initiatePayment({
+  cart,
+  shipping,
+  billing,
+  expected,
+  currency = 'TRY',
+  installments,
+  avoid3DS,
+  card,
+  savedCardToken,
+  cvc,
+}) {
+  const body = {
+    cart,
+    shipping,
+    billing,
+    expected,
+    currency,
+    ...(installments ? { installments } : {}),
+    ...(avoid3DS !== undefined ? { avoid3DS } : {}),
+    card: savedCardToken
+      ? {
+          token: savedCardToken,
+          cvc: sanitizeCardCvc(cvc),
+        }
+      : buildCardPayload(card),
+  }
 
   return requestPaymentJson('/payment/initiate', {
     method: 'POST',
@@ -122,4 +177,12 @@ export function maskSavedCard(card) {
   }
 
   return `•••• ${card.last4dig}`
+}
+
+export function formatPaymentError(error, fallback = 'Payment request failed') {
+  if (error instanceof PaymentRequestError) {
+    return buildPaymentErrorMessage(error.details, error.message || fallback)
+  }
+
+  return buildPaymentErrorMessage(error?.message || error, fallback)
 }

@@ -10,6 +10,7 @@ import HomePage from './pages/HomePage'
 import ForgotPasswordPage from './pages/ForgotPasswordPage'
 import LoginPage from './pages/LoginPage'
 import NotFoundPage from './pages/NotFoundPage'
+import PaymentMethodsPage from './pages/PaymentMethodsPage'
 import OrdersPage from './pages/OrdersPage'
 import ProductDetailPage from './pages/ProductDetailPage'
 import ProductManagerPage from './pages/ProductManagerPage'
@@ -54,6 +55,14 @@ export default function App() {
           element={(
             <ProtectedRoleRoute requiredRole={userRoles.customer}>
               <OrdersPage />
+            </ProtectedRoleRoute>
+          )}
+        />
+        <Route
+          path="/account/payment-methods"
+          element={(
+            <ProtectedRoleRoute requiredRole={userRoles.customer}>
+              <PaymentMethodsPage />
             </ProtectedRoleRoute>
           )}
         />

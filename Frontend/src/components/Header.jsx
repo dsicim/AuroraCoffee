@@ -56,6 +56,7 @@ export default function Header() {
     { label: 'Account', to: '/account' },
     { label: 'Orders', to: '/account/orders' },
     { label: 'Saved Addresses', to: '/account/addresses' },
+    { label: 'Payment Methods', to: '/account/payment-methods' },
     { label: 'Favorites', to: '/account/favorites' },
   ]
 

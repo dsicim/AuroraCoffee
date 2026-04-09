@@ -32,6 +32,7 @@ import {
   deletePaymentMethod,
   fetchInstallmentInfo,
   fetchPaymentMethods,
+  formatPaymentError,
   initiatePayment,
   maskSavedCard,
   savePaymentMethod,
@@ -58,6 +59,18 @@ const initialDelivery = {
   province: '',
   district: '',
   postalCode: '',
+  phone: '',
+}
+
+const initialBilling = {
+  firstName: '',
+  lastName: '',
+  addressLine1: '',
+  addressLine2: '',
+  province: '',
+  district: '',
+  postalCode: '',
+  phone: '',
 }
 
 const initialPayment = {
@@ -84,7 +97,29 @@ function buildDeliveryFromAddress(address, email = '') {
     province: address.province || '',
     district: address.district || '',
     postalCode: address.postalCode || '',
+    phone: address.phone || '',
   }
+}
+
+function buildBillingFromDelivery(delivery) {
+  return {
+    firstName: delivery.firstName || '',
+    lastName: delivery.lastName || '',
+    addressLine1: delivery.addressLine1 || '',
+    addressLine2: delivery.addressLine2 || '',
+    province: delivery.province || '',
+    district: delivery.district || '',
+    postalCode: delivery.postalCode || '',
+    phone: delivery.phone || '',
+  }
+}
+
+function getAddressFullName(address) {
+  return [address.firstName, address.lastName].filter(Boolean).join(' ').trim()
+}
+
+function getAddressLines(address) {
+  return [address.addressLine1, address.addressLine2].filter(Boolean)
 }
 
 function getDeliveryFullName(delivery) {
@@ -163,6 +198,10 @@ function validateDeliveryForm(delivery) {
     errors.addressLine1 = 'Address line 1 is required'
   }
 
+  if (!delivery.phone.trim()) {
+    errors.phone = 'Phone is required'
+  }
+
   if (!delivery.district.trim()) {
     errors.district = 'District is required'
   }
@@ -175,6 +214,49 @@ function validateDeliveryForm(delivery) {
   const cityPostalValidation = validateCityPostalCode(
     delivery.province,
     delivery.postalCode,
+  )
+  if (!cityPostalValidation.s) {
+    if (!errors.province && cityPostalValidation.e === 'Select a valid city from the list') {
+      errors.province = cityPostalValidation.e
+    } else {
+      errors.postalCode = cityPostalValidation.e
+    }
+  }
+
+  return errors
+}
+
+function validateBillingForm(billing) {
+  const errors = {}
+
+  if (!billing.firstName.trim()) {
+    errors.firstName = 'First name is required'
+  }
+
+  if (!billing.lastName.trim()) {
+    errors.lastName = 'Last name is required'
+  }
+
+  if (!billing.addressLine1.trim()) {
+    errors.addressLine1 = 'Address line 1 is required'
+  }
+
+  if (!billing.phone.trim()) {
+    errors.phone = 'Phone is required'
+  }
+
+  if (!billing.district.trim()) {
+    errors.district = 'District is required'
+  }
+
+  const cityValidation = validateTurkishCity(billing.province)
+  if (!cityValidation.s) {
+    errors.province = cityValidation.e
+  }
+
+  const cityPostalValidation = validateCityPostalCode(
+    billing.province,
+    billing.postalCode,
   )
   if (!cityPostalValidation.s) {
     if (!errors.province && cityPostalValidation.e === 'Select a valid city from the list') {
@@ -232,6 +314,8 @@ export default function CheckoutPage() {
   const [delivery, setDelivery] = useState(() =>
     buildDeliveryFromAddress(null, initialSession?.email || ''),
   )
+  const [billing, setBilling] = useState(initialBilling)
+  const [useShippingAsBilling, setUseShippingAsBilling] = useState(true)
   const [payment, setPayment] = useState(initialPayment)
   const [savedAddresses, setSavedAddresses] = useState(() => getSavedAddresses())
   const [selectedAddressId, setSelectedAddressId] = useState('')
@@ -247,7 +331,7 @@ export default function CheckoutPage() {
     (total, item) => total + item.price * item.quantity,
     0,
   )
-  const serviceFee = items.length ? 4.5 : 0
+  const serviceFee = 0
   const total = subtotal + serviceFee
   const currentStep = checkoutSteps[stepIndex]
   const isLoggedIn = Boolean(session?.token)
@@ -321,7 +405,7 @@ export default function CheckoutPage() {
         if (active) {
           setErrors((current) => ({
             ...current,
-            payment: paymentError.message || 'Could not load saved cards',
+            payment: formatPaymentError(paymentError, 'Could not load saved cards'),
           }))
         }
       }
@@ -405,6 +489,34 @@ export default function CheckoutPage() {
     })
   }
 
+  const handleBillingChange = (field, value) => {
+    setBilling((current) => ({ ...current, [field]: value }))
+    setErrors((current) => {
+      if (field === 'province' || field === 'postalCode') {
+        return {
+          ...current,
+          billingProvince: '',
+          billingPostalCode: '',
+        }
+      }
+
+      const nextField =
+        field === 'firstName'
+          ? 'billingFirstName'
+          : field === 'lastName'
+            ? 'billingLastName'
+            : field === 'addressLine1'
+              ? 'billingAddressLine1'
+              : field === 'district'
+                ? 'billingDistrict'
+                : field === 'phone'
+                  ? 'billingPhone'
+                  : `billing${field.charAt(0).toUpperCase()}${field.slice(1)}`
+
+      return { ...current, [nextField]: '' }
+    })
+  }
+
   const handlePaymentChange = (field, value) => {
     setPayment((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: '', payment: '' }))
@@ -413,9 +525,46 @@ export default function CheckoutPage() {
   const handleNextStep = () => {
     if (currentStep.key === 'delivery') {
       const deliveryErrors = validateDeliveryForm(delivery)
+      const billingErrors = useShippingAsBilling
+        ? {}
+        : validateBillingForm(billing)
 
-      if (Object.keys(deliveryErrors).length) {
-        setErrors(deliveryErrors)
+      if (Object.keys(billingErrors).length) {
+        if (billingErrors.firstName) {
+          billingErrors.billingFirstName = billingErrors.firstName
+          delete billingErrors.firstName
+        }
+        if (billingErrors.lastName) {
+          billingErrors.billingLastName = billingErrors.lastName
+          delete billingErrors.lastName
+        }
+        if (billingErrors.addressLine1) {
+          billingErrors.billingAddressLine1 = billingErrors.addressLine1
+          delete billingErrors.addressLine1
+        }
+        if (billingErrors.province) {
+          billingErrors.billingProvince = billingErrors.province
+          delete billingErrors.province
+        }
+        if (billingErrors.district) {
+          billingErrors.billingDistrict = billingErrors.district
+          delete billingErrors.district
+        }
+        if (billingErrors.postalCode) {
+          billingErrors.billingPostalCode = billingErrors.postalCode
+          delete billingErrors.postalCode
+        }
+        if (billingErrors.phone) {
+          billingErrors.billingPhone = billingErrors.phone
+          delete billingErrors.phone
+        }
+      }
+
+      if (Object.keys(deliveryErrors).length || Object.keys(billingErrors).length) {
+        setErrors({
+          ...deliveryErrors,
+          ...billingErrors,
+        })
         return
       }
     }
@@ -446,22 +595,67 @@ export default function CheckoutPage() {
       setErrors((current) => ({ ...current, payment: '' }))
 
       try {
-        const paymentResponse = await initiatePayment(
-          selectedSavedCardId
-            ? {
-                cardToken: selectedSavedCardId,
-                cvc: payment.cvc,
-              }
-            : {
-                card: payment,
-              },
-        )
-
         if (!selectedSavedCardId && saveCardForLater) {
           await savePaymentMethod({
             alias: payment.cardholder || 'Saved card',
             card: payment,
-          }).catch(() => null)
+          })
+        }
+
+        const cartPayload = items
+          .map((item) => ({
+            id: Number(item.productId),
+            qty: Math.max(1, Math.floor(item.quantity) || 1),
+            opt: item.options || {},
+          }))
+          .filter((item) => Number.isFinite(item.id) && item.id > 0)
+
+        if (!cartPayload.length) {
+          throw new Error('Cart items could not be prepared for payment.')
+        }
+
+        const shouldUseShippingToken = Boolean(selectedAddressId) && useShippingAsBilling
+        const shippingPayload = shouldUseShippingToken
+          ? { token: selectedAddressId }
+          : {
+              name: delivery.firstName.trim(),
+              surname: delivery.lastName.trim(),
+              address: delivery.addressLine1.trim(),
+              address2: delivery.addressLine2.trim(),
+              city: delivery.district.trim(),
+              province: delivery.province.trim(),
+              country: 'Turkey',
+              zip: delivery.postalCode.trim(),
+              phone: delivery.phone.trim(),
+            }
+        const billingPayload = useShippingAsBilling
+          ? { token: 'shipping' }
+          : {
+              name: billing.firstName.trim(),
+              surname: billing.lastName.trim(),
+              address: billing.addressLine1.trim(),
+              address2: billing.addressLine2.trim(),
+              city: billing.district.trim(),
+              province: billing.province.trim(),
+              country: 'Turkey',
+              zip: billing.postalCode.trim(),
+              phone: billing.phone.trim(),
+            }
+
+        const paymentResponse = await initiatePayment({
+          cart: cartPayload,
+          shipping: shippingPayload,
+          billing: billingPayload,
+          expected: subtotal,
+          currency: 'TRY',
+          savedCardToken: selectedSavedCardId || '',
+          cvc: payment.cvc,
+          card: selectedSavedCardId ? null : payment,
+        })
+
+        if (paymentResponse?.redirect3DS && paymentResponse?.target) {
+          window.location.assign(paymentResponse.target)
+          return
         }
 
         const submittedOrderSnapshot = {
@@ -503,7 +697,7 @@ export default function CheckoutPage() {
       } catch (submitError) {
         setErrors((current) => ({
           ...current,
-          payment: submitError.message || 'Payment could not be submitted',
+          payment: formatPaymentError(submitError, 'Payment could not be submitted'),
         }))
       } finally {
         setPaymentBusy(false)
@@ -527,11 +721,14 @@ export default function CheckoutPage() {
 
         setDelivery(buildDeliveryFromAddress(address, session?.email || delivery.email || ''))
         setSelectedAddressId(address.id)
+        if (useShippingAsBilling) {
+          setBilling(buildBillingFromDelivery(buildDeliveryFromAddress(address, session?.email || delivery.email || '')))
+        }
         setErrors({})
       } catch (loadError) {
         setErrors((current) => ({
           ...current,
-          delivery: loadError.message || 'Could not load saved address',
+          delivery: formatPaymentError(loadError, 'Could not load saved address'),
         }))
       }
     })()
@@ -545,6 +742,7 @@ export default function CheckoutPage() {
     ) : null
 
   const cityOptions = getCityOptions(delivery.province)
+  const billingCityOptions = getCityOptions(billing.province)
 
   if (!items.length && !submittedOrder) {
     const hero = (
@@ -614,7 +812,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                Current total including service fee.
+                Current total aligned with backend cart validation.
               </p>
             </div>
           </div>
@@ -822,6 +1020,203 @@ export default function CheckoutPage() {
                 {renderFieldError('postalCode')}
               </label>
 
+              <label className="block">
+                <span className="aurora-field-label">
+                  Phone
+                </span>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={delivery.phone}
+                  onChange={(event) => handleDeliveryChange('phone', event.target.value)}
+                  className="aurora-input"
+                />
+                {renderFieldError('phone')}
+              </label>
+
+              <div className="aurora-showroom-subpanel p-5 sm:col-span-2">
+                <div className="aurora-widget-header">
+                  <div className="aurora-widget-heading">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Billing address
+                    </p>
+                    <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                      Use shipping details by default, or enter a separate billing address.
+                    </p>
+                  </div>
+                </div>
+
+                <label className="glass-toggle mt-4 block">
+                  <input
+                    type="checkbox"
+                    checked={useShippingAsBilling}
+                    onChange={(event) => {
+                      const nextValue = event.target.checked
+                      setUseShippingAsBilling(nextValue)
+
+                      if (!nextValue) {
+                        setBilling(buildBillingFromDelivery(delivery))
+                      }
+
+                      setErrors((current) => ({
+                        ...current,
+                        billingFirstName: '',
+                        billingLastName: '',
+                        billingAddressLine1: '',
+                        billingProvince: '',
+                        billingDistrict: '',
+                        billingPostalCode: '',
+                        billingPhone: '',
+                      }))
+                    }}
+                    className="toggle-input"
+                  />
+                  <span className="toggle-track">
+                    <span className="glass-filter" />
+                    <span className="glass-overlay" />
+                    <span className="glass-specular" />
+                    <span className="toggle-thumb">
+                      <span className="glass-filter" />
+                      <span className="glass-overlay" />
+                      <span className="glass-specular" />
+                    </span>
+                  </span>
+                  <span className="toggle-label">Same as shipping</span>
+                </label>
+
+                {!useShippingAsBilling ? (
+                  <div className="mt-5 grid gap-5 sm:grid-cols-2">
+                    <div className="sm:col-span-2">
+                      <LiquidGlassButton
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        onClick={() => setBilling(buildBillingFromDelivery(delivery))}
+                      >
+                        Copy shipping address
+                      </LiquidGlassButton>
+                    </div>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing first name
+                      </span>
+                      <input
+                        type="text"
+                        value={billing.firstName}
+                        onChange={(event) => handleBillingChange('firstName', event.target.value)}
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingFirstName')}
+                    </label>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing last name
+                      </span>
+                      <input
+                        type="text"
+                        value={billing.lastName}
+                        onChange={(event) => handleBillingChange('lastName', event.target.value)}
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingLastName')}
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className="aurora-field-label">
+                        Billing address line 1
+                      </span>
+                      <input
+                        type="text"
+                        value={billing.addressLine1}
+                        onChange={(event) => handleBillingChange('addressLine1', event.target.value)}
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingAddressLine1')}
+                    </label>
+
+                    <label className="block sm:col-span-2">
+                      <span className="aurora-field-label">
+                        Billing address line 2 (optional)
+                      </span>
+                      <input
+                        type="text"
+                        value={billing.addressLine2}
+                        onChange={(event) => handleBillingChange('addressLine2', event.target.value)}
+                        className="aurora-input"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing province
+                      </span>
+                      <select
+                        value={billing.province}
+                        onChange={(event) => handleBillingChange('province', event.target.value)}
+                        className="aurora-select"
+                      >
+                        <option value="">Select a province</option>
+                        {billingCityOptions.map((option) => (
+                          <option key={option} value={getCityOptionValue(option)}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                      {renderFieldError('billingProvince')}
+                    </label>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing district
+                      </span>
+                      <input
+                        type="text"
+                        value={billing.district}
+                        onChange={(event) => handleBillingChange('district', event.target.value)}
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingDistrict')}
+                    </label>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing postal code
+                      </span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={5}
+                        value={billing.postalCode}
+                        onChange={(event) =>
+                          handleBillingChange(
+                            'postalCode',
+                            sanitizePostalCode(event.target.value),
+                          )
+                        }
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingPostalCode')}
+                    </label>
+
+                    <label className="block">
+                      <span className="aurora-field-label">
+                        Billing phone
+                      </span>
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        value={billing.phone}
+                        onChange={(event) => handleBillingChange('phone', event.target.value)}
+                        className="aurora-input"
+                      />
+                      {renderFieldError('billingPhone')}
+                    </label>
+                  </div>
+                ) : null}
+              </div>
+
               {errors.delivery ? (
                 <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
                   {errors.delivery}
@@ -878,12 +1273,19 @@ export default function CheckoutPage() {
                             className="aurora-link text-sm"
                             onClick={() => {
                               void (async () => {
-                                await deletePaymentMethod(card.id)
-                                const nextCards = await fetchPaymentMethods()
-                                setSavedCards(nextCards)
-                                setSelectedSavedCardId((current) =>
-                                  current === card.id ? '' : current,
-                                )
+                                try {
+                                  await deletePaymentMethod(card.id)
+                                  const nextCards = await fetchPaymentMethods()
+                                  setSavedCards(nextCards)
+                                  setSelectedSavedCardId((current) =>
+                                    current === card.id ? '' : current,
+                                  )
+                                } catch (deleteError) {
+                                  setErrors((current) => ({
+                                    ...current,
+                                    payment: formatPaymentError(deleteError, 'Could not delete saved card'),
+                                  }))
+                                }
                               })()
                             }}
                           >
@@ -1043,6 +1445,39 @@ export default function CheckoutPage() {
                       <br />
                       {delivery.district}, {delivery.province} {delivery.postalCode}
                     </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="aurora-showroom-subpanel p-6">
+                <div className="aurora-widget-body">
+                  <div className="aurora-widget-heading">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Billing summary
+                    </p>
+                  </div>
+                  <div className="aurora-widget-subsurface p-5">
+                    {useShippingAsBilling ? (
+                      <p className="text-sm leading-8 text-[var(--aurora-text)]">
+                        Same as shipping address.
+                      </p>
+                    ) : (
+                      <p className="text-sm leading-8 text-[var(--aurora-text)]">
+                        <span className="font-semibold text-[var(--aurora-text-strong)]">
+                          {getAddressFullName(billing)}
+                        </span>
+                        {getAddressLines(billing).map((line) => (
+                          <span key={line}>
+                            <br />
+                            {line}
+                          </span>
+                        ))}
+                        <br />
+                        {billing.district}, {billing.province} {billing.postalCode}
+                        <br />
+                        {billing.phone}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
