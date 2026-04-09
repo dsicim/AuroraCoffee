@@ -110,7 +110,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         currency: currency
     };
     let orderNumber = await sql.reserveOrderNumber(currentUser.id, JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))).then(result => {
-        if (result.success) return { s: true, n: result.valids };
+        if (result.success) return { s: true, n: result.oID };
         else return { s: false, e: "An unknown error occurred" };
     }).catch(err => {
         console.error("Get order number error:", err);
