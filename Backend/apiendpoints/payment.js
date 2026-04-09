@@ -134,7 +134,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     }
     return payload;
 }
-function PaymentError(err,tvoyBank = "your bank") {
+function PaymentError(err,errorMsg,tvoyBank = "your bank") {
     return {
         "DO_NOT_HONOUR": {why:"The transaction was declined by the card issuer.",resolution:"Please use a different card or contact " + tvoyBank + "."},
         "INVALID_TRANSACTION": {why:"The transaction is invalid.",resolution:"Please use a different card or contact " + tvoyBank + "."},
@@ -159,7 +159,7 @@ function PaymentError(err,tvoyBank = "your bank") {
         "INVALID_ECI": {why:"There's an issue with your card's security information.",resolution:"Contact " + tvoyBank + " for further information."},
         "CVC2_MAX_ATTEMPT": {why:"The CVC code has been entered incorrectly too many times.",resolution:"Contact " + tvoyBank + " for further verification."},
         "BIN_NOT_FOUND": {why:"Your bank doesn't exist.",resolution:"Contact the developers for further information."},
-    } [err] || { why: response.errorMessage || "Unknown error", resolution: "Please try again later or contact the developers" };
+    } [err] || { why: errorMsg || "Unknown error", resolution: "Please try again later or contact the developers" };
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "installments") {
@@ -528,8 +528,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             }
                             else {
                                 failed = true;
-                                if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
-                                const errObj = PaymentError(response.errorGroup, tvoyBank);
+                                if (authChecker.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
+                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage,tvoyBank);
                                 if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                             }
                         }
@@ -538,7 +538,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else {
                         failed = true;
                         if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
-                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        const errObj = PaymentError(response.errorGroup, response.errorMessage, tvoyBank);
                         if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
                 }
@@ -552,7 +552,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: {what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to "+ tvoyBank + "'s payment page to complete the transaction."}, target:"data:text/html;base64,"+response.threeDSHtmlContent}};
                     }
                     else {
-                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        const errObj = PaymentError(response.errorGroup, response.errorMessage,tvoyBank);
                         return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
                 }
@@ -586,14 +586,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
-                                const errObj = PaymentError(response.errorGroup, "your bank");
+                                const errObj = PaymentError(authChecker.errorGroup, authChecker.errorMessage,"your bank");
                                 return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                             }
                         }
                         else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                     }
                     else {
-                        const errObj = PaymentError(response.errorGroup, "your bank");
+                        const errObj = PaymentError(response.errorGroup, response.errorMessage, "your bank");
                         return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
                     }
                 }
