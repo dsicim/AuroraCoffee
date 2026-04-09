@@ -143,6 +143,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
             if (method === "POST") { // Register
                 if (body && body.exists && body.json && !body.err && body.data.u && body.data.p && body.data.n && emailRegex.test(body.data.u)) {
                     if (body.data.n.length > 255) return { s: 400, j: true, d: { e: "Name must not exceed 255 characters" } };
+                    if (body.data.n.trim().split(" ").length < 2) return { s: 400, j: true, d: { e: "Please enter your name and surname" } };
                     if (body.data.p.length > 255) return { s: 400, j: true, d: { e: "Password must not exceed 255 characters" } };
                     if (body.data.u.length > 255) return { s: 400, j: true, d: { e: "Email address must not exceed 255 characters" } };
                     const pv = validatePassword(body.data.p, [body.data.u.split("@")[0], body.data.n]);
