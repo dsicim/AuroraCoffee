@@ -1,6 +1,8 @@
 import { buildApiUrl } from './api'
 import { getAuthSession } from './auth'
 
+export const paymentMethodsChangeEvent = 'aurora-payment-methods-change'
+
 class PaymentRequestError extends Error {
   constructor(message, details = null) {
     super(message)
@@ -11,6 +13,63 @@ class PaymentRequestError extends Error {
 
 const installmentInfoCache = new Map()
 const inFlightInstallmentInfoRequests = new Map()
+let cachedPaymentMethods = []
+let cachedPaymentMethodsScope = null
+let cachedPaymentMethodsLoaded = false
+let inFlightPaymentMethodsPromise = null
+
+function getPaymentMethodsScope() {
+  const session = getAuthSession()
+
+  if (!session?.token) {
+    return null
+  }
+
+  const scopeSource = session.email?.trim().toLowerCase() || session.token.trim()
+  return encodeURIComponent(scopeSource)
+}
+
+function dispatchPaymentMethodsChange(type = 'list') {
+  window.dispatchEvent(
+    new CustomEvent(paymentMethodsChangeEvent, {
+      detail: { type },
+    }),
+  )
+}
+
+function clearPaymentMethodsCache({ emit = false, type = 'clear' } = {}) {
+  const hadState =
+    cachedPaymentMethods.length > 0 ||
+    cachedPaymentMethodsLoaded ||
+    cachedPaymentMethodsScope !== null ||
+    inFlightPaymentMethodsPromise !== null
+
+  cachedPaymentMethods = []
+  cachedPaymentMethodsScope = null
+  cachedPaymentMethodsLoaded = false
+  inFlightPaymentMethodsPromise = null
+
+  if (emit && hadState) {
+    dispatchPaymentMethodsChange(type)
+  }
+}
+
+function ensurePaymentMethodsScope(scope) {
+  if (cachedPaymentMethodsScope === scope) {
+    return
+  }
+
+  clearPaymentMethodsCache({ emit: true, type: 'scope' })
+  cachedPaymentMethodsScope = scope
+}
+
+function persistPaymentMethods(cards) {
+  cachedPaymentMethodsScope = getPaymentMethodsScope()
+  cachedPaymentMethods = Array.isArray(cards) ? cards : []
+  cachedPaymentMethodsLoaded = true
+  dispatchPaymentMethodsChange('list')
+  return cachedPaymentMethods
+}
 
 function getAuthorizationHeaders() {
   const session = getAuthSession()
@@ -146,31 +205,79 @@ export async function fetchInstallmentInfo({ bin, token, price }) {
   return request
 }
 
-export async function fetchPaymentMethods() {
-  const payload = await requestPaymentJson('/payment/methods', {
+export async function fetchPaymentMethods({ force = false } = {}) {
+  const scope = getPaymentMethodsScope()
+
+  if (!scope) {
+    clearPaymentMethodsCache({ emit: true, type: 'clear' })
+    return []
+  }
+
+  ensurePaymentMethodsScope(scope)
+
+  if (!force && cachedPaymentMethodsLoaded) {
+    return cachedPaymentMethods
+  }
+
+  if (!force && inFlightPaymentMethodsPromise) {
+    return inFlightPaymentMethodsPromise
+  }
+
+  inFlightPaymentMethodsPromise = requestPaymentJson('/payment/methods', {
     method: 'GET',
   })
+    .then((payload) => persistPaymentMethods(Array.isArray(payload?.cards) ? payload.cards : []))
+    .finally(() => {
+      inFlightPaymentMethodsPromise = null
+    })
 
-  return Array.isArray(payload?.cards) ? payload.cards : []
+  return inFlightPaymentMethodsPromise
 }
 
 export async function savePaymentMethod({ alias, card }) {
-  return requestPaymentJson('/payment/methods', {
+  await requestPaymentJson('/payment/methods', {
     method: 'POST',
     body: JSON.stringify({
       alias: String(alias || '').trim() || 'Saved card',
       card: buildCardPayload(card),
     }),
   })
+
+  return fetchPaymentMethods({ force: true })
 }
 
-export async function deletePaymentMethod(cardToken) {
-  return requestPaymentJson('/payment/methods', {
+export async function deletePaymentMethod(cardToken, { reload = true } = {}) {
+  await requestPaymentJson('/payment/methods', {
     method: 'DELETE',
     body: JSON.stringify({
       cardToken,
     }),
   })
+
+  if (!reload) {
+    clearPaymentMethodsCache({ emit: true, type: 'invalidate' })
+    return []
+  }
+
+  return fetchPaymentMethods({ force: true })
+}
+
+export function getPaymentMethodsSnapshot() {
+  if (cachedPaymentMethodsScope !== getPaymentMethodsScope()) {
+    return {
+      cards: [],
+      loaded: false,
+    }
+  }
+
+  return {
+    cards: cachedPaymentMethods,
+    loaded: cachedPaymentMethodsLoaded,
+  }
+}
+
+export function invalidatePaymentMethodsCache() {
+  clearPaymentMethodsCache({ emit: true, type: 'invalidate' })
 }
 
 export async function initiatePayment({

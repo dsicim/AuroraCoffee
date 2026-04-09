@@ -5,7 +5,9 @@ import {
   deletePaymentMethod,
   fetchPaymentMethods,
   formatPaymentError,
+  getPaymentMethodsSnapshot,
   maskSavedCard,
+  paymentMethodsChangeEvent,
   savePaymentMethod,
 } from '../lib/payment'
 
@@ -55,8 +57,8 @@ function getCardSummary(card) {
 }
 
 export default function PaymentMethodsPage() {
-  const [cards, setCards] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [cards, setCards] = useState(() => getPaymentMethodsSnapshot().cards)
+  const [loading, setLoading] = useState(() => !getPaymentMethodsSnapshot().loaded)
   const [saving, setSaving] = useState(false)
   const [deletingId, setDeletingId] = useState('')
   const [form, setForm] = useState(initialForm)
@@ -84,7 +86,21 @@ export default function PaymentMethodsPage() {
   }
 
   useEffect(() => {
+    const syncCards = () => {
+      const snapshot = getPaymentMethodsSnapshot()
+      setCards(snapshot.cards)
+
+      if (snapshot.loaded) {
+        setLoading(false)
+      }
+    }
+
+    window.addEventListener(paymentMethodsChangeEvent, syncCards)
     void loadCards()
+
+    return () => {
+      window.removeEventListener(paymentMethodsChangeEvent, syncCards)
+    }
   }, [])
 
   useEffect(() => {
@@ -133,7 +149,7 @@ export default function PaymentMethodsPage() {
       setSaving(true)
 
       try {
-        await savePaymentMethod({
+        const nextCards = await savePaymentMethod({
           alias: form.alias,
           card: {
             cardholder: form.cardholder,
@@ -142,7 +158,7 @@ export default function PaymentMethodsPage() {
             cvc: form.cvc,
           },
         })
-        await loadCards({ quiet: true })
+        setCards(nextCards)
         resetForm()
         setFeedback('Saved cards were updated successfully.')
       } catch (saveError) {
@@ -167,8 +183,8 @@ export default function PaymentMethodsPage() {
       setDeletingId(cardId)
 
       try {
-        await deletePaymentMethod(cardId)
-        await loadCards({ quiet: true })
+        const nextCards = await deletePaymentMethod(cardId)
+        setCards(nextCards)
         setFeedback('Saved card removed.')
       } catch (deleteError) {
         setErrors((current) => ({

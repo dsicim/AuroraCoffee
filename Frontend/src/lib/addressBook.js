@@ -484,7 +484,7 @@ export async function fetchSavedAddressById(addressId) {
   return fetchServerAddressDetail(addressId)
 }
 
-export async function fetchSavedAddresses({ force = false, revalidate = true } = {}) {
+export async function fetchSavedAddresses({ force = false } = {}) {
   const scope = getAddressScope()
 
   if (!getAuthSession()?.token || !scope) {
@@ -492,7 +492,7 @@ export async function fetchSavedAddresses({ force = false, revalidate = true } =
     return []
   }
 
-  if (!revalidate && !force && cachedAddressScope === scope && cachedAddressesLoaded) {
+  if (!force && cachedAddressScope === scope && cachedAddressesLoaded) {
     return cachedAddresses
   }
 

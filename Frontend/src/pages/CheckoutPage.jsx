@@ -31,8 +31,10 @@ import {
   fetchInstallmentInfo,
   fetchPaymentMethods,
   formatPaymentError,
+  getPaymentMethodsSnapshot,
   initiatePayment,
   maskSavedCard,
+  paymentMethodsChangeEvent,
   savePaymentMethod,
 } from '../lib/payment'
 import {
@@ -358,7 +360,7 @@ export default function CheckoutPage() {
   const [payment, setPayment] = useState(initialPayment)
   const [savedAddresses, setSavedAddresses] = useState(() => getSavedAddresses())
   const [selectedAddressId, setSelectedAddressId] = useState('')
-  const [savedCards, setSavedCards] = useState([])
+  const [savedCards, setSavedCards] = useState(() => getPaymentMethodsSnapshot().cards)
   const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
   const [saveCardForLater, setSaveCardForLater] = useState(false)
   const [installmentInfo, setInstallmentInfo] = useState(null)
@@ -443,6 +445,20 @@ export default function CheckoutPage() {
 
     let active = true
 
+    const syncSavedCards = () => {
+      if (!active) {
+        return
+      }
+
+      const snapshot = getPaymentMethodsSnapshot()
+      setSavedCards(snapshot.cards)
+      setSelectedSavedCardId((current) =>
+        current && snapshot.cards.some((card) => card.id === current)
+          ? current
+          : snapshot.cards[0]?.id || '',
+      )
+    }
+
     const loadSavedCards = async () => {
       try {
         const cards = await fetchPaymentMethods()
@@ -467,10 +483,12 @@ export default function CheckoutPage() {
       }
     }
 
+    window.addEventListener(paymentMethodsChangeEvent, syncSavedCards)
     loadSavedCards()
 
     return () => {
       active = false
+      window.removeEventListener(paymentMethodsChangeEvent, syncSavedCards)
     }
   }, [isLoggedIn])
 
@@ -1395,8 +1413,7 @@ export default function CheckoutPage() {
                             onClick={() => {
                               void (async () => {
                                 try {
-                                  await deletePaymentMethod(card.id)
-                                  const nextCards = await fetchPaymentMethods()
+                                  const nextCards = await deletePaymentMethod(card.id)
                                   setSavedCards(nextCards)
                                   setPaymentSummaryOverride(null)
                                   setSelectedSavedCardId((current) =>

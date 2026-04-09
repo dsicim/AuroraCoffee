@@ -440,7 +440,7 @@ export function getCachedOrderById(orderId) {
   return cachedOrderDetails.get(`${scope}:${String(orderId)}`) || null
 }
 
-export async function fetchOrders({ force = false, revalidate = true } = {}) {
+export async function fetchOrders({ force = false } = {}) {
   const session = getAuthSession()
   const scope = getOrdersScope()
 
@@ -451,7 +451,7 @@ export async function fetchOrders({ force = false, revalidate = true } = {}) {
 
   ensureOrdersScope(scope)
 
-  if (!revalidate && !force && cachedOrdersLoaded) {
+  if (!force && cachedOrdersLoaded) {
     return cachedOrders
   }
 
