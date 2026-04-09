@@ -583,7 +583,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:query.paymentId});
                         if (authChecker) {
                             if (authChecker.status === "success") {
-                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker } };
+                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker, msg: "also yes i should redirect you to somewhere but im testing something" } };
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
