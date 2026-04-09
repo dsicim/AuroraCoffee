@@ -80,7 +80,7 @@ async function getCardToken(userId) {
         return { done: false, error: err.message };
     });
 }
-async function createOrder(currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
+async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
     let realPrice = subtotal;
     if (!card.cardToken) {
         card = {
@@ -104,6 +104,7 @@ async function createOrder(currentUser, cart, basket, subtotal, shippingAddress,
         currency: currency,
         installment: installment,
         paymentCard: card,
+        callbackUrl: "https://" + config.domain + "/api/payment/3dscallback",
         buyer: {
             id: currentUser.id.toString(),
             name: currentUser.displayname.split(' ').slice(0, -1).join(' ') || currentUser.displayname,
@@ -482,17 +483,87 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
 
             // All validations passed, create order and initiate payment
-            const payload = await createOrder(currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
-            const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
-            if (response) {
-                if (response.status === "success") {
-                    return { s: 200, j: true, d: { response: response } };
-                }
-                else return { s: 400, j: true, d: { e: "Failed to retrieve payment information from payment provider: " + response.errorMessage } };
+            const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
+            const tvoyBank = cardDetails.bank || "your bank";
+            function PaymentError(err,tvoyBank) {
+                return {
+                    "DO_NOT_HONOUR": {why:"The transaction was declined by the card issuer.",resolution:"Please use a different card or contact " + tvoyBank + "."},
+                    "INVALID_TRANSACTION": {why:"The transaction is invalid.",resolution:"Please use a different card or contact " + tvoyBank + "."},
+                    "FRAUD_SUSPECT": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
+                    "PICKUP_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
+                    "LOST_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
+                    "STOLEN_CARD": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
+                    "NOT_SUFFICIENT_FUNDS": {why:"The card has insufficient funds.",resolution:"Please add more money to the card's account or use a different card."},
+                    "EXPIRED_CARD": {why:"The card has expired.",resolution:"Please use a different card or contact " + tvoyBank + "."},
+                    "NOT_PERMITTED_TO_CARDHOLDER": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " has restricted this card's ability to make purchases.",resolution:"Contact " + tvoyBank + " for further information."},
+                    "NOT_PERMITTED_TO_TERMINAL": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " has restricted our ability to process this transaction.",resolution:"Use a different card of contact the developers."},
+                    "INVALID_CVC2": {why:"The CVC code is invalid.",resolution:"Please check the CVC code and try again."},
+                    "INVALID_CAVV": {why:"The CVC code is invalid.",resolution:"Please check the CVC code and try again."},
+                    "RESTRICTED_BY_LAW": {why:"This card is not able to make online purchases.",resolution:"Contact " + tvoyBank + " or use it's mobile app to enable online purchases on this card and try again."},
+                    "CARD_NOT_PERMITTED": {why:"The transaction was blocked by "+ tvoyBank + ".",resolution:"Contact " + tvoyBank + " for further information."},
+                    "UNKNOWN": {why:"An unknown error occurred.",resolution:"Contact the developers for further information."},
+                    "INVALID_XML_END_TAG": {why:"An unknown error occurred.",resolution:"Contact the developers for further information."},
+                    "INVALID_CHARS_IN_EMAIL": {why:"The email address contains invalid characters.",resolution:"Please check the email address and try again."},
+                    "REFER_TO_CARD_ISSUER": {why:tvoyBank.substring(0,1).toUpperCase() + tvoyBank.substring(1) + " needs confirmation from the cardholder.",resolution:"Contact " + tvoyBank + " for them to approve the transaction."},
+                    "INVALID_MERCHANT_OR_SP": {why:"The merchant or service provider is invalid.",resolution:"Contact the developers for further information."},
+                    "BLOCKED_CARD": {why:"This card is blocked for purchases.",resolution:"Contact " + tvoyBank + " for further information."},
+                    "INVALID_ECI": {why:"There's an issue with your card's security information.",resolution:"Contact " + tvoyBank + " for further information."},
+                    "CVC2_MAX_ATTEMPT": {why:"The CVC code has been entered incorrectly too many times.",resolution:"Contact " + tvoyBank + " for further verification."},
+                    "BIN_NOT_FOUND": {why:"Your bank doesn't exist.",resolution:"Contact the developers for further information."},
+                } [err] || { why: response.errorMessage || "Unknown error", resolution: "Please try again later or contact the developers" };
             }
-            else return { s: 500, j: true, d: { e: "An unknown error occurred while communicating with the payment provider" } };
+            let tryIn3DS = true;
+            if (body.data.avoid3DS && !cardDetails.features.force3DS) tryIn3DS = false;
+            if (!tryIn3DS) {
+                const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
+                let failed = false;
+                if (response) {
+                    if (response.status === "success") {
+                        // PAYMENT ID CREATED HERE. WE LINK THE PAYMENT ID WITH THE ORDER ID IN OUR DATABASE HERE.
+                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:response.paymentId});
+                        if (authChecker) {
+                            if (authChecker.status === "success") {
+                                return { s: 200, j: true, d: { response: authChecker } };
+                            }
+                            else {
+                                failed = true;
+                                if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
+                                const errObj = PaymentError(response.errorGroup, tvoyBank);
+                                if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                            }
+                        }
+                        else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
+                        
+                    }
+                    else {
+                        failed = true;
+                        if (response.errorGroup === "DEBIT_CARDS_REQUIRES_3DS") {failed = false;tryIn3DS = true;}
+                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        if (failed) return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                    }
+                }
+                else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
+            }
+            if (tryIn3DS) {
+                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, payload);
+                if (response) {
+                    if (response.status === "success") {
+                        // PAYMENT ID CREATED HERE. WE LINK THE PAYMENT ID WITH THE ORDER ID IN OUR DATABASE HERE.
+                        return { s: 202, j: true, d: { success: true, redirect3DS: true, e: {what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to "+ tvoyBank + "'s payment page to complete the transaction."}, target:"data:text/html;base64,"+response.threeDSHtmlContent}};
+                    }
+                    else {
+                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                    }
+                }
+                else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
+            }
+            else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "Failed to process payment", resolution: "Please try again later or contact the developers" } } };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "3dscallback") {
+        
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
