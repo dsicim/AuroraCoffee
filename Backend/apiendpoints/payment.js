@@ -568,7 +568,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
-                                    return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.oID, response: authChecker } };
+                                    return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n, response: authChecker } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
                             }
@@ -700,7 +700,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await sql.clearCart(order.userId).then(result => {}).catch(err => {});
-                                    return CallbackEmbed({ success: true, orderNumber: orderNumber.oID, response: authChecker });
+                                    return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
                             }
