@@ -1,4 +1,5 @@
 export const userRoles = {
+  admin: 'Admin',
   customer: 'Customer',
   salesManager: 'Sales Manager',
   productManager: 'Product Manager',
@@ -6,6 +7,10 @@ export const userRoles = {
 
 export function normalizeUserRole(role) {
   const normalizedRole = String(role || '').trim()
+
+  if (normalizedRole === userRoles.admin) {
+    return userRoles.admin
+  }
 
   if (normalizedRole === userRoles.customer) {
     return userRoles.customer
@@ -24,6 +29,10 @@ export function normalizeUserRole(role) {
 
 export function getRoleLandingPath(role) {
   const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole === userRoles.admin) {
+    return '/'
+  }
 
   if (normalizedRole === userRoles.customer) {
     return '/customer'
@@ -49,4 +58,19 @@ export function getRoleLabel(role) {
 
   const rawRole = String(role || '').trim()
   return rawRole || null
+}
+
+export function canAccessRole(role, requiredRole) {
+  const normalizedRole = normalizeUserRole(role)
+  const normalizedRequiredRole = normalizeUserRole(requiredRole)
+
+  if (!normalizedRequiredRole) {
+    return Boolean(normalizedRole)
+  }
+
+  if (normalizedRole === userRoles.admin) {
+    return true
+  }
+
+  return normalizedRole === normalizedRequiredRole
 }

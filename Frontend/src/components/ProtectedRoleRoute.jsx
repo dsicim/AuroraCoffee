@@ -8,7 +8,7 @@ import {
   getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
-import { getRoleLandingPath, normalizeUserRole } from '../lib/roles'
+import { canAccessRole, getRoleLandingPath, normalizeUserRole } from '../lib/roles'
 
 function buildLoginPath(pathname, search) {
   return `/login?next=${encodeURIComponent(pathname + search)}`
@@ -62,7 +62,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
         return
       }
 
-      if (requiredRole && resolvedRole !== requiredRole) {
+      if (requiredRole && !canAccessRole(resolvedRole, requiredRole)) {
         navigate(getRoleLandingPath(resolvedRole), { replace: true })
         return
       }
