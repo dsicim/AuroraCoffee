@@ -52,4 +52,4 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else return { s: 404, j: true, d: { e: "Not found" } };
 }
 
-module.exports = handleAPI;
+module.exports = { handleAPI };
