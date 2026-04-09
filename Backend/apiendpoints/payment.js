@@ -369,13 +369,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
 
-            async function parseAddress(result) {
+            async function parseAddress(result,token) {
                 if (result.success) {
-                    const errors = [];
                     if (result.addresses.length === 0) return { s: false, e: "Address not found" };
                     const addr = result.addresses[0];
                     try {
-                        if (specificaddress != addr.id) return { s: false, e: "Address token mismatch" };
+                        if (token != addr.id) return { s: false, e: "Address token mismatch" };
                         addr.address = aes.pjs(addr.address);
                         if (addr.address.e && addr.address.e.startsWith("Failed to parse JSON: ")) return { s: false, e: "Malformed data on database" };
                         const decrypted = aes.decrypt(addr.address);
@@ -402,7 +401,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
 
             // Shipping Address Validation
-            const shippingRecords = (shippingToken) ? await sql.getAddresses(currentUser.id, shippingToken).then(async result => { return await parseAddress(result); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "No token provided" };
+            const shippingRecords = (shippingToken) ? await sql.getAddresses(currentUser.id, shippingToken).then(async result => { return await parseAddress(result, shippingToken); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "No token provided" };
             if (!shippingToken && !shippingRecords.s) return { s: 500, j: true, d: { success: false, e: { what: "Shipping Address", why: "Failed to retrieve shipping address information: " + shippingRecords.e, resolution: "Please choose a different address or edit your saved addresses and try again." } } };
             const shippingAddress = (shippingRecords.s) ? shippingRecords.address : {
                 name: checkTrim(body.data.shipping.name),
@@ -418,7 +417,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!shippingAddress.name || !shippingAddress.surname || !shippingAddress.address || !shippingAddress.city || !shippingAddress.country || !shippingAddress.zip || !shippingAddress.phone || !shippingAddress.province) return { s: 400, j: true, d: { success: false, e: { what: "Shipping Address", why: "Shipping address data is incomplete.", resolution: "Please fill in all required fields or edit your saved addresses to include all necessary information and try again." } } };
 
             // Billing Address Validation
-            const billingRecords = (billingToken) ? ((billingToken !== "shipping") ? await sql.getAddresses(currentUser.id, billingToken).then(async result => { return await parseAddress(result); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "Will use shipping address" }) : { s: false, e: "No token provided" };
+            const billingRecords = (billingToken) ? ((billingToken !== "shipping") ? await sql.getAddresses(currentUser.id, billingToken).then(async result => { return await parseAddress(result, billingToken); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "Will use shipping address" }) : { s: false, e: "No token provided" };
             if (!billingToken && !billingRecords.s && billingToken !== "shipping") return { s: 500, j: true, d: { success: false, e: { what: "Billing Address", why: "Failed to retrieve billing address information: " + billingRecords.e, resolution: "Please choose a different address or edit your saved addresses and try again." } } };
 
             const billingAddress = (billingToken === "shipping") ? shippingAddress : ((shippingRecords.s) ? shippingRecords.address : {
