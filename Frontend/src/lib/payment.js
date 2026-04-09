@@ -91,21 +91,27 @@ function sanitizeCardCvc(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 4)
 }
 
-function buildInstallmentInfoCacheKey(bin, price) {
+function buildInstallmentInfoCacheKey(bin, token, price) {
   const normalizedBin = String(bin || '').replace(/\D/g, '').slice(0, 6)
+  const normalizedToken = String(token || '').trim()
   const normalizedPrice = Number(price)
 
-  return `${normalizedBin}:${Number.isFinite(normalizedPrice) ? normalizedPrice : ''}`
+  if (normalizedToken) {
+    return `token:${normalizedToken}:${Number.isFinite(normalizedPrice) ? normalizedPrice : ''}`
+  }
+
+  return `bin:${normalizedBin}:${Number.isFinite(normalizedPrice) ? normalizedPrice : ''}`
 }
 
-export async function fetchInstallmentInfo({ bin, price }) {
+export async function fetchInstallmentInfo({ bin, token, price }) {
   const normalizedBin = String(bin || '').replace(/\D/g, '').slice(0, 6)
+  const normalizedToken = String(token || '').trim()
 
-  if (normalizedBin.length < 6) {
+  if (!normalizedToken && normalizedBin.length < 6) {
     return null
   }
 
-  const cacheKey = buildInstallmentInfoCacheKey(normalizedBin, price)
+  const cacheKey = buildInstallmentInfoCacheKey(normalizedBin, normalizedToken, price)
 
   if (installmentInfoCache.has(cacheKey)) {
     return installmentInfoCache.get(cacheKey)
@@ -118,7 +124,7 @@ export async function fetchInstallmentInfo({ bin, price }) {
   const request = requestPaymentJson('/payment/installments', {
     method: 'POST',
     body: JSON.stringify({
-      bin: normalizedBin,
+      ...(normalizedToken ? { token: normalizedToken } : { bin: normalizedBin }),
       price,
     }),
   })

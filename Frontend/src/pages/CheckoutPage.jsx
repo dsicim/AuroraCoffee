@@ -295,6 +295,37 @@ function validateSavedCardForm(payment) {
   return errors
 }
 
+function normalizeInstallmentMonths(value) {
+  const parsed = Number.parseInt(String(value || ''), 10)
+  return Number.isFinite(parsed) && parsed > 1 ? parsed : null
+}
+
+function getInstallmentOptions(installmentInfo) {
+  return Array.isArray(installmentInfo?.installments)
+    ? installmentInfo.installments
+        .filter((item) => normalizeInstallmentMonths(item?.months))
+        .sort((left, right) => Number(left.months) - Number(right.months))
+    : []
+}
+
+function getInstallmentSelectionLabel(installmentInfo, selectedInstallments) {
+  const selectedMonths = normalizeInstallmentMonths(selectedInstallments)
+
+  if (!selectedMonths) {
+    return ''
+  }
+
+  const selectedOption = getInstallmentOptions(installmentInfo).find(
+    (item) => Number(item.months) === selectedMonths,
+  )
+
+  if (!selectedOption) {
+    return `${selectedMonths} installments`
+  }
+
+  return `${selectedMonths} installments · ${formatCurrency(selectedOption.permonth)} / month`
+}
+
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const initialSession = getAuthSession()
@@ -313,6 +344,7 @@ export default function CheckoutPage() {
   const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
   const [saveCardForLater, setSaveCardForLater] = useState(false)
   const [installmentInfo, setInstallmentInfo] = useState(null)
+  const [selectedInstallments, setSelectedInstallments] = useState('')
   const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
   const [submittedOrder] = useState(null)
@@ -327,6 +359,11 @@ export default function CheckoutPage() {
   const currentStep = checkoutSteps[stepIndex]
   const isLoggedIn = Boolean(session?.token)
   const installmentBin = payment.cardNumber.replace(/\D/g, '').slice(0, 6)
+  const installmentOptions = getInstallmentOptions(installmentInfo)
+  const activeInstallmentLabel = getInstallmentSelectionLabel(
+    installmentInfo,
+    selectedInstallments,
+  )
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -452,6 +489,7 @@ export default function CheckoutPage() {
 
     setSelectedAddressId(snapshot?.selectedAddressId || '')
     setSelectedSavedCardId(snapshot?.selectedSavedCardId || '')
+    setSelectedInstallments(snapshot?.selectedInstallments || '')
     setSaveCardForLater(Boolean(snapshot?.saveCardForLater))
     setPaymentSummaryOverride(snapshot?.paymentSummary || null)
     setPayment({
@@ -466,14 +504,20 @@ export default function CheckoutPage() {
   }, [])
 
   useEffect(() => {
-    if (selectedSavedCardId || installmentBin.length < 6 || currentStep.key !== 'payment') {
+    if (currentStep.key !== 'payment') {
+      return undefined
+    }
+
+    if (!selectedSavedCardId && installmentBin.length < 6) {
       setInstallmentInfo(null)
+      setSelectedInstallments('')
       return undefined
     }
 
     let active = true
     const timeoutId = window.setTimeout(() => {
       fetchInstallmentInfo({
+        token: selectedSavedCardId,
         bin: installmentBin,
         price: total,
       })
@@ -494,6 +538,23 @@ export default function CheckoutPage() {
       window.clearTimeout(timeoutId)
     }
   }, [currentStep.key, installmentBin, selectedSavedCardId, total])
+
+  useEffect(() => {
+    if (!selectedInstallments) {
+      return
+    }
+
+    const selectedMonths = normalizeInstallmentMonths(selectedInstallments)
+
+    if (!selectedMonths) {
+      setSelectedInstallments('')
+      return
+    }
+
+    if (!installmentOptions.some((item) => Number(item.months) === selectedMonths)) {
+      setSelectedInstallments('')
+    }
+  }, [installmentOptions, selectedInstallments])
 
   useEffect(() => {
     if (submittedOrder || !items.length || isLoggedIn) {
@@ -679,6 +740,7 @@ export default function CheckoutPage() {
           billing: billingPayload,
           expected: subtotal,
           currency: 'TRY',
+          installments: normalizeInstallmentMonths(selectedInstallments) || undefined,
           savedCardToken: selectedSavedCardId || '',
           cvc: payment.cvc,
           card: selectedSavedCardId ? null : payment,
@@ -696,6 +758,8 @@ export default function CheckoutPage() {
               payment,
               savedCards,
               saveCardForLater,
+              selectedInstallments,
+              installmentSelectionLabel: activeInstallmentLabel,
               subtotal,
               serviceFee,
               total,
@@ -763,11 +827,14 @@ export default function CheckoutPage() {
 
   const cityOptions = getCityOptions(delivery.province)
   const billingCityOptions = getCityOptions(billing.province)
-  const activePaymentSummary = paymentSummaryOverride || buildPaymentSummary({
-    payment,
-    savedCards,
-    selectedSavedCardId,
-  })
+  const activePaymentSummary = paymentSummaryOverride || {
+    ...buildPaymentSummary({
+      payment,
+      savedCards,
+      selectedSavedCardId,
+    }),
+    ...(activeInstallmentLabel ? { installmentLabel: activeInstallmentLabel } : {}),
+  }
 
   if (!items.length && !submittedOrder) {
     const hero = (
@@ -1434,10 +1501,50 @@ export default function CheckoutPage() {
                   <p className="font-semibold text-[var(--aurora-text-strong)]">
                     {installmentInfo.card.provider || 'Card'} · {installmentInfo.card.type || 'Card'}
                   </p>
-                  {installmentInfo.installments?.length ? (
-                    <p className="mt-2">
-                      Installments available: {installmentInfo.installments.map((item) => `${item.months}x`).join(', ')}
-                    </p>
+                  {installmentOptions.length ? (
+                    <>
+                      <p className="mt-2">
+                        Choose how you want to split this payment.
+                      </p>
+                      <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                        <LiquidGlassButton
+                          type="button"
+                          variant="chip"
+                          size="compact"
+                          selected={!selectedInstallments}
+                          className="h-full"
+                          contentClassName="flex w-full flex-col items-start gap-1 text-left"
+                          onClick={() => setSelectedInstallments('')}
+                        >
+                          <span className="font-semibold text-[var(--aurora-text-strong)]">
+                            Pay in full
+                          </span>
+                          <span className="text-xs tracking-[0.08em] text-[var(--aurora-text)]">
+                            {formatCurrency(total)} today
+                          </span>
+                        </LiquidGlassButton>
+
+                        {installmentOptions.map((item) => (
+                          <LiquidGlassButton
+                            key={item.months}
+                            type="button"
+                            variant="chip"
+                            size="compact"
+                            selected={String(item.months) === selectedInstallments}
+                            className="h-full"
+                            contentClassName="flex w-full flex-col items-start gap-1 text-left"
+                            onClick={() => setSelectedInstallments(String(item.months))}
+                          >
+                            <span className="font-semibold text-[var(--aurora-text-strong)]">
+                              {item.months} installments
+                            </span>
+                            <span className="text-xs tracking-[0.08em] text-[var(--aurora-text)]">
+                              {formatCurrency(item.permonth)} / month · total {formatCurrency(item.total)}
+                            </span>
+                          </LiquidGlassButton>
+                        ))}
+                      </div>
+                    </>
                   ) : (
                     <p className="mt-2">No installment options were returned for this card.</p>
                   )}
@@ -1532,6 +1639,12 @@ export default function CheckoutPage() {
                         <>
                           <br />
                           Expires {activePaymentSummary.expiry}
+                        </>
+                      ) : null}
+                      {activePaymentSummary.installmentLabel ? (
+                        <>
+                          <br />
+                          {activePaymentSummary.installmentLabel}
                         </>
                       ) : null}
                     </p>

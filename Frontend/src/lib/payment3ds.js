@@ -142,10 +142,22 @@ export function createPending3DSCheckoutSnapshot({
   payment,
   savedCards,
   saveCardForLater,
+  selectedInstallments,
+  installmentSelectionLabel,
   subtotal,
   serviceFee,
   total,
 }) {
+  const paymentSummary = buildPaymentSummary({
+    payment,
+    savedCards: Array.isArray(savedCards) ? savedCards : [],
+    selectedSavedCardId,
+  })
+
+  if (installmentSelectionLabel) {
+    paymentSummary.installmentLabel = installmentSelectionLabel
+  }
+
   return {
     reference: createOrderReference(),
     submittedAt: new Date().toISOString(),
@@ -163,11 +175,8 @@ export function createPending3DSCheckoutSnapshot({
           cardholder: String(payment?.cardholder || ''),
           expiry: String(payment?.expiry || ''),
         },
-    paymentSummary: buildPaymentSummary({
-      payment,
-      savedCards: Array.isArray(savedCards) ? savedCards : [],
-      selectedSavedCardId,
-    }),
+    selectedInstallments: selectedInstallments ? String(selectedInstallments) : '',
+    paymentSummary,
     saveCardForLater: Boolean(saveCardForLater),
     subtotal: Number(subtotal) || 0,
     serviceFee: Number(serviceFee) || 0,
