@@ -142,12 +142,13 @@ async function RunServerMaintenance() {
         if (updateneeded && latest.s && current.s && latest.v == current.v) updateneeded = false;
         if (updateneeded) console.log("GOTIT:Updating from version " + (current.s ? current.v : "unknown") + " to " + (latest.s ? latest.v : "unknown"));
         else if (action === "update") console.log("GOTIT: No update needed, current version " + (current.s ? current.v : "unknown") + " is up to date. Restarting without updating.");
+        else if (action === "reset") console.log("GOTIT: Force reinstall requested. Restarting with updated files. This will take a while.");
         else console.log("GOTIT:Restarting without update");
         setTimeout(async () => {
             console.log("Under assumption that server has stopped.");
             const repoParent = path.join(__dirname, "../..");
             process.chdir(repoParent);
-            if (updateneeded) {
+            if (updateneeded || action === "reset") {
                 console.log("Running git refresh script...");
                 const output = (action === "reset") ? await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err) : await runUpdateScript(repoParent).then(res => res).catch(err => "Error: " + err);
                 console.log(output);
