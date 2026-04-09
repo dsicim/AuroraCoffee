@@ -7,6 +7,10 @@ export const userRoles = {
 export function normalizeUserRole(role) {
   const normalizedRole = String(role || '').trim()
 
+  if (normalizedRole === userRoles.customer) {
+    return userRoles.customer
+  }
+
   if (normalizedRole === userRoles.salesManager) {
     return userRoles.salesManager
   }
@@ -15,11 +19,15 @@ export function normalizeUserRole(role) {
     return userRoles.productManager
   }
 
-  return userRoles.customer
+  return null
 }
 
 export function getRoleLandingPath(role) {
   const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole === userRoles.customer) {
+    return '/customer'
+  }
 
   if (normalizedRole === userRoles.salesManager) {
     return '/sales-manager'
@@ -29,7 +37,7 @@ export function getRoleLandingPath(role) {
     return '/product-manager'
   }
 
-  return '/customer'
+  return '/'
 }
 
 export function getRoleLabel(role) {

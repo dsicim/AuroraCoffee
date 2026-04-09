@@ -6,8 +6,10 @@ import LiquidGlassFrame from './LiquidGlassFrame'
 import {
   authChangeEvent,
   clearAuthSession,
+  currentUserChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
+  getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
@@ -28,13 +30,19 @@ export default function Header() {
   const navigate = useNavigate()
   const menuRef = useRef(null)
   const [session, setSession] = useState(getAuthSession())
-  const [user, setUser] = useState(null)
+  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const hasSession = Boolean(session?.token)
+  const user = currentUserState.status === currentUserFetchStatus.ok
+    ? currentUserState.user
+    : null
   const displayName = user?.displayname || 'Coffee Lover'
   const resolvedRole = getRoleLabel(user?.role)
+  const isRoleKnown = Boolean(resolvedRole)
+  const roleLandingPath = isRoleKnown ? getRoleLandingPath(resolvedRole) : '/'
+  const roleBadgeLabel = isRoleKnown ? resolvedRole : 'Loading'
 
   const accountLinks = resolvedRole === userRoles.customer
     ? [
@@ -44,21 +52,30 @@ export default function Header() {
       { label: 'Saved Addresses', to: '/account/addresses' },
       { label: 'Favorites', to: '/account/favorites' },
     ]
-    : [
-      { label: `${resolvedRole} Home`, to: getRoleLandingPath(resolvedRole) },
-      { label: 'Browse Storefront', to: '/' },
-      { label: 'View Catalog', to: '/products' },
-    ]
+    : isRoleKnown
+      ? [
+        { label: `${resolvedRole} Home`, to: roleLandingPath },
+        { label: 'Browse Storefront', to: '/' },
+        { label: 'View Catalog', to: '/products' },
+      ]
+      : [
+        { label: 'Browse Storefront', to: '/' },
+        { label: 'View Catalog', to: '/products' },
+      ]
 
   useEffect(() => {
     const syncSessionState = () => {
       void (async () => {
         setSession(getAuthSession())
-        setUser(null)
+        setCurrentUserState(getCurrentUserSnapshot())
         reconcileAccountStorageWithAuth()
         await reconcileCartStorageWithAuth()
         setCartCount(getCartCount())
       })()
+    }
+
+    const syncCurrentUserState = () => {
+      setCurrentUserState(getCurrentUserSnapshot())
     }
 
     const syncCartState = () => {
@@ -67,12 +84,14 @@ export default function Header() {
 
     window.addEventListener('storage', syncSessionState)
     window.addEventListener(authChangeEvent, syncSessionState)
+    window.addEventListener(currentUserChangeEvent, syncCurrentUserState)
     window.addEventListener(cartChangeEvent, syncCartState)
     const initialSyncId = window.setTimeout(syncSessionState, 0)
 
     return () => {
       window.removeEventListener('storage', syncSessionState)
       window.removeEventListener(authChangeEvent, syncSessionState)
+      window.removeEventListener(currentUserChangeEvent, syncCurrentUserState)
       window.removeEventListener(cartChangeEvent, syncCartState)
       window.clearTimeout(initialSyncId)
     }
@@ -83,29 +102,19 @@ export default function Header() {
       return
     }
 
-    let cancelled = false
-
-    const loadUser = async () => {
-      const result = await fetchCurrentUserResult(session.token)
-
-      if (cancelled) {
-        return
-      }
-
-      if (result.status === currentUserFetchStatus.ok) {
-        setUser(result.user)
-        return
-      }
-
-      setUser(null)
+    if (
+      currentUserState.token === session.token &&
+      (
+        currentUserState.status === currentUserFetchStatus.ok ||
+        currentUserState.status === currentUserFetchStatus.loading ||
+        currentUserState.status === currentUserFetchStatus.unauthorized
+      )
+    ) {
+      return
     }
 
-    loadUser()
-
-    return () => {
-      cancelled = true
-    }
-  }, [session?.token])
+    void fetchCurrentUserResult(session.token)
+  }, [currentUserState.status, currentUserState.token, session?.token])
 
   useEffect(() => {
     if (!menuOpen) {
@@ -143,7 +152,7 @@ export default function Header() {
       clearAuthSession()
       await reconcileCartStorageWithAuth()
       setSession(getAuthSession())
-      setUser(null)
+      setCurrentUserState(getCurrentUserSnapshot())
       setCartCount(getCartCount())
       navigate('/', { replace: true })
     })()
@@ -295,11 +304,11 @@ export default function Header() {
                       <div className="fixed inset-x-3 top-[6.4rem] z-50 md:absolute md:right-0 md:left-auto md:top-full md:z-30 md:w-72 md:pt-4">
                         <div className="aurora-showcase-band aurora-account-menu p-3">
                         <Link
-                          to={resolvedRole === userRoles.customer ? '/account' : getRoleLandingPath(resolvedRole)}
+                          to={resolvedRole === userRoles.customer ? '/account' : roleLandingPath}
                           onClick={() => setMenuOpen(false)}
                           className="aurora-solid-plate aurora-account-menu-profile block rounded-[1.5rem] px-4 py-4"
                         >
-                          <p className="aurora-kicker">{resolvedRole}</p>
+                          <p className="aurora-kicker">{roleBadgeLabel}</p>
                           <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
                             {displayName}
                           </p>

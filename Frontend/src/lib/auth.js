@@ -2,14 +2,123 @@ import { buildApiUrl } from './api'
 
 export const authStorageKey = 'auroraAuth'
 export const authChangeEvent = 'aurora-auth-change'
+export const currentUserChangeEvent = 'aurora-current-user-change'
 export const currentUserFetchStatus = {
+  idle: 'idle',
+  loading: 'loading',
   ok: 'ok',
   unauthorized: 'unauthorized',
   error: 'error',
 }
 
+let cachedCurrentUser = null
+let cachedCurrentUserStatus = currentUserFetchStatus.idle
+let cachedCurrentUserToken = null
+let inFlightCurrentUserPromise = null
+let currentUserRequestId = 0
+let authExpiryTimerId = null
+
 function dispatchAuthChange() {
   window.dispatchEvent(new Event(authChangeEvent))
+}
+
+function dispatchCurrentUserChange() {
+  window.dispatchEvent(new Event(currentUserChangeEvent))
+}
+
+function clearAuthExpiryTimer() {
+  if (authExpiryTimerId !== null) {
+    window.clearTimeout(authExpiryTimerId)
+    authExpiryTimerId = null
+  }
+}
+
+function removeStoredAuthSession() {
+  window.localStorage.removeItem(authStorageKey)
+  window.sessionStorage.removeItem(authStorageKey)
+}
+
+function isSessionExpired(session) {
+  const expiresAt = Date.parse(session?.expires || '')
+
+  if (!Number.isFinite(expiresAt)) {
+    return false
+  }
+
+  return expiresAt <= Date.now()
+}
+
+function scheduleAuthExpiry(session) {
+  clearAuthExpiryTimer()
+
+  const expiresAt = Date.parse(session?.expires || '')
+
+  if (!Number.isFinite(expiresAt)) {
+    return
+  }
+
+  const remainingMs = expiresAt - Date.now()
+
+  if (remainingMs <= 0) {
+    clearAuthSession()
+    return
+  }
+
+  authExpiryTimerId = window.setTimeout(() => {
+    clearAuthSession()
+  }, remainingMs)
+}
+
+function setCurrentUserCache({ user, status, token }) {
+  cachedCurrentUser = user
+  cachedCurrentUserStatus = status
+  cachedCurrentUserToken = token
+  dispatchCurrentUserChange()
+}
+
+function clearCurrentUserCache() {
+  const hadState =
+    cachedCurrentUser !== null ||
+    cachedCurrentUserStatus !== currentUserFetchStatus.idle ||
+    cachedCurrentUserToken !== null
+
+  cachedCurrentUser = null
+  cachedCurrentUserStatus = currentUserFetchStatus.idle
+  cachedCurrentUserToken = null
+  inFlightCurrentUserPromise = null
+  currentUserRequestId += 1
+
+  if (hadState) {
+    dispatchCurrentUserChange()
+  }
+}
+
+function readStoredSession() {
+  const storageMode = getAuthStorageMode()
+  const storedSession = storageMode
+    ? getStorageValue(storageMode)
+    : null
+
+  if (!storedSession) {
+    return null
+  }
+
+  try {
+    const parsedSession = JSON.parse(storedSession)
+
+    if (!parsedSession?.token || isSessionExpired(parsedSession)) {
+      clearAuthExpiryTimer()
+      removeStoredAuthSession()
+      return null
+    }
+
+    scheduleAuthExpiry(parsedSession)
+    return parsedSession
+  } catch {
+    clearAuthExpiryTimer()
+    removeStoredAuthSession()
+    return null
+  }
 }
 
 export function getAuthStorageMode() {
@@ -28,26 +137,27 @@ export function saveAuthSession(session, rememberMe) {
   const storage = rememberMe ? window.localStorage : window.sessionStorage
   const otherStorage = rememberMe ? window.sessionStorage : window.localStorage
 
+  if (!session?.token || isSessionExpired(session)) {
+    clearAuthSession()
+    return
+  }
+
   otherStorage.removeItem(authStorageKey)
   storage.setItem(authStorageKey, JSON.stringify(session))
+  scheduleAuthExpiry(session)
+  clearCurrentUserCache()
   dispatchAuthChange()
+
+  if (session?.token) {
+    void fetchCurrentUserResult(session.token, {
+      force: true,
+      clearOnUnauthorized: false,
+    })
+  }
 }
 
 export function getAuthSession() {
-  const storageMode = getAuthStorageMode()
-  const storedSession = storageMode
-    ? getStorageValue(storageMode)
-    : null
-
-  if (!storedSession) {
-    return null
-  }
-
-  try {
-    return JSON.parse(storedSession)
-  } catch {
-    return null
-  }
+  return readStoredSession()
 }
 
 function getStorageValue(mode) {
@@ -57,12 +167,49 @@ function getStorageValue(mode) {
 }
 
 export function clearAuthSession() {
-  window.localStorage.removeItem(authStorageKey)
-  window.sessionStorage.removeItem(authStorageKey)
+  clearAuthExpiryTimer()
+  removeStoredAuthSession()
+  clearCurrentUserCache()
   dispatchAuthChange()
 }
 
-export async function fetchCurrentUserResult(token, options = {}) {
+export function getCurrentUserSnapshot() {
+  const session = readStoredSession()
+
+  if (!session?.token) {
+    return {
+      user: null,
+      status: currentUserFetchStatus.idle,
+      token: null,
+    }
+  }
+
+  if (cachedCurrentUserToken && cachedCurrentUserToken !== session.token) {
+    return {
+      user: null,
+      status: currentUserFetchStatus.idle,
+      token: session.token,
+    }
+  }
+
+  return {
+    user: cachedCurrentUser,
+    status: cachedCurrentUserStatus,
+    token: cachedCurrentUserToken,
+  }
+}
+
+export function getCachedCurrentUser() {
+  const session = readStoredSession()
+
+  if (!session?.token || cachedCurrentUserToken !== session.token) {
+    return null
+  }
+
+  return cachedCurrentUser
+}
+
+async function fetchCurrentUserResultNetwork(token, options = {}) {
   if (!token) {
     return {
       status: currentUserFetchStatus.unauthorized,
@@ -117,6 +264,95 @@ export async function fetchCurrentUserResult(token, options = {}) {
       user: null,
     }
   }
+}
+
+export async function fetchCurrentUserResult(token, options = {}) {
+  const session = readStoredSession()
+
+  if (!session?.token || session.token !== token) {
+    setCurrentUserCache({
+      user: null,
+      status: currentUserFetchStatus.unauthorized,
+      token: null,
+    })
+    return {
+      status: currentUserFetchStatus.unauthorized,
+      user: null,
+    }
+  }
+
+  if (!token) {
+    setCurrentUserCache({
+      user: null,
+      status: currentUserFetchStatus.unauthorized,
+      token: null,
+    })
+    return {
+      status: currentUserFetchStatus.unauthorized,
+      user: null,
+    }
+  }
+
+  const { force = false } = options
+
+  if (
+    !force &&
+    cachedCurrentUserToken === token &&
+    cachedCurrentUserStatus === currentUserFetchStatus.ok &&
+    cachedCurrentUser
+  ) {
+    return {
+      status: currentUserFetchStatus.ok,
+      user: cachedCurrentUser,
+    }
+  }
+
+  if (
+    !force &&
+    cachedCurrentUserToken === token &&
+    cachedCurrentUserStatus === currentUserFetchStatus.unauthorized
+  ) {
+    return {
+      status: currentUserFetchStatus.unauthorized,
+      user: null,
+    }
+  }
+
+  if (
+    !force &&
+    inFlightCurrentUserPromise &&
+    cachedCurrentUserToken === token &&
+    cachedCurrentUserStatus === currentUserFetchStatus.loading
+  ) {
+    return inFlightCurrentUserPromise
+  }
+
+  const requestId = ++currentUserRequestId
+  cachedCurrentUserToken = token
+  cachedCurrentUserStatus = currentUserFetchStatus.loading
+  dispatchCurrentUserChange()
+
+  inFlightCurrentUserPromise = fetchCurrentUserResultNetwork(token, options)
+    .then((result) => {
+      if (requestId !== currentUserRequestId) {
+        return result
+      }
+
+      setCurrentUserCache({
+        user: result.status === currentUserFetchStatus.ok ? result.user : null,
+        status: result.status,
+        token: result.status === currentUserFetchStatus.unauthorized ? null : token,
+      })
+
+      return result
+    })
+    .finally(() => {
+      if (requestId === currentUserRequestId) {
+        inFlightCurrentUserPromise = null
+      }
+    })
+
+  return inFlightCurrentUserPromise
 }
 
 export async function fetchCurrentUser(token, options = {}) {

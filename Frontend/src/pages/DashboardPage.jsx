@@ -4,18 +4,25 @@ import auroraLogo from '../assets/aurora-logo.jpeg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
+  authChangeEvent,
   clearAuthSession,
-  fetchCurrentUser,
+  currentUserChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const session = getAuthSession()
+  const [session, setSession] = useState(() => getAuthSession())
+  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const sessionToken = session?.token
   const sessionEmail = session?.email
   const sessionExpires = session?.expires
-  const [user, setUser] = useState(null)
+  const user = currentUserState.status === currentUserFetchStatus.ok
+    ? currentUserState.user
+    : null
 
   const handleLogout = () => {
     clearAuthSession()
@@ -23,32 +30,43 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    const syncSession = () => {
+      setSession(getAuthSession())
+    }
+
+    const syncCurrentUser = () => {
+      setCurrentUserState(getCurrentUserSnapshot())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(authChangeEvent, syncSession)
+    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(authChangeEvent, syncSession)
+      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!sessionToken) {
       return
     }
 
-    let cancelled = false
-
-    const loadProfile = async () => {
-      try {
-        const nextUser = await fetchCurrentUser(sessionToken)
-
-        if (cancelled || !nextUser) {
-          return
-        }
-
-        setUser(nextUser)
-      } catch {
-        // Keep the dashboard usable even if the profile lookup fails.
-      }
+    if (
+      currentUserState.token === sessionToken &&
+      (
+        currentUserState.status === currentUserFetchStatus.ok ||
+        currentUserState.status === currentUserFetchStatus.loading ||
+        currentUserState.status === currentUserFetchStatus.unauthorized
+      )
+    ) {
+      return
     }
 
-    loadProfile()
-
-    return () => {
-      cancelled = true
-    }
-  }, [sessionEmail, sessionExpires, sessionToken])
+    void fetchCurrentUserResult(sessionToken)
+  }, [currentUserState.status, currentUserState.token, sessionToken])
 
   if (!session?.token) {
     return (
