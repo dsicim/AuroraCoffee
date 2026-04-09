@@ -23,7 +23,6 @@ import { useProductCatalog } from '../lib/products'
 import {
   addressBookChangeEvent,
   fetchSavedAddresses,
-  getDefaultSavedAddress,
   getSavedAddresses,
 } from '../lib/addressBook'
 
@@ -91,13 +90,7 @@ export default function CustomerPage() {
   }, [feedback])
 
   const mostRecentOrder = orders[0] || null
-  const defaultAddress = useMemo(
-    () =>
-      getDefaultSavedAddress() ||
-      addresses.find((address) => address.isDefault) ||
-      null,
-    [addresses],
-  )
+  const hasSavedAddresses = addresses.length > 0
   const favoriteProducts = useMemo(
     () => products.filter((product) => favoriteIds.includes(product.slug)).slice(0, 3),
     [favoriteIds, products],
@@ -203,14 +196,13 @@ export default function CustomerPage() {
 
           <div className="aurora-ops-card p-5">
             <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-              Saved tools
+              Saved addresses
             </p>
             <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {favoriteIds.length} / {defaultAddress ? 'Ready' : 'Add one'}
+              {addresses.length}
             </p>
             <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-              {favoriteIds.length} favorite{favoriteIds.length === 1 ? '' : 's'} and{' '}
-              {defaultAddress ? 'a default address are in place.' : 'no default address yet.'}
+              {hasSavedAddresses ? 'Saved addresses available' : 'No saved addresses yet'}
             </p>
           </div>
         </div>
@@ -332,10 +324,10 @@ export default function CustomerPage() {
             <div className="flex items-end justify-between gap-4">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Checkout readiness
+                  Saved addresses
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {defaultAddress ? 'Address ready' : 'Address missing'}
+                  {hasSavedAddresses ? 'Available' : 'Not set'}
                 </h2>
               </div>
               <Link
@@ -346,27 +338,14 @@ export default function CustomerPage() {
               </Link>
             </div>
 
-            {defaultAddress ? (
+            {hasSavedAddresses ? (
               <p className="mt-4 text-sm leading-8 text-[var(--aurora-text)]">
-                <span className="font-semibold text-[var(--aurora-text-strong)]">
-                  {defaultAddress.fullName}
-                </span>
-                <br />
-                {defaultAddress.email}
-                <br />
-                {defaultAddress.addressLine1 || defaultAddress.address}
-                {defaultAddress.addressLine2 ? (
-                  <>
-                    <br />
-                    {defaultAddress.addressLine2}
-                  </>
-                ) : null}
-                <br />
-                {defaultAddress.district || defaultAddress.city}, {defaultAddress.province} {defaultAddress.postalCode}
+                {addresses.length} saved address
+                {addresses.length === 1 ? '' : 'es'} are available for checkout.
               </p>
             ) : (
               <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Add a default saved address so delivery details can prefill automatically during checkout.
+                Add a saved address so delivery details can be reused during checkout.
               </p>
             )}
 

@@ -5,10 +5,6 @@ const accountStorageKeys = {
     local: 'auroraOrdersLocal',
     session: 'auroraOrdersSession',
   },
-  addresses: {
-    local: 'auroraAddressesLocal',
-    session: 'auroraAddressesSession',
-  },
   favorites: {
     local: 'auroraFavoritesLocal',
     session: 'auroraFavoritesSession',
@@ -90,12 +86,6 @@ function writeScopedRecords(type, mode, scope, records) {
   writeScopedMap(type, mode, scopedMap)
 }
 
-function createAddressId() {
-  return `addr-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 8)}`
-}
-
 function dispatchAccountChange(type) {
   window.dispatchEvent(
     new CustomEvent(accountDataChangeEvent, {
@@ -109,22 +99,6 @@ function sortOrders(orders) {
     (left, right) =>
       new Date(right.submittedAt).getTime() - new Date(left.submittedAt).getTime(),
   )
-}
-
-function sortAddresses(addresses) {
-  return [...addresses].sort((left, right) => {
-    if (left.isDefault && !right.isDefault) {
-      return -1
-    }
-
-    if (!left.isDefault && right.isDefault) {
-      return 1
-    }
-
-    const leftLabel = left.label || left.fullName || ''
-    const rightLabel = right.label || right.fullName || ''
-    return leftLabel.localeCompare(rightLabel)
-  })
 }
 
 function mergeOrders(baseOrders, incomingOrders) {
@@ -141,59 +115,8 @@ function mergeOrders(baseOrders, incomingOrders) {
   return sortOrders(Array.from(merged.values()))
 }
 
-function mergeAddresses(baseAddresses, incomingAddresses) {
-  const merged = new Map()
-  let defaultAddressId = null
-
-  for (const address of [...baseAddresses, ...incomingAddresses]) {
-    if (!address?.id) {
-      continue
-    }
-
-    merged.set(address.id, address)
-
-    if (address.isDefault) {
-      defaultAddressId = address.id
-    }
-  }
-
-  const addresses = Array.from(merged.values()).map((address) => ({
-    ...address,
-    isDefault: defaultAddressId ? address.id === defaultAddressId : Boolean(address.isDefault),
-  }))
-
-  if (!addresses.some((address) => address.isDefault) && addresses.length) {
-    addresses[0] = {
-      ...addresses[0],
-      isDefault: true,
-    }
-  }
-
-  return sortAddresses(addresses)
-}
-
 function mergeFavorites(baseFavorites, incomingFavorites) {
   return Array.from(new Set([...baseFavorites, ...incomingFavorites]))
-}
-
-function normalizeAddressInput(addressInput, existingAddresses) {
-  const nextAddress = {
-    id: addressInput.id || createAddressId(),
-    label: addressInput.label?.trim() || '',
-    fullName: addressInput.fullName?.trim() || '',
-    email: addressInput.email?.trim() || '',
-    address: addressInput.address?.trim() || '',
-    city: addressInput.city?.trim() || '',
-    postalCode: addressInput.postalCode?.trim() || '',
-    notes: addressInput.notes?.trim() || '',
-    isDefault: Boolean(addressInput.isDefault),
-  }
-
-  if (!existingAddresses.length) {
-    nextAddress.isDefault = true
-  }
-
-  return nextAddress
 }
 
 export function getAccountStorageMode() {
@@ -213,10 +136,6 @@ export function reconcileAccountStorageWithAuth() {
     readScopedRecords('orders', authStorageMode, scope),
     readScopedRecords('orders', otherMode, scope),
   )
-  const mergedAddresses = mergeAddresses(
-    readScopedRecords('addresses', authStorageMode, scope),
-    readScopedRecords('addresses', otherMode, scope),
-  )
   const mergedFavorites = mergeFavorites(
     readScopedRecords('favorites', authStorageMode, scope),
     readScopedRecords('favorites', otherMode, scope),
@@ -224,8 +143,6 @@ export function reconcileAccountStorageWithAuth() {
 
   writeScopedRecords('orders', authStorageMode, scope, mergedOrders)
   writeScopedRecords('orders', otherMode, scope, [])
-  writeScopedRecords('addresses', authStorageMode, scope, mergedAddresses)
-  writeScopedRecords('addresses', otherMode, scope, [])
   writeScopedRecords('favorites', authStorageMode, scope, mergedFavorites)
   writeScopedRecords('favorites', otherMode, scope, [])
 
@@ -233,7 +150,6 @@ export function reconcileAccountStorageWithAuth() {
 
   return {
     orders: mergedOrders,
-    addresses: mergedAddresses,
     favorites: mergedFavorites,
   }
 }
@@ -264,98 +180,6 @@ export function addOrderHistoryEntry(order) {
   writeScopedRecords('orders', storageMode, scope, nextOrders)
   dispatchAccountChange('orders')
   return nextOrders
-}
-
-export function getSavedAddresses() {
-  const scope = getCurrentAccountScope()
-
-  if (!scope) {
-    return []
-  }
-
-  return sortAddresses(
-    readScopedRecords('addresses', getAccountStorageMode(), scope),
-  )
-}
-
-export function getDefaultSavedAddress() {
-  return getSavedAddresses().find((address) => address.isDefault) || null
-}
-
-export function saveSavedAddress(addressInput) {
-  const scope = getCurrentAccountScope()
-
-  if (!scope) {
-    return []
-  }
-
-  const storageMode = getAccountStorageMode()
-  const existingAddresses = getSavedAddresses()
-  const normalizedAddress = normalizeAddressInput(addressInput, existingAddresses)
-  let nextAddresses = [
-    ...existingAddresses.filter((address) => address.id !== normalizedAddress.id),
-    normalizedAddress,
-  ]
-
-  if (normalizedAddress.isDefault) {
-    nextAddresses = nextAddresses.map((address) => ({
-      ...address,
-      isDefault: address.id === normalizedAddress.id,
-    }))
-  } else if (!nextAddresses.some((address) => address.isDefault) && nextAddresses.length) {
-    nextAddresses = nextAddresses.map((address, index) => ({
-      ...address,
-      isDefault: index === 0,
-    }))
-  }
-
-  nextAddresses = sortAddresses(nextAddresses)
-  writeScopedRecords('addresses', storageMode, scope, nextAddresses)
-  dispatchAccountChange('addresses')
-  return nextAddresses
-}
-
-export function deleteSavedAddress(addressId) {
-  const scope = getCurrentAccountScope()
-
-  if (!scope) {
-    return []
-  }
-
-  const storageMode = getAccountStorageMode()
-  let nextAddresses = getSavedAddresses().filter((address) => address.id !== addressId)
-
-  if (!nextAddresses.some((address) => address.isDefault) && nextAddresses.length) {
-    nextAddresses = nextAddresses.map((address, index) => ({
-      ...address,
-      isDefault: index === 0,
-    }))
-  }
-
-  nextAddresses = sortAddresses(nextAddresses)
-  writeScopedRecords('addresses', storageMode, scope, nextAddresses)
-  dispatchAccountChange('addresses')
-  return nextAddresses
-}
-
-export function setDefaultSavedAddress(addressId) {
-  const scope = getCurrentAccountScope()
-
-  if (!scope) {
-    return []
-  }
-
-  const storageMode = getAccountStorageMode()
-  const nextAddresses = sortAddresses(
-    getSavedAddresses().map((address) => ({
-      ...address,
-      isDefault: address.id === addressId,
-    })),
-  )
-
-  writeScopedRecords('addresses', storageMode, scope, nextAddresses)
-  dispatchAccountChange('addresses')
-  return nextAddresses
 }
 
 export function getFavoriteProductIds() {

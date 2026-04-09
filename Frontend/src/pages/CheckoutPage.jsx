@@ -15,8 +15,8 @@ import {
 } from '../lib/accountData'
 import {
   addressBookChangeEvent,
+  fetchSavedAddressById,
   fetchSavedAddresses,
-  getDefaultSavedAddress,
   getSavedAddresses,
 } from '../lib/addressBook'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
@@ -65,15 +65,18 @@ const initialPayment = {
   cvc: '',
 }
 
-function buildDeliveryFromAddress(address) {
+function buildDeliveryFromAddress(address, email = '') {
   if (!address) {
-    return initialDelivery
+    return {
+      ...initialDelivery,
+      email,
+    }
   }
 
   return {
     firstName: address.firstName || '',
     lastName: address.lastName || '',
-    email: address.email || '',
+    email,
     addressLine1: address.addressLine1 || '',
     addressLine2: address.addressLine2 || '',
     province: address.province || '',
@@ -202,18 +205,16 @@ function validateSavedCardForm(payment) {
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
-  const initialDefaultAddress = getDefaultSavedAddress()
+  const initialSession = getAuthSession()
   const [items, setItems] = useState(() => getCartItems())
-  const [session, setSession] = useState(() => getAuthSession())
+  const [session, setSession] = useState(() => initialSession)
   const [stepIndex, setStepIndex] = useState(0)
   const [delivery, setDelivery] = useState(() =>
-    buildDeliveryFromAddress(initialDefaultAddress),
+    buildDeliveryFromAddress(null, initialSession?.email || ''),
   )
   const [payment, setPayment] = useState(initialPayment)
   const [savedAddresses, setSavedAddresses] = useState(() => getSavedAddresses())
-  const [selectedAddressId, setSelectedAddressId] = useState(
-    initialDefaultAddress?.id || '',
-  )
+  const [selectedAddressId, setSelectedAddressId] = useState('')
   const [savedCards, setSavedCards] = useState([])
   const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
   const [saveCardForLater, setSaveCardForLater] = useState(false)
@@ -312,6 +313,21 @@ export default function CheckoutPage() {
       active = false
     }
   }, [isLoggedIn])
+
+  useEffect(() => {
+    if (!session?.email) {
+      return
+    }
+
+    setDelivery((current) =>
+      current.email
+        ? current
+        : {
+            ...current,
+            email: session.email,
+          },
+    )
+  }, [session?.email])
 
   useEffect(() => {
     const cardDigits = payment.cardNumber.replace(/\D/g, '')
@@ -481,15 +497,24 @@ export default function CheckoutPage() {
       return
     }
 
-    const address = savedAddresses.find((candidate) => candidate.id === addressId)
+    void (async () => {
+      try {
+        const address = await fetchSavedAddressById(addressId)
 
-    if (!address) {
-      return
-    }
+        if (!address) {
+          return
+        }
 
-    setDelivery(buildDeliveryFromAddress(address))
-    setSelectedAddressId(address.id)
-    setErrors({})
+        setDelivery(buildDeliveryFromAddress(address, session?.email || delivery.email || ''))
+        setSelectedAddressId(address.id)
+        setErrors({})
+      } catch (loadError) {
+        setErrors((current) => ({
+          ...current,
+          delivery: loadError.message || 'Could not load saved address',
+        }))
+      }
+    })()
   }
 
   const renderFieldError = (field) =>
@@ -653,8 +678,7 @@ export default function CheckoutPage() {
                       <option value="">Choose a saved address</option>
                       {savedAddresses.map((address) => (
                         <option key={address.id} value={address.id}>
-                          {address.label || address.fullName}
-                          {address.isDefault ? ' (Default)' : ''}
+                          {address.label || address.fullName || address.summaryTitle || `Address ${address.id}`}
                         </option>
                       ))}
                     </select>
@@ -777,6 +801,12 @@ export default function CheckoutPage() {
                 />
                 {renderFieldError('postalCode')}
               </label>
+
+              {errors.delivery ? (
+                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
+                  {errors.delivery}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

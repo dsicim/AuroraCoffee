@@ -9,14 +9,13 @@ import {
 import {
   addressBookChangeEvent,
   deleteSavedAddress,
+  fetchSavedAddressById,
   fetchSavedAddresses,
   getSavedAddresses,
   saveSavedAddress,
-  setDefaultSavedAddress,
 } from '../lib/addressBook'
 import {
   validateCityPostalCode,
-  validateEmail,
   validateTurkishCity,
 } from '../lib/validation'
 
@@ -25,14 +24,12 @@ const initialFormState = {
   label: '',
   firstName: '',
   lastName: '',
-  email: '',
   addressLine1: '',
   addressLine2: '',
   province: '',
   district: '',
   postalCode: '',
   phone: '',
-  isDefault: false,
 }
 
 function validateAddressForm(form) {
@@ -44,11 +41,6 @@ function validateAddressForm(form) {
 
   if (!form.lastName.trim()) {
     errors.lastName = 'Last name is required'
-  }
-
-  const emailValidation = validateEmail(form.email)
-  if (!emailValidation.s) {
-    errors.email = emailValidation.e
   }
 
   if (!form.addressLine1.trim()) {
@@ -88,7 +80,7 @@ export default function AddressesPage() {
   useEffect(() => {
     const syncAddresses = () => {
       void (async () => {
-        await fetchSavedAddresses({ force: true })
+        await fetchSavedAddresses({ force: true, includeDetails: true })
         setAddresses(getSavedAddresses())
       })()
     }
@@ -153,23 +145,36 @@ export default function AddressesPage() {
     })()
   }
 
-  const handleEdit = (address) => {
-    setForm({
-      id: address.id,
-      label: address.label || '',
-      firstName: address.firstName || '',
-      lastName: address.lastName || '',
-      email: address.email,
-      addressLine1: address.addressLine1 || '',
-      addressLine2: address.addressLine2 || '',
-      province: address.province || '',
-      district: address.district || '',
-      postalCode: address.postalCode,
-      phone: address.phone || '',
-      isDefault: Boolean(address.isDefault),
-    })
-    setErrors({})
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+  const handleEdit = (addressId) => {
+    void (async () => {
+      try {
+        const address = await fetchSavedAddressById(addressId)
+
+        if (!address) {
+          return
+        }
+
+        setForm({
+          id: address.id,
+          label: address.label || '',
+          firstName: address.firstName || '',
+          lastName: address.lastName || '',
+          addressLine1: address.addressLine1 || '',
+          addressLine2: address.addressLine2 || '',
+          province: address.province || '',
+          district: address.district || '',
+          postalCode: address.postalCode,
+          phone: address.phone || '',
+        })
+        setErrors({})
+        window.scrollTo({ top: 0, behavior: 'smooth' })
+      } catch (loadError) {
+        setErrors((current) => ({
+          ...current,
+          form: loadError.message || 'Could not load address details',
+        }))
+      }
+    })()
   }
 
   const renderFieldError = (field) =>
@@ -185,7 +190,7 @@ export default function AddressesPage() {
     <AccountLayout
       eyebrow="Saved addresses"
       title="Faster checkout starts here"
-      description="Build an address book for faster checkout. A default address can prefill delivery details automatically, and any saved address can be applied during checkout."
+      description="Build an address book for faster checkout. Any saved address can be applied during checkout or edited here whenever your delivery details change."
     >
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="aurora-ops-panel p-8">
@@ -247,19 +252,6 @@ export default function AddressesPage() {
                 className="aurora-input"
               />
               {renderFieldError('lastName')}
-            </label>
-
-            <label className="block sm:col-span-2">
-              <span className="aurora-field-label">
-                Email
-              </span>
-              <input
-                type="email"
-                value={form.email}
-                onChange={(event) => handleChange('email', event.target.value)}
-                className="aurora-input"
-              />
-              {renderFieldError('email')}
             </label>
 
             <label className="block sm:col-span-2">
@@ -353,26 +345,6 @@ export default function AddressesPage() {
               {renderFieldError('postalCode')}
             </label>
 
-            <label className="glass-toggle sm:col-span-2">
-              <input
-                type="checkbox"
-                checked={form.isDefault}
-                onChange={(event) => handleChange('isDefault', event.target.checked)}
-                className="toggle-input"
-              />
-              <span className="toggle-track">
-                <span className="glass-filter" />
-                <span className="glass-overlay" />
-                <span className="glass-specular" />
-                <span className="toggle-thumb">
-                  <span className="glass-filter" />
-                  <span className="glass-overlay" />
-                  <span className="glass-specular" />
-                </span>
-              </span>
-              <span className="toggle-label">Set as default checkout address</span>
-            </label>
-
             <LiquidGlassButton
               type="submit"
               variant="secondary"
@@ -421,18 +393,11 @@ export default function AddressesPage() {
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
                           {address.label || address.fullName}
                         </p>
-                        {address.isDefault ? (
-                          <span className="rounded-full border border-[rgba(138,144,119,0.26)] bg-[rgba(230,232,222,0.48)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
-                            Default
-                          </span>
-                        ) : null}
                       </div>
                       <p className="mt-3 text-sm leading-8 text-[var(--aurora-text)]">
                         <span className="font-semibold text-[var(--aurora-text-strong)]">
                           {address.fullName}
                         </span>
-                        <br />
-                        {address.email}
                         <br />
                         {address.addressLine1}
                         {address.addressLine2 ? (
@@ -447,19 +412,9 @@ export default function AddressesPage() {
                     </div>
 
                     <div className="flex flex-wrap gap-2">
-                      {!address.isDefault ? (
-                        <LiquidGlassButton
-                          type="button"
-                          variant="soft"
-                          size="compact"
-                          onClick={() => setAddresses(setDefaultSavedAddress(address.id))}
-                        >
-                          Make default
-                        </LiquidGlassButton>
-                      ) : null}
                       <LiquidGlassButton
                         type="button"
-                        onClick={() => handleEdit(address)}
+                        onClick={() => handleEdit(address.id)}
                         variant="quiet"
                         size="compact"
                       >

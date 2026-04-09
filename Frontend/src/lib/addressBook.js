@@ -1,14 +1,14 @@
 import { buildApiUrl } from './api'
-import { getAuthSession, getAuthStorageMode } from './auth'
+import { getAuthSession } from './auth'
 
 export const addressBookChangeEvent = 'aurora-address-book-change'
 
-const addressBookStorageKeys = {
-  shadowLocal: 'auroraAddressShadowLocal',
-  shadowSession: 'auroraAddressShadowSession',
-  prefLocal: 'auroraAddressPrefLocal',
-  prefSession: 'auroraAddressPrefSession',
+const legacyAddressStorageKeys = {
+  local: 'auroraAddressesLocal',
+  session: 'auroraAddressesSession',
 }
+
+const addressMigrationStorageKey = 'auroraAddressMigrationState'
 
 let cachedAddresses = []
 
@@ -45,86 +45,6 @@ function parseScopedMap(rawValue) {
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
 }
 
-function getStorageKey(kind, mode) {
-  if (kind === 'shadow') {
-    return mode === 'session'
-      ? addressBookStorageKeys.shadowSession
-      : addressBookStorageKeys.shadowLocal
-  }
-
-  return mode === 'session'
-    ? addressBookStorageKeys.prefSession
-    : addressBookStorageKeys.prefLocal
-}
-
-function readScopedValue(kind, mode, scope, fallback) {
-  if (!scope) {
-    return fallback
-  }
-
-  const scopedMap = parseScopedMap(getStorage(mode).getItem(getStorageKey(kind, mode)))
-  return scopedMap[scope] ?? fallback
-}
-
-function writeScopedValue(kind, mode, scope, value) {
-  if (!scope) {
-    return
-  }
-
-  const storage = getStorage(mode)
-  const key = getStorageKey(kind, mode)
-  const scopedMap = parseScopedMap(storage.getItem(key))
-
-  if (value && ((Array.isArray(value) && value.length) || (!Array.isArray(value) && Object.keys(value).length))) {
-    scopedMap[scope] = value
-  } else {
-    delete scopedMap[scope]
-  }
-
-  const entries = Object.entries(scopedMap).filter(([, entryValue]) => {
-    if (Array.isArray(entryValue)) {
-      return entryValue.length
-    }
-
-    return Boolean(entryValue && Object.keys(entryValue).length)
-  })
-
-  if (!entries.length) {
-    storage.removeItem(key)
-    return
-  }
-
-  storage.setItem(key, JSON.stringify(Object.fromEntries(entries)))
-}
-
-function getAddressStorageMode() {
-  return getAuthStorageMode() || 'local'
-}
-
-function getAddressShadows() {
-  const scope = getAddressScope()
-  const mode = getAddressStorageMode()
-  return readScopedValue('shadow', mode, scope, {})
-}
-
-function saveAddressShadows(shadows) {
-  const scope = getAddressScope()
-  const mode = getAddressStorageMode()
-  writeScopedValue('shadow', mode, scope, shadows)
-}
-
-function getAddressPreferences() {
-  const scope = getAddressScope()
-  const mode = getAddressStorageMode()
-  return readScopedValue('pref', mode, scope, {})
-}
-
-function saveAddressPreferences(preferences) {
-  const scope = getAddressScope()
-  const mode = getAddressStorageMode()
-  writeScopedValue('pref', mode, scope, preferences)
-}
-
 function dispatchAddressBookChange(type) {
   window.dispatchEvent(
     new CustomEvent(addressBookChangeEvent, {
@@ -140,16 +60,16 @@ function splitFullName(value) {
     .filter(Boolean)
 
   if (!parts.length) {
-    return { name: '', surname: '' }
+    return { firstName: '', lastName: '' }
   }
 
   if (parts.length === 1) {
-    return { name: parts[0], surname: '' }
+    return { firstName: parts[0], lastName: '' }
   }
 
   return {
-    name: parts.slice(0, -1).join(' '),
-    surname: parts.slice(-1)[0] || '.',
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts.slice(-1)[0] || '',
   }
 }
 
@@ -160,29 +80,22 @@ function joinName(firstName, lastName) {
     .trim()
 }
 
-function splitAddressLines(value) {
-  const raw = String(value || '').trim()
-
-  if (!raw) {
-    return { addressLine1: '', addressLine2: '' }
-  }
-
-  const lines = raw
+function splitAddressLines(value, fallbackSecondLine = '') {
+  const lines = String(value || '')
     .split(/\n+/)
     .map((line) => line.trim())
     .filter(Boolean)
 
   if (!lines.length) {
-    return { addressLine1: '', addressLine2: '' }
-  }
-
-  if (lines.length === 1) {
-    return { addressLine1: lines[0], addressLine2: '' }
+    return {
+      addressLine1: '',
+      addressLine2: String(fallbackSecondLine || '').trim(),
+    }
   }
 
   return {
-    addressLine1: lines[0],
-    addressLine2: lines.slice(1).join(', '),
+    addressLine1: lines[0] || '',
+    addressLine2: lines.slice(1).join(', ') || String(fallbackSecondLine || '').trim(),
   }
 }
 
@@ -193,67 +106,11 @@ function joinAddressLines(addressLine1, addressLine2) {
     .trim()
 }
 
-function parseSummaryAddress(summaryAddress) {
-  const parts = String(summaryAddress?.desc || '')
-    .split(',')
-    .map((part) => part.trim())
-    .filter(Boolean)
-
-  return {
-    city: parts[0] || '',
-    province: parts[1] || parts[0] || '',
-    country: parts[2] || 'Turkey',
-  }
-}
-
-function mergeAddressRecord(summaryAddress, shadowAddress, defaultAddressId) {
-  const summary = parseSummaryAddress(summaryAddress)
-  const nameParts = splitFullName(shadowAddress?.fullName || summaryAddress.title || '')
-  const addressLines = splitAddressLines(shadowAddress?.address || '')
-  const district = shadowAddress?.district || shadowAddress?.city || summary.city
-  const province = shadowAddress?.province || summary.province
-
-  return {
-    id: String(summaryAddress.id),
-    label: shadowAddress?.label || summaryAddress.title || '',
-    firstName: shadowAddress?.firstName || nameParts.name || '',
-    lastName: shadowAddress?.lastName || nameParts.surname || '',
-    fullName: joinName(
-      shadowAddress?.firstName || nameParts.name || '',
-      shadowAddress?.lastName || nameParts.surname || '',
-    ),
-    email: shadowAddress?.email || '',
-    addressLine1: shadowAddress?.addressLine1 || addressLines.addressLine1 || '',
-    addressLine2: shadowAddress?.addressLine2 || addressLines.addressLine2 || '',
-    address: joinAddressLines(
-      shadowAddress?.addressLine1 || addressLines.addressLine1 || '',
-      shadowAddress?.addressLine2 || addressLines.addressLine2 || '',
-    ),
-    district,
-    city: district,
-    province,
-    country: shadowAddress?.country || summary.country,
-    postalCode: shadowAddress?.postalCode || '',
-    phone: shadowAddress?.phone || '',
-    isDefault: defaultAddressId
-      ? String(summaryAddress.id) === String(defaultAddressId)
-      : false,
-    summaryTitle: summaryAddress.title || '',
-    summaryDescription: summaryAddress.desc || '',
-  }
-}
-
 function sortAddresses(addresses) {
   return [...addresses].sort((left, right) => {
-    if (left.isDefault && !right.isDefault) {
-      return -1
-    }
-
-    if (!left.isDefault && right.isDefault) {
-      return 1
-    }
-
-    return (left.label || left.fullName || '').localeCompare(right.label || right.fullName || '')
+    const leftLabel = left.label || left.fullName || left.summaryTitle || ''
+    const rightLabel = right.label || right.fullName || right.summaryTitle || ''
+    return leftLabel.localeCompare(rightLabel)
   })
 }
 
@@ -282,9 +139,290 @@ async function requestAddressJson(path = '', options = {}) {
   return data
 }
 
+function normalizeSummaryAddress(summaryAddress) {
+  const descParts = String(summaryAddress?.desc || '')
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean)
+
+  return {
+    id: String(summaryAddress.id),
+    label: '',
+    firstName: '',
+    lastName: '',
+    fullName: '',
+    addressLine1: '',
+    addressLine2: '',
+    address: '',
+    district: descParts[0] || '',
+    city: descParts[0] || '',
+    province: descParts[1] || descParts[0] || '',
+    country: descParts[2] || 'Turkey',
+    postalCode: '',
+    phone: '',
+    summaryTitle: String(summaryAddress.title || '').trim(),
+    summaryDescription: String(summaryAddress.desc || '').trim(),
+  }
+}
+
+function normalizeDetailAddress(addressRecord) {
+  const firstName = String(addressRecord?.name || '').trim()
+  const lastName = String(addressRecord?.surname || '').trim()
+  const addressLine1 = String(addressRecord?.address || '').trim()
+  const addressLine2 = String(addressRecord?.address2 || '').trim()
+
+  return {
+    id: String(addressRecord.id),
+    label: String(addressRecord.alias || '').trim(),
+    firstName,
+    lastName,
+    fullName: joinName(firstName, lastName),
+    addressLine1,
+    addressLine2,
+    address: joinAddressLines(addressLine1, addressLine2),
+    district: String(addressRecord.city || '').trim(),
+    city: String(addressRecord.city || '').trim(),
+    province: String(addressRecord.province || '').trim(),
+    country: String(addressRecord.country || 'Turkey').trim(),
+    postalCode: String(addressRecord.zip || '').trim(),
+    phone: String(addressRecord.phone || '').trim(),
+    summaryTitle: String(addressRecord.alias || '').trim(),
+    summaryDescription: [
+      String(addressRecord.city || '').trim(),
+      String(addressRecord.province || '').trim(),
+      String(addressRecord.country || '').trim(),
+    ]
+      .filter(Boolean)
+      .join(', '),
+  }
+}
+
+function isValidSummaryAddress(address) {
+  return Boolean(
+    address &&
+      address.id !== undefined &&
+      typeof address === 'object' &&
+      (address.title || address.desc),
+  )
+}
+
+function readAddressMigrationState() {
+  return parseScopedMap(window.localStorage.getItem(addressMigrationStorageKey))
+}
+
+function writeAddressMigrationState(nextState) {
+  const entries = Object.entries(nextState).filter(([, value]) => Boolean(value))
+
+  if (!entries.length) {
+    window.localStorage.removeItem(addressMigrationStorageKey)
+    return
+  }
+
+  window.localStorage.setItem(addressMigrationStorageKey, JSON.stringify(Object.fromEntries(entries)))
+}
+
+function hasCompletedLegacyMigration(scope) {
+  if (!scope) {
+    return false
+  }
+
+  const state = readAddressMigrationState()
+  return Boolean(state[scope])
+}
+
+function markLegacyMigrationComplete(scope) {
+  if (!scope) {
+    return
+  }
+
+  const state = readAddressMigrationState()
+  state[scope] = true
+  writeAddressMigrationState(state)
+}
+
+function clearLegacyAddressesForScope(scope) {
+  if (!scope) {
+    return
+  }
+
+  for (const mode of ['local', 'session']) {
+    const storage = getStorage(mode)
+    const key = legacyAddressStorageKeys[mode]
+    const scopedMap = parseScopedMap(storage.getItem(key))
+
+    if (scope in scopedMap) {
+      delete scopedMap[scope]
+    }
+
+    const nextEntries = Object.entries(scopedMap).filter(([, value]) =>
+      Array.isArray(value) ? value.length > 0 : Boolean(value),
+    )
+
+    if (!nextEntries.length) {
+      storage.removeItem(key)
+    } else {
+      storage.setItem(key, JSON.stringify(Object.fromEntries(nextEntries)))
+    }
+  }
+}
+
+function readLegacyAddressesForScope(scope) {
+  if (!scope) {
+    return []
+  }
+
+  const seen = new Set()
+  const merged = []
+
+  for (const mode of ['local', 'session']) {
+    const scopedMap = parseScopedMap(getStorage(mode).getItem(legacyAddressStorageKeys[mode]))
+    const records = Array.isArray(scopedMap[scope]) ? scopedMap[scope] : []
+
+    for (const record of records) {
+      const recordKey = record?.id || JSON.stringify(record)
+
+      if (!record || seen.has(recordKey)) {
+        continue
+      }
+
+      seen.add(recordKey)
+      merged.push(record)
+    }
+  }
+
+  return merged
+}
+
+function normalizeLegacyAddressRecord(record) {
+  if (!record || typeof record !== 'object') {
+    return null
+  }
+
+  const firstName =
+    String(record.firstName || '').trim() || splitFullName(record.fullName).firstName
+  const lastName =
+    String(record.lastName || '').trim() || splitFullName(record.fullName).lastName
+  const lines = splitAddressLines(record.address, record.addressLine2)
+  const addressLine1 = String(record.addressLine1 || '').trim() || lines.addressLine1
+  const addressLine2 = String(record.addressLine2 || '').trim() || lines.addressLine2
+  const district =
+    String(record.district || '').trim() ||
+    String(record.city || '').trim()
+  const province =
+    String(record.province || '').trim() ||
+    String(record.city || '').trim()
+
+  if (
+    !firstName ||
+    !lastName ||
+    !addressLine1 ||
+    !district ||
+    !province ||
+    !String(record.postalCode || '').trim() ||
+    !String(record.phone || '').trim()
+  ) {
+    return null
+  }
+
+  return {
+    label: String(record.label || '').trim(),
+    firstName,
+    lastName,
+    fullName: joinName(firstName, lastName),
+    addressLine1,
+    addressLine2,
+    address: joinAddressLines(addressLine1, addressLine2),
+    district,
+    city: district,
+    province,
+    country: String(record.country || 'Turkey').trim(),
+    postalCode: String(record.postalCode || '').trim(),
+    phone: String(record.phone || '').trim(),
+  }
+}
+
+function createAddressSignature(address) {
+  const normalized = [
+    String(address.firstName || '').trim().toLowerCase(),
+    String(address.lastName || '').trim().toLowerCase(),
+    String(address.addressLine1 || '').trim().toLowerCase(),
+    String(address.addressLine2 || '').trim().toLowerCase(),
+    String(address.district || address.city || '').trim().toLowerCase(),
+    String(address.province || '').trim().toLowerCase(),
+    String(address.country || 'Turkey').trim().toLowerCase(),
+    String(address.postalCode || '').trim(),
+    String(address.phone || '').trim(),
+  ]
+
+  return normalized.join('|')
+}
+
 function persistResolvedAddresses(addresses) {
   cachedAddresses = sortAddresses(addresses)
   return cachedAddresses
+}
+
+async function fetchServerAddressDetail(addressId) {
+  const payload = await requestAddressJson(`?id=${encodeURIComponent(addressId)}`, {
+    method: 'GET',
+  })
+
+  if (!payload?.address?.id) {
+    throw new Error('Address not found')
+  }
+
+  return normalizeDetailAddress(payload.address)
+}
+
+async function runLegacyAddressMigration() {
+  const scope = getAddressScope()
+
+  if (!scope || hasCompletedLegacyMigration(scope)) {
+    return
+  }
+
+  const legacyAddresses = readLegacyAddressesForScope(scope)
+    .map(normalizeLegacyAddressRecord)
+    .filter(Boolean)
+
+  if (!legacyAddresses.length) {
+    clearLegacyAddressesForScope(scope)
+    markLegacyMigrationComplete(scope)
+    return
+  }
+
+  const summaryPayload = await requestAddressJson('', { method: 'GET' })
+  const serverSummaries = Array.isArray(summaryPayload?.addresses)
+    ? summaryPayload.addresses.filter(isValidSummaryAddress)
+    : []
+
+  const serverDetails = await Promise.all(
+    serverSummaries.map((address) => fetchServerAddressDetail(address.id).catch(() => null)),
+  )
+
+  const serverSignatures = new Set(
+    serverDetails.filter(Boolean).map((address) => createAddressSignature(address)),
+  )
+
+  for (const address of legacyAddresses) {
+    const signature = createAddressSignature(address)
+
+    if (serverSignatures.has(signature)) {
+      continue
+    }
+
+    await requestAddressJson('', {
+      method: 'POST',
+      body: JSON.stringify({
+        address: buildBackendAddressPayload(address),
+      }),
+    })
+
+    serverSignatures.add(signature)
+  }
+
+  clearLegacyAddressesForScope(scope)
+  markLegacyMigrationComplete(scope)
 }
 
 export function getSavedAddresses() {
@@ -292,38 +430,43 @@ export function getSavedAddresses() {
 }
 
 export function getDefaultSavedAddress() {
-  return cachedAddresses.find((address) => address.isDefault) || null
+  return null
 }
 
-export async function fetchSavedAddresses({ force = false } = {}) {
+export async function fetchSavedAddressById(addressId) {
+  if (!addressId) {
+    return null
+  }
+
+  return fetchServerAddressDetail(addressId)
+}
+
+export async function fetchSavedAddresses({ force = false, includeDetails = false } = {}) {
   if (!getAuthSession()?.token) {
     cachedAddresses = []
     return cachedAddresses
   }
 
-  if (cachedAddresses.length && !force) {
+  if (cachedAddresses.length && !force && !includeDetails) {
     return cachedAddresses
   }
 
-  const payload = await requestAddressJson('', { method: 'GET' })
-  const serverAddresses = Array.isArray(payload?.addresses) ? payload.addresses : []
-  const shadows = getAddressShadows()
-  const preferences = getAddressPreferences()
-  const defaultAddressId = preferences.defaultAddressId || serverAddresses[0]?.id || ''
-  const resolvedAddresses = serverAddresses.map((address) =>
-    mergeAddressRecord(address, shadows[String(address.id)], defaultAddressId),
-  )
+  await runLegacyAddressMigration()
 
-  if (resolvedAddresses.length && !resolvedAddresses.some((address) => address.isDefault)) {
-    resolvedAddresses[0] = {
-      ...resolvedAddresses[0],
-      isDefault: true,
-    }
-    saveAddressPreferences({
-      ...preferences,
-      defaultAddressId: resolvedAddresses[0].id,
-    })
-  }
+  const payload = await requestAddressJson('', { method: 'GET' })
+  const serverAddresses = Array.isArray(payload?.addresses)
+    ? payload.addresses.filter(isValidSummaryAddress)
+    : []
+
+  const resolvedAddresses = includeDetails
+    ? (
+        await Promise.all(
+          serverAddresses.map((address) =>
+            fetchServerAddressDetail(address.id).catch(() => normalizeSummaryAddress(address)),
+          ),
+        )
+      ).filter(Boolean)
+    : serverAddresses.map(normalizeSummaryAddress)
 
   return persistResolvedAddresses(resolvedAddresses)
 }
@@ -342,7 +485,6 @@ function normalizeAddressInput(addressInput) {
     firstName,
     lastName,
     fullName: joinName(firstName, lastName),
-    email: String(addressInput.email || '').trim(),
     addressLine1,
     addressLine2,
     address: joinAddressLines(addressLine1, addressLine2),
@@ -352,19 +494,18 @@ function normalizeAddressInput(addressInput) {
     country: String(addressInput.country || 'Turkey').trim(),
     postalCode: String(addressInput.postalCode || '').trim(),
     phone: String(addressInput.phone || '').trim(),
-    isDefault: Boolean(addressInput.isDefault),
   }
 }
 
 function buildBackendAddressPayload(addressInput) {
   const normalizedAddress = normalizeAddressInput(addressInput)
-  const { name, surname } = splitFullName(normalizedAddress.fullName)
 
   return {
     alias: normalizedAddress.label || undefined,
-    name,
-    surname,
-    address: normalizedAddress.address,
+    name: normalizedAddress.firstName || undefined,
+    surname: normalizedAddress.lastName || undefined,
+    address: normalizedAddress.addressLine1,
+    address2: normalizedAddress.addressLine2 || undefined,
     city: normalizedAddress.city,
     province: normalizedAddress.province || normalizedAddress.city,
     country: normalizedAddress.country || 'Turkey',
@@ -373,43 +514,8 @@ function buildBackendAddressPayload(addressInput) {
   }
 }
 
-function updateAddressShadow(id, addressInput) {
-  const shadows = getAddressShadows()
-  const normalizedAddress = normalizeAddressInput(addressInput)
-
-  shadows[String(id)] = normalizedAddress
-  saveAddressShadows(shadows)
-}
-
-function removeAddressShadow(id) {
-  const shadows = getAddressShadows()
-  delete shadows[String(id)]
-  saveAddressShadows(shadows)
-}
-
-function syncDefaultAddressPreference(nextAddresses, preferredId) {
-  const defaultAddressId =
-    preferredId && nextAddresses.some((address) => address.id === String(preferredId))
-      ? String(preferredId)
-      : nextAddresses[0]?.id || ''
-
-  const preferences = getAddressPreferences()
-  saveAddressPreferences({
-    ...preferences,
-    defaultAddressId,
-  })
-
-  return sortAddresses(
-    nextAddresses.map((address) => ({
-      ...address,
-      isDefault: address.id === defaultAddressId,
-    })),
-  )
-}
-
 export async function saveSavedAddress(addressInput) {
   const normalizedAddress = normalizeAddressInput(addressInput)
-  const beforeIds = new Set(getSavedAddresses().map((address) => address.id))
 
   if (normalizedAddress.id) {
     await requestAddressJson('', {
@@ -420,15 +526,9 @@ export async function saveSavedAddress(addressInput) {
       }),
     })
 
-    updateAddressShadow(normalizedAddress.id, normalizedAddress)
-    const nextAddresses = await fetchSavedAddresses({ force: true })
-    const resolvedAddresses = syncDefaultAddressPreference(
-      nextAddresses,
-      normalizedAddress.isDefault ? normalizedAddress.id : getAddressPreferences().defaultAddressId,
-    )
-    persistResolvedAddresses(resolvedAddresses)
+    const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
     dispatchAddressBookChange('save')
-    return resolvedAddresses
+    return nextAddresses
   }
 
   await requestAddressJson('', {
@@ -438,20 +538,9 @@ export async function saveSavedAddress(addressInput) {
     }),
   })
 
-  const nextAddresses = await fetchSavedAddresses({ force: true })
-  const newAddress = nextAddresses.find((address) => !beforeIds.has(address.id))
-
-  if (newAddress) {
-    updateAddressShadow(newAddress.id, normalizedAddress)
-  }
-
-  const resolvedAddresses = syncDefaultAddressPreference(
-    nextAddresses,
-    normalizedAddress.isDefault ? newAddress?.id : getAddressPreferences().defaultAddressId,
-  )
-  persistResolvedAddresses(resolvedAddresses)
+  const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
   dispatchAddressBookChange('save')
-  return resolvedAddresses
+  return nextAddresses
 }
 
 export async function deleteSavedAddress(addressId) {
@@ -462,24 +551,11 @@ export async function deleteSavedAddress(addressId) {
     }),
   })
 
-  removeAddressShadow(addressId)
-  const nextAddresses = (await fetchSavedAddresses({ force: true })).filter(
-    (address) => address.id !== String(addressId),
-  )
-  const resolvedAddresses = syncDefaultAddressPreference(
-    nextAddresses,
-    getAddressPreferences().defaultAddressId === String(addressId)
-      ? nextAddresses[0]?.id
-      : getAddressPreferences().defaultAddressId,
-  )
-  persistResolvedAddresses(resolvedAddresses)
+  const nextAddresses = await fetchSavedAddresses({ force: true, includeDetails: true })
   dispatchAddressBookChange('delete')
-  return resolvedAddresses
+  return nextAddresses
 }
 
-export function setDefaultSavedAddress(addressId) {
-  const resolvedAddresses = syncDefaultAddressPreference(getSavedAddresses(), addressId)
-  persistResolvedAddresses(resolvedAddresses)
-  dispatchAddressBookChange('default')
-  return resolvedAddresses
+export function setDefaultSavedAddress() {
+  return getSavedAddresses()
 }
