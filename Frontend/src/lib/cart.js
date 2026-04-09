@@ -18,6 +18,8 @@ export const cartStorageKeys = {
 export const cartChangeEvent = 'aurora-cart-change'
 
 let cachedServerCartItems = []
+let cachedServerCartScope = null
+let cachedServerCartLoaded = false
 let serverCartPromise = null
 
 function getStorage(mode) {
@@ -318,16 +320,38 @@ function getPersistedServerCartItems() {
   return readServerCartSnapshot(authStorageMode, scope)
 }
 
+function clearServerCartCache() {
+  cachedServerCartItems = []
+  cachedServerCartScope = null
+  cachedServerCartLoaded = false
+  serverCartPromise = null
+}
+
+function ensureServerCartScope(scope) {
+  if (cachedServerCartScope === scope) {
+    return
+  }
+
+  cachedServerCartItems = []
+  cachedServerCartScope = scope
+  cachedServerCartLoaded = false
+  serverCartPromise = null
+}
+
 function persistServerCartItems(items) {
   const authStorageMode = getAuthStorageMode()
   const scope = getCurrentCartScope()
 
   if (!authStorageMode || !scope) {
     cachedServerCartItems = items
+    cachedServerCartLoaded = false
+    cachedServerCartScope = null
     return items
   }
 
+  cachedServerCartScope = scope
   cachedServerCartItems = items
+  cachedServerCartLoaded = true
   writeServerCartSnapshot(authStorageMode, scope, items)
   return items
 }
@@ -368,6 +392,19 @@ async function hydrateServerCartRows(rows) {
 }
 
 async function fetchServerCart({ force = false } = {}) {
+  const scope = getCurrentCartScope()
+
+  if (!scope) {
+    clearServerCartCache()
+    return []
+  }
+
+  ensureServerCartScope(scope)
+
+  if (!force && cachedServerCartLoaded) {
+    return cachedServerCartItems
+  }
+
   if (serverCartPromise && !force) {
     return serverCartPromise
   }
@@ -418,6 +455,7 @@ export async function reconcileCartStorageWithAuth() {
   const sessionItems = readGuestCartItems('session')
 
   if (session?.token && authStorageMode) {
+    ensureServerCartScope(getCurrentCartScope())
     const guestItems = mergeCartItems(localItems, sessionItems)
 
     if (guestItems.length) {
@@ -427,12 +465,29 @@ export async function reconcileCartStorageWithAuth() {
         writeGuestCartItems('local', [])
         writeGuestCartItems('session', [])
       }
+
+      const serverItems = await fetchServerCart({ force: true })
+      dispatchCartChange()
+      return serverItems
+    }
+
+    if (cachedServerCartLoaded) {
+      return cachedServerCartItems
+    }
+
+    const persistedItems = getPersistedServerCartItems()
+
+    if (persistedItems.length) {
+      cachedServerCartItems = persistedItems
+      cachedServerCartScope = getCurrentCartScope()
     }
 
     const serverItems = await fetchServerCart()
     dispatchCartChange()
     return serverItems
   }
+
+  clearServerCartCache()
 
   if (sessionItems.length) {
     const mergedItems = mergeCartItems(localItems, sessionItems)
@@ -449,7 +504,10 @@ export function getCartItems() {
   const session = getAuthSession()
 
   if (session?.token) {
-    if (cachedServerCartItems.length) {
+    const scope = getCurrentCartScope()
+    ensureServerCartScope(scope)
+
+    if (cachedServerCartLoaded) {
       return cachedServerCartItems
     }
 
@@ -496,7 +554,7 @@ export async function addCartProduct(product, quantity = 1) {
       method: 'POST',
       body: JSON.stringify(payload),
     })
-    const serverItems = await fetchServerCart()
+    const serverItems = await fetchServerCart({ force: true })
     dispatchCartChange()
     return serverItems
   }
@@ -558,7 +616,7 @@ export async function updateCartItemQuantity(productId, nextQuantity) {
       }),
     })
 
-    const serverItems = await fetchServerCart()
+    const serverItems = await fetchServerCart({ force: true })
     dispatchCartChange()
     return serverItems
   }
@@ -591,7 +649,7 @@ export async function removeCartItem(productId) {
       method: 'DELETE',
     })
 
-    const serverItems = await fetchServerCart()
+    const serverItems = await fetchServerCart({ force: true })
     dispatchCartChange()
     return serverItems
   }
