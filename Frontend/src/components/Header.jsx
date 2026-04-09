@@ -18,7 +18,7 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { getRoleLandingPath, getRoleLabel, userRoles } from '../lib/roles'
+import { getRoleLandingPath, getRoleLabel, normalizeUserRole, userRoles } from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -39,12 +39,13 @@ export default function Header() {
     ? currentUserState.user
     : null
   const displayName = user?.displayname || 'Coffee Lover'
-  const resolvedRole = getRoleLabel(user?.role)
-  const isRoleKnown = Boolean(resolvedRole)
-  const roleLandingPath = isRoleKnown ? getRoleLandingPath(resolvedRole) : '/'
-  const roleBadgeLabel = isRoleKnown ? resolvedRole : 'Loading'
+  const normalizedRole = normalizeUserRole(user?.role)
+  const roleLabel = getRoleLabel(user?.role)
+  const isRoleKnown = Boolean(normalizedRole)
+  const roleLandingPath = isRoleKnown ? getRoleLandingPath(normalizedRole) : '/'
+  const roleBadgeLabel = roleLabel || 'Loading'
 
-  const accountLinks = resolvedRole === userRoles.customer
+  const accountLinks = normalizedRole === userRoles.customer
     ? [
       { label: 'Customer Home', to: '/customer' },
       { label: 'Account', to: '/account' },
@@ -54,7 +55,7 @@ export default function Header() {
     ]
     : isRoleKnown
       ? [
-        { label: `${resolvedRole} Home`, to: roleLandingPath },
+        { label: `${normalizedRole} Home`, to: roleLandingPath },
         { label: 'Browse Storefront', to: '/' },
         { label: 'View Catalog', to: '/products' },
       ]
@@ -304,7 +305,7 @@ export default function Header() {
                       <div className="fixed inset-x-3 top-[6.4rem] z-50 md:absolute md:right-0 md:left-auto md:top-full md:z-30 md:w-72 md:pt-4">
                         <div className="aurora-showcase-band aurora-account-menu p-3">
                         <Link
-                          to={resolvedRole === userRoles.customer ? '/account' : roleLandingPath}
+                          to={normalizedRole === userRoles.customer ? '/account' : roleLandingPath}
                           onClick={() => setMenuOpen(false)}
                           className="aurora-solid-plate aurora-account-menu-profile block rounded-[1.5rem] px-4 py-4"
                         >

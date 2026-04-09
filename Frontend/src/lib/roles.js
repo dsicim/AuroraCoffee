@@ -41,5 +41,12 @@ export function getRoleLandingPath(role) {
 }
 
 export function getRoleLabel(role) {
-  return normalizeUserRole(role)
+  const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole) {
+    return normalizedRole
+  }
+
+  const rawRole = String(role || '').trim()
+  return rawRole || null
 }
