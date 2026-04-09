@@ -573,7 +573,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             body.data.forEach(pair => {
                 form[pair.key] = pair.value;
             });
-            if (form.status && form.status === "success" && form.mdStatus === undefined && form.mdStatus === "1") {
+            if (form.status && form.status === "success" && form.mdStatus !== undefined && form.mdStatus === "1") {
                 let payload = {locale:"en",paymentId:form.paymentId};
                 if (form.conversationData) payload.conversationData = form.conversationData;
                 const response = await IyzipayAPI(config, "POST", "payment/3dsecure/auth", {}, payload);
@@ -599,7 +599,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
-            else if (form.status && form.status === "failure" && form.mdStatus === undefined && form.mdStatus !== "1") {
+            else if (form.status && form.status === "failure" && form.mdStatus !== undefined && form.mdStatus !== "1") {
                 return { s: 400, j: true, d: { e: "3DS Failure", details: {"-1":"3DS signature invalid","0":"3DS signature invalid","2":"Cardholder or bank not registered to 3DS","3":"Bank not participating in 3DS","4":"Cardholder registered to 3DS after transaction","5":"Unable to verify","6":"3DS Error","7":"Payment Processor Error","8":"Unknown Card Number"}[form.mdStatus] } };
             }
             else {
