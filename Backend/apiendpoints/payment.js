@@ -617,6 +617,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "3dscallback") {
         if (method === "POST") {
+            if (headers.origin != config.iyzipay.api && headers.referrer != config.iyzipay.api+"/") return { s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
             if (!body || body.json || !body.exists) return { s: 400, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } };
             body.data = body.data.split("&").map(pair => {
                 const p = pair.split("=");
@@ -654,7 +655,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
-                                    await sql.clearCart(order.user_id).then(result => {}).catch(err => {});
+                                    await sql.clearCart(order.userId).then(result => {}).catch(err => {});
                                     return { s: 200, j: true, d: { success: true, orderNumber: order.order, response: authChecker } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, response: authChecker } };
