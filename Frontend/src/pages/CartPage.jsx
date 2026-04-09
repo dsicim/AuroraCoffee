@@ -7,11 +7,31 @@ import { getAuthSession } from '../lib/auth'
 import { formatCurrency } from '../lib/currency'
 import {
   cartChangeEvent,
+  formatCartOptionLabel,
   getCartItems,
+  getCartOptionEntries,
   reconcileCartStorageWithAuth,
   removeCartItem,
   updateCartItemQuantity,
 } from '../lib/cart'
+
+function renderCartItemOptions(item) {
+  const optionEntries = getCartOptionEntries(item?.options)
+
+  if (!optionEntries.length) {
+    return null
+  }
+
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {optionEntries.map(([key, value]) => (
+        <span key={`${item.id}-${key}`} className="aurora-chip text-[11px] tracking-[0.14em]">
+          {formatCartOptionLabel(key)}: {value}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 export default function CartPage() {
   const navigate = useNavigate()
@@ -105,8 +125,10 @@ export default function CartPage() {
                         {item.description}
                       </p>
 
+                      {renderCartItemOptions(item)}
+
                       <div className="mt-4 flex flex-wrap gap-2">
-                            {item.notes.map((note) => (
+                        {item.notes.map((note) => (
                           <span key={note} className="aurora-chip">
                             {note}
                           </span>

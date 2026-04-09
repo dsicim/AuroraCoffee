@@ -12,6 +12,7 @@ async function normalizeOrderLine(item) {
     product,
     quantity: Math.max(1, Math.floor(item.quantity) || 1),
     name: item.name || product.name,
+    options: item?.options && typeof item.options === 'object' ? item.options : null,
   }
 }
 
@@ -33,7 +34,15 @@ export async function restoreOrderItemsToCart(items) {
 
   if (validEntries.length) {
     for (const entry of validEntries) {
-      await addCartItem(entry.product, entry.quantity)
+      await addCartItem(
+        entry.options
+          ? {
+              ...entry.product,
+              options: entry.options,
+            }
+          : entry.product,
+        entry.quantity,
+      )
     }
   }
 

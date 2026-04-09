@@ -75,20 +75,88 @@ function normalizeProductPrice(value) {
   return 0
 }
 
+function normalizeCartOptions(options) {
+  if (!options || typeof options !== 'object' || Array.isArray(options)) {
+    return null
+  }
+
+  const entries = Object.entries(options)
+    .map(([key, value]) => {
+      const normalizedKey = String(key || '').trim()
+      const normalizedValue = String(value ?? '').trim()
+      return [normalizedKey, normalizedValue]
+    })
+    .filter(([key, value]) => Boolean(key && value))
+    .sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+
+  return entries.length ? Object.fromEntries(entries) : null
+}
+
+function serializeCartOptions(options) {
+  const normalizedOptions = normalizeCartOptions(options)
+  return normalizedOptions ? JSON.stringify(normalizedOptions) : ''
+}
+
+function buildCartVariantKey(productSlug, fallbackId, options) {
+  const normalizedBase = String(productSlug || fallbackId || '').trim()
+
+  if (!normalizedBase) {
+    return ''
+  }
+
+  const serializedOptions = serializeCartOptions(options)
+  return serializedOptions ? `${normalizedBase}::${serializedOptions}` : normalizedBase
+}
+
+function getCartMergeKey(item) {
+  return buildCartVariantKey(
+    item?.productSlug,
+    item?.productId || item?.id,
+    item?.options,
+  )
+}
+
+export function getCartOptionEntries(options) {
+  const normalizedOptions = normalizeCartOptions(options)
+  return normalizedOptions ? Object.entries(normalizedOptions) : []
+}
+
+export function formatCartOptionLabel(key) {
+  switch (String(key || '').trim().toLowerCase()) {
+    case 'filter':
+      return 'Filter'
+    case 'weight':
+      return 'Weight'
+    default:
+      return String(key || '')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase())
+    }
+}
+
 function normalizeStoredCartItem(item) {
   if (!item || typeof item !== 'object') {
     return null
   }
 
   const productSlug = typeof item.productSlug === 'string' ? item.productSlug : ''
-  const fallbackId = productSlug || String(item.id || '')
+  const normalizedOptions = normalizeCartOptions(item.options)
+  const preferredId =
+    typeof item.id === 'string' && item.id.trim()
+      ? item.id.trim()
+      : ''
+  const fallbackId = buildCartVariantKey(
+    productSlug,
+    item.productId || item.id,
+    normalizedOptions,
+  )
 
-  if (!fallbackId) {
+  if (!preferredId && !fallbackId) {
     return null
   }
 
   return {
-    id: fallbackId,
+    id: preferredId || fallbackId,
     lineItemId: Number(item.lineItemId) || null,
     productId: Number(item.productId) || null,
     productSlug,
@@ -101,7 +169,7 @@ function normalizeStoredCartItem(item) {
     price: normalizeProductPrice(item.price),
     quantity: Math.max(1, Math.floor(item.quantity) || 1),
     imageUrl: item.imageUrl || '',
-    options: item.options && typeof item.options === 'object' ? item.options : null,
+    options: normalizedOptions,
   }
 }
 
@@ -161,7 +229,7 @@ function mergeCartItems(baseItems, incomingItems) {
   const merged = new Map()
 
   for (const item of [...baseItems, ...incomingItems]) {
-    const key = item.productSlug || item.id
+    const key = getCartMergeKey(item)
 
     if (!key) {
       continue
@@ -184,9 +252,11 @@ function mergeCartItems(baseItems, incomingItems) {
   return Array.from(merged.values())
 }
 
-function buildCartItem(product, quantity = 1) {
+function buildCartItem(product, quantity = 1, options = null) {
+  const normalizedOptions = normalizeCartOptions(options)
+
   return {
-    id: product.slug,
+    id: buildCartVariantKey(product.slug, product.id, normalizedOptions),
     lineItemId: null,
     productId: product.id,
     productSlug: product.slug,
@@ -199,7 +269,7 @@ function buildCartItem(product, quantity = 1) {
     price: normalizeProductPrice(product.price),
     quantity: Math.max(1, Math.floor(quantity) || 1),
     imageUrl: product.imageUrl || '',
-    options: null,
+    options: normalizedOptions,
   }
 }
 
@@ -409,6 +479,7 @@ export async function addCartProduct(product, quantity = 1) {
   }
 
   const nextQuantity = Math.max(1, Math.floor(quantity) || 1)
+  const normalizedOptions = normalizeCartOptions(product.options)
   const session = getAuthSession()
 
   if (session?.token) {
@@ -417,8 +488,8 @@ export async function addCartProduct(product, quantity = 1) {
       qty: nextQuantity,
     }
 
-    if (product.options) {
-      payload.opt = product.options
+    if (normalizedOptions) {
+      payload.opt = normalizedOptions
     }
 
     await requestCartJson('/cart', {
@@ -432,15 +503,16 @@ export async function addCartProduct(product, quantity = 1) {
 
   const storageMode = getCartStorageMode()
   const existingItems = readGuestCartItems(storageMode)
-  const existingItem = existingItems.find((item) => item.id === product.slug)
+  const nextItemKey = buildCartVariantKey(product.slug, product.id, normalizedOptions)
+  const existingItem = existingItems.find((item) => getCartMergeKey(item) === nextItemKey)
 
   const nextItems = existingItem
     ? existingItems.map((item) =>
-        item.id === product.slug
+        getCartMergeKey(item) === nextItemKey
           ? { ...item, quantity: item.quantity + nextQuantity }
           : item,
       )
-    : [...existingItems, buildCartItem(product, nextQuantity)]
+    : [...existingItems, buildCartItem(product, nextQuantity, normalizedOptions)]
 
   writeGuestCartItems(storageMode, nextItems)
   dispatchCartChange()
@@ -482,6 +554,7 @@ export async function updateCartItemQuantity(productId, nextQuantity) {
       body: JSON.stringify({
         id: targetItem.lineItemId,
         qty: sanitizedQuantity,
+        ...(targetItem.options ? { opt: targetItem.options } : {}),
       }),
     })
 

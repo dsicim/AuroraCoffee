@@ -23,7 +23,9 @@ import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
   cartChangeEvent,
   clearCart,
+  formatCartOptionLabel,
   getCartItems,
+  getCartOptionEntries,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
 import {
@@ -91,6 +93,24 @@ function getDeliveryFullName(delivery) {
 
 function getDeliveryAddressLines(delivery) {
   return [delivery.addressLine1, delivery.addressLine2].filter(Boolean)
+}
+
+function renderCartItemOptions(item) {
+  const optionEntries = getCartOptionEntries(item?.options)
+
+  if (!optionEntries.length) {
+    return null
+  }
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {optionEntries.map(([key, value]) => (
+        <span key={`${item.id}-${key}`} className="aurora-chip text-[11px] tracking-[0.14em]">
+          {formatCartOptionLabel(key)}: {value}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function formatCardNumber(value) {
@@ -1074,6 +1094,7 @@ export default function CheckoutPage() {
                           <p className="text-sm text-[var(--aurora-text)]">
                             {item.metaLine || item.category || 'Product'}
                           </p>
+                          {renderCartItemOptions(item)}
                           <p className="text-sm text-[var(--aurora-text)]">
                             Qty {item.quantity}
                           </p>
@@ -1199,6 +1220,7 @@ export default function CheckoutPage() {
                     <p className="text-sm text-[var(--aurora-text)]">
                       {item.metaLine || item.category || 'Product'}
                     </p>
+                    {renderCartItemOptions(item)}
                     <p className="text-sm text-[var(--aurora-text)]">
                       Qty {item.quantity}
                     </p>

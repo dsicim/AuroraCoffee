@@ -36,7 +36,7 @@ function buildAttributeCards(product) {
 }
 
 const placeholderWeightOptions = ['250 g', '500 g', '1 kg']
-const placeholderGrindOptions = ['Whole bean', 'Pour over', 'Espresso']
+const placeholderFilterOptions = ['Whole bean', 'Filter', 'Espresso']
 
 function PreviewDropdown({
   value,
@@ -112,7 +112,7 @@ export default function ProductDetailPage() {
   const [feedback, setFeedback] = useState('')
   const [previewSelection, setPreviewSelection] = useState({
     productSlug: '',
-    grind: '',
+    filter: '',
     weight: '',
   })
   const [openPreviewMenu, setOpenPreviewMenu] = useState({
@@ -176,16 +176,33 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
-  const previewGrind = previewSelection.productSlug === product.slug ? previewSelection.grind : ''
+  const previewFilter = previewSelection.productSlug === product.slug ? previewSelection.filter : ''
   const previewWeight = previewSelection.productSlug === product.slug ? previewSelection.weight : ''
   const activePreviewMenu = openPreviewMenu.productSlug === product.slug ? openPreviewMenu.menu : ''
+  const requiresCoffeeOptions = isCoffeeProduct(product)
+  const hasRequiredCoffeeOptions = !requiresCoffeeOptions || Boolean(previewFilter && previewWeight)
 
   const handleAddToCart = async () => {
     if (!availability.hasStock) {
       return
     }
 
-    await addCartItem(product)
+    if (requiresCoffeeOptions && !hasRequiredCoffeeOptions) {
+      setFeedback('Select filter and weight before adding this coffee to cart.')
+      return
+    }
+
+    const selectedOptions = requiresCoffeeOptions
+      ? {
+          filter: previewFilter,
+          weight: previewWeight,
+        }
+      : null
+
+    await addCartItem({
+      ...product,
+      options: selectedOptions,
+    })
     setFeedback(`${product.name} was added to cart.`)
   }
 
@@ -248,41 +265,41 @@ export default function ProductDetailPage() {
                 <div>
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Grind
+                      Filter
                     </p>
                     <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                      To be implemented
+                      Read-only in cart
                     </span>
                   </div>
                   <PreviewDropdown
-                    value={previewGrind}
-                    placeholder="Select grind"
-                    options={placeholderGrindOptions}
-                    open={activePreviewMenu === 'grind'}
+                    value={previewFilter}
+                    placeholder="Select filter"
+                    options={placeholderFilterOptions}
+                    open={activePreviewMenu === 'filter'}
                     onToggle={(nextOpen) => {
                       setOpenPreviewMenu({
                         productSlug: product.slug,
-                        menu: nextOpen ? 'grind' : '',
+                        menu: nextOpen ? 'filter' : '',
                       })
                     }}
                     onSelect={(option) => {
                       setPreviewSelection({
                         productSlug: product.slug,
-                        grind: option,
+                        filter: option,
                         weight: '',
                       })
                     }}
                   />
                 </div>
 
-                {previewGrind ? (
+                {previewFilter ? (
                   <div>
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                         Weight
                       </p>
                       <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                        To be implemented
+                        Read-only in cart
                       </span>
                     </div>
                     <PreviewDropdown
@@ -299,7 +316,7 @@ export default function ProductDetailPage() {
                       onSelect={(option) => {
                         setPreviewSelection((current) => ({
                           productSlug: product.slug,
-                          grind: current.productSlug === product.slug ? current.grind : '',
+                          filter: current.productSlug === product.slug ? current.filter : '',
                           weight: option,
                         }))
                       }}
@@ -329,14 +346,18 @@ export default function ProductDetailPage() {
 
             <LiquidGlassButton
               type="button"
-            onClick={() => {
-              void handleAddToCart()
-            }}
-              disabled={!availability.hasStock}
+              onClick={() => {
+                void handleAddToCart()
+              }}
+              disabled={!availability.hasStock || !hasRequiredCoffeeOptions}
               size="hero"
               className="mt-6 w-full"
             >
-              {availability.hasStock ? 'Add to cart' : 'Unavailable'}
+              {!availability.hasStock
+                ? 'Unavailable'
+                : requiresCoffeeOptions && !hasRequiredCoffeeOptions
+                  ? 'Select options first'
+                  : 'Add to cart'}
             </LiquidGlassButton>
 
             {feedback ? (
