@@ -253,7 +253,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                 }
             })
-            body.data.card = body.data.card.filter(item => item !== undefined);
+            body.data.cart = body.data.cart.filter(item => item !== undefined);
             if (body.data.cart.length === 0) return { s: 412, j: true, d: { success: false, e: { what: "Shopping Cart", why: "All cart items are invalid", resolution: "Make sure all items in your cart are valid" } } };
             let actualCart = await sql.getCart(currentUser.id).then(result => {
                 if (result.success) return {
