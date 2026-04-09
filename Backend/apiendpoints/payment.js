@@ -25,6 +25,16 @@ function checkTrim(x) {
 function getCardDetailsFromResponse(insresponse) {
     return { type: { "CREDIT_CARD": "Credit Card", "DEBIT_CARD": "Debit Card", "PREPAID_CARD": "Prepaid Card" }[insresponse.cardType] || "Unknown Card", provider: { "VISA": "Visa", "MASTER_CARD": "MasterCard", "AMERICAN_EXPRESS": "American Express", "TROY": "Troy" }[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || insresponse.cardBankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
 }
+const tokens = new Map();
+async function generateToken() {
+    let token = crypto.randomBytes(128).toString('base64').substring(0, 64);
+    token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
+    while (tokens.has(token)) {
+        token = crypto.randomBytes(128).toString('base64').substring(0, 64);
+        token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
+    }
+    return token;
+}
 function validateCreditCard(card, ignorecvc = false) {
     if (!card || !card.number || !card.expiry || (!card.cvc && !ignorecvc) || !card.holder) return { valid: false, error: "Missing required card fields" };
     if (!card.expiry.month || !card.expiry.year) return { valid: false, error: "Invalid expiry format" };
@@ -105,29 +115,20 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         installment,
         price: {
             subtotal: subtotal,
+            paid: subtotal,
             total: realPrice
         },
         currency: currency
     };
-    let orderNumber = await sql.reserveOrderNumber(currentUser.id, JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))).then(result => {
-        if (result.success) return { s: true, n: result.oID };
-        else return { s: false, e: "An unknown error occurred" };
-    }).catch(err => {
-        console.error("Get order number error:", err);
-        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
-        else return { s: false, e: "An unknown error occurred" };
-    });
-    if (orderNumber.s) ordernumber = orderNumber.oID;
-    else return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
     const payload = {
         locale: "en",
-        conversationId: orderNumber.n,
         price: subtotal,
         paidPrice: subtotal,
         currency: currency,
         installment: installment,
         paymentCard: card,
         callbackUrl: "https://" + config.domain + "/api/payment/3dscallback",
+        basketId: cart[0].id.toString(),
         buyer: {
             id: currentUser.id.toString(),
             name: currentUser.displayname.split(' ').slice(0, -1).join(' ') || currentUser.displayname,
@@ -155,7 +156,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
-    return {s: true, p: payload, o: orderNumber.n};
+    return {s: true, p: payload, o: {user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))}};
 }
 function PaymentError(err, errorMsg, tvoyBank = "your bank") {
     console.error("Payment error:", err, errorMsg);
@@ -544,20 +545,21 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let failed = false;
                 if (response) {
                     if (response.status === "success") {
-                        let updateResult = await sql.updateOrderStatus(payload.o, "pending", response.paymentId).then(result => {
-                            if (result.success) return { s: true };
-                            else return { s: false, e: "An unknown error occurred" };
-                        }).catch(err => {
-                            console.error("Update order status error:", err);
-                            if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
-                            else return { s: false, e: "An unknown error occurred" };
-                        });
                         if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: response.paymentId });
                         if (authChecker) {
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
-                                    updateResult = await sql.updateOrderStatus(payload.o, "confirmed").then(result => {
+                                    let orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
+                                        if (result.success) return { s: true, n: result.oID };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    }).catch(err => {
+                                        console.error("Get order number error:", err);
+                                        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    });
+                                    if (!orderNumber.s) return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
+                                    updateResult = await sql.updateOrderStatus(payload.o, "confirmed", response.paymentId).then(result => {
                                         if (result.success) return { s: true };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
@@ -567,7 +569,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
-                                    return { s: 200, j: true, d: { success: true, orderNumber: payload.o, response: authChecker } };
+                                    return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.oID, response: authChecker } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
                             }
@@ -590,17 +592,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
             }
             if (tryIn3DS) {
+                const random = generateToken();
+                payload.p.conversationId = random;
                 const response = await IyzipayAPI(config, "POST", "payment/3dsecure/initialize", {}, payload.p);
                 if (response) {
                     if (response.status === "success") {
-                        let updateResult = await sql.updateOrderStatus(payload.o, "pending", response.paymentId).then(result => {
-                            if (result.success) return { s: true };
-                            else return { s: false, e: "An unknown error occurred" };
-                        }).catch(err => {
-                            console.error("Update order status error:", err);
-                            if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
-                            else return { s: false, e: "An unknown error occurred" };
-                        });
+                        payload.o.payment = response.paymentId;
+                        payload.o.timeout = new Date().getTime() + (10 * 60 * 1000);
+                        tokens.set(random, payload.o);
                         if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Update", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
@@ -631,25 +630,69 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 form[pair.key] = pair.value;
             });
             if (form.status && form.status === "success" && form.mdStatus !== undefined && form.mdStatus === "1" && form.conversationId && form.paymentId) {
-                const order = await sql.getOrderByPayment(form.conversationId, form.paymentId).then(result => {
-                    if (result.success) return { s: true, order: result.order };
-                    else return { s: false, e: "An unknown error occurred" };
-                }).catch(err => {
-                    console.error("Update order status error:", err);
-                    if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
-                    else return { s: false, e: "An unknown error occurred" };
-                });
-                if (!order.s) return CallbackEmbed({ success: false, e: { what: "Order Retrieval", why: "Failed to retrieve order information: " + order.e, resolution: "Please try again later or contact the developers" } });
-                let payload = { locale: "en", paymentId: form.paymentId };
+                let why = "TIMEOUT";
+                let details = null;
+                for (const [token, info] of tokens) {
+                    if (!info || typeof info.timeout !== "number" || info.timeout <= new Date().getTime()) {
+                        if (token == form.conversationId) why = "TIMEOUT";
+                        tokens.delete(token);
+                    }
+                }
+                if (tokens.has(form.conversationId)) {
+                    const orderInfo = tokens.get(form.conversationId);
+                    if (orderInfo.payment !== form.paymentId) {
+                        tokens.delete(form.conversationId);
+                        why = "PAYMENT_ID_MISMATCH";
+                    }
+                    else if (orderInfo.details) {
+                        details = aes.pjs(orderInfo.details);
+                        if (details.e && details.e.startsWith("Failed to parse JSON: ")) {
+                            tokens.delete(form.conversationId);
+                            why = "MALFORMED_ORDER_DETAILS";
+                        }
+                        else {
+                            details = aes.decrypt(details);
+                            if (!details.s) {
+                                tokens.delete(form.conversationId);
+                                why = "FAILED_TO_DECRYPT_ORDER_DETAILS";
+                            }
+                            else {
+                                details = aes.pjs(details.value);
+                                if (details.e && details.e.startsWith("Failed to parse JSON: ")) {
+                                    tokens.delete(form.conversationId);
+                                    why = "MALFORMED_DECRYPTED_ORDER_DETAILS";
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!tokens.has(form.conversationId)) {
+                    if (why == "TIMEOUT") return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Transaction's 3D Secure session has timed out", resolution: "Please try again later." } });
+                    if (why == "PAYMENT_ID_MISMATCH") return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context cannot be verified", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
+                    if (why == "MALFORMED_ORDER_DETAILS") return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context couldn't be internally accessed", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
+                    if (why == "FAILED_TO_DECRYPT_ORDER_DETAILS") return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context couldn't be internally accessed", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
+                    if (why == "MALFORMED_DECRYPTED_ORDER_DETAILS") return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context couldn't be internally accessed", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
+                }
+                if (!details) return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context couldn't be accessed", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
+                let payload = { locale: "en", paymentId: form.paymentId, conversationId: form.conversationId, basketId: details.products[0].id, currency: details.currency, paidPrice: details.price.paid };
                 if (form.conversationData) payload.conversationData = form.conversationData;
-                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/auth", {}, payload);
+                const response = await IyzipayAPI(config, "POST", "payment/v2/3dsecure/auth", {}, payload);
                 if (response) {
                     if (response.status === "success") {
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: form.paymentId });
                         if (authChecker) {
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
-                                    const updateResult = await sql.updateOrderStatus(order.order, "confirmed").then(result => {
+                                    let orderNumber = await sql.reserveOrderNumber(currentUser.id, payload.o.details).then(result => {
+                                        if (result.success) return { s: true, n: result.oID };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    }).catch(err => {
+                                        console.error("Get order number error:", err);
+                                        if (err instanceof sql.DBError) return { s: false, e: err.error || "An unknown error occurred" };
+                                        else return { s: false, e: "An unknown error occurred" };
+                                    });
+                                    if (!orderNumber.s) return { s: false, e: "Create order failed: " + orderNumber.e || "An unknown error occurred during order creation" };
+                                    const updateResult = await sql.updateOrderStatus(order.order, "confirmed", form.paymentId).then(result => {
                                         if (result.success) return { s: true };
                                         else return { s: false, e: "An unknown error occurred" };
                                     }).catch(err => {
@@ -659,7 +702,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await sql.clearCart(order.userId).then(result => {}).catch(err => {});
-                                    return CallbackEmbed({ success: true, orderNumber: order.order, response: authChecker });
+                                    return CallbackEmbed({ success: true, orderNumber: orderNumber.oID, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
                             }
