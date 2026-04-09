@@ -649,7 +649,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             why = "MALFORMED_ORDER_DETAILS";
                         }
                         else {
-                            details = aes.decrypt(details);
+                            details = aes.decrypt(details, orderInfo.user);
                             if (!details.s) {
                                 tokens.delete(form.conversationId);
                                 why = "FAILED_TO_DECRYPT_ORDER_DETAILS";
