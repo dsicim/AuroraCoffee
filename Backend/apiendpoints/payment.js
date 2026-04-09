@@ -27,11 +27,9 @@ function getCardDetailsFromResponse(insresponse) {
 }
 const tokens = new Map();
 async function generateToken() {
-    let token = crypto.randomBytes(128).toString('base64').substring(0, 64);
-    token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
+    let token = crypto.randomBytes(128).toString('base64').replaceAll('+', '').replaceAll('/', '').replaceAll('=', '').substring(0, 64);
     while (tokens.has(token)) {
-        token = crypto.randomBytes(128).toString('base64').substring(0, 64);
-        token = token.replaceAll('+', '!').replaceAll('/', '_').replaceAll('=', '-');
+        token = crypto.randomBytes(128).toString('base64').replaceAll('+', '').replaceAll('/', '').replaceAll('=', '').substring(0, 64);
     }
     return token;
 }
