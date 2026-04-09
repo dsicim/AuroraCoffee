@@ -86,7 +86,11 @@ export default function Header() {
         setSession(getAuthSession())
         setCurrentUserState(getCurrentUserSnapshot())
         reconcileAccountStorageWithAuth()
-        await reconcileCartStorageWithAuth()
+        try {
+          await reconcileCartStorageWithAuth()
+        } catch {
+          // Ignore stale auth/cart sync failures during session changes.
+        }
         setCartCount(getCartCount())
       })()
     }
@@ -167,7 +171,11 @@ export default function Header() {
       setMenuOpen(false)
       setMobileNavOpen(false)
       clearAuthSession()
-      await reconcileCartStorageWithAuth()
+      try {
+        await reconcileCartStorageWithAuth()
+      } catch {
+        // Ignore stale server cart cleanup failures after logout.
+      }
       setSession(getAuthSession())
       setCurrentUserState(getCurrentUserSnapshot())
       setCartCount(getCartCount())

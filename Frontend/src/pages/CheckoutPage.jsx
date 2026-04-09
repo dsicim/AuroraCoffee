@@ -39,6 +39,7 @@ import {
   buildPaymentSummary,
   consumeCheckout3DSReturnState,
   createPending3DSCheckoutSnapshot,
+  open3DSTargetSameTab,
   savePending3DSCheckoutSnapshot,
 } from '../lib/payment3ds'
 import {
@@ -331,7 +332,11 @@ export default function CheckoutPage() {
     const syncFromStorage = () => {
       void (async () => {
         reconcileAccountStorageWithAuth()
-        await reconcileCartStorageWithAuth()
+        try {
+          await reconcileCartStorageWithAuth()
+        } catch {
+          // Ignore stale auth failures during storage or payment-return sync.
+        }
         await fetchSavedAddresses().catch(() => [])
         setItems(getCartItems())
         setSession(getAuthSession())
@@ -696,7 +701,7 @@ export default function CheckoutPage() {
               total,
             }),
           )
-          window.location.assign(paymentResponse.target)
+          open3DSTargetSameTab(paymentResponse.target)
           return
         }
 

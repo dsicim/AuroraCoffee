@@ -269,3 +269,47 @@ export function parse3DSCallbackResult(rawResult) {
     }
   }
 }
+
+function decodeBase64Utf8(rawValue) {
+  const normalized = String(rawValue || '')
+    .trim()
+    .replace(/ /g, '+')
+
+  if (!normalized) {
+    return ''
+  }
+
+  const binary = window.atob(normalized)
+  const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0))
+  return new TextDecoder().decode(bytes)
+}
+
+function extract3DSHtmlFromTarget(target) {
+  const normalizedTarget = String(target || '').trim()
+  const match = normalizedTarget.match(/^data:text\/html(?:;charset=[^;,]+)?;base64,(.+)$/i)
+
+  if (!match) {
+    return null
+  }
+
+  return decodeBase64Utf8(match[1])
+}
+
+export function open3DSTargetSameTab(target) {
+  const normalizedTarget = String(target || '').trim()
+
+  if (!normalizedTarget) {
+    throw new Error('3D Secure was requested, but the payment page target was missing.')
+  }
+
+  const html = extract3DSHtmlFromTarget(normalizedTarget)
+
+  if (!html) {
+    window.location.assign(normalizedTarget)
+    return
+  }
+
+  window.document.open('text/html', 'replace')
+  window.document.write(html)
+  window.document.close()
+}

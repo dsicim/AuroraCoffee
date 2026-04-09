@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import AuroraAtmosphere from '../components/AuroraAtmosphere'
+import Footer from '../components/Footer'
 import LiquidGlassButton from '../components/LiquidGlassButton'
-import StorefrontLayout from '../components/StorefrontLayout'
+import LiquidGlassDefs from '../components/LiquidGlassDefs'
 import { addOrderHistoryEntry } from '../lib/accountData'
+import { getAuthSession } from '../lib/auth'
 import { clearCart, reconcileCartStorageWithAuth } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import { formatPaymentError } from '../lib/payment'
@@ -13,6 +16,30 @@ import {
   saveCheckout3DSReturnState,
 } from '../lib/payment3ds'
 
+function Checkout3DSCallbackLayout({ hero, children }) {
+  return (
+    <div className="aurora-page">
+      <LiquidGlassDefs />
+      <AuroraAtmosphere />
+
+      <main className="aurora-main">
+        <div className="aurora-container relative aurora-page-rail">
+          {hero ? (
+            <section className="aurora-page-intro relative">
+              {hero}
+            </section>
+          ) : null}
+          <div className="aurora-page-body">
+            {children}
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  )
+}
+
 export default function Checkout3DSCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -20,6 +47,7 @@ export default function Checkout3DSCallbackPage() {
   const [submittedOrder, setSubmittedOrder] = useState(null)
   const [orderNumber, setOrderNumber] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const hasSession = Boolean(getAuthSession()?.token)
 
   useEffect(() => {
     let active = true
@@ -65,7 +93,9 @@ export default function Checkout3DSCallbackPage() {
 
       try {
         await clearCart()
-        await reconcileCartStorageWithAuth()
+        if (getAuthSession()?.token) {
+          await reconcileCartStorageWithAuth()
+        }
       } catch {
         // Keep the success path moving even if local cart cleanup hits stale state.
       }
@@ -120,19 +150,19 @@ export default function Checkout3DSCallbackPage() {
 
   if (phase === 'loading') {
     return (
-      <StorefrontLayout hero={hero}>
+      <Checkout3DSCallbackLayout hero={hero}>
         <section className="aurora-showroom-panel p-8">
           <p className="text-sm leading-7 text-[var(--aurora-text)]">
             Waiting for the payment return...
           </p>
         </section>
-      </StorefrontLayout>
+      </Checkout3DSCallbackLayout>
     )
   }
 
   if (phase === 'failure') {
     return (
-      <StorefrontLayout hero={hero}>
+      <Checkout3DSCallbackLayout hero={hero}>
         <section className="aurora-showroom-panel p-8">
           <div className="aurora-message aurora-message-error">
             {errorMessage || 'The payment result could not be verified.'}
@@ -150,12 +180,12 @@ export default function Checkout3DSCallbackPage() {
             </LiquidGlassButton>
           </div>
         </section>
-      </StorefrontLayout>
+      </Checkout3DSCallbackLayout>
     )
   }
 
   return (
-    <StorefrontLayout hero={hero}>
+    <Checkout3DSCallbackLayout hero={hero}>
       <section className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
         <div className="aurora-showroom-panel p-8">
           <div className="aurora-solid-plate rounded-[2rem] p-8">
@@ -207,9 +237,11 @@ export default function Checkout3DSCallbackPage() {
             )}
 
             <div className="mt-8 flex flex-wrap gap-4">
-              <LiquidGlassButton as={Link} to="/account/orders" variant="secondary" size="hero">
-                View order history
-              </LiquidGlassButton>
+              {hasSession ? (
+                <LiquidGlassButton as={Link} to="/account/orders" variant="secondary" size="hero">
+                  View order history
+                </LiquidGlassButton>
+              ) : null}
               <LiquidGlassButton as={Link} to="/products" size="hero">
                 Return to shop
               </LiquidGlassButton>
@@ -251,6 +283,6 @@ export default function Checkout3DSCallbackPage() {
           </div>
         </aside>
       </section>
-    </StorefrontLayout>
+    </Checkout3DSCallbackLayout>
   )
 }
