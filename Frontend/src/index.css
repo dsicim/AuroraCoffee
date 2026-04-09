@@ -3172,6 +3172,17 @@ img {
     --button-shadow-gradient: linear-gradient(180deg, rgba(22, 46, 29, 0.42), rgba(22, 46, 29, 0.2));
   }
 
+  [data-theme='dark'] .aurora-product-filter-row .button-wrap.button-variant-chip.is-selected,
+  [data-theme='dark'] .aurora-product-filter-row .button-wrap.button-variant-chip[aria-pressed='true'] {
+    --button-fill-start: rgba(237, 248, 239, 0.14);
+    --button-fill-mid: rgba(118, 166, 127, 0.72);
+    --button-fill-end: rgba(47, 74, 55, 0.94);
+    --button-text: #f4faf5;
+    --button-outline-dark: rgba(20, 38, 26, 0.74);
+    --button-outline-light: rgba(234, 245, 236, 0.28);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(25, 51, 31, 0.42), rgba(25, 51, 31, 0.2));
+  }
+
   [data-theme='dark'] .button-wrap.button-variant-soft,
   [data-theme='dark'] .button-wrap.button-variant-stepper {
     --button-fill-start: rgba(232, 244, 236, 0.08);

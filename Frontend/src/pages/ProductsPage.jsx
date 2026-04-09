@@ -163,7 +163,7 @@ export default function ProductsPage() {
             </label>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="aurora-product-filter-row mt-5 flex flex-wrap gap-3">
             {categories.map((option) => (
               <LiquidGlassButton
                 key={option}
