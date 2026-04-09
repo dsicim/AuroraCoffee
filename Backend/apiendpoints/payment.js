@@ -22,8 +22,8 @@ function checkTrim(x) {
     const trimmed = x.trim();
     return trimmed.length > 0 ? trimmed : undefined;
 }
-function getCardDetailsFromResponse(insresponse) {
-    return { type: { "CREDIT_CARD": "Credit Card", "DEBIT_CARD": "Debit Card", "PREPAID_CARD": "Prepaid Card" }[insresponse.cardType] || "Unknown Card", provider: { "VISA": "Visa", "MASTER_CARD": "MasterCard", "AMERICAN_EXPRESS": "American Express", "TROY": "Troy" }[insresponse.cardAssociation] || "Unknown", family: insresponse.cardFamily || insresponse.cardFamilyName || "Unknown", bank: insresponse.bankName || insresponse.cardBankName || "Unknown", business: insresponse.commercial === 1 ? true : false };
+function getCardDetailsFromResponse(insresponse, setUnknown = "Unknown") {
+    return { type: { "CREDIT_CARD": "Credit Card", "DEBIT_CARD": "Debit Card", "PREPAID_CARD": "Prepaid Card" }[insresponse.cardType] || setUnknown, provider: { "VISA": "Visa", "MASTER_CARD": "MasterCard", "AMERICAN_EXPRESS": "American Express", "TROY": "Troy" }[insresponse.cardAssociation] || setUnknown, family: insresponse.cardFamily || insresponse.cardFamilyName || setUnknown, bank: insresponse.bankName || insresponse.cardBankName || setUnknown, business: insresponse.commercial === 1 ? true : false };
 }
 const tokens = new Map();
 async function generateToken() {
@@ -520,7 +520,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, { locale: "en", cardUserKey: currentToken.value });
                 if (response) {
                     if (response.status === "success" && response.cardDetails) {
-                        const currentCards = response.cardDetails.filter(cd => cd.cardToken === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd) }));
+                        const currentCards = response.cardDetails.filter(cd => cd.cardToken === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd,null) }));
                         if (currentCards.length === 0) return { s: 409, j: true, d: { success: false, e: { what: "Credit Card", why: "Saved card not found", resolution: "Please choose a valid card from your saved cards or manually enter your card details" } } };
                         else cardDetails = currentCards[0];
                     }
@@ -534,7 +534,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (insresponse.status === "success") {
                     if (insresponse.installmentDetails && insresponse.installmentDetails[0]) {
                         if (!currentToken) {
-                            cardDetails = { ...getCardDetailsFromResponse(insresponse.installmentDetails[0]), agriculture: insresponse.agricultureEnabled === 1 ? true : false };
+                            cardDetails = { ...getCardDetailsFromResponse(insresponse.installmentDetails[0], null), agriculture: insresponse.agricultureEnabled === 1 ? true : false };
                         }
                         cardDetails.agriculture = insresponse.agricultureEnabled === 1 ? true : false;
                         cardDetails.features = { force3DS: insresponse.installmentDetails[0].force3ds === 1 ? true : false, forceCVC: insresponse.installmentDetails[0].forceCvc === 1 ? true : false, DCCEnabled: insresponse.installmentDetails[0].dccEnabled === 1 ? true : false };
