@@ -78,6 +78,10 @@ SELECT 'Morning Blend', 'A smooth blend of African and South American beans.', 3
 FROM categories WHERE name = 'Blend' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Brazil Santos', 'Low acidity coffee with nutty and chocolate flavors. Smooth and easy to drink.', 350.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
 SELECT 'Dark Espresso Roast', 'Perfect for a rich and creamy espresso shot.', 400.00, 75, id, 'Brazil/India', 'Dark', 'Low', 'Dark Chocolate, Toffee'
 FROM categories WHERE name = 'Espresso' LIMIT 1;
 
@@ -87,20 +91,24 @@ FROM categories WHERE name = 'Filter Coffee' LIMIT 1;
 
 -- Sample Accessories Products
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Classic French Press', 'BPA-free glass French press with stainless steel mesh.', 750.00, 25, id, 'Glass/Stainless Steel', '800ml'
+SELECT 'Classic French Press', 'BPA-free glass French press with stainless steel mesh.', 800.00, 25, id, 'Glass/Stainless Steel', '800ml'
 FROM categories WHERE name = 'French Press' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Matte Black Mug', 'Minimalist ceramic mug, perfect for espresso based drinks.', 250.00, 120, id, 'Ceramic', '350ml'
+SELECT 'Matte Black Mug', 'Minimalist ceramic mug, perfect for espresso based drinks.', 600.00, 120, id, 'Ceramic', '350ml'
 FROM categories WHERE name = 'Mug' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Urban Thermos', 'Stays hot for 12 hours, cold for 24 hours.', 890.00, 45, id, 'Stainless Steel', '500ml'
+SELECT 'Urban Thermos', 'Stays hot for 12 hours, cold for 24 hours.', 500.00, 45, id, 'Stainless Steel', '500ml'
 FROM categories WHERE name = 'Thermos' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
 SELECT 'Burr Grinder Pro', 'High precision manual grinder with 20 settings.', 1450.00, 15, id, 'Aluminum/Steel', '40g'
 FROM categories WHERE name = 'Grinder' LIMIT 1;
+
+INSERT INTO products (name, description, price, stock, category_id, material, capacity)
+SELECT 'V60 Filter Paper', 'Ensures clean and smooth filter coffee brewing.', 200.00, 15, id, 'Aluminum/Steel', '40g'
+FROM categories WHERE name = 'Filter Paper' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
 SELECT 'Glass Drip Server', 'Heat resistant glass server for pour-over brewing.', 420.00, 60, id, 'Borosilicate Glass', '600ml'
