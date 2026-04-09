@@ -523,7 +523,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:response.paymentId});
                         if (authChecker) {
                             if (authChecker.status === "success") {
-                                return { s: 200, j: true, d: { response: authChecker } };
+                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker } };
+                                else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
                                 failed = true;
@@ -533,7 +534,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             }
                         }
                         else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
-                        
                     }
                     else {
                         failed = true;
@@ -573,7 +573,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:query.paymentId});
                         if (authChecker) {
                             if (authChecker.status === "success") {
-                                return { s: 200, j: true, d: { response: authChecker } };
+                                if (authChecker.paymentStatus === "SUCCESS") return { s: 200, j: true, d: { success: true, response: authChecker } };
+                                else return { s: 400, j: true, d: { success: false, response: authChecker } };
                             }
                             else {
                                 const errObj = PaymentError(response.errorGroup, tvoyBank);
