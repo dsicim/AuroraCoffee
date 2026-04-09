@@ -319,10 +319,8 @@ export default function ProductDetailPage() {
                 </p>
               </div>
               <span
-                className={`rounded-full px-4 py-2 text-sm font-semibold ${
-                  availability.hasStock
-                    ? 'bg-[var(--aurora-olive-soft)] text-[var(--aurora-olive-deep)]'
-                    : 'bg-[rgba(217,144,107,0.24)] text-[var(--aurora-text-strong)]'
+                className={`aurora-pill px-4 py-2 text-sm font-semibold ${
+                  availability.hasStock ? 'aurora-pill-active' : ''
                 }`}
               >
                 {availability.hasStock ? `${availability.totalStock} available` : 'Currently unavailable'}
