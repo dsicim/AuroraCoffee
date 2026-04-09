@@ -57,12 +57,21 @@ INSERT INTO categories (name, parent_id) VALUES ('Brewing Equipment', @acc_id);
 
 -- Sample Coffee Products
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Ethiopia Yirgacheffe', 'Flowery and citrusy notes with a light body.', 450.00, 50, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
+SELECT 'Ethiopia Yirgacheffe', 'Flowery and citrusy notes with a light body.', 520.00, 50, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Guatemala Green Valley', 'Balanced coffee with medium acidity and smooth body. Notes of chocolate and citrus make it
+suitable for both filter and espresso.', 420.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
 SELECT 'Colombia Huila', 'Well-balanced with chocolate and nutty sweetness.', 380.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Napoli Blend', 'Strong and intense coffee with low acidity. Perfect for espresso lovers.', 380.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
+FROM categories WHERE name = 'Blend' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
 SELECT 'Morning Blend', 'A smooth blend of African and South American beans.', 320.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
