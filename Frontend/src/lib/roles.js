@@ -99,6 +99,5 @@ export function openRolePopup(role) {
     return true
   }
 
-  window.location.assign(popupPath)
-  return true
+  return false
 }
