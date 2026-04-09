@@ -563,7 +563,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "3dscallback") {
-        if (method === "GET") {
+        if (method === "POST") {
+            if (!body || body.json || !body.exists) return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid data" } };
+            body.data = body.data.split("&").map(pair => {
+                const p = pair.split("=");
+                return { key: p[0], value: p[1] };
+            });
+            let form = {};
+            body.data.forEach(pair => {
+                form[pair.key] = pair.value;
+            });
+            query = form;
             if (query.status && query.status === "success" && query.mdStatus === undefined && query.mdStatus === "1") {
                 let payload = {locale:"en",paymentId:query.paymentId};
                 if (query.conversationData) payload.conversationData = query.conversationData;
@@ -594,7 +604,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { s: 400, j: true, d: { e: "3DS Failure", details: {"-1":"3DS signature invalid","0":"3DS signature invalid","2":"Cardholder or bank not registered to 3DS","3":"Bank not participating in 3DS","4":"Cardholder registered to 3DS after transaction","5":"Unable to verify","6":"3DS Error","7":"Payment Processor Error","8":"Unknown Card Number"}[query.mdStatus] } };
             }
             else {
-                return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid status query parameter" } };
+                return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid data" } };
             }
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
