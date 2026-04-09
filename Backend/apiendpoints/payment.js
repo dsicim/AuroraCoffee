@@ -482,7 +482,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
 
             // All validations passed, create order and initiate payment
-            const payload = await createOrder(currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, currency);
+            const payload = await createOrder(currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
             const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
             if (response) {
                 if (response.status === "success") {
