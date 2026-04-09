@@ -679,8 +679,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (form.status && form.status === "failure" && form.mdStatus !== undefined && form.mdStatus !== "1" && form.conversationId) {
                 const errObj = {
-                    "-1": { why: "3DS signature invalid", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
-                    "0": { why: "3DS signature invalid", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "-1": { why: "3D Secure invalid or cancelled", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
+                    "0": { why: "3D Secure invalid or cancelled", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
                     "2": { why: "Cardholder or bank not registered to 3DS", res: "If possible, register your card to 3D Secure through your bank and then try again. If your card is already registered, please contact your bank for more information." },
                     "3": { why: "Bank not participating in 3DS", res: "Please use a different card from a different bank or contact your bank for more information." },
                     "4": { why: "Cardholder registered to 3DS after transaction", res: "Please try again. If the problem persists, please contact your bank or try a different card." },
