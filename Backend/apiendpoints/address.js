@@ -27,7 +27,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (typeof address !== "object" || !address.name || !address.surname || !address.address || !address.city || !address.province || !address.country || !address.zip || !address.phone) {
                                 throw new Error("Decrypted data is not a valid address");
                             }
-                            return specificaddress ? { id: addr.id, ...address } : { id: addr.id, title: address.alias || address.address.split(" ")[0], desc: address.city + ", " + address.province + ", " + address.country };
+                            return specificaddress ? { id: addr.id, ...address } : { id: addr.id, title: address.alias || address.address.includes(",") ? address.address.split(",")[0] : address.address.split(" ").slice(0, 3).join(" "), desc: address.city + ", " + address.province + ", " + address.country };
                         } catch (err) {
                             console.error("Decrypt address error:", err);
                             errors.push({ id: addr.id, e: err.toString() });
