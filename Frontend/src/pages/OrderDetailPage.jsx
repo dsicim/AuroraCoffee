@@ -253,12 +253,11 @@ export default function OrderDetailPage() {
 
                 return (
                   <div key={step.key} className={`aurora-order-progress-step is-${stepState}`}>
-                    <span className="aurora-order-progress-dot" />
-                    <div className="aurora-step-card aurora-order-progress-card px-4 py-4">
-                      <span className="block text-[10px] uppercase tracking-[0.22em] opacity-80">
-                        Step {index + 1}
-                      </span>
-                      <span className="mt-2 block text-sm font-semibold">
+                    <span className="aurora-order-progress-dot" aria-hidden="true">
+                      {index + 1}
+                    </span>
+                    <div className="aurora-step-card aurora-order-progress-card">
+                      <span className="aurora-order-progress-label">
                         {step.label}
                       </span>
                     </div>
