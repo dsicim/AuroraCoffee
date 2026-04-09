@@ -563,7 +563,40 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "3dscallback") {
-        
+        if (method === "GET") {
+            if (query.status && query.status === "success" && query.mdStatus === undefined && query.mdStatus === "1") {
+                let payload = {locale:"en",paymentId:query.paymentId};
+                if (query.conversationData) payload.conversationData = query.conversationData;
+                const response = await IyzipayAPI(config, "POST", "payment/3dsecure/auth", {}, payload);
+                if (response) {
+                    if (response.status === "success") {
+                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, {locale:"en",paymentId:query.paymentId});
+                        if (authChecker) {
+                            if (authChecker.status === "success") {
+                                return { s: 200, j: true, d: { response: authChecker } };
+                            }
+                            else {
+                                const errObj = PaymentError(response.errorGroup, tvoyBank);
+                                return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                            }
+                        }
+                        else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while confirming the transaction", resolution: "Please wait a few minutes. DON'T TRY AGAIN IMMEDIATELY. YOUR CARD MIGHT HAVE ALREADY BEEN CHARGED" } } };
+                    }
+                    else {
+                        const errObj = PaymentError(response.errorGroup, tvoyBank);
+                        return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: errObj.why, resolution: errObj.resolution } } };
+                    }
+                }
+                else return { s: 500, j: true, d: { success: false, e: { what: "Payment Processor", why: "An unknown error occurred while communicating with the payment provider", resolution: "Please try again later or contact the developers" } } };
+            }
+            else if (query.status && query.status === "failure" && query.mdStatus === undefined && query.mdStatus !== "1") {
+                return { s: 400, j: true, d: { e: "3DS Failure", details: {"-1":"3DS signature invalid","0":"3DS signature invalid","2":"Cardholder or bank not registered to 3DS","3":"Bank not participating in 3DS","4":"Cardholder registered to 3DS after transaction","5":"Unable to verify","6":"3DS Error","7":"Payment Processor Error","8":"Unknown Card Number"}[query.mdStatus] } };
+            }
+            else {
+                return { s: 400, j: true, d: { e: "Invalid request", details: "Missing or invalid status query parameter" } };
+            }
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
