@@ -147,6 +147,12 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     }
     return {s: true, p: payload, o: {user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))}};
 }
+async function completeCart(products) {
+    for (const product of products) {
+        await sql.decreaseStock(product.id, product.quantity).then(res => {}).catch(err => {});
+    }
+    return true;
+}
 function PaymentError(err, errorMsg, tvoyBank = "your bank") {
     console.error("Payment error:", err, errorMsg);
     return {
@@ -576,6 +582,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
+                                    await completeCart(payload.o.details.products);
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
                                     return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n, response: authChecker } };
                                 }
@@ -687,6 +694,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!details) return CallbackEmbed({ success: false, e: { what: "3D Secure Callback", why: "Transaction's 3D Secure context couldn't be accessed", resolution: "Please try again later or contact the developers with the payment ID: " + form.paymentId } });
                 let payload = { locale: "en", paymentId: form.paymentId, conversationId: form.conversationId, basketId: details.products[0].id, currency: details.currency, paidPrice: details.price.paid };
                 if (form.conversationData) payload.conversationData = form.conversationData;
+                if (tokens.has(form.conversationId)) tokens.delete(form.conversationId);
                 const response = await IyzipayAPI(config, "POST", "payment/v2/3dsecure/auth", {}, payload);
                 if (response) {
                     if (response.status === "success") {
@@ -712,6 +720,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
+                                    await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
