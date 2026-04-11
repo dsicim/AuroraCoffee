@@ -65,6 +65,19 @@ function getProgressMessage(progressState) {
   return `${progressState.label} is the latest backend status on this order.`
 }
 
+function getInstallmentSummary(payment, total) {
+  const installmentCount = Math.max(1, Number(payment?.installmentCount) || 1)
+
+  if (installmentCount <= 1) {
+    return 'Paid in full'
+  }
+
+  const totalAmount = Number.isFinite(total) ? total : 0
+  const installmentAmount = totalAmount / installmentCount
+
+  return `${installmentCount} monthly installments ${formatCurrency(installmentAmount)} x ${installmentCount} = ${formatCurrency(totalAmount)}`
+}
+
 export default function OrderDetailPage() {
   const navigate = useNavigate()
   const { orderId = '' } = useParams()
@@ -359,11 +372,7 @@ export default function OrderDetailPage() {
                   {order.payment?.maskedCardNumber ? (
                     <p>{order.payment.maskedCardNumber}</p>
                   ) : null}
-                  {order.payment?.installmentCount > 1 ? (
-                    <p>{order.payment.installmentCount} installments</p>
-                  ) : (
-                    <p>Paid in full</p>
-                  )}
+                  <p>{getInstallmentSummary(order.payment, order.total)}</p>
                 </div>
               </div>
 
