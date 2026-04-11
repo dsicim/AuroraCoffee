@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
+import LiquidThemeToggle from './LiquidThemeToggle'
 import {
   authChangeEvent,
   clearAuthSession,
@@ -25,6 +26,7 @@ import {
   openRolePopup,
   userRoles,
 } from '../lib/roles'
+import { useTheme } from '../lib/theme-context'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -35,6 +37,7 @@ export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
   const menuRef = useRef(null)
+  const { themePreference, resolvedTheme, setThemePreference } = useTheme()
   const [session, setSession] = useState(getAuthSession())
   const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
@@ -50,6 +53,10 @@ export default function Header() {
   const isRoleKnown = Boolean(normalizedRole)
   const roleLandingPath = isRoleKnown ? getRoleLandingPath(normalizedRole) : '/'
   const roleBadgeLabel = roleLabel || 'Loading'
+  const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
+  const themeStatusCopy = themePreference === 'system'
+    ? `Following system: ${currentThemeLabel}`
+    : `Manual theme: ${currentThemeLabel}`
 
   const customerAccountLinks = [
     { label: 'Customer Home', to: '/customer' },
@@ -409,7 +416,7 @@ export default function Header() {
               className="aurora-glass-dock aurora-mobile-nav-panel glass-nav rounded-[1.5rem]"
               contentClassName="p-2"
             >
-              <div className="flex flex-col gap-2">
+              <div className="aurora-mobile-nav-stack flex flex-col gap-2">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.to
 
@@ -428,6 +435,23 @@ export default function Header() {
                   )
                 })}
 
+                <div className="aurora-mobile-nav-theme mt-1 rounded-[1.2rem] px-3 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="aurora-kicker">Theme</p>
+                      <p className="mt-2 text-sm leading-6 text-[var(--aurora-text)]">
+                        {themeStatusCopy}
+                      </p>
+                    </div>
+                    <LiquidThemeToggle
+                      value={themePreference}
+                      onValueChange={setThemePreference}
+                      size="panel"
+                      ariaLabel="Choose theme"
+                      className="aurora-mobile-theme-toggle"
+                    />
+                  </div>
+                </div>
               </div>
             </LiquidGlassFrame>
           </div>
