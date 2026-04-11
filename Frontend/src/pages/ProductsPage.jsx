@@ -39,7 +39,7 @@ function sortProducts(items, sortBy) {
 }
 
 export default function ProductsPage() {
-  const { products, loading, error } = useProductCatalog()
+  const { products, loaded, loading, error } = useProductCatalog()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
   const [sortBy, setSortBy] = useState('newest')
@@ -47,7 +47,10 @@ export default function ProductsPage() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
 
-  const categories = useMemo(() => getProductCategories(products), [products])
+  const categories = useMemo(
+    () => (loaded ? getProductCategories(products) : []),
+    [loaded, products],
+  )
   const normalizedSearch = search.trim().toLowerCase()
   const sourceProducts = remoteResults || products
 
@@ -166,18 +169,24 @@ export default function ProductsPage() {
           </div>
 
           <div className="aurora-product-filter-row mt-5 flex flex-wrap gap-3">
-            {categories.map((option) => (
-              <LiquidGlassButton
-                key={option}
-                type="button"
-                variant="chip"
-                size="compact"
-                selected={category === option}
-                onClick={() => setCategory(option)}
-              >
-                {option}
-              </LiquidGlassButton>
-            ))}
+            {!loaded && !error ? (
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                Loading categories
+              </p>
+            ) : (
+              categories.map((option) => (
+                <LiquidGlassButton
+                  key={option}
+                  type="button"
+                  variant="chip"
+                  size="compact"
+                  selected={category === option}
+                  onClick={() => setCategory(option)}
+                >
+                  {option}
+                </LiquidGlassButton>
+              ))
+            )}
           </div>
         </LiquidGlassFrame>
 

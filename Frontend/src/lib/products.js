@@ -3,15 +3,10 @@ import { buildApiUrl } from './api'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 
-const productCatalogStorageKey = 'auroraProductCatalogCache'
-const productCatalogStorageVersion = 2
-const productCatalogCacheTtlMs = 60 * 60 * 1000
-
 let cachedProducts = []
 let cachedProductsLoaded = false
 let productsPromise = null
 const cachedProductsById = new Map()
-let hasHydratedProductCatalogCache = false
 
 function dispatchProductCatalogChange(type = 'sync') {
   window.dispatchEvent(
@@ -19,109 +14,6 @@ function dispatchProductCatalogChange(type = 'sync') {
       detail: { type },
     }),
   )
-}
-
-function canUseWindowStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage)
-}
-
-function persistProductCatalogSnapshot(products) {
-  if (!canUseWindowStorage()) {
-    return
-  }
-
-  try {
-    window.localStorage.setItem(
-      productCatalogStorageKey,
-      JSON.stringify({
-        version: productCatalogStorageVersion,
-        savedAt: Date.now(),
-        products,
-      }),
-    )
-  } catch {
-    // Ignore storage write failures and keep the in-memory cache authoritative.
-  }
-}
-
-function clearPersistedProductCatalogSnapshot() {
-  if (!canUseWindowStorage()) {
-    return
-  }
-
-  try {
-    window.localStorage.removeItem(productCatalogStorageKey)
-  } catch {
-    // Ignore storage cleanup failures.
-  }
-}
-
-function readPersistedProductCatalogSnapshot() {
-  if (!canUseWindowStorage()) {
-    return null
-  }
-
-  try {
-    const rawValue = window.localStorage.getItem(productCatalogStorageKey)
-
-    if (!rawValue) {
-      return null
-    }
-
-    const parsedValue = JSON.parse(rawValue)
-    const version = Number(parsedValue?.version)
-    const savedAt = Number(parsedValue?.savedAt)
-    const products = Array.isArray(parsedValue?.products) ? parsedValue.products : null
-
-    if (version !== productCatalogStorageVersion || !Number.isFinite(savedAt) || !products) {
-      clearPersistedProductCatalogSnapshot()
-      return null
-    }
-
-    const hasAnyCategoryData = products.some(
-      (product) =>
-        typeof product?.categoryName === 'string' && product.categoryName.trim() ||
-        typeof product?.parentCategoryName === 'string' && product.parentCategoryName.trim(),
-    )
-
-    if (products.length > 0 && !hasAnyCategoryData) {
-      clearPersistedProductCatalogSnapshot()
-      return null
-    }
-
-    if (Date.now() - savedAt > productCatalogCacheTtlMs) {
-      clearPersistedProductCatalogSnapshot()
-      return null
-    }
-
-    return products
-  } catch {
-    clearPersistedProductCatalogSnapshot()
-    return null
-  }
-}
-
-function ensureProductCatalogCacheHydrated() {
-  if (hasHydratedProductCatalogCache) {
-    return
-  }
-
-  hasHydratedProductCatalogCache = true
-
-  if (cachedProductsLoaded) {
-    return
-  }
-
-  const persistedProducts = readPersistedProductCatalogSnapshot()
-
-  if (!persistedProducts?.length) {
-    return
-  }
-
-  storeProducts(persistedProducts, {
-    replace: true,
-    markLoaded: true,
-  })
 }
 
 function clearProductsCache({ emit = true } = {}) {
@@ -134,9 +26,7 @@ function clearProductsCache({ emit = true } = {}) {
   cachedProducts = []
   cachedProductsLoaded = false
   productsPromise = null
-  hasHydratedProductCatalogCache = false
   cachedProductsById.clear()
-  clearPersistedProductCatalogSnapshot()
 
   if (emit && hadState) {
     dispatchProductCatalogChange('clear')
@@ -224,9 +114,6 @@ function storeProducts(products, { replace = false, markLoaded = cachedProductsL
   }
 
   cachedProductsLoaded = nextLoaded
-  if (nextLoaded) {
-    persistProductCatalogSnapshot(cachedProducts)
-  }
   dispatchProductCatalogChange(nextLoaded ? 'list' : 'partial')
 
   return normalizedProducts
@@ -268,13 +155,7 @@ async function requestProducts() {
 }
 
 export async function fetchAllProducts({ force = false } = {}) {
-  ensureProductCatalogCacheHydrated()
-
-  if (!force && cachedProductsLoaded) {
-    return cachedProducts
-  }
-
-  if (productsPromise) {
+  if (!force && productsPromise) {
     return productsPromise
   }
 
@@ -286,8 +167,6 @@ export async function fetchAllProducts({ force = false } = {}) {
 }
 
 export async function fetchProductsByIds(ids) {
-  ensureProductCatalogCacheHydrated()
-
   const normalizedIds = Array.from(
     new Set(
       (ids || [])
@@ -318,8 +197,6 @@ export async function fetchProductsByIds(ids) {
 }
 
 export async function searchProducts(query, sortBy = 'newest') {
-  ensureProductCatalogCacheHydrated()
-
   const normalizedQuery = String(query || '').trim()
 
   if (!normalizedQuery) {
@@ -344,7 +221,6 @@ export async function searchProducts(query, sortBy = 'newest') {
 }
 
 export function getCachedProducts() {
-  ensureProductCatalogCacheHydrated()
   return cachedProducts
 }
 
