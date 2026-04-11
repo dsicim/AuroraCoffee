@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
@@ -74,11 +75,17 @@ function validateAddressForm(form) {
 }
 
 export default function AddressesPage() {
+  const location = useLocation()
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
   const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
   const [loading, setLoading] = useState(() => !getAddressBookSnapshot().loaded)
   const [form, setForm] = useState(initialFormState)
   const [errors, setErrors] = useState({})
+  const returnTo = typeof location.state?.returnTo === 'string' ? location.state.returnTo : ''
+  const returnLabel =
+    typeof location.state?.returnLabel === 'string' && location.state.returnLabel.trim()
+      ? location.state.returnLabel
+      : 'Back'
 
   useEffect(() => {
     let active = true
@@ -224,6 +231,14 @@ export default function AddressesPage() {
       title="Faster checkout starts here"
       description="Build an address book for faster checkout. Any saved address can be applied during checkout or edited here whenever your delivery details change."
     >
+      {returnTo ? (
+        <div className="mb-6">
+          <LiquidGlassButton as={Link} to={returnTo} variant="quiet" size="compact">
+            {returnLabel}
+          </LiquidGlassButton>
+        </div>
+      ) : null}
+
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
         <section className="aurora-ops-panel p-8">
           <div className="flex items-end justify-between gap-4">

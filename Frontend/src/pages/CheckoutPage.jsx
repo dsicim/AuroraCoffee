@@ -1010,7 +1010,11 @@ export default function CheckoutPage() {
                       </p>
                     </div>
                     <Link
-                        to="/account/addresses"
+                      to="/account/addresses"
+                      state={{
+                        returnTo: '/cart',
+                        returnLabel: 'Back to cart',
+                      }}
                       className="aurora-link text-sm"
                     >
                       Manage saved addresses
