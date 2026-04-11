@@ -73,8 +73,16 @@ function getInstallmentSummary(payment, total) {
     return 'Paid in full'
   }
 
-  const totalAmount = Number.isFinite(total) ? total : 0
-  const installmentAmount = totalAmount / installmentCount
+  const totalAmount =
+    Number.isFinite(payment?.installmentTotal)
+      ? payment.installmentTotal
+      : Number.isFinite(total)
+        ? total
+        : 0
+  const installmentAmount =
+    Number.isFinite(payment?.installmentPerMonth)
+      ? payment.installmentPerMonth
+      : totalAmount / installmentCount
 
   return `${installmentCount} monthly installments ${formatCurrency(installmentAmount)} x ${installmentCount} = ${formatCurrency(totalAmount)}`
 }

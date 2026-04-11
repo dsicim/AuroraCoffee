@@ -328,6 +328,20 @@ function normalizeOrderPayment(cardDetails, installment) {
   const alias = normalizeText(cardDetails?.alias)
   const last4dig = normalizeText(cardDetails?.last4dig)
   const pieces = [alias, family, provider, bank].filter(Boolean)
+  const installmentCount = Math.max(
+    1,
+    Number(
+      installment?.months ??
+      installment?.installmentNumber ??
+      installment,
+    ) || 1,
+  )
+  const installmentPerMonth = toNullableNumber(
+    installment?.permonth ?? installment?.installmentPrice,
+  )
+  const installmentTotal = toNullableNumber(
+    installment?.total ?? installment?.totalPrice,
+  )
 
   return {
     alias,
@@ -339,7 +353,9 @@ function normalizeOrderPayment(cardDetails, installment) {
     summary:
       pieces.join(' · ') ||
       (last4dig ? `Card ending ${last4dig}` : 'Secure payment'),
-    installmentCount: Math.max(1, Number(installment) || 1),
+    installmentCount,
+    installmentPerMonth,
+    installmentTotal,
   }
 }
 
