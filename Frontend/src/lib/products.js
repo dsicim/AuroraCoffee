@@ -4,6 +4,7 @@ import { buildApiUrl } from './api'
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 
 const productCatalogStorageKey = 'auroraProductCatalogCache'
+const productCatalogStorageVersion = 2
 const productCatalogCacheTtlMs = 60 * 60 * 1000
 
 let cachedProducts = []
@@ -33,6 +34,7 @@ function persistProductCatalogSnapshot(products) {
     window.localStorage.setItem(
       productCatalogStorageKey,
       JSON.stringify({
+        version: productCatalogStorageVersion,
         savedAt: Date.now(),
         products,
       }),
@@ -67,10 +69,22 @@ function readPersistedProductCatalogSnapshot() {
     }
 
     const parsedValue = JSON.parse(rawValue)
+    const version = Number(parsedValue?.version)
     const savedAt = Number(parsedValue?.savedAt)
     const products = Array.isArray(parsedValue?.products) ? parsedValue.products : null
 
-    if (!Number.isFinite(savedAt) || !products) {
+    if (version !== productCatalogStorageVersion || !Number.isFinite(savedAt) || !products) {
+      clearPersistedProductCatalogSnapshot()
+      return null
+    }
+
+    const hasAnyCategoryData = products.some(
+      (product) =>
+        typeof product?.categoryName === 'string' && product.categoryName.trim() ||
+        typeof product?.parentCategoryName === 'string' && product.parentCategoryName.trim(),
+    )
+
+    if (products.length > 0 && !hasAnyCategoryData) {
       clearPersistedProductCatalogSnapshot()
       return null
     }
