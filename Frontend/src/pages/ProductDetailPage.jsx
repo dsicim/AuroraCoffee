@@ -18,6 +18,7 @@ import {
   useProductBySlug,
   useProductCatalog,
 } from '../lib/products'
+import { getTaxInclusionCopy, getUnitPriceBreakdown } from '../lib/tax'
 
 function buildAttributeCards(product) {
   if (isCoffeeProduct(product)) {
@@ -181,6 +182,7 @@ export default function ProductDetailPage() {
   const activePreviewMenu = openPreviewMenu.productSlug === product.slug ? openPreviewMenu.menu : ''
   const requiresCoffeeOptions = isCoffeeProduct(product)
   const hasRequiredCoffeeOptions = !requiresCoffeeOptions || Boolean(previewFilter && previewWeight)
+  const priceBreakdown = getUnitPriceBreakdown(product)
 
   const handleAddToCart = async () => {
     if (!availability.hasStock) {
@@ -333,6 +335,9 @@ export default function ProductDetailPage() {
                 </p>
                 <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
                   {formatCurrency(product.price)}
+                </p>
+                <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + KDV {formatCurrency(priceBreakdown.taxAmount)}
                 </p>
               </div>
               <span

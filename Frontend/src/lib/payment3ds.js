@@ -146,6 +146,8 @@ export function createPending3DSCheckoutSnapshot({
   installmentSelectionLabel,
   subtotal,
   serviceFee,
+  taxTotal,
+  installmentFee,
   total,
 }) {
   const paymentSummary = buildPaymentSummary({
@@ -180,6 +182,8 @@ export function createPending3DSCheckoutSnapshot({
     saveCardForLater: Boolean(saveCardForLater),
     subtotal: Number(subtotal) || 0,
     serviceFee: Number(serviceFee) || 0,
+    taxTotal: Number(taxTotal) || 0,
+    installmentFee: Number(installmentFee) || 0,
     total: Number(total) || 0,
   }
 }
@@ -203,7 +207,9 @@ export function buildSubmittedOrderSnapshotFromPending(snapshot, paymentResponse
       expiry: '',
     },
     subtotal: Number(snapshot.subtotal) || 0,
-    serviceFee: Number(snapshot.serviceFee) || 0,
+    serviceFee: Number(snapshot.installmentFee ?? snapshot.serviceFee) || 0,
+    taxTotal: Number(snapshot.taxTotal) || 0,
+    installmentFee: Number(snapshot.installmentFee ?? snapshot.serviceFee) || 0,
     total: Number(snapshot.total) || Number(snapshot.subtotal) || 0,
     status: 'Payment confirmed',
     paymentResponse,

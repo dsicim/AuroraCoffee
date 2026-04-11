@@ -44,6 +44,7 @@ import {
   open3DSTargetSameTab,
   savePending3DSCheckoutSnapshot,
 } from '../lib/payment3ds'
+import { getItemsPriceBreakdown, getLinePriceBreakdown } from '../lib/tax'
 import {
   validateCityPostalCode,
   validateEmail,
@@ -389,6 +390,12 @@ export default function CheckoutPage() {
     selectedInstallments,
     total,
   )
+  const selectedInstallmentOption = installmentOptions.find(
+    (item) => Number(item.months) === normalizeInstallmentMonths(selectedInstallments),
+  ) || null
+  const pricing = getItemsPriceBreakdown(items, {
+    payableTotal: selectedInstallmentOption?.total ?? total,
+  })
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -801,9 +808,11 @@ export default function CheckoutPage() {
               saveCardForLater,
               selectedInstallments,
               installmentSelectionLabel: activeInstallmentLabel,
-              subtotal,
-              serviceFee,
-              total,
+              subtotal: pricing.itemsGross,
+              serviceFee: pricing.installmentFee,
+              taxTotal: pricing.taxTotal,
+              installmentFee: pricing.installmentFee,
+              total: pricing.totalCharged,
             }),
           )
           open3DSTargetSameTab(paymentResponse.target)
@@ -941,11 +950,11 @@ export default function CheckoutPage() {
               <div className="aurora-widget-heading">
                 <p className="aurora-kicker">Current total</p>
                 <p className="mt-2 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {formatCurrency(submittedOrder?.total ?? total)}
+                  {formatCurrency(submittedOrder?.total ?? pricing.totalCharged)}
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                Current total aligned with backend cart validation.
+                Tax-inclusive customer total for the current selection.
               </p>
             </div>
           </div>
@@ -1739,6 +1748,9 @@ export default function CheckoutPage() {
                           <p className="text-sm text-[var(--aurora-text)]">
                             Qty {item.quantity}
                           </p>
+                          <p className="text-sm text-[var(--aurora-text)]">
+                            Included KDV {formatCurrency(getLinePriceBreakdown(item).lineTax)}
+                          </p>
                         </div>
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
                           {formatCurrency(item.price * item.quantity)}
@@ -1870,6 +1882,9 @@ export default function CheckoutPage() {
                     <p className="text-sm text-[var(--aurora-text)]">
                       Qty {item.quantity}
                     </p>
+                    <p className="text-sm text-[var(--aurora-text)]">
+                      Included KDV {formatCurrency(getLinePriceBreakdown(item).lineTax)}
+                    </p>
                   </div>
                   <p className="font-semibold text-[var(--aurora-text-strong)]">
                     {formatCurrency(item.price * item.quantity)}
@@ -1882,21 +1897,27 @@ export default function CheckoutPage() {
             <div className="aurora-solid-plate rounded-[1.9rem] p-5">
               <div className="space-y-4 text-sm text-[var(--aurora-text)]">
                 <div className="flex items-center justify-between">
-                  <span>Subtotal</span>
+                  <span>Items total</span>
                   <span className="font-semibold text-[var(--aurora-text-strong)]">
-                    {formatCurrency(submittedOrder?.subtotal ?? subtotal)}
+                    {formatCurrency(submittedOrder?.subtotal ?? pricing.itemsGross)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Service fee</span>
+                  <span>Included KDV</span>
                   <span className="font-semibold text-[var(--aurora-text-strong)]">
-                    {formatCurrency(submittedOrder?.serviceFee ?? serviceFee)}
+                    {formatCurrency(submittedOrder?.taxTotal ?? pricing.taxTotal)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Installment fee</span>
+                  <span className="font-semibold text-[var(--aurora-text-strong)]">
+                    {formatCurrency(submittedOrder?.installmentFee ?? pricing.installmentFee)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-base">
-                  <span className="font-semibold text-[var(--aurora-text-strong)]">Total</span>
+                  <span className="font-semibold text-[var(--aurora-text-strong)]">Total charged</span>
                   <span className="font-semibold text-[var(--aurora-text-strong)]">
-                    {formatCurrency(submittedOrder?.total ?? total)}
+                    {formatCurrency(submittedOrder?.total ?? pricing.totalCharged)}
                   </span>
                 </div>
               </div>
@@ -1905,7 +1926,7 @@ export default function CheckoutPage() {
             <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)]">
               {currentStep.key === 'success'
                 ? 'The cart has been cleared and the success step now reflects the submitted order snapshot.'
-                : 'Review the current cart, delivery details, and payment method before sending the order to the payment endpoint.'}
+                : 'Review the tax-inclusive cart, included KDV, and payment method before sending the order to the payment endpoint.'}
             </div>
           </div>
         </aside>

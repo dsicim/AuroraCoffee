@@ -8,6 +8,7 @@ import {
   getProductTypeLabel,
   isCoffeeProduct,
 } from '../lib/products'
+import { getTaxInclusionCopy } from '../lib/tax'
 import FavoriteToggleButton from './FavoriteToggleButton'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
@@ -102,6 +103,9 @@ export default function ProductCard({ product, compact = false }) {
             </p>
             <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
               {formatCurrency(product.price)}
+            </p>
+            <p className="text-sm text-[var(--aurora-text)]">
+              {getTaxInclusionCopy(product)}
             </p>
             {product.material || product.capacity ? (
               <p className="text-sm text-[var(--aurora-text)]">

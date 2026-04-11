@@ -90,6 +90,8 @@ function normalizeProduct(rawProduct) {
     imageUrl: normalizeText(rawProduct.image_url),
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
+    taxClass: normalizeText(rawProduct.tax_class || rawProduct.taxClass),
+    taxRateOverride: rawProduct.tax_rate_override ?? rawProduct.taxRateOverride ?? null,
     createdAt: rawProduct.created_at || '',
   }
 }
@@ -115,6 +117,8 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     categoryName: incomingProduct.categoryName || existingProduct.categoryName,
     parentCategoryName:
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
+    taxClass: incomingProduct.taxClass || existingProduct.taxClass,
+    taxRateOverride: incomingProduct.taxRateOverride ?? existingProduct.taxRateOverride,
     createdAt: incomingProduct.createdAt || existingProduct.createdAt,
   }
 }

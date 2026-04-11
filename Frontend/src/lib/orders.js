@@ -5,6 +5,7 @@ import {
   getProductCategoryLabel,
   getProductMetaLine,
 } from './products'
+import { getItemsPriceBreakdown } from './tax'
 
 export const ordersChangeEvent = 'aurora-orders-change'
 
@@ -338,9 +339,12 @@ function normalizeOrderItem(rawItem, productById) {
     productSlug: product?.slug || '',
     name: normalizeText(rawItem?.product_name || rawItem?.name) || product?.name || 'Product',
     category: normalizeText(rawItem?.category) || getProductCategoryLabel(product),
+    parentCategoryName: normalizeText(rawItem?.parent_category_name || rawItem?.parentCategoryName) || product?.parentCategoryName || '',
     typeLabel: product?.typeLabel || '',
     metaLine: normalizeText(rawItem?.metaLine) || getProductMetaLine(product) || '',
     price: toNumber(rawItem?.product_price || rawItem?.price || product?.price),
+    taxClass: normalizeText(rawItem?.tax_class || rawItem?.taxClass) || product?.taxClass || '',
+    taxRateOverride: rawItem?.tax_rate_override ?? rawItem?.taxRateOverride ?? product?.taxRateOverride ?? null,
     quantity,
     imageUrl: normalizeText(rawItem?.image_url || rawItem?.imageUrl) || product?.imageUrl || '',
     options: parseOrderOptions(rawItem?.options || rawItem?.opt),
@@ -369,6 +373,7 @@ async function normalizeOrderDetail(record) {
   const items = rawItems.map((item) => normalizeOrderItem(item, productById))
   const subtotal = toNumber(details?.price?.subtotal)
   const total = toNumber(details?.price?.total || details?.price?.paid || subtotal)
+  const pricing = getItemsPriceBreakdown(items, { payableTotal: total })
 
   return {
     ...summary,
@@ -377,9 +382,12 @@ async function normalizeOrderDetail(record) {
     delivery: normalizeOrderAddress(details.shippingAddress),
     billing: normalizeOrderAddress(details.billingAddress),
     payment: normalizeOrderPayment(details.card, details.installment),
-    subtotal,
-    serviceFee: Math.max(0, total - subtotal),
-    total,
+    subtotal: subtotal || pricing.itemsGross,
+    serviceFee: pricing.installmentFee,
+    taxTotal: pricing.taxTotal,
+    installmentFee: pricing.installmentFee,
+    pricing,
+    total: total || pricing.totalCharged,
     currency: normalizeText(details.currency) || 'TRY',
   }
 }

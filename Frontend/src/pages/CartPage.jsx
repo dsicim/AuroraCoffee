@@ -14,6 +14,7 @@ import {
   removeCartItem,
   updateCartItemQuantity,
 } from '../lib/cart'
+import { getItemsPriceBreakdown, getLinePriceBreakdown, getTaxInclusionCopy } from '../lib/tax'
 
 function renderCartItemOptions(item) {
   const optionEntries = getCartOptionEntries(item?.options)
@@ -41,6 +42,7 @@ export default function CartPage() {
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
   const totalItems = items.reduce((total, item) => total + item.quantity, 0)
   const isLoggedIn = Boolean(session?.token)
+  const pricing = getItemsPriceBreakdown(items)
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -110,7 +112,10 @@ export default function CartPage() {
             </div>
           ) : (
             <div className="mt-8 space-y-4">
-              {items.map((item) => (
+              {items.map((item) => {
+                const linePricing = getLinePriceBreakdown(item)
+
+                return (
                 <AuroraWidget
                   key={item.id}
                   title={item.name}
@@ -134,6 +139,10 @@ export default function CartPage() {
                           </span>
                         ))}
                       </div>
+
+                      <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                        {getTaxInclusionCopy(item)} · Line KDV {formatCurrency(linePricing.lineTax)}
+                      </p>
                     </div>
 
                     <AuroraInset className="flex min-w-[15rem] flex-col items-stretch gap-4 p-4 sm:min-w-[16rem]">
@@ -143,6 +152,9 @@ export default function CartPage() {
                         </p>
                         <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
                           {formatCurrency(item.price * item.quantity)}
+                        </p>
+                        <p className="mt-2 text-sm text-[var(--aurora-text)]">
+                          Net {formatCurrency(linePricing.lineNet)}
                         </p>
                       </div>
 
@@ -184,7 +196,8 @@ export default function CartPage() {
                     </AuroraInset>
                   </div>
                 </AuroraWidget>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -198,9 +211,15 @@ export default function CartPage() {
           <AuroraInset className="mt-4">
             <div className="space-y-4 text-sm text-[var(--aurora-text)]">
               <div className="flex items-center justify-between">
-                <span>Subtotal</span>
+                <span>Items total</span>
                 <span className="font-semibold text-[var(--aurora-text-strong)]">
-                  {formatCurrency(subtotal)}
+                  {formatCurrency(pricing.itemsGross || subtotal)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Included KDV</span>
+                <span className="font-semibold text-[var(--aurora-text-strong)]">
+                  {formatCurrency(pricing.taxTotal)}
                 </span>
               </div>
               <div className="flex items-center justify-between">
@@ -215,13 +234,19 @@ export default function CartPage() {
                   {isLoggedIn ? 'Linked to current auth choice' : 'Guest cart'}
                 </span>
               </div>
+              <div className="flex items-center justify-between border-t border-[rgba(138,144,119,0.18)] pt-4">
+                <span className="font-semibold text-[var(--aurora-text-strong)]">Total charged</span>
+                <span className="font-semibold text-[var(--aurora-text-strong)]">
+                  {formatCurrency(pricing.totalCharged)}
+                </span>
+              </div>
             </div>
           </AuroraInset>
 
           <AuroraInset className="mt-6 text-sm leading-7 text-[var(--aurora-text)]">
             {isLoggedIn
-              ? 'You are signed in. Continue to checkout to enter delivery and payment details and place your order.'
-              : 'You can build the cart while browsing. When you continue, you will be asked to sign in first and then returned directly to checkout.'}
+              ? 'You are signed in. Prices are shown tax-inclusive; continue to checkout to confirm delivery and payment details.'
+              : 'You can build the cart while browsing. Prices are shown tax-inclusive, and you will be asked to sign in before checkout.'}
           </AuroraInset>
 
           <LiquidGlassButton

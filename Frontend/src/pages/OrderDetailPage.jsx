@@ -14,6 +14,7 @@ import {
   orderProgressSteps,
   ordersChangeEvent,
 } from '../lib/orders'
+import { getLinePriceBreakdown } from '../lib/tax'
 
 function formatTimestamp(value) {
   const timestamp = Date.parse(value || '')
@@ -299,7 +300,10 @@ export default function OrderDetailPage() {
                 </div>
 
                 <div className="mt-6 space-y-4">
-                  {order.items.map((item) => (
+                  {order.items.map((item) => {
+                    const linePricing = getLinePriceBreakdown(item)
+
+                    return (
                     <div key={`${order.id}-${item.lineItemId || item.id}`} className="aurora-ops-card px-5 py-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="min-w-0">
@@ -311,6 +315,9 @@ export default function OrderDetailPage() {
                           </p>
                           <p className="mt-1 text-sm text-[var(--aurora-text)]">
                             Qty {item.quantity}
+                          </p>
+                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                            Included KDV {formatCurrency(linePricing.lineTax)}
                           </p>
                           {renderOrderItemOptions(item)}
                           <LiquidGlassButton
@@ -329,7 +336,8 @@ export default function OrderDetailPage() {
                         </p>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             </div>
@@ -382,19 +390,25 @@ export default function OrderDetailPage() {
                 </p>
                 <div className="mt-4 space-y-3 text-sm text-[var(--aurora-text)]">
                   <div className="flex items-center justify-between">
-                    <span>Subtotal</span>
+                    <span>Items total</span>
                     <span className="font-semibold text-[var(--aurora-text-strong)]">
-                      {formatCurrency(order.subtotal)}
+                      {formatCurrency(order.pricing?.itemsGross ?? order.subtotal)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Service fee</span>
+                    <span>Included KDV</span>
                     <span className="font-semibold text-[var(--aurora-text-strong)]">
-                      {formatCurrency(order.serviceFee)}
+                      {formatCurrency(order.taxTotal ?? order.pricing?.taxTotal ?? 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>Installment fee</span>
+                    <span className="font-semibold text-[var(--aurora-text-strong)]">
+                      {formatCurrency(order.installmentFee ?? order.pricing?.installmentFee ?? order.serviceFee)}
                     </span>
                   </div>
                   <div className="flex items-center justify-between border-t border-[rgba(138,144,119,0.18)] pt-3">
-                    <span>Total</span>
+                    <span>Total charged</span>
                     <span className="font-semibold text-[var(--aurora-text-strong)]">
                       {formatCurrency(order.total)}
                     </span>

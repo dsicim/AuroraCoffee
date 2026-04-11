@@ -9,6 +9,7 @@ import { clearCart, reconcileCartStorageWithAuth } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import { fetchOrderById, fetchOrders } from '../lib/orders'
 import { formatPaymentError } from '../lib/payment'
+import { getItemsPriceBreakdown } from '../lib/tax'
 import {
   buildSubmittedOrderSnapshotFromPending,
   consumePending3DSCheckoutSnapshot,
@@ -48,6 +49,11 @@ export default function Checkout3DSCallbackPage() {
   const [orderNumber, setOrderNumber] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const hasSession = Boolean(getAuthSession()?.token)
+  const submittedPricing = submittedOrder
+    ? getItemsPriceBreakdown(submittedOrder.items, {
+        payableTotal: submittedOrder.total,
+      })
+    : null
 
   useEffect(() => {
     let active = true
@@ -213,6 +219,7 @@ export default function Checkout3DSCallbackPage() {
             </p>
 
             {submittedOrder ? (
+              <>
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 <div className="aurora-ops-card p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
@@ -239,6 +246,31 @@ export default function Checkout3DSCallbackPage() {
                   </p>
                 </div>
               </div>
+              {submittedPricing ? (
+                <div className="aurora-ops-card mt-6 p-4">
+                  <div className="grid gap-3 text-sm text-[var(--aurora-text)] sm:grid-cols-3">
+                    <div className="flex items-center justify-between gap-4 sm:block">
+                      <span>Items total</span>
+                      <span className="font-semibold text-[var(--aurora-text-strong)]">
+                        {formatCurrency(submittedPricing.itemsGross)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 sm:block">
+                      <span>Included KDV</span>
+                      <span className="font-semibold text-[var(--aurora-text-strong)]">
+                        {formatCurrency(submittedOrder.taxTotal ?? submittedPricing.taxTotal)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4 sm:block">
+                      <span>Installment fee</span>
+                      <span className="font-semibold text-[var(--aurora-text-strong)]">
+                        {formatCurrency(submittedOrder.installmentFee ?? submittedPricing.installmentFee)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+              </>
             ) : (
               <div className="aurora-ops-card mt-8 p-4">
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
