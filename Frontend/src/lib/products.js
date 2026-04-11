@@ -3,10 +3,10 @@ import { buildApiUrl } from './api'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 
-let cachedProducts = []
-let cachedProductsLoaded = false
+let catalogProducts = []
+let catalogProductsLoaded = false
 let productsPromise = null
-const cachedProductsById = new Map()
+const productLookupById = new Map()
 
 function dispatchProductCatalogChange(type = 'sync') {
   window.dispatchEvent(
@@ -18,15 +18,15 @@ function dispatchProductCatalogChange(type = 'sync') {
 
 function clearProductsCache({ emit = true } = {}) {
   const hadState =
-    cachedProducts.length > 0 ||
-    cachedProductsLoaded ||
+    catalogProducts.length > 0 ||
+    catalogProductsLoaded ||
     productsPromise !== null ||
-    cachedProductsById.size > 0
+    productLookupById.size > 0
 
-  cachedProducts = []
-  cachedProductsLoaded = false
+  catalogProducts = []
+  catalogProductsLoaded = false
   productsPromise = null
-  cachedProductsById.clear()
+  productLookupById.clear()
 
   if (emit && hadState) {
     dispatchProductCatalogChange('clear')
@@ -94,38 +94,65 @@ function normalizeProduct(rawProduct) {
   }
 }
 
-function storeProducts(products, { replace = false, markLoaded = cachedProductsLoaded } = {}) {
+function mergeProductRecord(existingProduct, incomingProduct) {
+  if (!existingProduct) {
+    return incomingProduct
+  }
+
+  return {
+    ...existingProduct,
+    ...incomingProduct,
+    slug: incomingProduct.slug || existingProduct.slug,
+    name: incomingProduct.name || existingProduct.name,
+    description: incomingProduct.description || existingProduct.description,
+    origin: incomingProduct.origin || existingProduct.origin,
+    roastLevel: incomingProduct.roastLevel || existingProduct.roastLevel,
+    acidity: incomingProduct.acidity || existingProduct.acidity,
+    flavorNotes: incomingProduct.flavorNotes || existingProduct.flavorNotes,
+    material: incomingProduct.material || existingProduct.material,
+    capacity: incomingProduct.capacity || existingProduct.capacity,
+    imageUrl: incomingProduct.imageUrl || existingProduct.imageUrl,
+    categoryName: incomingProduct.categoryName || existingProduct.categoryName,
+    parentCategoryName:
+      incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
+    createdAt: incomingProduct.createdAt || existingProduct.createdAt,
+  }
+}
+
+function updateProductLookup(products) {
   const normalizedProducts = products.map(normalizeProduct)
-  const nextLoaded = markLoaded || cachedProductsLoaded
 
-  if (replace || !cachedProducts.length) {
-    cachedProducts = normalizedProducts
-  } else {
-    const merged = new Map(cachedProducts.map((product) => [product.id, product]))
-    for (const product of normalizedProducts) {
-      merged.set(product.id, product)
-    }
-    cachedProducts = Array.from(merged.values())
+  for (const product of normalizedProducts) {
+    const existingProduct = productLookupById.get(product.id)
+    productLookupById.set(product.id, mergeProductRecord(existingProduct, product))
   }
 
-  cachedProductsById.clear()
-  for (const product of cachedProducts) {
-    cachedProductsById.set(product.id, product)
+  return normalizedProducts
+}
+
+function storeCatalogProducts(products) {
+  const normalizedProducts = products.map(normalizeProduct)
+
+  catalogProducts = normalizedProducts
+  catalogProductsLoaded = true
+
+  productLookupById.clear()
+  for (const product of normalizedProducts) {
+    productLookupById.set(product.id, product)
   }
 
-  cachedProductsLoaded = nextLoaded
-  dispatchProductCatalogChange(nextLoaded ? 'list' : 'partial')
+  dispatchProductCatalogChange('list')
 
   return normalizedProducts
 }
 
 function hydrateWithKnownSlugs(rawProducts) {
-  if (!cachedProducts.length) {
+  if (!productLookupById.size) {
     return buildSlugMap(rawProducts)
   }
 
   return rawProducts.map((product) => {
-    const existing = cachedProductsById.get(Number(product.id))
+    const existing = productLookupById.get(Number(product.id))
     return {
       ...product,
       slug: existing?.slug || slugify(product.name) || `product-${product.id}`,
@@ -147,10 +174,7 @@ async function requestJson(path) {
 
 async function requestProducts() {
   const payload = await requestJson('/products/all')
-  const normalizedProducts = storeProducts(
-    buildSlugMap(payload?.products || []),
-    { replace: true, markLoaded: true },
-  )
+  const normalizedProducts = storeCatalogProducts(buildSlugMap(payload?.products || []))
   return normalizedProducts
 }
 
@@ -180,7 +204,7 @@ export async function fetchProductsByIds(ids) {
   }
 
   const cachedMatches = normalizedIds
-    .map((id) => cachedProductsById.get(id))
+    .map((id) => productLookupById.get(id))
     .filter(Boolean)
 
   if (cachedMatches.length === normalizedIds.length) {
@@ -189,10 +213,10 @@ export async function fetchProductsByIds(ids) {
 
   const payload = await requestJson(`/products?ids=${normalizedIds.join(',')}`)
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  storeProducts(hydratedProducts, { markLoaded: false })
+  updateProductLookup(hydratedProducts)
 
   return normalizedIds
-    .map((id) => cachedProductsById.get(id))
+    .map((id) => productLookupById.get(id))
     .filter(Boolean)
 }
 
@@ -216,18 +240,18 @@ export async function searchProducts(query, sortBy = 'newest') {
     `/products/search?q=${encodeURIComponent(normalizedQuery)}&s=${encodeURIComponent(backendSort)}`,
   )
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  storeProducts(hydratedProducts, { markLoaded: false })
-  return hydratedProducts.map(normalizeProduct)
+  const normalizedProducts = updateProductLookup(hydratedProducts)
+  return normalizedProducts.map((product) => productLookupById.get(product.id) || product)
 }
 
 export function getCachedProducts() {
-  return cachedProducts
+  return catalogProducts
 }
 
 export function getProductCatalogSnapshot() {
   return {
     products: getCachedProducts(),
-    loaded: cachedProductsLoaded,
+    loaded: catalogProductsLoaded,
   }
 }
 
