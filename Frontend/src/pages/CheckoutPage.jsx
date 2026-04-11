@@ -311,6 +311,16 @@ function getInstallmentOptions(installmentInfo) {
     : []
 }
 
+function formatInstallmentFormula(months, perMonth, total) {
+  const normalizedMonths = normalizeInstallmentMonths(months)
+
+  if (!normalizedMonths) {
+    return ''
+  }
+
+  return `${formatCurrency(perMonth)} x ${normalizedMonths} = ${formatCurrency(total)}`
+}
+
 function getInstallmentSelectionLabel(installmentInfo, selectedInstallments) {
   const selectedMonths = normalizeInstallmentMonths(selectedInstallments)
 
@@ -323,10 +333,10 @@ function getInstallmentSelectionLabel(installmentInfo, selectedInstallments) {
   )
 
   if (!selectedOption) {
-    return `${selectedMonths} installments`
+    return `${selectedMonths} monthly installments`
   }
 
-  return `${selectedMonths} installments · ${formatCurrency(selectedOption.permonth)} / month`
+  return `${selectedMonths} monthly installments`
 }
 
 function getInstallmentSelectionDescription(installmentInfo, selectedInstallments, total) {
@@ -341,10 +351,14 @@ function getInstallmentSelectionDescription(installmentInfo, selectedInstallment
   )
 
   if (!selectedOption) {
-    return `${selectedMonths} installments`
+    return `${selectedMonths} monthly installments`
   }
 
-  return `${formatCurrency(selectedOption.permonth)} / month · total ${formatCurrency(selectedOption.total)}`
+  return formatInstallmentFormula(
+    selectedMonths,
+    selectedOption.permonth,
+    selectedOption.total,
+  )
 }
 
 export default function CheckoutPage() {
@@ -1561,7 +1575,7 @@ export default function CheckoutPage() {
                     <div className="aurora-installment-summary">
                       <span className="aurora-chip">
                         {selectedInstallments
-                          ? `${selectedInstallments} installments`
+                          ? `${selectedInstallments} monthly installments`
                           : 'Pay in full'}
                       </span>
                     </div>
@@ -1596,14 +1610,13 @@ export default function CheckoutPage() {
                           >
                             <span className="aurora-installment-option__meta">Flexible plan</span>
                             <span className="aurora-installment-option__title">
-                              {item.months} installments
+                              {item.months} monthly installments
                             </span>
                             <span className="aurora-installment-option__price">
                               {formatCurrency(item.permonth)}
-                              <span className="aurora-installment-option__price-unit"> / month</span>
                             </span>
                             <span className="aurora-installment-option__caption">
-                              Total {formatCurrency(item.total)}
+                              {formatInstallmentFormula(item.months, item.permonth, item.total)}
                             </span>
                           </button>
                         ))}
