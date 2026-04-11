@@ -1183,7 +1183,7 @@ export default function CheckoutPage() {
                   </div>
                 </div>
 
-                <label className="glass-toggle mt-4 block">
+                <label className="glass-toggle mt-4">
                   <input
                     type="checkbox"
                     checked={useShippingAsBilling}
