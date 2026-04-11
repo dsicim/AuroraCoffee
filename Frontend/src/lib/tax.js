@@ -45,6 +45,15 @@ function normalizeTaxRate(value) {
   return numericValue > 1 ? numericValue / 100 : numericValue
 }
 
+function normalizeAmount(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
 function inferTaxClass(item) {
   const parentCategoryName = normalizeText(item?.parentCategoryName)
   const categoryName = normalizeText(item?.categoryName || item?.category)
@@ -96,6 +105,11 @@ export function getTaxClass(item) {
 }
 
 export function getTaxRate(item) {
+  const backendRate = normalizeTaxRate(item?.taxRate ?? item?.tax)
+  if (backendRate !== null) {
+    return backendRate
+  }
+
   const overrideRate = normalizeTaxRate(item?.taxRateOverride)
 
   if (overrideRate !== null) {
@@ -115,7 +129,27 @@ export function getTaxInclusionCopy(item) {
 
 export function getUnitPriceBreakdown(item) {
   const taxRate = getTaxRate(item)
-  const price = splitGrossAmount(item?.price, taxRate)
+  const grossAmount = normalizeAmount(item?.price) ?? 0
+  const explicitNetAmount =
+    normalizeAmount(item?.priceNet) ??
+    normalizeAmount(item?.unitNet) ??
+    normalizeAmount(item?.subtotal)
+  const explicitTaxAmount =
+    normalizeAmount(item?.taxAmount) ??
+    normalizeAmount(item?.unitTax)
+
+  let price = splitGrossAmount(grossAmount, taxRate)
+
+  if (explicitNetAmount !== null || explicitTaxAmount !== null) {
+    const net = explicitNetAmount ?? Math.max(0, grossAmount - (explicitTaxAmount ?? 0))
+    const tax = explicitTaxAmount ?? Math.max(0, grossAmount - net)
+
+    price = {
+      gross: grossAmount,
+      net,
+      tax,
+    }
+  }
 
   return {
     taxClass: getTaxClass(item),
@@ -129,10 +163,21 @@ export function getUnitPriceBreakdown(item) {
 export function getLinePriceBreakdown(item, quantity = item?.quantity || 1) {
   const taxRate = getTaxRate(item)
   const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1))
-  const lineGrossMinor = Math.max(0, toMinorUnits(item?.price) * safeQuantity)
-  const lineNetMinor = taxRate > 0 ? Math.round(lineGrossMinor / (1 + taxRate)) : lineGrossMinor
-  const lineTaxMinor = lineGrossMinor - lineNetMinor
   const unitBreakdown = getUnitPriceBreakdown(item)
+  const explicitLineNet =
+    normalizeAmount(item?.lineNet) ??
+    normalizeAmount(item?.lineSubtotal)
+  const explicitLineTax = normalizeAmount(item?.lineTax)
+  const explicitLineGross = normalizeAmount(item?.lineGross)
+  const lineGrossMinor = explicitLineGross !== null
+    ? Math.max(0, toMinorUnits(explicitLineGross))
+    : Math.max(0, toMinorUnits(unitBreakdown.priceGross) * safeQuantity)
+  const lineNetMinor = explicitLineNet !== null
+    ? Math.max(0, toMinorUnits(explicitLineNet))
+    : Math.max(0, toMinorUnits(unitBreakdown.priceNet) * safeQuantity)
+  const lineTaxMinor = explicitLineTax !== null
+    ? Math.max(0, toMinorUnits(explicitLineTax))
+    : Math.max(0, toMinorUnits(unitBreakdown.taxAmount) * safeQuantity)
 
   return {
     ...unitBreakdown,

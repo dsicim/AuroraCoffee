@@ -170,11 +170,23 @@ function normalizeStoredCartItem(item) {
     description: item.description || '',
     notes: Array.isArray(item.notes) ? item.notes : [],
     price: normalizeProductPrice(item.price),
+    taxRate:
+      item.taxRate === null || item.taxRate === undefined
+        ? null
+        : normalizeProductPrice(item.taxRate),
     taxClass: typeof item.taxClass === 'string' ? item.taxClass : '',
     taxRateOverride:
       item.taxRateOverride === null || item.taxRateOverride === undefined
         ? null
         : normalizeProductPrice(item.taxRateOverride),
+    priceNet:
+      item.priceNet === null || item.priceNet === undefined
+        ? null
+        : normalizeProductPrice(item.priceNet),
+    taxAmount:
+      item.taxAmount === null || item.taxAmount === undefined
+        ? null
+        : normalizeProductPrice(item.taxAmount),
     quantity: Math.max(1, Math.floor(item.quantity) || 1),
     imageUrl: item.imageUrl || '',
     options: normalizedOptions,
@@ -276,8 +288,11 @@ function buildCartItem(product, quantity = 1, options = null) {
     description: product.description,
     notes: getProductFlavorNotes(product),
     price: normalizeProductPrice(product.price),
+    taxRate: product.taxRate ?? null,
     taxClass: product.taxClass || '',
     taxRateOverride: product.taxRateOverride ?? null,
+    priceNet: product.priceNet ?? null,
+    taxAmount: product.taxAmount ?? null,
     quantity: Math.max(1, Math.floor(quantity) || 1),
     imageUrl: product.imageUrl || '',
     options: normalizedOptions,
@@ -394,8 +409,11 @@ async function hydrateServerCartRows(rows) {
       description: product?.description || '',
       notes: product ? getProductFlavorNotes(product) : [],
       price: normalizeProductPrice(product?.price ?? row.product_price),
+      taxRate: product?.taxRate ?? null,
       taxClass: product?.taxClass || '',
       taxRateOverride: product?.taxRateOverride ?? null,
+      priceNet: product?.priceNet ?? null,
+      taxAmount: product?.taxAmount ?? null,
       quantity: Math.max(1, Math.floor(row.quantity) || 1),
       imageUrl: product?.imageUrl || row.image_url || '',
       options: parsedOptions,

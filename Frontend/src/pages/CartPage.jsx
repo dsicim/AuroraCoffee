@@ -141,7 +141,7 @@ export default function CartPage() {
                       </div>
 
                       <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                        {getTaxInclusionCopy(item)} · Line KDV {formatCurrency(linePricing.lineTax)}
+                        {getTaxInclusionCopy(item)} · Line VAT {formatCurrency(linePricing.lineTax)}
                       </p>
                     </div>
 
@@ -217,7 +217,7 @@ export default function CartPage() {
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Included KDV</span>
+                <span>Included VAT</span>
                 <span className="font-semibold text-[var(--aurora-text-strong)]">
                   {formatCurrency(pricing.taxTotal)}
                 </span>

@@ -337,7 +337,7 @@ export default function ProductDetailPage() {
                   {formatCurrency(product.price)}
                 </p>
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                  {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + KDV {formatCurrency(priceBreakdown.taxAmount)}
+                  {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + VAT {formatCurrency(priceBreakdown.taxAmount)}
                 </p>
               </div>
               <span

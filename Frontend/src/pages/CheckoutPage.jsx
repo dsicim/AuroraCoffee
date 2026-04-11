@@ -786,7 +786,7 @@ export default function CheckoutPage() {
           cart: cartPayload,
           shipping: shippingPayload,
           billing: billingPayload,
-          expected: subtotal,
+          expected: pricing.itemsGross,
           currency: 'TRY',
           installments: normalizeInstallmentMonths(selectedInstallments) || undefined,
           savedCardToken: selectedSavedCardId || '',
@@ -1749,7 +1749,7 @@ export default function CheckoutPage() {
                             Qty {item.quantity}
                           </p>
                           <p className="text-sm text-[var(--aurora-text)]">
-                            Included KDV {formatCurrency(getLinePriceBreakdown(item).lineTax)}
+                            Included VAT {formatCurrency(getLinePriceBreakdown(item).lineTax)}
                           </p>
                         </div>
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
@@ -1883,7 +1883,7 @@ export default function CheckoutPage() {
                       Qty {item.quantity}
                     </p>
                     <p className="text-sm text-[var(--aurora-text)]">
-                      Included KDV {formatCurrency(getLinePriceBreakdown(item).lineTax)}
+                      Included VAT {formatCurrency(getLinePriceBreakdown(item).lineTax)}
                     </p>
                   </div>
                   <p className="font-semibold text-[var(--aurora-text-strong)]">
@@ -1903,7 +1903,7 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Included KDV</span>
+                  <span>Included VAT</span>
                   <span className="font-semibold text-[var(--aurora-text-strong)]">
                     {formatCurrency(submittedOrder?.taxTotal ?? pricing.taxTotal)}
                   </span>
@@ -1926,7 +1926,7 @@ export default function CheckoutPage() {
             <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)]">
               {currentStep.key === 'success'
                 ? 'The cart has been cleared and the success step now reflects the submitted order snapshot.'
-                : 'Review the tax-inclusive cart, included KDV, and payment method before sending the order to the payment endpoint.'}
+                : 'Review the tax-inclusive cart, included VAT, and payment method before sending the order to the payment endpoint.'}
             </div>
           </div>
         </aside>

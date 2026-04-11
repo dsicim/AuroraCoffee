@@ -118,6 +118,22 @@ function toNumber(value) {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null
+  }
+
+  const normalized = String(value ?? '')
+    .replace(/[^0-9.,-]/g, '')
+    .replace(',', '.')
+  const parsed = Number.parseFloat(normalized)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -343,8 +359,11 @@ function normalizeOrderItem(rawItem, productById) {
     typeLabel: product?.typeLabel || '',
     metaLine: normalizeText(rawItem?.metaLine) || getProductMetaLine(product) || '',
     price: toNumber(rawItem?.product_price || rawItem?.price || product?.price),
+    taxRate: toNullableNumber(rawItem?.tax_rate ?? rawItem?.taxRate ?? rawItem?.tax ?? product?.taxRate),
     taxClass: normalizeText(rawItem?.tax_class || rawItem?.taxClass) || product?.taxClass || '',
     taxRateOverride: rawItem?.tax_rate_override ?? rawItem?.taxRateOverride ?? product?.taxRateOverride ?? null,
+    priceNet: toNullableNumber(rawItem?.price_net ?? rawItem?.priceNet ?? rawItem?.subtotal ?? product?.priceNet),
+    taxAmount: toNullableNumber(rawItem?.tax_amount ?? rawItem?.taxAmount ?? product?.taxAmount),
     quantity,
     imageUrl: normalizeText(rawItem?.image_url || rawItem?.imageUrl) || product?.imageUrl || '',
     options: parseOrderOptions(rawItem?.options || rawItem?.opt),

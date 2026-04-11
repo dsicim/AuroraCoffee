@@ -50,6 +50,19 @@ function toNumber(value) {
   return Number.isFinite(numericValue) ? numericValue : 0
 }
 
+function toNullableNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const numericValue =
+    typeof value === 'number'
+      ? value
+      : Number.parseFloat(String(value ?? '').replace(/[^0-9.-]/g, ''))
+
+  return Number.isFinite(numericValue) ? numericValue : null
+}
+
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -90,8 +103,11 @@ function normalizeProduct(rawProduct) {
     imageUrl: normalizeText(rawProduct.image_url),
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
+    taxRate: toNullableNumber(rawProduct.tax_rate ?? rawProduct.taxRate ?? rawProduct.tax),
     taxClass: normalizeText(rawProduct.tax_class || rawProduct.taxClass),
     taxRateOverride: rawProduct.tax_rate_override ?? rawProduct.taxRateOverride ?? null,
+    priceNet: toNullableNumber(rawProduct.price_net ?? rawProduct.priceNet ?? rawProduct.subtotal),
+    taxAmount: toNullableNumber(rawProduct.tax_amount ?? rawProduct.taxAmount),
     createdAt: rawProduct.created_at || '',
   }
 }
@@ -117,8 +133,11 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     categoryName: incomingProduct.categoryName || existingProduct.categoryName,
     parentCategoryName:
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
+    taxRate: incomingProduct.taxRate ?? existingProduct.taxRate,
     taxClass: incomingProduct.taxClass || existingProduct.taxClass,
     taxRateOverride: incomingProduct.taxRateOverride ?? existingProduct.taxRateOverride,
+    priceNet: incomingProduct.priceNet ?? existingProduct.priceNet,
+    taxAmount: incomingProduct.taxAmount ?? existingProduct.taxAmount,
     createdAt: incomingProduct.createdAt || existingProduct.createdAt,
   }
 }

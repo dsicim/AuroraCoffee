@@ -256,7 +256,7 @@ export default function Checkout3DSCallbackPage() {
                       </span>
                     </div>
                     <div className="flex items-center justify-between gap-4 sm:block">
-                      <span>Included KDV</span>
+                      <span>Included VAT</span>
                       <span className="font-semibold text-[var(--aurora-text-strong)]">
                         {formatCurrency(submittedOrder.taxTotal ?? submittedPricing.taxTotal)}
                       </span>

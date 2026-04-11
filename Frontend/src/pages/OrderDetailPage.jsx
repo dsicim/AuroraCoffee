@@ -317,7 +317,7 @@ export default function OrderDetailPage() {
                             Qty {item.quantity}
                           </p>
                           <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            Included KDV {formatCurrency(linePricing.lineTax)}
+                            Included VAT {formatCurrency(linePricing.lineTax)}
                           </p>
                           {renderOrderItemOptions(item)}
                           <LiquidGlassButton
@@ -396,7 +396,7 @@ export default function OrderDetailPage() {
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span>Included KDV</span>
+                    <span>Included VAT</span>
                     <span className="font-semibold text-[var(--aurora-text-strong)]">
                       {formatCurrency(order.taxTotal ?? order.pricing?.taxTotal ?? 0)}
                     </span>
