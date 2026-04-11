@@ -396,8 +396,12 @@ export function isCoffeeProduct(product) {
   )
 }
 
+export function getProductCategoryName(product) {
+  return product?.categoryName || product?.parentCategoryName || ''
+}
+
 export function getProductCategoryLabel(product) {
-  return product?.categoryName || product?.parentCategoryName || 'Catalog'
+  return getProductCategoryName(product) || 'Catalog'
 }
 
 export function getProductTypeLabel(product) {
@@ -439,7 +443,7 @@ export function getProductCategories(products) {
     'All',
     ...new Set(
       (products || [])
-        .map((product) => getProductCategoryLabel(product))
+        .map((product) => getProductCategoryName(product))
         .filter(Boolean),
     ),
   ]

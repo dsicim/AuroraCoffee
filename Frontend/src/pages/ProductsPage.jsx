@@ -6,7 +6,7 @@ import ProductCard from '../components/ProductCard'
 import StorefrontLayout from '../components/StorefrontLayout'
 import {
   getProductCategories,
-  getProductCategoryLabel,
+  getProductCategoryName,
   searchProducts,
   useProductCatalog,
 } from '../lib/products'
@@ -100,7 +100,9 @@ export default function ProductsPage() {
   const filteredProducts = useMemo(
     () =>
       sortProducts(
-        sourceProducts.filter((product) => category === 'All' || getProductCategoryLabel(product) === category),
+        sourceProducts.filter(
+          (product) => category === 'All' || getProductCategoryName(product) === category,
+        ),
         sortBy,
       ),
     [category, sourceProducts, sortBy],
