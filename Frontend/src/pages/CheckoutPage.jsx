@@ -1810,14 +1810,19 @@ export default function CheckoutPage() {
 
           {currentStep.key !== 'success' ? (
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
-              <LiquidGlassButton
-                type="button"
-                onClick={handlePreviousStep}
-                disabled={stepIndex === 0}
-                variant="quiet"
-              >
-                Back
-              </LiquidGlassButton>
+              {stepIndex === 0 ? (
+                <LiquidGlassButton as={Link} to="/cart" variant="quiet">
+                  Back to cart
+                </LiquidGlassButton>
+              ) : (
+                <LiquidGlassButton
+                  type="button"
+                  onClick={handlePreviousStep}
+                  variant="quiet"
+                >
+                  Back
+                </LiquidGlassButton>
+              )}
 
               {currentStep.key === 'review' ? (
                 <LiquidGlassButton
