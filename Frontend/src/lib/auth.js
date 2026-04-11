@@ -17,6 +17,8 @@ let cachedCurrentUserToken = null
 let inFlightCurrentUserPromise = null
 let currentUserRequestId = 0
 let authExpiryTimerId = null
+let hasRegisteredAuthSessionMonitor = false
+let pendingAuthChangeDispatch = false
 
 function dispatchAuthChange() {
   window.dispatchEvent(new Event(authChangeEvent))
@@ -24,6 +26,18 @@ function dispatchAuthChange() {
 
 function dispatchCurrentUserChange() {
   window.dispatchEvent(new Event(currentUserChangeEvent))
+}
+
+function dispatchAuthChangeAsync() {
+  if (pendingAuthChangeDispatch) {
+    return
+  }
+
+  pendingAuthChangeDispatch = true
+  window.setTimeout(() => {
+    pendingAuthChangeDispatch = false
+    dispatchAuthChange()
+  }, 0)
 }
 
 function clearAuthExpiryTimer() {
@@ -93,7 +107,59 @@ function clearCurrentUserCache() {
   }
 }
 
+function invalidateStoredAuthSession({ async = false } = {}) {
+  const hadStoredSession = Boolean(getAuthStorageMode())
+
+  clearAuthExpiryTimer()
+  removeStoredAuthSession()
+  clearCurrentUserCache()
+
+  if (hadStoredSession) {
+    if (async) {
+      dispatchAuthChangeAsync()
+    } else {
+      dispatchAuthChange()
+    }
+  }
+}
+
+function ensureAuthSessionMonitor() {
+  if (hasRegisteredAuthSessionMonitor || typeof window === 'undefined') {
+    return
+  }
+
+  hasRegisteredAuthSessionMonitor = true
+
+  const syncExpiredSession = () => {
+    const storageMode = getAuthStorageMode()
+    const storedSession = storageMode ? getStorageValue(storageMode) : null
+
+    if (!storedSession) {
+      return
+    }
+
+    try {
+      const parsedSession = JSON.parse(storedSession)
+
+      if (parsedSession?.token && isSessionExpired(parsedSession)) {
+        invalidateStoredAuthSession({ async: true })
+      }
+    } catch {
+      invalidateStoredAuthSession({ async: true })
+    }
+  }
+
+  window.addEventListener('focus', syncExpiredSession)
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      syncExpiredSession()
+    }
+  })
+}
+
 function readStoredSession() {
+  ensureAuthSessionMonitor()
+
   const storageMode = getAuthStorageMode()
   const storedSession = storageMode
     ? getStorageValue(storageMode)
@@ -107,16 +173,14 @@ function readStoredSession() {
     const parsedSession = JSON.parse(storedSession)
 
     if (!parsedSession?.token || isSessionExpired(parsedSession)) {
-      clearAuthExpiryTimer()
-      removeStoredAuthSession()
+      invalidateStoredAuthSession({ async: true })
       return null
     }
 
     scheduleAuthExpiry(parsedSession)
     return parsedSession
   } catch {
-    clearAuthExpiryTimer()
-    removeStoredAuthSession()
+    invalidateStoredAuthSession({ async: true })
     return null
   }
 }
@@ -144,6 +208,7 @@ export function saveAuthSession(session, rememberMe) {
 
   otherStorage.removeItem(authStorageKey)
   storage.setItem(authStorageKey, JSON.stringify(session))
+  ensureAuthSessionMonitor()
   scheduleAuthExpiry(session)
   clearCurrentUserCache()
   dispatchAuthChange()
@@ -167,10 +232,7 @@ function getStorageValue(mode) {
 }
 
 export function clearAuthSession() {
-  clearAuthExpiryTimer()
-  removeStoredAuthSession()
-  clearCurrentUserCache()
-  dispatchAuthChange()
+  invalidateStoredAuthSession()
 }
 
 export function getCurrentUserSnapshot() {
