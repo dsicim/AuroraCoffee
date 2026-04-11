@@ -110,7 +110,7 @@ export function formatTaxRate(rate) {
 }
 
 export function getTaxInclusionCopy(item) {
-  return `Includes ${formatTaxRate(getTaxRate(item))} KDV`
+  return 'VAT included'
 }
 
 export function getUnitPriceBreakdown(item) {
