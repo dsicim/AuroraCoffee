@@ -96,15 +96,22 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     }
     billingAddress.open = billingAddress.address + ", " + (billingAddress.address2 ? billingAddress.address2 + ", " : "") + billingAddress.city;
     shippingAddress.open = shippingAddress.address + ", " + (shippingAddress.address2 ? shippingAddress.address2 + ", " : "") + shippingAddress.city;
+    const ins = cardDetails.installments.find(ins => ins.months === parseInt(installment));
     const details = {
         products: cart,
         shippingAddress,
         billingAddress,
-        card: cardDetails,
-        installment,
+        card: {
+            type: cardDetails.type,
+            provider: cardDetails.provider,
+            family: cardDetails.family,
+            bank: cardDetails.bank,
+            last4dig: cardDetails.last4dig || card.number.substring(card.number.length - 4)
+        },
+        installment: ins,
         price: {
             subtotal: subtotal,
-            paid: subtotal,
+            paid: ins.total,
             total: realPrice
         },
         currency: currency
@@ -112,7 +119,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     const payload = {
         locale: "en",
         price: subtotal,
-        paidPrice: subtotal,
+        paidPrice: ins.total,
         currency: currency,
         installment: installment,
         paymentCard: card,
@@ -122,12 +129,12 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
             id: currentUser.id.toString(),
             name: currentUser.displayname.split(' ').slice(0, -1).join(' ') || currentUser.displayname,
             surname: currentUser.displayname.split(' ').slice(-1)[0],
-            identityNumber: "11111111111", // Yeahhhh no.
+            identityNumber: "11111111111", // We are not collecting this information, but it's required by the payment provider, so we will just send a dummy value
             email: currentUser.username,
-            gsmNumber: billingAddress.phone, // Do you really need this?????
-            registrationAddress: billingAddress.open, // Take this from billing address!
-            city: billingAddress.province, // Take this from billing address!
-            country: billingAddress.country, // Take this from billing address!
+            gsmNumber: billingAddress.phone,
+            registrationAddress: billingAddress.open,
+            city: billingAddress.province,
+            country: billingAddress.country,
         },
         shippingAddress: {
             contactName: shippingAddress.name + " " + shippingAddress.surname,
@@ -422,9 +429,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const basketItems = [];
             let outofstock = false;
             actualCart.forEach(item => {
+                item.tax = parseInt(products[item.product_id].tax);
+                item.subtotal = Math.round(parseFloat(products[item.product_id].price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
+                item.taxAmount = parseFloat(products[item.product_id].price) - (item.subtotal);
                 const itemFormat = {
                     id: item.product_id,
-                    price: parseFloat(item.product_price),
+                    price: item.product_price,
                     name: item.product_name,
                     category1: products[item.product_id].parent_category_name,
                     category2: products[item.product_id].category_name,
