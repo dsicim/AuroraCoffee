@@ -123,7 +123,7 @@ export function formatTaxRate(rate) {
   return `${Math.round(getTaxRate({ taxRateOverride: rate }) * 100)}%`
 }
 
-export function getTaxInclusionCopy(_item) {
+export function getTaxInclusionCopy() {
   return 'VAT included'
 }
 

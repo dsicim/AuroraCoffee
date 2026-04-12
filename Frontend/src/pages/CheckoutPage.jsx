@@ -609,11 +609,13 @@ export default function CheckoutPage() {
     const selectedMonths = normalizeInstallmentMonths(selectedInstallments)
 
     if (!selectedMonths) {
+      setPaymentSummaryOverride(null)
       setSelectedInstallments('')
       return
     }
 
     if (!installmentOptions.some((item) => Number(item.months) === selectedMonths)) {
+      setPaymentSummaryOverride(null)
       setSelectedInstallments('')
     }
   }, [installmentOptions, selectedInstallments])
@@ -674,6 +676,11 @@ export default function CheckoutPage() {
     setPaymentSummaryOverride(null)
     setPayment((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: '', payment: '' }))
+  }
+
+  const handleInstallmentSelection = (value) => {
+    setPaymentSummaryOverride(null)
+    setSelectedInstallments(value)
   }
 
   const handleNextStep = () => {
@@ -1589,7 +1596,7 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           className={`aurora-installment-option${!selectedInstallments ? ' is-selected' : ''}`}
-                          onClick={() => setSelectedInstallments('')}
+                          onClick={() => handleInstallmentSelection('')}
                           aria-pressed={!selectedInstallments}
                         >
                           <span className="aurora-installment-option__meta">Single charge</span>
@@ -1605,7 +1612,7 @@ export default function CheckoutPage() {
                             key={item.months}
                             type="button"
                             className={`aurora-installment-option${String(item.months) === selectedInstallments ? ' is-selected' : ''}`}
-                            onClick={() => setSelectedInstallments(String(item.months))}
+                            onClick={() => handleInstallmentSelection(String(item.months))}
                             aria-pressed={String(item.months) === selectedInstallments}
                           >
                             <span className="aurora-installment-option__meta">Flexible plan</span>
