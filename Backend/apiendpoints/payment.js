@@ -217,7 +217,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
 }
 async function completeCart(products) {
     for (const product of products) {
-        await sql.decreaseStock(product.id, product.quantity).then(res => {}).catch(err => {});
+        await sql.decreaseStock(product.product_id || product.id, product.quantity, product.variant_id || null).then(res => {}).catch(err => {});
     }
     return true;
 }
@@ -503,6 +503,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 };
                 if (products[item.product_id].stock - item.quantity < 0) outofstock = true;
                 products[item.product_id].stock -= item.quantity;
+                if (item.variant_id) {
+                    const variant = products[item.product_id].variants.find(v => v.id === item.variant_id);
+                    if (!variant || variant.stock - item.quantity < 0) outofstock = true;
+                    else variant.stock -= item.quantity;
+                }
                 for (let i = 0; i < item.quantity; i++) {
                     basketItems.push(itemFormat);
                 }

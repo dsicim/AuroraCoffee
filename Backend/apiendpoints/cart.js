@@ -18,7 +18,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt || {})).then(result => {
+                return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt || {}), body.data.variantId || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {

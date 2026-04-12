@@ -2,20 +2,38 @@ USE 308_db;
 
 -- 1. Table for Categories (Support for Main and Subcategories)
 CREATE TABLE IF NOT EXISTS categories (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    parent_id BIGINT UNSIGNED DEFAULT NULL,
+    parent_id INT DEFAULT NULL,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
+-- Table for Brewing Methods
+CREATE TABLE IF NOT EXISTS brew_methods (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    description TEXT
+);
+INSERT INTO brew_methods (name, description) VALUES 
+('Espresso', 'Find grind for espresso machines'),
+('Filter', 'Medium grind for filter coffee machines'),
+('French Press', 'Coarse grind for French Press'),
+('Chemex', 'Medium-coarse grind for Chemex'),
+('V60', 'Medium-fine grind for Hario V60'),
+('AeroPress', 'Medium-fine to fine grind for AeroPress'),
+('Beans', 'Whole coffee beans');
+
+
 -- 2. Table for Products
 CREATE TABLE IF NOT EXISTS products (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_code VARCHAR(50) UNIQUE DEFAULT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     stock INT DEFAULT 0,
-    category_id BIGINT UNSIGNED,
+    has_variants BOOLEAN DEFAULT FALSE,
+    category_id INT,
     weight INT, -- Weight in grams
     tax INT DEFAULT 0,
     -- Coffee specific attributes (as mentioned in Store Overview)
@@ -29,6 +47,55 @@ CREATE TABLE IF NOT EXISTS products (
     image_url VARCHAR(255),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+);
+
+-- Product Option Groups
+CREATE TABLE IF NOT EXISTS product_option_groups (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    name VARCHAR(255) NOT NULL, -- e.g., Weight, Grind, Color
+    cumulative_stock BOOLEAN DEFAULT FALSE,
+    separate_stock BOOLEAN DEFAULT FALSE,
+    separate_price BOOLEAN DEFAULT FALSE,
+    is_required BOOLEAN DEFAULT TRUE,
+    multi_select BOOLEAN DEFAULT FALSE,
+    priority INT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+-- Product Option Values
+CREATE TABLE IF NOT EXISTS product_option_values (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_option_group_id INT,
+    label VARCHAR(255) NOT NULL, -- e.g., 250g, Espresso, Black
+    value_code VARCHAR(100),
+    price_add DECIMAL(10, 2) DEFAULT 0,
+    price_mult DECIMAL(10, 2) DEFAULT 1,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_option_group_id) REFERENCES product_option_groups(id) ON DELETE CASCADE
+);
+
+-- Product Variants
+CREATE TABLE IF NOT EXISTS product_variants (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_id INT,
+    variant_code VARCHAR(100) UNIQUE,
+    price DECIMAL(10, 2) NOT NULL,
+    stock INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+-- Product Variant Values Mapping
+CREATE TABLE IF NOT EXISTS product_variant_values (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    product_variant_id INT,
+    product_option_value_id INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_variant_id) REFERENCES product_variants(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_option_value_id) REFERENCES product_option_values(id) ON DELETE CASCADE
 );
 
 -- 3. Inserting Category Structure
@@ -114,3 +181,31 @@ FROM categories WHERE name = 'Filter Paper' LIMIT 1;
 INSERT INTO products (name, description, price, stock, category_id, material, capacity)
 SELECT 'Glass Drip Server', 'Heat resistant glass server for pour-over brewing.', 420.00, 60, id, 'Borosilicate Glass', '600ml'
 FROM categories WHERE name = 'Brewing Equipment' LIMIT 1;
+
+-- 5. Creating variants for Ethiopia Yirgacheffe
+UPDATE products SET has_variants = TRUE WHERE name = 'Ethiopia Yirgacheffe';
+SET @ethiopia_id = (SELECT id FROM products WHERE name = 'Ethiopia Yirgacheffe' LIMIT 1);
+
+INSERT INTO product_option_groups (product_id, name, cumulative_stock) VALUES (@ethiopia_id, 'Weight', TRUE);
+SET @eth_weight_group_id = LAST_INSERT_ID();
+
+INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
+(@eth_weight_group_id, '250g', '250g', 0),
+(@eth_weight_group_id, '500g', '500g', 350.00);
+
+-- 6. Creating variants for Urban Thermos (Color variants)
+UPDATE products SET has_variants = TRUE WHERE name = 'Urban Thermos';
+SET @thermos_id = (SELECT id FROM products WHERE name = 'Urban Thermos' LIMIT 1);
+
+INSERT INTO product_option_groups (product_id, name, separate_stock) VALUES (@thermos_id, 'Color', TRUE);
+SET @thermos_color_group_id = LAST_INSERT_ID();
+
+INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
+(@thermos_color_group_id, 'Kırmızı', 'red', 0),
+(@thermos_color_group_id, 'Siyah', 'black', 0);
+
+-- Insert actual variant combinations
+INSERT INTO product_variants (product_id, variant_code, price, stock) VALUES
+(@thermos_id, 'THRM-RED', 500.00, 20),
+(@thermos_id, 'THRM-BLK', 500.00, 25);
+

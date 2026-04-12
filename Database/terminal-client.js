@@ -73,36 +73,39 @@ async function productsMenu() {
         console.log('2. Search Products');
         console.log('3. View Product Details');
         console.log('4. Add Product (Admin/Manager)');
-        console.log('5. Back');
+        console.log('5. View Brew Methods');
+        console.log('6. Back');
 
         const choice = await question('Select: ');
         if (choice === '1') {
-            const res = await apiFetch('products');
+            const res = await apiFetch('products/all');
             if (res.ok) {
-                res.data.products.forEach(p => console.log(`[${p.id}] ${p.name} - ${p.price} TL (Stock: ${p.stock})`));
+                res.data.products.forEach(p => {
+                    console.log(`[${p.id}] ${p.name} - ${p.price} TL (Stock: ${p.stock}) ${p.has_variants ? ' (Has Variants)' : ''}`);
+                });
+            } else {
+                console.log('Error fetching products:', res.data);
             }
         } else if (choice === '2') {
             const q = await question('Search query: ');
-            const sort = await question('Sort by (price_asc, price_desc, popularity): ');
-            const res = await apiFetch(`products/search?q=${q}&sort=${sort}`);
+            const sort = await question('Sort by (newest, oldest, price_asc, price_desc): ');
+            const res = await apiFetch(`products/search?q=${q}&s=${sort}`);
             if (res.ok) {
-                res.data.products.forEach(p => console.log(`[${p.id}] ${p.name} - ${p.price} TL`));
+                res.data.products.forEach(p => console.log(`[${p.id}] ${p.name} - ${p.price} TL ${p.has_variants ? ' (Has Variants)' : ''}`));
             }
         } else if (choice === '3') {
             const id = await question('Product ID: ');
-            const res = await apiFetch(`products/${id}`);
-            if (res.ok) console.log(JSON.stringify(res.data.product, null, 2));
+            const res = await apiFetch(`products?ids=${id}`);
+            if (res.ok && res.data.products.length > 0) console.log(JSON.stringify(res.data.products[0], null, 2));
+            else console.log('Product not found or error:', res.data);
         } else if (choice === '4') {
-            console.log('Enter product data (JSON format or prompts... let\'s do prompts for simplicity)');
-            const name = await question('Name: ');
-            const description = await question('Description: ');
-            const price = await question('Price: ');
-            const stock = await question('Stock: ');
-            const category_id = await question('Category ID: ');
-            const res = await apiFetch('products', 'POST', { name, description, price, stock, category_id });
-            if (res.ok) console.log('\x1b[32m%s\x1b[0m', 'Product added!');
-            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
-        } else if (choice === '5') break;
+            console.log('Add Product not implemented fully.');
+        } else if (choice === '5') {
+            const res = await apiFetch('products/brew-methods');
+            if (res.ok) {
+                res.data.brew_methods.forEach(b => console.log(`[${b.id}] ${b.name}: ${b.description}`));
+            }
+        } else if (choice === '6') break;
     }
 }
 
@@ -248,7 +251,20 @@ async function cartMenu() {
         } else if (choice === '2') {
             const productId = await question('Product ID: ');
             const quantity = await question('Quantity: ');
-            const res = await apiFetch('cart', 'POST', { productId: parseInt(productId), quantity: parseInt(quantity) });
+            const variantIdInput = await question('Variant ID (optional, press Enter to skip): ');
+            const optionsInput = await question('Options (optional JSON, press Enter to skip): ');
+            
+            const reqBody = { id: parseInt(productId), qty: parseInt(quantity) };
+            if (variantIdInput.trim()) reqBody.variantId = parseInt(variantIdInput);
+            if (optionsInput.trim()) {
+                try {
+                    reqBody.opt = JSON.parse(optionsInput);
+                } catch(e) {
+                    reqBody.opt = optionsInput; // pass as string if not parseable
+                }
+            }
+            
+            const res = await apiFetch('cart', 'POST', reqBody);
             if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
             else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
         } else if (choice === '3') {

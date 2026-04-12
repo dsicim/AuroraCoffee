@@ -174,14 +174,105 @@ func.resetDB = async function () {
 
 // --- Product Management Functions ---
 
+func.getBrewMethods = async function() {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM brew_methods');
+        return { success: true, brew_methods: rows };
+    } catch (error) {
+        console.error('Get brew methods error:', error);
+        throw new DBError(500, 'Failed to fetch brew methods');
+    }
+};
+
+func.enrichProductsWithOptions = async function(products) {
+    if (!products || products.length === 0) return products;
+    const productIds = products.map(p => p.id);
+    
+    // Fetch options
+    const [options] = await pool.query(`
+        SELECT pog.id as group_id, pog.product_id, pog.name as group_name, pog.cumulative_stock, pog.separate_stock, pog.separate_price, pog.is_required, pog.multi_select, pog.priority,
+               pov.id as value_id, pov.label, pov.value_code, pov.price_add, pov.price_mult, pov.sort_order
+        FROM product_option_groups pog
+        LEFT JOIN product_option_values pov ON pog.id = pov.product_option_group_id
+        WHERE pog.product_id IN (?)
+        ORDER BY pog.priority, pov.sort_order
+    `, [productIds]);
+    
+    // Fetch variants
+    const [variants] = await pool.query(`
+        SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price, pv.stock,
+               pvv.product_option_value_id
+        FROM product_variants pv
+        LEFT JOIN product_variant_values pvv ON pv.id = pvv.product_variant_id
+        WHERE pv.product_id IN (?)
+    `, [productIds]);
+
+    // Map to products
+    for (let p of products) {
+        if (!p.has_variants) {
+            p.options = [];
+            p.variants = [];
+            continue;
+        }
+
+        const pOptions = options.filter(o => o.product_id === p.id);
+        const groups = {};
+        for (const opt of pOptions) {
+            if (!groups[opt.group_id]) {
+                groups[opt.group_id] = {
+                    id: opt.group_id,
+                    name: opt.group_name,
+                    cumulative_stock: !!opt.cumulative_stock,
+                    separate_stock: !!opt.separate_stock,
+                    separate_price: !!opt.separate_price,
+                    is_required: !!opt.is_required,
+                    multi_select: !!opt.multi_select,
+                    priority: opt.priority,
+                    values: []
+                };
+            }
+            if (opt.value_id) {
+                groups[opt.group_id].values.push({
+                    id: opt.value_id,
+                    label: opt.label,
+                    value_code: opt.value_code,
+                    price_add: parseFloat(opt.price_add),
+                    price_mult: parseFloat(opt.price_mult),
+                    sort_order: opt.sort_order
+                });
+            }
+        }
+        p.options = Object.values(groups);
+
+        const pVariants = {};
+        for (const v of variants.filter(v => v.product_id === p.id)) {
+            if (!pVariants[v.variant_id]) {
+                pVariants[v.variant_id] = {
+                    id: v.variant_id,
+                    variant_code: v.variant_code,
+                    price: parseFloat(v.price),
+                    stock: v.stock,
+                    option_value_ids: []
+                };
+            }
+            if (v.product_option_value_id) {
+                pVariants[v.variant_id].option_value_ids.push(v.product_option_value_id);
+            }
+        }
+        p.variants = Object.values(pVariants);
+    }
+    return products;
+};
+
 func.getAllProducts = async function () {
     try {
-        const [rows] = await pool.execute(`
+        let [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
         `);
+        rows = await func.enrichProductsWithOptions(rows);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Get all products error:', error);
@@ -195,7 +286,7 @@ func.getProductsByIds = async function (productId) {
     }
     try {
         productId = Array.isArray(productId) ? productId : [productId];
-        const [rows] = await pool.query(`
+        let [rows] = await pool.query(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
@@ -205,6 +296,7 @@ func.getProductsByIds = async function (productId) {
         if (rows.length === 0) {
             throw new DBError(404, 'No products found');
         }
+        rows = await func.enrichProductsWithOptions(rows);
         const foundIds = rows.map(r => r.id);
         const missingIds = productId.filter(id => !foundIds.includes(id));
         return { success: true, products: rows, idsnotfound: missingIds };
@@ -241,7 +333,8 @@ func.searchProducts = async function (query, sortBy = 'newest') {
                 break;
         }
 
-        const [rows] = await pool.execute(sql, params);
+        let [rows] = await pool.execute(sql, params);
+        rows = await func.enrichProductsWithOptions(rows);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Search products error:', error);
@@ -249,7 +342,7 @@ func.searchProducts = async function (query, sortBy = 'newest') {
     }
 };
 
-func.decreaseStock = async function (productId, qty) {
+func.decreaseStock = async function (productId, qty, variantId = null) {
     if (!productId || qty === undefined) {
         throw new DBError(400, 'Product ID and quantity are required');
     }
@@ -262,9 +355,21 @@ func.decreaseStock = async function (productId, qty) {
         }
         const currentStock = rows[0].stock;
         if (currentStock < qty) {
-            throw new DBError(400, 'Insufficient stock');
+            throw new DBError(400, 'Insufficient total product stock');
         }
         await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ?', [qty, productId]);
+        
+        if (variantId) {
+            const [vRows] = await connection.execute('SELECT stock FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE', [variantId, productId]);
+            if (vRows.length === 0) {
+                throw new DBError(404, 'Variant not found');
+            }
+            if (vRows[0].stock < qty) {
+                throw new DBError(400, 'Insufficient variant stock');
+            }
+            await connection.execute('UPDATE product_variants SET stock = stock - ? WHERE id = ?', [qty, variantId]);
+        }
+        
         await connection.commit();
         return { success: true, message: 'Stock decreased successfully' };
     } catch (error) {
@@ -820,18 +925,32 @@ func.getCart = async function (userId) {
     }
 }
 
-func.addToCart = async function (userId, productId, quantity = 1, options) {
+func.addToCart = async function (userId, productId, quantity = 1, options, variantId = null) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
     try {
-        let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ? AND options = ?';
-        let params = [userId, productId, options];
+        let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?';
+        let params = [userId, productId];
+        
+        if (options !== undefined && options !== null) {
+            sql += ' AND options = ?';
+            params.push(options);
+        } else {
+            sql += ' AND options IS NULL';
+        }
+
+        if (variantId !== null) {
+            sql += ' AND variant_id = ?';
+            params.push(variantId);
+        } else {
+            sql += ' AND variant_id IS NULL';
+        }
         
         const [existing] = await pool.execute(sql, params);
         
         if (existing.length > 0) {
             await pool.execute('UPDATE cart SET quantity = quantity + ? WHERE id = ?', [quantity, existing[0].id]);
         } else {
-            await pool.execute('INSERT INTO cart (user_id, product_id, quantity, options) VALUES (?, ?, ?, ?)', [userId, productId, quantity, options]);
+            await pool.execute('INSERT INTO cart (user_id, product_id, variant_id, quantity, options) VALUES (?, ?, ?, ?, ?)', [userId, productId, variantId, quantity, options || null]);
         }
         return { success: true, message: 'Item added to cart' };
     } catch (error) {
