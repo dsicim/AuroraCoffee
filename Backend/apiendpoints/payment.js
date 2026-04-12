@@ -133,7 +133,7 @@ async function emailInvoice(config, email, orderNumber, details) {
     .replaceAll("{{VAT_TOTAL}}", currencyToSymbol(details.currency, details.price.tax))
     .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
     .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
-    .replaceAll("{{ORDER_ITEMS}}", itemshtml);
+    .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
     await mailer.sendEmail(email, "Your order invoice of your recent purchase", template).then(res => {
         console.log("Email sent:", res);
     }).catch(err => {
