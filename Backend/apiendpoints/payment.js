@@ -95,7 +95,7 @@ function currencyToSymbol(currency, price) {
     if (["TRY", "NOK"].includes(currency)) return price.toFixed(2) + " " + currency;
     else return symbol + price.toFixed(2);
 }
-async function emailInvoice(email, orderNumber, details) {
+async function emailInvoice(config, email, orderNumber, details) {
     console.log('cwd', process.cwd());
     let instemplate = fs.readFileSync("./"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
     if (details.installment.months > 1) {
@@ -656,7 +656,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
-                                    await emailInvoice(currentUser.username, orderNumber.n, payload.o.detailsOpen);
+                                    await emailInvoice(config, currentUser.username, orderNumber.n, payload.o.detailsOpen);
                                     return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n, response: authChecker } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
@@ -795,7 +795,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
-                                    await emailInvoice(currentUser.username, orderNumber.n, details);
+                                    await emailInvoice(config, currentUser.username, orderNumber.n, details);
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
