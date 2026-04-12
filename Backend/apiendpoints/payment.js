@@ -96,7 +96,7 @@ function currencyToSymbol(currency, price) {
     else return symbol + price.toFixed(2);
 }
 async function emailInvoice(email, orderNumber, details) {
-    let instemplate = fs.readFileSync("./AuroraCoffee/Backend/"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
+    let instemplate = fs.readFileSync("../"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
     if (details.installment.months > 1) {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
         .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
@@ -107,7 +107,7 @@ async function emailInvoice(email, orderNumber, details) {
     else {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.paid));
     }
-    const itemstemplate = fs.readFileSync("./AuroraCoffee/Backend/orderemailitems.html", "utf-8");
+    const itemstemplate = fs.readFileSync("../orderemailitems.html", "utf-8");
     let itemshtml = "";
     details.products.forEach(product => {
         let optionstext = "";
@@ -120,7 +120,7 @@ async function emailInvoice(email, orderNumber, details) {
         .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
         .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
     });
-    const template = fs.readFileSync("./AuroraCoffee/Backend/orderemail.html", "utf-8")
+    const template = fs.readFileSync("../orderemail.html", "utf-8")
     .replaceAll("{{ORDER_ID}}", orderNumber)
     .replaceAll("{{ORDER_URL}}","https://" + config.domain + "/account/orders/"+orderNumber)
     .replaceAll("{{CUSTOMER_NAME}}", details.shippingAddress.name + " " + details.shippingAddress.surname)
