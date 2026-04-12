@@ -133,7 +133,11 @@ async function emailInvoice(email, orderNumber, details) {
     .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
     .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
     .replaceAll("{{ORDER_ITEMS}}", itemshtml);
-    await mailer.sendEmail(email, "Your order invoice of your recent purchase", template);
+    await mailer.sendEmail(email, "Your order invoice of your recent purchase", template).then(res => {
+        console.log("Email sent:", res);
+    }).catch(err => {
+        console.error("Email sending error:", err);
+    });
 }
 async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
     let realPrice = subtotal;
