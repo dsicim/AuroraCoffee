@@ -151,7 +151,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     let taxes = 0;
     let stotal = 0;
     cart.forEach(item => {
-        item[product_price] = parseFloat(item.price);
+        item.product_price = parseFloat(item.product_price);
         taxes += item.taxAmount;
         stotal += item.subtotal;
     });
