@@ -32,7 +32,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             return { order: undefined, e: err.toString() };
                         }
                     }).filter(ordr => ordr !== undefined);
-                    if (orders.length === 0 && specificorder) return { s: 404, j: true, d: { e: "order not found" } };
+                    if (orders.length === 0 && specificorder) return { s: 404, j: true, d: { e: "Order not found" } };
                     return specificorder ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
                 }
                 else {

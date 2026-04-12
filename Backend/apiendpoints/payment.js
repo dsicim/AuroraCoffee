@@ -2,6 +2,8 @@ const sql = require("../../Database/server.js");
 const crypto = require("crypto");
 const fetch = require("node-fetch");
 const aes = require("../aes256.js");
+const fs = require("fs");
+const mailer = require("../email.js");
 async function IyzipayAPI(config, method, url, headers, body) {
     console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
@@ -88,6 +90,51 @@ async function getCardToken(userId) {
         return { done: false, error: err.message };
     });
 }
+function currencyToSymbol(currency, price) {
+    const symbol = { "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "kr" }[currency] || currency + " ";
+    if (["TRY", "NOK"].includes(currency)) return price.toFixed(2) + " " + currency;
+    else return symbol + price.toFixed(2);
+}
+async function emailInvoice(email, orderNumber, details) {
+    let instemplate = fs.readFileSync("./AuroraCoffee/Backend/"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
+    if (details.installment.months > 1) {
+        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
+        .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
+        .replaceAll("{{ORDER_MONTH}}", currencyToSymbol(details.currency, details.installment.permonth))
+        .replaceAll("{{INSTALLMENT_PERIOD}}", details.installment.months)
+        .replaceAll("{{ORDER_TOTAL_WITH_INTEREST}}", currencyToSymbol(details.currency, details.price.paid));
+    }
+    else {
+        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.paid));
+    }
+    const itemstemplate = fs.readFileSync("./AuroraCoffee/Backend/orderemailitems.html", "utf-8");
+    let itemshtml = "";
+    details.products.forEach(product => {
+        let optionstext = "";
+        Object.keys(product.options || {}).forEach(key => {
+            optionstext += key + ": " + product.options[key] + ", ";
+        });
+        optionstext = optionstext.length > 2 ? optionstext.slice(0, -2) : "";
+        itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
+        .replaceAll("{{ITEM_OPTIONS}}", optionstext)
+        .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
+        .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
+    });
+    const template = fs.readFileSync("./AuroraCoffee/Backend/orderemail.html", "utf-8")
+    .replaceAll("{{ORDER_ID}}", orderNumber)
+    .replaceAll("{{ORDER_URL}}","https://" + config.domain + "/account/orders/"+orderNumber)
+    .replaceAll("{{CUSTOMER_NAME}}", details.shippingAddress.name + " " + details.shippingAddress.surname)
+    .replaceAll("{{ADDRESS_LINE}}", details.shippingAddress.address + (details.shippingAddress.address2 ? ", " + details.shippingAddress.address2 : "") + ", " + details.shippingAddress.city)
+    .replaceAll("{{CITY}}", details.shippingAddress.province)
+    .replaceAll("{{POSTAL_CODE}}", details.shippingAddress.zip)
+    .replaceAll("{{PHONE}}", details.shippingAddress.phone)
+    .replaceAll("{{SUBTOTAL}}", currencyToSymbol(details.currency, details.price.subtotal))
+    .replaceAll("{{VAT_TOTAL}}", currencyToSymbol(details.currency, details.price.tax))
+    .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
+    .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
+    .replaceAll("{{ORDER_ITEMS}}", itemshtml);
+    await mailer.sendEmail(email, "Your order invoice of your recent purchase", template);
+}
 async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
     let realPrice = subtotal;
     if (installment && installment > 1) {
@@ -97,6 +144,13 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     billingAddress.open = billingAddress.address + ", " + (billingAddress.address2 ? billingAddress.address2 + ", " : "") + billingAddress.city;
     shippingAddress.open = shippingAddress.address + ", " + (shippingAddress.address2 ? shippingAddress.address2 + ", " : "") + shippingAddress.city;
     const ins = cardDetails.installments.find(ins => ins.months === parseInt(installment));
+    let taxes = 0;
+    let stotal = 0;
+    cart.forEach(item => {
+        item[product_price] = parseFloat(item.price);
+        taxes += item.taxAmount;
+        stotal += item.subtotal;
+    });
     const details = {
         products: cart,
         shippingAddress,
@@ -110,16 +164,19 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         installment: ins,
         price: {
-            subtotal: subtotal,
-            paid: ins.total,
-            total: realPrice
+            subtotal: stotal,
+            tax: taxes,
+            shipping: 0,
+            total: subtotal,
+            installment: realPrice - subtotal,
+            paid: realPrice,
         },
         currency: currency
     };
     const payload = {
         locale: "en",
         price: subtotal,
-        paidPrice: ins.total,
+        paidPrice: realPrice,
         currency: currency,
         installment: installment,
         paymentCard: card,
@@ -152,7 +209,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
-    return {s: true, p: payload, o: {user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id))}};
+    return {s: true, p: payload, o: {user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id)), detailsOpen: details}};
 }
 async function completeCart(products) {
     for (const product of products) {
@@ -431,7 +488,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             actualCart.forEach(item => {
                 item.tax = parseInt(products[item.product_id].tax);
                 item.subtotal = Math.round(parseFloat(products[item.product_id].price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
-                item.taxAmount = parseFloat(products[item.product_id].price) - (item.subtotal);
+                item.taxAmount = parseFloat(products[item.product_id].price) - (Math.round(item.subtotal*100)/100);
                 const itemFormat = {
                     id: item.product_id,
                     price: item.product_price,
@@ -592,8 +649,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         else return { s: false, e: "An unknown error occurred" };
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
-                                    await completeCart(payload.o.details.products);
+                                    await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
+                                    await emailInvoice(currentUser.username, orderNumber.n, payload.o.detailsOpen);
                                     return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n, response: authChecker } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
@@ -732,6 +790,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
+                                    await emailInvoice(currentUser.username, orderNumber.n, details);
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
