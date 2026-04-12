@@ -656,7 +656,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
                                     setTimeout(() => emailInvoice(config, currentUser.username, orderNumber.n, payload.o.detailsOpen), 0);
-                                    return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n, response: authChecker } };
+                                    return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
                             }
@@ -798,7 +798,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
                                     setTimeout(() => emailInvoice(config, email, orderNumber.n, details), 0);
-                                    return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
+                                    return CallbackEmbed({ success: true, orderNumber: orderNumber.n });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
                             }
