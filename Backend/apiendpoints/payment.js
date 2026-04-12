@@ -687,6 +687,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     if (response.status === "success") {
                         payload.o.payment = response.paymentId;
                         payload.o.timeout = new Date().getTime() + (10 * 60 * 1000);
+                        payload.o.email = currentUser.username;
                         tokens.set(random, payload.o);
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
@@ -721,6 +722,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let details = null;
                 let detailsEnc = null;
                 let user = null;
+                let email = null;
                 for (const [token, info] of tokens) {
                     if (!info || typeof info.timeout !== "number" || info.timeout <= new Date().getTime()) {
                         if (token == form.conversationId) why = "TIMEOUT";
@@ -736,6 +738,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else if (orderInfo.details) {
                         detailsEnc = orderInfo.details;
                         user = orderInfo.user;
+                        email = orderInfo.email;
                         details = aes.pjs(detailsEnc);
                         if (details.e && details.e.startsWith("Failed to parse JSON: ")) {
                             tokens.delete(form.conversationId);
@@ -795,7 +798,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
-                                    await emailInvoice(config, currentUser.username, orderNumber.n, details);
+                                    await emailInvoice(config, email, orderNumber.n, details);
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n, response: authChecker });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
