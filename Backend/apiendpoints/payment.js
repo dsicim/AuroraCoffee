@@ -92,7 +92,8 @@ async function getCardToken(userId) {
 }
 function currencyToSymbol(currency, price) {
     const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "kr" }[currency] || currency);
-    if (["TRY", "NOK"].includes(currency)) return price.toFixed(2) + symbol;
+    if (currency === "TRY") return symbol + price.toFixed(2);
+    if (currency === "NOK") return price.toFixed(2) + symbol;
     else return symbol + price.toFixed(2);
 }
 async function emailInvoice(config, email, orderNumber, details) {
