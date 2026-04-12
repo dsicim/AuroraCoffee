@@ -123,7 +123,7 @@ export function formatTaxRate(rate) {
   return `${Math.round(getTaxRate({ taxRateOverride: rate }) * 100)}%`
 }
 
-export function getTaxInclusionCopy(item) {
+export function getTaxInclusionCopy(_item) {
   return 'VAT included'
 }
 
@@ -161,7 +161,6 @@ export function getUnitPriceBreakdown(item) {
 }
 
 export function getLinePriceBreakdown(item, quantity = item?.quantity || 1) {
-  const taxRate = getTaxRate(item)
   const safeQuantity = Math.max(1, Math.floor(Number(quantity) || 1))
   const unitBreakdown = getUnitPriceBreakdown(item)
   const explicitLineNet =
