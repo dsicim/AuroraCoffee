@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useLocation, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
 import StorefrontLayout from '../components/StorefrontLayout'
+import { authChangeEvent, getAuthSession } from '../lib/auth'
 import { addCartItem } from '../lib/cart'
 import { formatCurrency } from '../lib/currency'
 import {
@@ -195,12 +196,29 @@ function ReviewRatingInput({
 }
 
 function ProductReviewPanel({ product }) {
+  const location = useLocation()
   const reviewTextareaRef = useRef(null)
+  const [session, setSession] = useState(() => getAuthSession())
   const [reviewRating, setReviewRating] = useState(0)
   const [hoverReviewRating, setHoverReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
   const [localReviews, setLocalReviews] = useState(() => loadStoredReviews(product.slug))
+  const hasSession = Boolean(session?.token)
+
+  useEffect(() => {
+    const syncSession = () => {
+      setSession(getAuthSession())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(authChangeEvent, syncSession)
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(authChangeEvent, syncSession)
+    }
+  }, [])
 
   useEffect(() => {
     if (!reviewFeedback) {
@@ -310,58 +328,79 @@ function ProductReviewPanel({ product }) {
         </div>
       </AuroraInset>
 
-      <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
-        <AuroraInset>
-          <div className="aurora-review-form-heading">
-            <div>
-              <p className="aurora-kicker">Your rating</p>
-              <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
-                {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
-              </h4>
+      {hasSession ? (
+        <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
+          <AuroraInset>
+            <div className="aurora-review-form-heading">
+              <div>
+                <p className="aurora-kicker">Your rating</p>
+                <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
+                  {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
+                </h4>
+              </div>
+              <span className="aurora-review-score-pill">Half-step stars</span>
             </div>
-            <span className="aurora-review-score-pill">Half-step stars</span>
-          </div>
 
-          <ReviewRatingInput
-            value={reviewRating}
-            hoverValue={hoverReviewRating}
-            onChange={setReviewRating}
-            onHoverChange={setHoverReviewRating}
-          />
+            <ReviewRatingInput
+              value={reviewRating}
+              hoverValue={hoverReviewRating}
+              onChange={setReviewRating}
+              onHoverChange={setHoverReviewRating}
+            />
 
-          <div className="aurora-review-rating-scale">
-            <span>Needs work</span>
-            <span>Outstanding</span>
-          </div>
-        </AuroraInset>
+            <div className="aurora-review-rating-scale">
+              <span>Needs work</span>
+              <span>Outstanding</span>
+            </div>
+          </AuroraInset>
 
-        <AuroraInset>
-          <label htmlFor="product-review-comment" className="aurora-review-label">
-            Comment
-          </label>
-          <textarea
-            id="product-review-comment"
-            ref={reviewTextareaRef}
-            className="aurora-review-textarea"
-            rows="5"
-            maxLength="320"
-            placeholder={`What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`}
-            value={reviewComment}
-            onChange={(event) => {
-              setReviewComment(event.target.value)
-            }}
-          />
+          <AuroraInset>
+            <label htmlFor="product-review-comment" className="aurora-review-label">
+              Comment
+            </label>
+            <textarea
+              id="product-review-comment"
+              ref={reviewTextareaRef}
+              className="aurora-review-textarea"
+              rows="5"
+              maxLength="320"
+              placeholder={`What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`}
+              value={reviewComment}
+              onChange={(event) => {
+                setReviewComment(event.target.value)
+              }}
+            />
 
-          <div className="aurora-review-form-footer">
-            <p className="text-sm leading-7 text-[var(--aurora-text)]">
-              {reviewComment.length}/320 characters
-            </p>
-            <LiquidGlassButton type="submit" size="compact">
-              Post comment
+            <div className="aurora-review-form-footer">
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                {reviewComment.length}/320 characters
+              </p>
+              <LiquidGlassButton type="submit" size="compact">
+                Post comment
+              </LiquidGlassButton>
+            </div>
+          </AuroraInset>
+        </form>
+      ) : (
+        <AuroraInset className="aurora-review-login-prompt">
+          <p className="aurora-kicker">Members only</p>
+          <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
+            Sign in to leave a rating or comment.
+          </h4>
+          <p className="mt-3 max-w-2xl text-base leading-8 text-[var(--aurora-text)]">
+            Guests can browse the visible comments here, but posting feedback is limited to signed-in customers.
+          </p>
+          <div className="mt-5">
+            <LiquidGlassButton
+              as={Link}
+              to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
+              size="compact"
+            >
+              Sign in to comment
             </LiquidGlassButton>
           </div>
         </AuroraInset>
-      </form>
+      )}
 
       {reviewFeedback ? (
         <p className="aurora-message aurora-message-success">{reviewFeedback}</p>
