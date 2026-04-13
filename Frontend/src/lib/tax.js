@@ -42,7 +42,7 @@ function normalizeTaxRate(value) {
     return null
   }
 
-  return numericValue > 1 ? numericValue / 100 : numericValue
+  return numericValue >= 1 ? numericValue / 100 : numericValue
 }
 
 function normalizeAmount(value) {

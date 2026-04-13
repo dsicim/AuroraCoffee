@@ -67,6 +67,103 @@ function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function toBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase()
+    return normalizedValue === 'true' || normalizedValue === '1'
+  }
+
+  return false
+}
+
+function normalizeCode(value) {
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value).trim()
+    : ''
+}
+
+function normalizeProductOptionValue(rawValue) {
+  return {
+    id: Number(rawValue?.id ?? rawValue?.value_id) || 0,
+    label: normalizeText(rawValue?.label) || 'Option',
+    description: normalizeText(rawValue?.description ?? rawValue?.desc),
+    valueCode: normalizeCode(rawValue?.value_code ?? rawValue?.valueCode ?? rawValue?.label ?? rawValue?.id),
+    priceAdd: toNumber(rawValue?.price_add ?? rawValue?.priceAdd),
+    priceMult: toNullableNumber(rawValue?.price_mult ?? rawValue?.priceMult) ?? 1,
+    sortOrder: Number(rawValue?.sort_order ?? rawValue?.sortOrder) || 0,
+  }
+}
+
+function normalizeProductOptionGroup(rawGroup) {
+  const id = normalizeCode(rawGroup?.id ?? rawGroup?.group_id)
+  const code = normalizeCode(rawGroup?.group_code ?? rawGroup?.groupCode ?? rawGroup?.code) || id
+  const values = Array.isArray(rawGroup?.values)
+    ? rawGroup.values.map(normalizeProductOptionValue)
+    : []
+
+  return {
+    id,
+    code,
+    name: normalizeText(rawGroup?.name ?? rawGroup?.group_name) || 'Option',
+    storeAsVariant: toBoolean(rawGroup?.store_as_variant ?? rawGroup?.storeAsVariant),
+    cumulativeStock: toBoolean(rawGroup?.cumulative_stock ?? rawGroup?.cumulativeStock),
+    separateStock: toBoolean(rawGroup?.separate_stock ?? rawGroup?.separateStock),
+    separatePrice: toBoolean(rawGroup?.separate_price ?? rawGroup?.separatePrice),
+    isRequired:
+      rawGroup?.is_required === undefined && rawGroup?.isRequired === undefined
+        ? true
+        : toBoolean(rawGroup?.is_required ?? rawGroup?.isRequired),
+    multiSelect: toBoolean(rawGroup?.multi_select ?? rawGroup?.multiSelect),
+    priority: Number(rawGroup?.priority) || 0,
+    values: values.sort((left, right) => left.sortOrder - right.sortOrder || left.label.localeCompare(right.label)),
+  }
+}
+
+function normalizeVariantOptionValueCodes(rawCodes, fallbackVariantCode, optionGroups) {
+  if (rawCodes && typeof rawCodes === 'object' && !Array.isArray(rawCodes)) {
+    const entries = Object.entries(rawCodes)
+      .map(([key, value]) => [normalizeCode(key), normalizeCode(value)])
+      .filter(([key, value]) => Boolean(key && value))
+
+    if (entries.length) {
+      return Object.fromEntries(entries)
+    }
+  }
+
+  const fallbackCode = normalizeCode(fallbackVariantCode)
+  const variantBackedGroups = (optionGroups || []).filter((group) => group.storeAsVariant)
+
+  if (fallbackCode && variantBackedGroups.length === 1) {
+    return {
+      [variantBackedGroups[0].code || variantBackedGroups[0].id]: fallbackCode,
+    }
+  }
+
+  return {}
+}
+
+function normalizeProductVariant(rawVariant, optionGroups) {
+  return {
+    id: Number(rawVariant?.id ?? rawVariant?.variant_id) || 0,
+    variantCode: normalizeCode(rawVariant?.variant_code ?? rawVariant?.variantCode),
+    price: toNumber(rawVariant?.price),
+    stock: Math.max(0, Number(rawVariant?.stock) || 0),
+    optionValueCodes: normalizeVariantOptionValueCodes(
+      rawVariant?.option_value_codes ?? rawVariant?.optionValueCodes,
+      rawVariant?.variant_code ?? rawVariant?.variantCode,
+      optionGroups,
+    ),
+  }
+}
+
 function buildSlugMap(rawProducts) {
   const baseSlugCounts = new Map()
 
@@ -87,6 +184,13 @@ function buildSlugMap(rawProducts) {
 }
 
 function normalizeProduct(rawProduct) {
+  const optionGroups = Array.isArray(rawProduct?.options)
+    ? rawProduct.options.map(normalizeProductOptionGroup)
+    : []
+  const variants = Array.isArray(rawProduct?.variants)
+    ? rawProduct.variants.map((variant) => normalizeProductVariant(variant, optionGroups))
+    : []
+
   return {
     id: Number(rawProduct.id),
     slug: rawProduct.slug,
@@ -103,6 +207,9 @@ function normalizeProduct(rawProduct) {
     imageUrl: normalizeText(rawProduct.image_url),
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
+    hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
+    options: optionGroups,
+    variants,
     taxRate: toNullableNumber(rawProduct.tax_rate ?? rawProduct.taxRate ?? rawProduct.tax),
     taxClass: normalizeText(rawProduct.tax_class || rawProduct.taxClass),
     taxRateOverride: rawProduct.tax_rate_override ?? rawProduct.taxRateOverride ?? null,
@@ -133,6 +240,9 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     categoryName: incomingProduct.categoryName || existingProduct.categoryName,
     parentCategoryName:
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
+    hasVariants: incomingProduct.hasVariants ?? existingProduct.hasVariants,
+    options: incomingProduct.options?.length ? incomingProduct.options : existingProduct.options,
+    variants: incomingProduct.variants?.length ? incomingProduct.variants : existingProduct.variants,
     taxRate: incomingProduct.taxRate ?? existingProduct.taxRate,
     taxClass: incomingProduct.taxClass || existingProduct.taxClass,
     taxRateOverride: incomingProduct.taxRateOverride ?? existingProduct.taxRateOverride,

@@ -161,6 +161,7 @@ function normalizeStoredCartItem(item) {
     id: preferredId || fallbackId,
     lineItemId: Number(item.lineItemId) || null,
     productId: Number(item.productId) || null,
+    variantId: Number(item.variantId) || null,
     productSlug,
     name: item.name || 'Product',
     category: item.category || '',
@@ -279,6 +280,7 @@ function buildCartItem(product, quantity = 1, options = null) {
     id: buildCartVariantKey(product.slug, product.id, normalizedOptions),
     lineItemId: null,
     productId: product.id,
+    variantId: Number(product.variantId) || null,
     productSlug: product.slug,
     name: product.name,
     category: getProductCategoryLabel(product),
@@ -394,12 +396,15 @@ async function hydrateServerCartRows(rows) {
 
   return cartRows.map((row) => {
     const product = productsById.get(Number(row.product_id))
+    const variant =
+      product?.variants?.find((entry) => Number(entry.id) === Number(row.variant_id)) || null
     const parsedOptions = parseJson(row.options, null)
 
     return normalizeStoredCartItem({
       id: `cart-${row.id}`,
       lineItemId: Number(row.id) || null,
       productId: Number(row.product_id) || product?.id || null,
+      variantId: Number(row.variant_id) || null,
       productSlug: product?.slug || '',
       name: product?.name || row.product_name || 'Product',
       category: product ? getProductCategoryLabel(product) : '',
@@ -408,7 +413,7 @@ async function hydrateServerCartRows(rows) {
       metaLine: product ? getProductMetaLine(product) : '',
       description: product?.description || '',
       notes: product ? getProductFlavorNotes(product) : [],
-      price: normalizeProductPrice(product?.price ?? row.product_price),
+      price: normalizeProductPrice(variant?.price ?? product?.price ?? row.product_price),
       taxRate: product?.taxRate ?? null,
       taxClass: product?.taxClass || '',
       taxRateOverride: product?.taxRateOverride ?? null,
@@ -465,6 +470,10 @@ async function mergeGuestCartIntoServer(items) {
 
     if (item.options) {
       payload.opt = item.options
+    }
+
+    if (item.variantId) {
+      payload.variantId = item.variantId
     }
 
     await requestCartJson('/cart', {
@@ -578,6 +587,10 @@ export async function addCartProduct(product, quantity = 1) {
 
     if (normalizedOptions) {
       payload.opt = normalizedOptions
+    }
+
+    if (product.variantId) {
+      payload.variantId = product.variantId
     }
 
     await requestCartJson('/cart', {

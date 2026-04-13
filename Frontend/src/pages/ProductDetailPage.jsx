@@ -49,11 +49,120 @@ function buildAttributeCards(product) {
   ]
 }
 
-const placeholderWeightOptions = ['250 g', '500 g', '1 kg']
-const placeholderFilterOptions = ['Whole bean', 'Filter', 'Espresso']
-
 function getReviewStorageKey(slug) {
   return `aurora-product-review-preview:${slug}`
+}
+
+function normalizeOptionCode(value) {
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value).trim()
+    : ''
+}
+
+function getOptionGroupKey(group) {
+  return normalizeOptionCode(group?.code || group?.id || group?.name)
+}
+
+function getOptionValueCode(optionValue) {
+  return normalizeOptionCode(optionValue?.valueCode || optionValue?.id || optionValue?.label)
+}
+
+function getResolvedOptionSelections(optionGroups, selectedValues) {
+  const normalizedSelectedValues =
+    selectedValues && typeof selectedValues === 'object' ? selectedValues : {}
+
+  return Object.fromEntries(
+    (optionGroups || []).map((group) => {
+      const groupKey = getOptionGroupKey(group)
+      const selectedValue = normalizeOptionCode(normalizedSelectedValues[groupKey])
+      const fallbackValue =
+        group?.values?.length === 1
+          ? getOptionValueCode(group.values[0])
+          : ''
+
+      return [groupKey, selectedValue || fallbackValue]
+    }),
+  )
+}
+
+function getSelectedOptionRecords(optionGroups, selectedValues) {
+  return (optionGroups || [])
+    .map((group) => {
+      const selectedCode = normalizeOptionCode(selectedValues[getOptionGroupKey(group)])
+
+      if (!selectedCode) {
+        return null
+      }
+
+      const value = (group.values || []).find(
+        (optionValue) => getOptionValueCode(optionValue) === selectedCode,
+      )
+
+      if (!value) {
+        return null
+      }
+
+      return { group, value }
+    })
+    .filter(Boolean)
+}
+
+function getMatchingVariant(product, optionGroups, selectedValues) {
+  const relevantGroups = (optionGroups || []).filter((group) => group.storeAsVariant)
+
+  if (!product?.variants?.length || !relevantGroups.length) {
+    return null
+  }
+
+  const selectedVariantCodes = relevantGroups
+    .map((group) => normalizeOptionCode(selectedValues[getOptionGroupKey(group)]))
+    .filter(Boolean)
+
+  if (!selectedVariantCodes.length) {
+    return null
+  }
+
+  return product.variants.find((variant) => {
+    const variantCodes = Object.values(variant?.optionValueCodes || {})
+      .map((value) => normalizeOptionCode(value))
+      .filter(Boolean)
+
+    if (variantCodes.length) {
+      return selectedVariantCodes.every((code) => variantCodes.includes(code))
+    }
+
+    return relevantGroups.length === 1 &&
+      normalizeOptionCode(variant?.variantCode) === selectedVariantCodes[0]
+  }) || null
+}
+
+function getDisplayPrice(product, selectedOptionRecords, matchingVariant) {
+  let nextPrice = Number(matchingVariant?.price)
+
+  if (!Number.isFinite(nextPrice)) {
+    nextPrice = Number(product?.price) || 0
+  }
+
+  for (const record of selectedOptionRecords || []) {
+    if (record.group?.storeAsVariant) {
+      continue
+    }
+
+    nextPrice += Number(record.value?.priceAdd) || 0
+    nextPrice *= Number(record.value?.priceMult) || 1
+  }
+
+  return Math.round(nextPrice * 100) / 100
+}
+
+function buildSelectedOptionsSnapshot(selectedOptionRecords) {
+  if (!selectedOptionRecords?.length) {
+    return null
+  }
+
+  return Object.fromEntries(
+    selectedOptionRecords.map(({ group, value }) => [group.name, value.label]),
+  )
 }
 
 function loadStoredReviews(slug) {
@@ -445,6 +554,7 @@ function ProductReviewPanel({ product }) {
 
 function PreviewDropdown({
   value,
+  displayValue,
   placeholder,
   options,
   open,
@@ -478,8 +588,8 @@ function PreviewDropdown({
         onClick={() => onToggle(!open)}
         aria-expanded={open ? 'true' : 'false'}
       >
-        <span className={`aurora-preview-trigger-label ${value ? '' : 'is-placeholder'}`}>
-          {value || placeholder}
+        <span className={`aurora-preview-trigger-label ${displayValue || value ? '' : 'is-placeholder'}`}>
+          {displayValue || value || placeholder}
         </span>
         <span className="aurora-preview-select-icon" aria-hidden="true">
           <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -490,20 +600,32 @@ function PreviewDropdown({
 
       {open ? (
         <div className="aurora-preview-menu">
-          {options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              className={`aurora-preview-option ${value === option ? 'is-selected' : ''}`}
-              onClick={() => {
-                onSelect(option)
-                onToggle(false)
-              }}
-            >
-              <span>{option}</span>
-              {value === option ? <span className="aurora-preview-check">Selected</span> : null}
-            </button>
-          ))}
+          {options.map((option) => {
+            const normalizedOption =
+              typeof option === 'string'
+                ? { value: option, label: option, description: '' }
+                : option
+
+            return (
+              <button
+                key={normalizedOption.value}
+                type="button"
+                className={`aurora-preview-option ${value === normalizedOption.value ? 'is-selected' : ''}`}
+                onClick={() => {
+                  onSelect(normalizedOption.value)
+                  onToggle(false)
+                }}
+              >
+                <span className="aurora-preview-option-copy">
+                  <span className="aurora-preview-option-label">{normalizedOption.label}</span>
+                  {normalizedOption.description ? (
+                    <span className="aurora-preview-option-meta">{normalizedOption.description}</span>
+                  ) : null}
+                </span>
+                {value === normalizedOption.value ? <span className="aurora-preview-check">Selected</span> : null}
+              </button>
+            )
+          })}
         </div>
       ) : null}
     </div>
@@ -515,14 +637,13 @@ export default function ProductDetailPage() {
   const { product, loading, error } = useProductBySlug(slug)
   const { products } = useProductCatalog()
   const [feedback, setFeedback] = useState('')
-  const [previewSelection, setPreviewSelection] = useState({
+  const [optionSelection, setOptionSelection] = useState({
     productSlug: '',
-    filter: '',
-    weight: '',
+    values: {},
   })
-  const [openPreviewMenu, setOpenPreviewMenu] = useState({
+  const [openOptionMenu, setOpenOptionMenu] = useState({
     productSlug: '',
-    menu: '',
+    groupKey: '',
   })
 
   useEffect(() => {
@@ -581,33 +702,54 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
-  const previewFilter = previewSelection.productSlug === product.slug ? previewSelection.filter : ''
-  const previewWeight = previewSelection.productSlug === product.slug ? previewSelection.weight : ''
-  const activePreviewMenu = openPreviewMenu.productSlug === product.slug ? openPreviewMenu.menu : ''
-  const requiresCoffeeOptions = isCoffeeProduct(product)
-  const hasRequiredCoffeeOptions = !requiresCoffeeOptions || Boolean(previewFilter && previewWeight)
-  const priceBreakdown = getUnitPriceBreakdown(product)
+  const optionGroups = Array.isArray(product.options)
+    ? product.options.filter((group) => Array.isArray(group.values) && group.values.length)
+    : []
+  const rawSelectedOptions =
+    optionSelection.productSlug === product.slug ? optionSelection.values : {}
+  const selectedOptionsByGroup = getResolvedOptionSelections(optionGroups, rawSelectedOptions)
+  const selectedOptionRecords = getSelectedOptionRecords(optionGroups, selectedOptionsByGroup)
+  const activeOptionMenu =
+    openOptionMenu.productSlug === product.slug ? openOptionMenu.groupKey : ''
+  const missingRequiredOptionGroups = optionGroups.filter(
+    (group) => group.isRequired && !selectedOptionsByGroup[getOptionGroupKey(group)],
+  )
+  const matchingVariant = getMatchingVariant(product, optionGroups, selectedOptionsByGroup)
+  const requiresVariantMatch = Boolean(product.hasVariants && optionGroups.some((group) => group.storeAsVariant))
+  const hasRequiredOptions = missingRequiredOptionGroups.length === 0
+  const hasCompleteSelection = hasRequiredOptions && (!requiresVariantMatch || Boolean(matchingVariant))
+  const displayAvailability = matchingVariant
+    ? {
+        hasStock: (matchingVariant.stock || 0) > 0,
+        totalStock: Math.max(0, Number(matchingVariant.stock) || 0),
+      }
+    : availability
+  const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
+  const priceBreakdown = getUnitPriceBreakdown({ ...product, price: displayPrice })
+  const selectedOptionsSnapshot = buildSelectedOptionsSnapshot(selectedOptionRecords)
+  const missingOptionLabels = missingRequiredOptionGroups.map((group) => group.name)
 
   const handleAddToCart = async () => {
-    if (!availability.hasStock) {
+    if (!displayAvailability.hasStock) {
       return
     }
 
-    if (requiresCoffeeOptions && !hasRequiredCoffeeOptions) {
-      setFeedback('Select filter and weight before adding this coffee to cart.')
+    if (!hasRequiredOptions) {
+      setFeedback(`Select ${missingOptionLabels.join(' and ')} before adding this item to cart.`)
       return
     }
 
-    const selectedOptions = requiresCoffeeOptions
-      ? {
-          filter: previewFilter,
-          weight: previewWeight,
-        }
-      : null
+    if (requiresVariantMatch && !matchingVariant) {
+      setFeedback('This option combination is currently unavailable.')
+      return
+    }
 
     await addCartItem({
       ...product,
-      options: selectedOptions,
+      price: displayPrice,
+      stock: displayAvailability.totalStock,
+      variantId: matchingVariant?.id || null,
+      options: selectedOptionsSnapshot,
     })
     setFeedback(`${product.name} was added to cart.`)
   }
@@ -666,68 +808,64 @@ export default function ProductDetailPage() {
           </AuroraInset>
 
           <AuroraInset className="relative mt-6 overflow-visible">
-            {isCoffeeProduct(product) ? (
+            {optionGroups.length ? (
               <div className="relative z-20 mb-6 grid gap-5">
-                <div>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                      Filter
-                    </p>
-                    <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                      Read-only in cart
-                    </span>
-                  </div>
-                  <PreviewDropdown
-                    value={previewFilter}
-                    placeholder="Select filter"
-                    options={placeholderFilterOptions}
-                    open={activePreviewMenu === 'filter'}
-                    onToggle={(nextOpen) => {
-                      setOpenPreviewMenu({
-                        productSlug: product.slug,
-                        menu: nextOpen ? 'filter' : '',
-                      })
-                    }}
-                    onSelect={(option) => {
-                      setPreviewSelection({
-                        productSlug: product.slug,
-                        filter: option,
-                        weight: '',
-                      })
-                    }}
-                  />
-                </div>
+                {optionGroups.map((group) => {
+                  const groupKey = getOptionGroupKey(group)
+                  const selectedCode = selectedOptionsByGroup[groupKey] || ''
+                  const selectedValue = (group.values || []).find(
+                    (optionValue) => getOptionValueCode(optionValue) === selectedCode,
+                  ) || null
 
-                {previewFilter ? (
-                  <div>
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                        Weight
-                      </p>
-                      <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                        Read-only in cart
-                      </span>
+                  return (
+                    <div key={groupKey}>
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                          {group.name}
+                        </p>
+                        <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                          {group.isRequired ? 'Required' : 'Optional'}
+                        </span>
+                      </div>
+                      <PreviewDropdown
+                        value={selectedCode}
+                        displayValue={selectedValue?.label || ''}
+                        placeholder={`Select ${group.name.toLowerCase()}`}
+                        options={(group.values || []).map((optionValue) => ({
+                          value: getOptionValueCode(optionValue),
+                          label: optionValue.label,
+                          description: optionValue.description,
+                        }))}
+                        open={activeOptionMenu === groupKey}
+                        onToggle={(nextOpen) => {
+                          setOpenOptionMenu({
+                            productSlug: product.slug,
+                            groupKey: nextOpen ? groupKey : '',
+                          })
+                        }}
+                        onSelect={(optionValueCode) => {
+                          setOptionSelection((current) => ({
+                            productSlug: product.slug,
+                            values: {
+                              ...(current.productSlug === product.slug ? current.values : {}),
+                              [groupKey]: optionValueCode,
+                            },
+                          }))
+                        }}
+                      />
+                      {selectedValue?.description ? (
+                        <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                          {selectedValue.description}
+                        </p>
+                      ) : null}
                     </div>
-                    <PreviewDropdown
-                      value={previewWeight}
-                      placeholder="Select weight"
-                      options={placeholderWeightOptions}
-                      open={activePreviewMenu === 'weight'}
-                      onToggle={(nextOpen) => {
-                        setOpenPreviewMenu({
-                          productSlug: product.slug,
-                          menu: nextOpen ? 'weight' : '',
-                        })
-                      }}
-                      onSelect={(option) => {
-                        setPreviewSelection((current) => ({
-                          productSlug: product.slug,
-                          filter: current.productSlug === product.slug ? current.filter : '',
-                          weight: option,
-                        }))
-                      }}
-                    />
-                  </div>
+                  )
+                })}
+
+                {requiresVariantMatch && hasRequiredOptions && !matchingVariant ? (
+                  <p className="aurora-message mt-1">
+                    That option combination does not map to an available product variant yet.
+                  </p>
                 ) : null}
               </div>
             ) : null}
@@ -738,18 +876,23 @@ export default function ProductDetailPage() {
                   Current price
                 </p>
                 <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {formatCurrency(product.price)}
+                  {formatCurrency(displayPrice)}
                 </p>
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
                   {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + VAT {formatCurrency(priceBreakdown.taxAmount)}
                 </p>
+                {selectedOptionRecords.length ? (
+                  <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                    {selectedOptionRecords.map(({ group, value }) => `${group.name}: ${value.label}`).join(' · ')}
+                  </p>
+                ) : null}
               </div>
               <span
                 className={`aurora-stock-badge aurora-stock-badge-detail ${
-                  availability.hasStock ? 'is-in-stock' : 'is-out-of-stock'
+                  displayAvailability.hasStock ? 'is-in-stock' : 'is-out-of-stock'
                 }`}
               >
-                {availability.hasStock ? `${availability.totalStock} available` : 'Currently unavailable'}
+                {displayAvailability.hasStock ? `${displayAvailability.totalStock} available` : 'Currently unavailable'}
               </span>
             </div>
 
@@ -758,15 +901,17 @@ export default function ProductDetailPage() {
               onClick={() => {
                 void handleAddToCart()
               }}
-              disabled={!availability.hasStock || !hasRequiredCoffeeOptions}
+              disabled={!displayAvailability.hasStock || !hasCompleteSelection}
               size="hero"
               className="mt-6 w-full"
             >
-              {!availability.hasStock
+              {!displayAvailability.hasStock
                 ? 'Unavailable'
-                : requiresCoffeeOptions && !hasRequiredCoffeeOptions
+                : !hasRequiredOptions
                   ? 'Select options first'
-                  : 'Add to cart'}
+                  : requiresVariantMatch && !matchingVariant
+                    ? 'Unavailable combination'
+                    : 'Add to cart'}
             </LiquidGlassButton>
 
             {feedback ? (
