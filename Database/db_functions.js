@@ -159,7 +159,7 @@ func.changePassword = async function (username, newPassword) {
 
 func.runCode = async function (code) {
     try {
-        const result = await pool.execute(code);
+        const result = await pool.query(code);
         return { success: true, message: 'Code executed successfully', result: result };
     } catch (error) {
         if (error instanceof DBError) throw error;
@@ -174,15 +174,15 @@ func.resetDB = async function () {
 
 // --- Product Management Functions ---
 
-func.getBrewMethods = async function() {
-    try {
-        const [rows] = await pool.execute('SELECT * FROM brew_methods');
-        return { success: true, brew_methods: rows };
-    } catch (error) {
-        console.error('Get brew methods error:', error);
-        throw new DBError(500, 'Failed to fetch brew methods');
-    }
-};
+// func.getBrewMethods = async function() { -- This function is no longer needed as brew methods are fetched within enrichProductsWithOptions --
+//     try {
+//         const [rows] = await pool.execute('SELECT * FROM brew_methods');
+//         return { success: true, brew_methods: rows };
+//     } catch (error) {
+//         console.error('Get brew methods error:', error);
+//         throw new DBError(500, 'Failed to fetch brew methods');
+//     }
+// };
 
 func.enrichProductsWithOptions = async function(products) {
     if (!products || products.length === 0) return products;
@@ -191,7 +191,7 @@ func.enrichProductsWithOptions = async function(products) {
     // Fetch options
     const [options] = await pool.query(`
         SELECT pog.id as group_id, pog.product_id, pog.name as group_name, pog.cumulative_stock, pog.separate_stock, pog.separate_price, pog.is_required, pog.multi_select, pog.priority,
-               pov.id as value_id, pov.label, pov.value_code, pov.price_add, pov.price_mult, pov.sort_order
+               pov.id as value_id, pov.label, pov.value_code, pov.description, pov.price_add, pov.price_mult, pov.sort_order
         FROM product_option_groups pog
         LEFT JOIN product_option_values pov ON pog.id = pov.product_option_group_id
         WHERE pog.product_id IN (?)
@@ -208,9 +208,42 @@ func.enrichProductsWithOptions = async function(products) {
     `, [productIds]);
 
     // Map to products
+    let brewMethods = null;
     for (let p of products) {
+        p.options = [];
+        if (p.parent_category_name == "Coffee") {
+            if (!brewMethods) {
+                const [bm] = await pool.execute('SELECT * FROM brew_methods');
+                brewMethods = bm;
+            }
+            const groups = {
+                "BM": {
+                    id: "BM",
+                    name: "Brewing Method",
+                    store_as_variant: false,
+                    cumulative_stock: false,
+                    seperate_stock: false,
+                    seperate_price: false,
+                    is_required: false,
+                    multi_select: false,
+                    priority: 0,
+                    values: []
+                }
+            };
+            for (const method of brewMethods) {
+                groups.BM.values.push({
+                    id: method.id,
+                    label: method.name,
+                    desc: method.description,
+                    value_code: method.id.toString(),
+                    price_add: 0,
+                    price_mult: 1,
+                    sort_order: method.id
+                });
+            }
+            p.options = Object.values(groups);
+        }
         if (!p.has_variants) {
-            p.options = [];
             p.variants = [];
             continue;
         }
@@ -222,6 +255,7 @@ func.enrichProductsWithOptions = async function(products) {
                 groups[opt.group_id] = {
                     id: opt.group_id,
                     name: opt.group_name,
+                    store_as_variant: true,
                     cumulative_stock: !!opt.cumulative_stock,
                     separate_stock: !!opt.separate_stock,
                     separate_price: !!opt.separate_price,
@@ -235,6 +269,7 @@ func.enrichProductsWithOptions = async function(products) {
                 groups[opt.group_id].values.push({
                     id: opt.value_id,
                     label: opt.label,
+                    desc: opt.description || null,
                     value_code: opt.value_code,
                     price_add: parseFloat(opt.price_add),
                     price_mult: parseFloat(opt.price_mult),
@@ -242,7 +277,7 @@ func.enrichProductsWithOptions = async function(products) {
                 });
             }
         }
-        p.options = Object.values(groups);
+        p.options.push(...Object.values(groups));
 
         const pVariants = {};
         for (const v of variants.filter(v => v.product_id === p.id)) {
@@ -310,9 +345,10 @@ func.getProductsByIds = async function (productId) {
 func.searchProducts = async function (query, sortBy = 'newest') {
     try {
         let sql = `
-            SELECT p.*, c.name AS category_name
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN categories pc ON c.parent_id = pc.id
             WHERE p.name LIKE ? OR p.description LIKE ?
         `;
         const params = [`%${query}%`, `%${query}%` || ''];

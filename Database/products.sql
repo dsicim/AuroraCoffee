@@ -2,15 +2,15 @@ USE 308_db;
 
 -- 1. Table for Categories (Support for Main and Subcategories)
 CREATE TABLE IF NOT EXISTS categories (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    parent_id INT DEFAULT NULL,
+    parent_id BIGINT UNSIGNED DEFAULT NULL,
     FOREIGN KEY (parent_id) REFERENCES categories(id) ON DELETE CASCADE
 );
 
 -- Table for Brewing Methods
 CREATE TABLE IF NOT EXISTS brew_methods (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT
 );
@@ -26,14 +26,14 @@ INSERT INTO brew_methods (name, description) VALUES
 
 -- 2. Table for Products
 CREATE TABLE IF NOT EXISTS products (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_code VARCHAR(50) UNIQUE DEFAULT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
     stock INT DEFAULT 0,
     has_variants BOOLEAN DEFAULT FALSE,
-    category_id INT,
+    category_id BIGINT UNSIGNED,
     weight INT, -- Weight in grams
     tax INT DEFAULT 0,
     -- Coffee specific attributes (as mentioned in Store Overview)
@@ -51,8 +51,8 @@ CREATE TABLE IF NOT EXISTS products (
 
 -- Product Option Groups
 CREATE TABLE IF NOT EXISTS product_option_groups (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT UNSIGNED,
     name VARCHAR(255) NOT NULL, -- e.g., Weight, Grind, Color
     cumulative_stock BOOLEAN DEFAULT FALSE,
     separate_stock BOOLEAN DEFAULT FALSE,
@@ -66,9 +66,10 @@ CREATE TABLE IF NOT EXISTS product_option_groups (
 
 -- Product Option Values
 CREATE TABLE IF NOT EXISTS product_option_values (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_option_group_id INT,
-    label VARCHAR(255) NOT NULL, -- e.g., 250g, Espresso, Black
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_option_group_id BIGINT UNSIGNED,
+    label VARCHAR(255) NOT NULL, -- e.g., 250g, Espresso, Black,
+    description TEXT,
     value_code VARCHAR(100),
     price_add DECIMAL(10, 2) DEFAULT 0,
     price_mult DECIMAL(10, 2) DEFAULT 1,
@@ -79,8 +80,8 @@ CREATE TABLE IF NOT EXISTS product_option_values (
 
 -- Product Variants
 CREATE TABLE IF NOT EXISTS product_variants (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT UNSIGNED,
     variant_code VARCHAR(100) UNIQUE,
     price DECIMAL(10, 2) NOT NULL,
     stock INT DEFAULT 0,
@@ -90,9 +91,9 @@ CREATE TABLE IF NOT EXISTS product_variants (
 
 -- Product Variant Values Mapping
 CREATE TABLE IF NOT EXISTS product_variant_values (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    product_variant_id INT,
-    product_option_value_id INT,
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_variant_id BIGINT UNSIGNED,
+    product_option_value_id BIGINT UNSIGNED,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_variant_id) REFERENCES product_variants(id) ON DELETE CASCADE,
     FOREIGN KEY (product_option_value_id) REFERENCES product_option_values(id) ON DELETE CASCADE

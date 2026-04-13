@@ -5,7 +5,7 @@ const aes = require("../aes256.js");
 const fs = require("fs");
 const mailer = require("../email.js");
 async function IyzipayAPI(config, method, url, headers, body) {
-    console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
+    // console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
     const signature = crypto.createHmac("sha256", config.iyzipay.secret).update(randomKey + "/" + url + (body ? JSON.stringify(body) : ""), "utf8").digest("hex");
     return await fetch(config.iyzipay.api + "/" + url, {
@@ -217,7 +217,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
 }
 async function completeCart(products) {
     for (const product of products) {
-        await sql.decreaseStock(product.product_id || product.id, product.quantity, product.variant_id || null).then(res => {}).catch(err => {});
+        await sql.decreaseStock(product.product_id, product.quantity, product.variant_id || null).then(res => {}).catch(err => {});
     }
     return true;
 }
@@ -711,7 +711,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             return { s: 302, j: false, d: "", h: { "Location": "https://" + config.domain + "/checkout/3dscallback?result="+Buffer.from(JSON.stringify(obj)).toString("base64") } };
         }
         if (method === "POST") {
-            if (headers.origin != config.iyzipay.api && headers.referrer != config.iyzipay.api+"/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." }}});
+            if (headers.origin != config.iyzipay.api || headers.referer != config.iyzipay.api+"/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." }}});
             if (!body || body.json || !body.exists) return CallbackEmbed({ success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } });
             body.data = body.data.split("&").map(pair => {
                 const p = pair.split("=");

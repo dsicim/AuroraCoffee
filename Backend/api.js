@@ -60,10 +60,10 @@ async function invalidateAllTokens(userId) {
     return;
 }
 async function handleAPI(method, endpoint, query, body, headers) {
-    console.log("API " + method + " ");
-    console.log(endpoint);
-    console.log(query);
-    console.log(body);
+    // console.log("API " + method + " ");
+    // console.log(endpoint);
+    // console.log(query);
+    // console.log(body);
     let currentUser = { e: "No token provided" };
     const token = headers.authorization;
     if (token) {
