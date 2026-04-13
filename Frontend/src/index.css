@@ -2387,20 +2387,29 @@ img {
   }
 
   .aurora-review-rating-picker {
-    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
     width: fit-content;
     margin-top: 1.5rem;
   }
 
-  .aurora-review-rating-visual {
-    pointer-events: none;
+  .aurora-review-input-star {
+    position: relative;
+    width: 1.95rem;
+    height: 1.95rem;
   }
 
-  .aurora-review-rating-hitbox {
+  .aurora-review-input-star .aurora-review-star {
+    width: 100%;
+    height: 100%;
+  }
+
+  .aurora-review-star-hitbox {
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: repeat(10, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .aurora-review-step-button {
@@ -2410,6 +2419,14 @@ img {
     cursor: pointer;
     border-radius: 999px;
     outline: none;
+  }
+
+  .aurora-review-step-button.is-left {
+    border-radius: 999px 0 0 999px;
+  }
+
+  .aurora-review-step-button.is-right {
+    border-radius: 0 999px 999px 0;
   }
 
   .aurora-review-step-button:focus-visible {
@@ -2441,7 +2458,8 @@ img {
     width: 100%;
     min-height: 8.5rem;
     padding: 1rem 1.05rem;
-    resize: vertical;
+    resize: none;
+    overflow: hidden;
     border-radius: 1.4rem;
     border: 1px solid rgba(248, 239, 233, 0.18);
     background:
