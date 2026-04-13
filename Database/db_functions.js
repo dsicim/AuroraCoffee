@@ -290,7 +290,7 @@ func.enrichProductsWithOptions = async function(products) {
                 pVariants[v.variant_id] = {
                     id: v.variant_id,
                     variant_code: v.variant_code,
-                    price: parseFloat(v.price),
+                    price: (originalPrice + parseFloat(v.price_add)) * parseFloat(v.price_mult),
                     stock: v.stock,
                     option_value_codes: op
                 };
