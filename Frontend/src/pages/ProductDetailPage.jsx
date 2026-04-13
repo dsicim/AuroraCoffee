@@ -20,19 +20,31 @@ import {
 } from '../lib/products'
 import { getTaxInclusionCopy, getUnitPriceBreakdown } from '../lib/tax'
 
+function formatDetailAttribute(value) {
+  const normalized = String(value || '').trim()
+
+  if (!normalized) {
+    return 'Not provided'
+  }
+
+  return normalized
+    .replace(/\s*\/\s*/g, ' / ')
+    .replace(/\s*,\s*/g, ', ')
+}
+
 function buildAttributeCards(product) {
   if (isCoffeeProduct(product)) {
     return [
-      { title: product.origin || 'Not provided', subtitle: 'Origin', icon: 'location' },
-      { title: product.roastLevel || 'Not provided', subtitle: 'Roast level', icon: 'coffee' },
-      { title: product.acidity || 'Not provided', subtitle: 'Acidity', icon: 'spark' },
+      { title: formatDetailAttribute(product.origin), subtitle: 'Origin', icon: 'location' },
+      { title: formatDetailAttribute(product.roastLevel), subtitle: 'Roast level', icon: 'coffee' },
+      { title: formatDetailAttribute(product.acidity), subtitle: 'Acidity', icon: 'spark' },
     ]
   }
 
   return [
-    { title: product.material || 'Not provided', subtitle: 'Material', icon: 'package' },
-    { title: product.capacity || 'Not provided', subtitle: 'Capacity', icon: 'grid' },
-    { title: getProductCategoryLabel(product), subtitle: 'Category', icon: 'spark' },
+    { title: formatDetailAttribute(product.material), subtitle: 'Material', icon: 'package' },
+    { title: formatDetailAttribute(product.capacity), subtitle: 'Capacity', icon: 'grid' },
+    { title: formatDetailAttribute(getProductCategoryLabel(product)), subtitle: 'Category', icon: 'spark' },
   ]
 }
 
