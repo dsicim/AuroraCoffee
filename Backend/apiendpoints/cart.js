@@ -1,6 +1,6 @@
 const sql = require("../../Database/server.js");
 function validateOptions(product, opt, variant, ignoreRequired = false) {
-    const o = product.product.options ? product.product.options : [];
+    const o = product.options ? product.options : [];
     const expectedopt = [];
     const validopt = [];
     let expectedvar = false;
@@ -22,7 +22,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
     if (invalid && (!ignoreRequired || opt)) return { s: false, e: "Invalid or missing required options" };
     if (expectedvar && (!variant || !variant.length) && !ignoreRequired) return { s: false, e: "Variant information is required for this product" };
     if (expectedvar) {
-        const variants = product.product.variants ? product.product.variants.map(v => v.variant_code) : [];
+        const variants = product.variants ? product.variants.map(v => v.variant_code) : [];
         if (!variants.includes(variant) && (!ignoreRequired || variant)) return { s: false, e: "Invalid variant selected" };
     }
     if (!ignoreRequired || opt) {
