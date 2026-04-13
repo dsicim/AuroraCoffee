@@ -221,6 +221,7 @@ func.enrichProductsWithOptions = async function(products) {
                 "BM": {
                     id: "BM",
                     name: "Brewing Method",
+                    group_code: "brew_method",
                     store_as_variant: false,
                     cumulative_stock: false,
                     seperate_stock: false,
@@ -256,6 +257,7 @@ func.enrichProductsWithOptions = async function(products) {
                 groups[opt.group_id] = {
                     id: opt.group_id,
                     name: opt.group_name,
+                    group_code: opt.group_code,
                     store_as_variant: true,
                     cumulative_stock: !!opt.cumulative_stock,
                     separate_stock: !!opt.separate_stock,
