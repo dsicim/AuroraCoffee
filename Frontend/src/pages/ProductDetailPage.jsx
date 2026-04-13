@@ -50,6 +50,119 @@ function buildAttributeCards(product) {
 
 const placeholderWeightOptions = ['250 g', '500 g', '1 kg']
 const placeholderFilterOptions = ['Whole bean', 'Filter', 'Espresso']
+const reviewRatingSteps = Array.from({ length: 10 }, (_, index) => (index + 1) / 2)
+
+function getReviewStorageKey(slug) {
+  return `aurora-product-review-preview:${slug}`
+}
+
+function formatReviewDate(value) {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(value))
+  } catch {
+    return 'Just now'
+  }
+}
+
+function formatReviewScore(value) {
+  if (!value) {
+    return '0'
+  }
+
+  return Number.isInteger(value) ? `${value}` : value.toFixed(1)
+}
+
+function getStarFillPercent(value, starNumber) {
+  const fill = Math.max(0, Math.min(1, value - (starNumber - 1)))
+  return fill * 100
+}
+
+function ReviewStar({ fillPercent }) {
+  return (
+    <span className="aurora-review-star" aria-hidden="true">
+      <svg className="aurora-review-star-outline" viewBox="0 0 24 24" fill="none">
+        <path
+          d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9Z"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+      <span
+        className="aurora-review-star-fill-shell"
+        style={{ width: `${fillPercent}%` }}
+      >
+        <svg className="aurora-review-star-fill" viewBox="0 0 24 24" fill="currentColor">
+          <path d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9Z" />
+        </svg>
+      </span>
+    </span>
+  )
+}
+
+function ReviewStars({ value, compact = false, className = '' }) {
+  return (
+    <div
+      className={`aurora-review-stars ${compact ? 'is-compact' : ''} ${className}`.trim()}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <ReviewStar
+          key={index + 1}
+          fillPercent={getStarFillPercent(value, index + 1)}
+        />
+      ))}
+    </div>
+  )
+}
+
+function ReviewRatingInput({
+  value,
+  hoverValue,
+  onChange,
+  onHoverChange,
+}) {
+  const activeValue = hoverValue || value
+
+  return (
+    <div
+      className="aurora-review-rating-picker"
+      onMouseLeave={() => {
+        onHoverChange(0)
+      }}
+    >
+      <ReviewStars value={activeValue} className="aurora-review-rating-visual" />
+      <div className="aurora-review-rating-hitbox">
+        {reviewRatingSteps.map((step) => (
+          <button
+            key={step}
+            type="button"
+            className={`aurora-review-step-button ${value === step ? 'is-selected' : ''}`}
+            aria-label={`Rate ${step} out of 5`}
+            aria-pressed={value === step ? 'true' : 'false'}
+            onMouseEnter={() => {
+              onHoverChange(step)
+            }}
+            onFocus={() => {
+              onHoverChange(step)
+            }}
+            onBlur={() => {
+              onHoverChange(0)
+            }}
+            onClick={() => {
+              onChange(step)
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
 
 function PreviewDropdown({
   value,
@@ -123,6 +236,11 @@ export default function ProductDetailPage() {
   const { product, loading, error } = useProductBySlug(slug)
   const { products } = useProductCatalog()
   const [feedback, setFeedback] = useState('')
+  const [reviewRating, setReviewRating] = useState(0)
+  const [hoverReviewRating, setHoverReviewRating] = useState(0)
+  const [reviewComment, setReviewComment] = useState('')
+  const [reviewFeedback, setReviewFeedback] = useState('')
+  const [localReviews, setLocalReviews] = useState([])
   const [previewSelection, setPreviewSelection] = useState({
     productSlug: '',
     filter: '',
@@ -147,10 +265,80 @@ export default function ProductDetailPage() {
     }
   }, [feedback])
 
+  useEffect(() => {
+    if (!reviewFeedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setReviewFeedback('')
+    }, 2800)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [reviewFeedback])
+
+  useEffect(() => {
+    if (!product?.slug) {
+      setLocalReviews([])
+      return undefined
+    }
+
+    try {
+      const rawReviews = window.localStorage.getItem(getReviewStorageKey(product.slug))
+      const parsedReviews = rawReviews ? JSON.parse(rawReviews) : []
+
+      if (Array.isArray(parsedReviews)) {
+        setLocalReviews(
+          parsedReviews
+            .filter((review) => typeof review?.comment === 'string' && Number.isFinite(review?.rating))
+            .slice(0, 6),
+        )
+      } else {
+        setLocalReviews([])
+      }
+    } catch {
+      setLocalReviews([])
+    }
+
+    setReviewRating(0)
+    setHoverReviewRating(0)
+    setReviewComment('')
+    setReviewFeedback('')
+    return undefined
+  }, [product?.slug])
+
+  useEffect(() => {
+    if (!product?.slug) {
+      return undefined
+    }
+
+    try {
+      window.localStorage.setItem(
+        getReviewStorageKey(product.slug),
+        JSON.stringify(localReviews),
+      )
+    } catch {
+      return undefined
+    }
+
+    return undefined
+  }, [localReviews, product?.slug])
+
   const relatedProducts = useMemo(
     () => (product ? getRelatedProducts(products, product) : []),
     [product, products],
   )
+
+  const reviewAverage = useMemo(() => {
+    if (!localReviews.length) {
+      return 0
+    }
+
+    const totalRating = localReviews.reduce((sum, review) => sum + review.rating, 0)
+    return totalRating / localReviews.length
+  }, [localReviews])
 
   if (loading) {
     const hero = (
@@ -195,6 +383,38 @@ export default function ProductDetailPage() {
   const requiresCoffeeOptions = isCoffeeProduct(product)
   const hasRequiredCoffeeOptions = !requiresCoffeeOptions || Boolean(previewFilter && previewWeight)
   const priceBreakdown = getUnitPriceBreakdown(product)
+  const activeReviewValue = hoverReviewRating || reviewRating || reviewAverage
+
+  const handleReviewSubmit = (event) => {
+    event.preventDefault()
+
+    const trimmedComment = reviewComment.trim()
+
+    if (!reviewRating) {
+      setReviewFeedback('Choose a half-step rating before posting your comment.')
+      return
+    }
+
+    if (!trimmedComment) {
+      setReviewFeedback('Write a short comment before posting it.')
+      return
+    }
+
+    setLocalReviews((current) => [
+      {
+        id: `preview-${Date.now()}`,
+        author: 'You',
+        rating: reviewRating,
+        comment: trimmedComment,
+        createdAt: new Date().toISOString(),
+      },
+      ...current,
+    ].slice(0, 6))
+    setReviewRating(0)
+    setHoverReviewRating(0)
+    setReviewComment('')
+    setReviewFeedback('Your comment was added to this browser preview.')
+  }
 
   const handleAddToCart = async () => {
     if (!availability.hasStock) {
@@ -230,12 +450,12 @@ export default function ProductDetailPage() {
         <span className="font-semibold text-[var(--aurora-text-strong)]">{product.name}</span>
       </div>
 
-      <div className="mt-6 aurora-page-intro-split lg:items-start">
+      <div className="mt-6 aurora-product-detail-layout">
         <AuroraWidget
           title={product.name}
           subtitle={getProductTypeLabel(product)}
           icon="coffee"
-          className="aurora-summary-lead aurora-product-hero-card mx-auto w-full p-5 sm:p-8"
+          className="aurora-summary-lead aurora-product-hero-card aurora-product-summary-panel mx-auto w-full p-5 sm:p-8"
         >
           <AuroraInset className="mb-6">
             <div className="mb-4 flex justify-start sm:justify-end">
@@ -254,7 +474,7 @@ export default function ProductDetailPage() {
           title="Product details"
           subtitle={getProductCategoryLabel(product)}
           icon="spark"
-          className="aurora-showroom-panel mx-auto w-full p-5 sm:p-8"
+          className="aurora-showroom-panel aurora-product-detail-panel mx-auto w-full p-5 sm:p-8"
           headerAside={<FavoriteToggleButton productId={product.slug} productName={product.name} />}
         >
           <AuroraInset className="mt-1">
@@ -382,16 +602,133 @@ export default function ProductDetailPage() {
             ) : null}
           </AuroraInset>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="aurora-product-attribute-list mt-6">
             {attributeCards.map((card) => (
               <AuroraWidget
                 key={card.subtitle}
                 title={card.title}
                 subtitle={card.subtitle}
                 icon={card.icon}
-                className="aurora-showroom-subpanel p-5"
+                className="aurora-showroom-subpanel aurora-product-attribute-card p-5"
               />
             ))}
+          </div>
+        </AuroraWidget>
+
+        <AuroraWidget
+          title="Share your take"
+          subtitle="Half-step rating and quick comment"
+          icon="star"
+          className="aurora-showroom-panel aurora-product-review-panel mx-auto w-full p-5 sm:p-8"
+        >
+          <AuroraInset className="aurora-review-metrics">
+            <div>
+              <p className="aurora-kicker">Customer pulse</p>
+              <p className="mt-3 font-display text-5xl text-[var(--aurora-text-strong)]">
+                {formatReviewScore(reviewAverage)}
+              </p>
+              <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                {localReviews.length
+                  ? `${localReviews.length} saved ${localReviews.length === 1 ? 'comment' : 'comments'} for this product in this browser.`
+                  : 'No comments yet. Set the first half-step rating below.'}
+              </p>
+            </div>
+            <div className="aurora-review-metrics-side">
+              <ReviewStars value={activeReviewValue} />
+              <span className="aurora-review-score-pill">
+                {reviewRating ? `${formatReviewScore(reviewRating)} / 5 selected` : 'Tap a star to rate'}
+              </span>
+            </div>
+          </AuroraInset>
+
+          <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
+            <AuroraInset>
+              <div className="aurora-review-form-heading">
+                <div>
+                  <p className="aurora-kicker">Your rating</p>
+                  <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
+                    {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
+                  </h4>
+                </div>
+                <span className="aurora-review-score-pill">Half-step stars</span>
+              </div>
+
+              <ReviewRatingInput
+                value={reviewRating}
+                hoverValue={hoverReviewRating}
+                onChange={setReviewRating}
+                onHoverChange={setHoverReviewRating}
+              />
+
+              <div className="aurora-review-rating-scale">
+                <span>Needs work</span>
+                <span>Outstanding</span>
+              </div>
+            </AuroraInset>
+
+            <AuroraInset>
+              <label htmlFor="product-review-comment" className="aurora-review-label">
+                Comment
+              </label>
+              <textarea
+                id="product-review-comment"
+                className="aurora-review-textarea"
+                rows="5"
+                maxLength="320"
+                placeholder={`What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`}
+                value={reviewComment}
+                onChange={(event) => {
+                  setReviewComment(event.target.value)
+                }}
+              />
+
+              <div className="aurora-review-form-footer">
+                <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                  {reviewComment.length}/320 characters
+                </p>
+                <LiquidGlassButton type="submit" size="compact">
+                  Post comment
+                </LiquidGlassButton>
+              </div>
+            </AuroraInset>
+          </form>
+
+          {reviewFeedback ? (
+            <p className="aurora-message aurora-message-success">{reviewFeedback}</p>
+          ) : null}
+
+          <div className="aurora-review-list">
+            {localReviews.length ? (
+              localReviews.map((review) => (
+                <AuroraInset key={review.id} className="aurora-review-card">
+                  <div className="aurora-review-card-header">
+                    <div>
+                      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--aurora-olive-deep)]">
+                        {review.author}
+                      </p>
+                      <p className="mt-2 text-sm text-[var(--aurora-text)]">
+                        {formatReviewDate(review.createdAt)}
+                      </p>
+                    </div>
+                    <div className="aurora-review-card-score">
+                      <ReviewStars value={review.rating} compact />
+                      <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                        {formatReviewScore(review.rating)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-base leading-8 text-[var(--aurora-text)]">
+                    {review.comment}
+                  </p>
+                </AuroraInset>
+              ))
+            ) : (
+              <AuroraInset className="aurora-review-empty">
+                <p className="text-base leading-8 text-[var(--aurora-text)]">
+                  This space is ready for product comments. Start with a half-step rating and a short note above.
+                </p>
+              </AuroraInset>
+            )}
           </div>
         </AuroraWidget>
       </div>

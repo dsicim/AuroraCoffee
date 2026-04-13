@@ -2260,6 +2260,248 @@ img {
     --aurora-liquid-blur: 8px;
   }
 
+  .aurora-product-detail-layout {
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .aurora-product-attribute-list {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-product-attribute-card {
+    min-width: 0;
+  }
+
+  .aurora-product-attribute-card .aurora-widget-header {
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 0.9rem;
+  }
+
+  .aurora-product-attribute-card .aurora-widget-heading {
+    flex: 1;
+    min-width: 0;
+    gap: 0.25rem;
+  }
+
+  .aurora-product-attribute-card .aurora-widget-title {
+    font-size: clamp(1rem, 0.95rem + 0.28vw, 1.3rem);
+    line-height: 1.15;
+  }
+
+  .aurora-product-attribute-card .aurora-widget-subtitle {
+    font-size: 0.95rem;
+    line-height: 1.45;
+  }
+
+  .aurora-product-attribute-card .aurora-widget-icon {
+    width: 2.65rem;
+    height: 2.65rem;
+  }
+
+  .aurora-review-metrics {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.5rem;
+  }
+
+  .aurora-review-metrics-side {
+    display: grid;
+    justify-items: start;
+    gap: 0.85rem;
+  }
+
+  .aurora-review-score-pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.4rem;
+    padding: 0.65rem 1rem;
+    border-radius: 999px;
+    border: 1px solid rgba(248, 239, 233, 0.18);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+      rgba(250, 245, 240, 0.06);
+    color: var(--aurora-text-strong);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .aurora-review-form {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-review-form-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .aurora-review-stars {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.42rem;
+    color: rgba(255, 220, 148, 0.98);
+  }
+
+  .aurora-review-stars.is-compact {
+    gap: 0.25rem;
+  }
+
+  .aurora-review-star {
+    position: relative;
+    width: 1.95rem;
+    height: 1.95rem;
+    color: rgba(255, 220, 148, 0.98);
+  }
+
+  .aurora-review-stars.is-compact .aurora-review-star {
+    width: 1.1rem;
+    height: 1.1rem;
+  }
+
+  .aurora-review-star-outline,
+  .aurora-review-star-fill {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .aurora-review-star-outline {
+    color: rgba(247, 232, 194, 0.56);
+  }
+
+  .aurora-review-star-fill-shell {
+    position: absolute;
+    inset: 0 auto 0 0;
+    overflow: hidden;
+    color: rgba(255, 214, 118, 1);
+  }
+
+  .aurora-review-rating-picker {
+    position: relative;
+    width: fit-content;
+    margin-top: 1.5rem;
+  }
+
+  .aurora-review-rating-visual {
+    pointer-events: none;
+  }
+
+  .aurora-review-rating-hitbox {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+  }
+
+  .aurora-review-step-button {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 999px;
+    outline: none;
+  }
+
+  .aurora-review-step-button:focus-visible {
+    box-shadow: 0 0 0 2px rgba(255, 226, 161, 0.36);
+  }
+
+  .aurora-review-rating-scale {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--aurora-text-muted);
+  }
+
+  .aurora-review-label {
+    display: inline-block;
+    margin-bottom: 0.9rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--aurora-text-strong);
+  }
+
+  .aurora-review-textarea {
+    width: 100%;
+    min-height: 8.5rem;
+    padding: 1rem 1.05rem;
+    resize: vertical;
+    border-radius: 1.4rem;
+    border: 1px solid rgba(248, 239, 233, 0.18);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(244, 237, 231, 0.05)),
+      rgba(250, 245, 240, 0.05);
+    color: var(--aurora-text-strong);
+    font: inherit;
+    line-height: 1.8;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .aurora-review-textarea::placeholder {
+    color: var(--aurora-text-muted);
+  }
+
+  .aurora-review-textarea:focus {
+    outline: none;
+    border-color: rgba(156, 190, 140, 0.32);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 0 0 3px rgba(156, 190, 140, 0.12);
+  }
+
+  .aurora-review-form-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1rem;
+  }
+
+  .aurora-review-list {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-review-card {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-review-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .aurora-review-card-score {
+    display: grid;
+    justify-items: end;
+    gap: 0.4rem;
+  }
+
+  .aurora-review-empty {
+    text-align: center;
+  }
+
   .aurora-ops-panel {
     border-radius: 2.2rem;
     --aurora-liquid-tint: rgba(255, 251, 247, 0.16);
@@ -2318,6 +2560,26 @@ img {
     .aurora-page-intro-split {
       grid-template-columns: minmax(0, 1.12fr) minmax(18rem, 0.88fr);
       align-items: end;
+    }
+
+    .aurora-product-detail-layout {
+      grid-template-columns: minmax(0, 1.12fr) minmax(18rem, 0.88fr);
+      align-items: start;
+    }
+
+    .aurora-product-summary-panel {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .aurora-product-detail-panel {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+
+    .aurora-product-review-panel {
+      grid-column: 1;
+      grid-row: 2;
     }
 
     .aurora-content-split {
