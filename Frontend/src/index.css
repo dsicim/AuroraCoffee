@@ -1706,6 +1706,11 @@ img {
 
   .aurora-preview-dropdown {
     position: relative;
+    z-index: 10;
+  }
+
+  .aurora-preview-dropdown:has(.aurora-preview-menu) {
+    z-index: 50;
   }
 
   .aurora-preview-trigger {
@@ -1771,21 +1776,23 @@ img {
     left: 0;
     right: 0;
     top: calc(100% + 0.7rem);
-    z-index: 30;
+    z-index: 80;
     display: grid;
     gap: 0.55rem;
     padding: 0.8rem;
+    overflow: hidden;
+    isolation: isolate;
     border: 1px solid rgba(255, 248, 241, 0.42);
     border-radius: 1.5rem;
     background:
-      radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.58), transparent 22%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(252, 246, 240, 0.3) 58%, rgba(247, 239, 232, 0.24)),
-      rgba(255, 251, 247, 0.76);
+      radial-gradient(circle at 14% 14%, rgba(255, 255, 255, 0.42), transparent 20%),
+      linear-gradient(180deg, rgba(30, 40, 56, 0.96), rgba(24, 34, 49, 0.98) 58%, rgba(18, 27, 40, 0.99)),
+      rgba(18, 27, 40, 0.98);
     backdrop-filter: blur(16px) saturate(126%);
     -webkit-backdrop-filter: blur(16px) saturate(126%);
     box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.78),
-      0 20px 36px rgba(47, 29, 19, 0.12);
+      inset 0 1px 0 rgba(255, 255, 255, 0.16),
+      0 24px 42px rgba(8, 15, 26, 0.38);
   }
 
   .aurora-preview-option {
@@ -1798,10 +1805,10 @@ img {
     border: 1px solid rgba(255, 248, 241, 0.26);
     border-radius: 1.15rem;
     text-align: left;
-    color: var(--aurora-text-strong);
+    color: rgba(244, 248, 252, 0.98);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 250, 245, 0.14)),
-      rgba(255, 252, 248, 0.22);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+      rgba(255, 255, 255, 0.02);
     transition:
       transform 140ms ease,
       border-color 140ms ease,
@@ -1813,16 +1820,16 @@ img {
     transform: translateY(-1px);
     border-color: rgba(138, 179, 145, 0.36);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(245, 251, 255, 0.16)),
-      rgba(239, 246, 249, 0.28);
-    box-shadow: 0 12px 24px rgba(91, 129, 97, 0.1);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06)),
+      rgba(255, 255, 255, 0.04);
+    box-shadow: 0 12px 24px rgba(10, 18, 29, 0.18);
   }
 
   .aurora-preview-option.is-selected {
     border-color: rgba(138, 179, 145, 0.46);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.54), rgba(241, 249, 252, 0.18)),
-      rgba(230, 239, 244, 0.34);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.08)),
+      rgba(255, 255, 255, 0.06);
   }
 
   .aurora-preview-option-copy {
@@ -1841,7 +1848,7 @@ img {
   .aurora-preview-option-meta {
     font-size: 0.82rem;
     line-height: 1.45;
-    color: var(--aurora-text);
+    color: rgba(215, 225, 236, 0.82);
   }
 
   .aurora-preview-check {

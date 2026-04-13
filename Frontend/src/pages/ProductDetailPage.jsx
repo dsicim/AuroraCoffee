@@ -708,11 +708,20 @@ export default function ProductDetailPage() {
   const rawSelectedOptions =
     optionSelection.productSlug === product.slug ? optionSelection.values : {}
   const selectedOptionsByGroup = getResolvedOptionSelections(optionGroups, rawSelectedOptions)
+  const visibleOptionGroups = optionGroups.filter((group, index) => {
+    if (index === 0) {
+      return true
+    }
+
+    return optionGroups
+      .slice(0, index)
+      .every((previousGroup) => Boolean(selectedOptionsByGroup[getOptionGroupKey(previousGroup)]))
+  })
   const selectedOptionRecords = getSelectedOptionRecords(optionGroups, selectedOptionsByGroup)
   const activeOptionMenu =
     openOptionMenu.productSlug === product.slug ? openOptionMenu.groupKey : ''
   const missingRequiredOptionGroups = optionGroups.filter(
-    (group) => group.isRequired && !selectedOptionsByGroup[getOptionGroupKey(group)],
+    (group) => !selectedOptionsByGroup[getOptionGroupKey(group)],
   )
   const matchingVariant = getMatchingVariant(product, optionGroups, selectedOptionsByGroup)
   const requiresVariantMatch = Boolean(product.hasVariants && optionGroups.some((group) => group.storeAsVariant))
@@ -810,7 +819,7 @@ export default function ProductDetailPage() {
           <AuroraInset className="relative mt-6 overflow-visible">
             {optionGroups.length ? (
               <div className="relative z-20 mb-6 grid gap-5">
-                {optionGroups.map((group) => {
+                {visibleOptionGroups.map((group) => {
                   const groupKey = getOptionGroupKey(group)
                   const selectedCode = selectedOptionsByGroup[groupKey] || ''
                   const selectedValue = (group.values || []).find(
@@ -824,7 +833,7 @@ export default function ProductDetailPage() {
                           {group.name}
                         </p>
                         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                          {group.isRequired ? 'Required' : 'Optional'}
+                          Required
                         </span>
                       </div>
                       <PreviewDropdown
