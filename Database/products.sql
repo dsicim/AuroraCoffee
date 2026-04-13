@@ -82,8 +82,9 @@ CREATE TABLE IF NOT EXISTS product_option_values (
 CREATE TABLE IF NOT EXISTS product_variants (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_id BIGINT UNSIGNED,
-    variant_code VARCHAR(100) UNIQUE,
-    price DECIMAL(10, 2) NOT NULL,
+    variant_code VARCHAR(255),
+    price_add DECIMAL(10, 2) DEFAULT 0,
+    price_mult DECIMAL(10, 2) DEFAULT 1,
     stock INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
@@ -202,11 +203,13 @@ INSERT INTO product_option_groups (product_id, name, separate_stock) VALUES (@th
 SET @thermos_color_group_id = LAST_INSERT_ID();
 
 INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
-(@thermos_color_group_id, 'Kırmızı', 'red', 0),
-(@thermos_color_group_id, 'Siyah', 'black', 0);
+(@thermos_color_group_id, 'Red', 'red', 0),
+(@thermos_color_group_id, 'Black', 'black', 0);
 
 -- Insert actual variant combinations
-INSERT INTO product_variants (product_id, variant_code, price, stock) VALUES
-(@thermos_id, 'THRM-RED', 500.00, 20),
-(@thermos_id, 'THRM-BLK', 500.00, 25);
+INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, stock) VALUES
+(@eth_weight_group_id, '250g', 0, 1, 20),
+(@eth_weight_group_id, '500g', 350.00, 1, 30),
+(@thermos_id, 'red', 0, 1, 20),
+(@thermos_id, 'black', 0, 1, 25);
 
