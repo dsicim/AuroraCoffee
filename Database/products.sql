@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS product_option_groups (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_id BIGINT UNSIGNED,
     name VARCHAR(255) NOT NULL, -- e.g., Weight, Grind, Color
+    group_code VARCHAR(255) DEFAULT NULL,
     cumulative_stock BOOLEAN DEFAULT FALSE,
     separate_stock BOOLEAN DEFAULT FALSE,
     separate_price BOOLEAN DEFAULT FALSE,
@@ -188,7 +189,7 @@ FROM categories WHERE name = 'Brewing Equipment' LIMIT 1;
 UPDATE products SET has_variants = TRUE WHERE name = 'Ethiopia Yirgacheffe';
 SET @ethiopia_id = (SELECT id FROM products WHERE name = 'Ethiopia Yirgacheffe' LIMIT 1);
 
-INSERT INTO product_option_groups (product_id, name, cumulative_stock) VALUES (@ethiopia_id, 'Weight', TRUE);
+INSERT INTO product_option_groups (product_id, name, cumulative_stock, group_code) VALUES (@ethiopia_id, 'Weight', TRUE, 'weight');
 SET @eth_weight_group_id = LAST_INSERT_ID();
 
 INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
@@ -199,7 +200,7 @@ INSERT INTO product_option_values (product_option_group_id, label, value_code, p
 UPDATE products SET has_variants = TRUE WHERE name = 'Urban Thermos';
 SET @thermos_id = (SELECT id FROM products WHERE name = 'Urban Thermos' LIMIT 1);
 
-INSERT INTO product_option_groups (product_id, name, separate_stock) VALUES (@thermos_id, 'Color', TRUE);
+INSERT INTO product_option_groups (product_id, name, separate_stock, group_code) VALUES (@thermos_id, 'Color', TRUE, 'color');
 SET @thermos_color_group_id = LAST_INSERT_ID();
 
 INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
@@ -208,8 +209,8 @@ INSERT INTO product_option_values (product_option_group_id, label, value_code, p
 
 -- Insert actual variant combinations
 INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, stock) VALUES
-(@eth_weight_group_id, '250g', 0, 1, 20),
-(@eth_weight_group_id, '500g', 350.00, 1, 30),
-(@thermos_id, 'red', 0, 1, 20),
-(@thermos_id, 'black', 0, 1, 25);
+(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 20),
+(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(@thermos_id, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
+(@thermos_id, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
 

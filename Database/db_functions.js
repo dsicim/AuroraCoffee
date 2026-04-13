@@ -190,7 +190,7 @@ func.enrichProductsWithOptions = async function(products) {
     
     // Fetch options
     const [options] = await pool.query(`
-        SELECT pog.id as group_id, pog.product_id, pog.name as group_name, pog.cumulative_stock, pog.separate_stock, pog.separate_price, pog.is_required, pog.multi_select, pog.priority,
+        SELECT pog.id as group_id, pog.product_id, pog.name as group_name, pog.group_code as group_code, pog.cumulative_stock, pog.separate_stock, pog.separate_price, pog.is_required, pog.multi_select, pog.priority,
                pov.id as value_id, pov.label, pov.value_code, pov.description, pov.price_add, pov.price_mult, pov.sort_order
         FROM product_option_groups pog
         LEFT JOIN product_option_values pov ON pog.id = pov.product_option_group_id
@@ -210,6 +210,7 @@ func.enrichProductsWithOptions = async function(products) {
     // Map to products
     let brewMethods = null;
     for (let p of products) {
+        const originalPrice = parseFloat(p.price);
         p.options = [];
         if (p.parent_category_name == "Coffee") {
             if (!brewMethods) {
@@ -282,16 +283,17 @@ func.enrichProductsWithOptions = async function(products) {
         const pVariants = {};
         for (const v of variants.filter(v => v.product_id === p.id)) {
             if (!pVariants[v.variant_id]) {
+                let op = {};
+                try {
+                    op = JSON.parse(Buffer.from(v.variant_code, 'base64').toString('utf-8'));
+                } catch (error) {};
                 pVariants[v.variant_id] = {
                     id: v.variant_id,
                     variant_code: v.variant_code,
                     price: parseFloat(v.price),
                     stock: v.stock,
-                    option_value_ids: []
+                    option_value_codes: op
                 };
-            }
-            if (v.product_option_value_id) {
-                pVariants[v.variant_id].option_value_ids.push(v.product_option_value_id);
             }
         }
         p.variants = Object.values(pVariants);
