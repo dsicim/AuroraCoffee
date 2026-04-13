@@ -2318,6 +2318,14 @@ img {
     gap: 1rem;
   }
 
+  .aurora-product-option-panel {
+    z-index: 3;
+  }
+
+  .aurora-product-option-panel:has(.aurora-preview-menu) {
+    z-index: 40;
+  }
+
   .aurora-product-attribute-card {
     min-width: 0;
   }

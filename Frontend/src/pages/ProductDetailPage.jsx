@@ -816,7 +816,7 @@ export default function ProductDetailPage() {
             )}
           </AuroraInset>
 
-          <AuroraInset className="relative mt-6 overflow-visible">
+          <AuroraInset className="aurora-product-option-panel relative mt-6 overflow-visible">
             {optionGroups.length ? (
               <div className="relative z-20 mb-6 grid gap-5">
                 {visibleOptionGroups.map((group) => {
