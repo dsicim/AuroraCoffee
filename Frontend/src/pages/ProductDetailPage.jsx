@@ -155,23 +155,42 @@ function getDisplayPrice(product, selectedOptionRecords, matchingVariant) {
   return Math.round(nextPrice * 100) / 100
 }
 
-function formatOptionPriceDelta(optionValue) {
+function formatOptionPriceDelta(optionValue, selectedOptionValue, basePrice = 0) {
   const priceAdd = Number(optionValue?.priceAdd) || 0
   const priceMult = Number(optionValue?.priceMult) || 1
+  const selectedPriceAdd = Number(selectedOptionValue?.priceAdd) || 0
+  const selectedPriceMult = Number(selectedOptionValue?.priceMult) || 1
+  const normalizedBasePrice = Number(basePrice) || 0
 
-  if (priceAdd > 0) {
-    return `+${formatCurrency(priceAdd)}`
+  const optionTotal = (normalizedBasePrice + priceAdd) * priceMult
+  const selectedTotal = (normalizedBasePrice + selectedPriceAdd) * selectedPriceMult
+  const delta = Math.round((optionTotal - selectedTotal) * 100) / 100
+
+  if (!selectedOptionValue) {
+    if (priceAdd > 0) {
+      return `+${formatCurrency(priceAdd)}`
+    }
+
+    if (priceAdd < 0) {
+      return `-${formatCurrency(Math.abs(priceAdd))}`
+    }
+
+    if (priceMult > 1) {
+      return `x${priceMult.toFixed(2)}`
+    }
+
+    return ''
   }
 
-  if (priceAdd < 0) {
-    return `-${formatCurrency(Math.abs(priceAdd))}`
+  if (Math.abs(delta) < 0.01) {
+    return ''
   }
 
-  if (priceMult > 1) {
-    return `x${priceMult.toFixed(2)}`
+  if (delta > 0) {
+    return `+${formatCurrency(delta)}`
   }
 
-  return ''
+  return `-${formatCurrency(Math.abs(delta))}`
 }
 
 function buildSelectedOptionsSnapshot(selectedOptionRecords) {
@@ -642,7 +661,12 @@ function PreviewDropdown({
                   ) : null}
                 </span>
                 {value === normalizedOption.value ? (
-                  <span className="aurora-preview-check">Selected</span>
+                  <span className="aurora-preview-option-trailing">
+                    {normalizedOption.sideLabel ? (
+                      <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
+                    ) : null}
+                    <span className="aurora-preview-check">Selected</span>
+                  </span>
                 ) : normalizedOption.sideLabel ? (
                   <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
                 ) : null}
@@ -867,7 +891,7 @@ export default function ProductDetailPage() {
                           value: getOptionValueCode(optionValue),
                           label: optionValue.label,
                           description: optionValue.description,
-                          sideLabel: formatOptionPriceDelta(optionValue),
+                          sideLabel: formatOptionPriceDelta(optionValue, selectedValue, product.price),
                         }))}
                         open={activeOptionMenu === groupKey}
                         onToggle={(nextOpen) => {

@@ -1885,6 +1885,14 @@ img {
     color: rgba(205, 224, 244, 0.9);
   }
 
+  .aurora-preview-option-trailing {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.8rem;
+    flex-shrink: 0;
+  }
+
   .aurora-preview-select-icon {
     position: absolute;
     top: 50%;
