@@ -200,7 +200,7 @@ func.enrichProductsWithOptions = async function(products) {
     
     // Fetch variants
     const [variants] = await pool.query(`
-        SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price, pv.stock,
+        SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price_add, pv.price_mult, pv.stock,
                pvv.product_option_value_id
         FROM product_variants pv
         LEFT JOIN product_variant_values pvv ON pv.id = pvv.product_variant_id
