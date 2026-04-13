@@ -155,6 +155,25 @@ function getDisplayPrice(product, selectedOptionRecords, matchingVariant) {
   return Math.round(nextPrice * 100) / 100
 }
 
+function formatOptionPriceDelta(optionValue) {
+  const priceAdd = Number(optionValue?.priceAdd) || 0
+  const priceMult = Number(optionValue?.priceMult) || 1
+
+  if (priceAdd > 0) {
+    return `+${formatCurrency(priceAdd)}`
+  }
+
+  if (priceAdd < 0) {
+    return `-${formatCurrency(Math.abs(priceAdd))}`
+  }
+
+  if (priceMult > 1) {
+    return `x${priceMult.toFixed(2)}`
+  }
+
+  return ''
+}
+
 function buildSelectedOptionsSnapshot(selectedOptionRecords) {
   if (!selectedOptionRecords?.length) {
     return null
@@ -622,7 +641,11 @@ function PreviewDropdown({
                     <span className="aurora-preview-option-meta">{normalizedOption.description}</span>
                   ) : null}
                 </span>
-                {value === normalizedOption.value ? <span className="aurora-preview-check">Selected</span> : null}
+                {value === normalizedOption.value ? (
+                  <span className="aurora-preview-check">Selected</span>
+                ) : normalizedOption.sideLabel ? (
+                  <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
+                ) : null}
               </button>
             )
           })}
@@ -844,6 +867,7 @@ export default function ProductDetailPage() {
                           value: getOptionValueCode(optionValue),
                           label: optionValue.label,
                           description: optionValue.description,
+                          sideLabel: formatOptionPriceDelta(optionValue),
                         }))}
                         open={activeOptionMenu === groupKey}
                         onToggle={(nextOpen) => {
