@@ -2357,6 +2357,8 @@ img {
   }
 
   .aurora-review-star {
+    display: block;
+    flex: 0 0 auto;
     position: relative;
     width: 1.95rem;
     height: 1.95rem;
