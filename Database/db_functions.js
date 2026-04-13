@@ -825,10 +825,10 @@ func.addDeliveredItems = async function (userId, products) {
         return { success: true, message: 'Delivered items recorded successfully' };
     }
     catch (error) {
-        if (error.code !== 'ER_DUP_ENTRY') {
-            console.error('Reserve order number error:', error);
-            throw new DBError(500, 'Failed to reserve order number');
-        }
+        console.error('Add delivered items error:', error);
+        throw new DBError(500, 'Failed to add delivered items');
+    } finally {
+        connection.release();
     }
 };
 func.getUserOrders = async function (userId, orderId = null) {
