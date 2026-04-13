@@ -26,13 +26,14 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
         if (!variants.includes(variant) && (!ignoreRequired || variant)) return { s: false, e: "Invalid variant selected" };
     }
     if (!ignoreRequired || opt) {
-        Object.keys(opt || {}).forEach(k => {
+        for (let i = 0; i < Object.keys(opt || {}).length; i++) {
+            const k = Object.keys(opt)[i];
             const option = validopt.find(v => v.code === k);
             if (option) {
                 if (!option.values.includes(opt[k])) return { s: false, e: "Option \""+k+"\" doesn't have \""+opt[k]+"\" as a possible option for this product" };
             }
             else return { s: false, e: "Option \""+k+"\" doesn't exist for this product" };
-        });
+        }
     }
     return { s: true };
 }
