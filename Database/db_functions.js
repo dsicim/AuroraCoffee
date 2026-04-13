@@ -997,7 +997,7 @@ func.addToCart = async function (userId, productId, quantity = 1, options, varia
     }
 }
 
-func.modifyCartItem = async function (userId, itemId, quantity, options) {
+func.modifyCartItem = async function (userId, itemId, quantity, options, variantId = null) {
     if (!userId || !itemId) throw new DBError(400, 'User ID and Item ID are required');
     try {
         let sql = 'UPDATE cart SET ';
@@ -1012,7 +1012,12 @@ func.modifyCartItem = async function (userId, itemId, quantity, options) {
             updates.push('options = ?');
             params.push(options);
         }
-        
+
+        if (variantId !== null) {
+            updates.push('variant_id = ?');
+            params.push(variantId);
+        }
+
         if (updates.length > 0) {
             sql += updates.join(', ') + ' WHERE id = ? AND user_id = ?';
             params.push(itemId, userId);
