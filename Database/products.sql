@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS product_option_values (
     description TEXT,
     value_code VARCHAR(100),
     price_add DECIMAL(10, 2) UNSIGNED DEFAULT 0,
-    price_mult DECIMAL(10, 2) UNSIGNED DEFAULT 1,
+    price_mult DECIMAL(10, 4) UNSIGNED DEFAULT 1,
     sort_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_option_group_id) REFERENCES product_option_groups(id) ON DELETE CASCADE
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     product_id BIGINT UNSIGNED,
     variant_code VARCHAR(255),
     price_add DECIMAL(10, 2) UNSIGNED DEFAULT 0,
-    price_mult DECIMAL(10, 2) UNSIGNED DEFAULT 1,
+    price_mult DECIMAL(10, 4) UNSIGNED DEFAULT 1,
     stock INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
