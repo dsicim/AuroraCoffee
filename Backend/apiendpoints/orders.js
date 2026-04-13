@@ -46,8 +46,44 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method not allowed" } };
     }
-    else if (endpoint[0] === "others") {
-        return { s: 502, j: true, d: { e: "Not implemented yet" } };
+    else if (endpoint[0] === "status") {
+        if (method === "PATCH") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.status) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const updateResult = await sql.updateOrderStatus(orderNumber.n, body.data.status, form.paymentId).then(result => {
+                if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully" } };
+                else return { s: 500, j:true, d: {e: "An unknown error occurred"} };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: 400, j:true, d: {e: err.error || "An unknown error occurred"} };
+                else return { s: 500, j:true, d: {e: "An unknown error occurred"} };
+            });
+            if (updateResult.s && body.data.status === "delivered") {
+                // We can mark the user able to comment on products
+                return await sql.getOrder(body.data.id).then(async result => {
+                    if (result.success) {
+                        result.order.details = aes.pjs(result.order.details);
+                        if (result.order.details.e && result.order.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                        const decrypted = aes.decrypt(result.order.details, currentUser.id);
+                        if (!decrypted.s) throw new Error("Decryption failed");
+                        const order = aes.pjs(decrypted.value);
+                        if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                        const allProducts = details.products.map(p => ({ product_id: p.product_id, variant_id: p.variant_id, details: { options: p.options } }));
+                        return await sql.addDeliveredItems(currentUser.id, allProducts).then(result => {
+                            if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully. The user now can comment on products." } };
+                            else return { s: 500, j:true, d: {e: "An unknown error occurred"} };;
+                        }).catch(err => {
+                            if (err instanceof sql.DBError) return { s: 400, j:true, d: {e: err.error || "An unknown error occurred"} };
+                            else return { s: 500, j:true, d: {e: "An unknown error occurred"} };
+                        });
+                    }
+                }).catch(err => {
+
+                });
+            }
+            return updateResult;
+        }
+        else return { s: 405, j: true, d: { e: "Method not allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not found" } };
 }

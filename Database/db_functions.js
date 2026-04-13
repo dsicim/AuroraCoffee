@@ -792,6 +792,45 @@ func.getOrderByPayment = async function (orderId, paymentId) {
         throw new DBError(500, 'Failed to fetch user orders');
     }
 };
+func.getOrder = async function (orderId) {
+    if (!orderId) {
+        throw new DBError(400, 'Order ID is required');
+    }
+    try {
+        const [orders] = await pool.execute('SELECT * FROM orders WHERE id = ?', [orderId]);
+        if (orders.length === 0) {
+            throw new DBError(404, 'Order not found');
+        }
+        return { success: true, order: orders[0] };
+    } catch (error) {
+        console.error('Get order error:', error);
+        throw new DBError(500, 'Failed to fetch order');
+    }
+};
+func.addDeliveredItems = async function (userId, products) {
+    if (!userId || !products || !products.length) {
+        throw new DBError(400, 'User ID and products are required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        for (const p of products) {
+            const details = {
+                variant: p.variant || null,
+                options: p.options || {}
+            }
+            const [result] = await pool.execute('INSERT INTO delivered_items (user_id, product_id, details,delivered_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE details = VALUES(details), delivered_at = CURRENT_TIMESTAMP', [userId, p.product_id, JSON.stringify(details), JSON.stringify(details)]);
+        }
+        await connection.commit();
+        return { success: true, message: 'Delivered items recorded successfully' };
+    }
+    catch (error) {
+        if (error.code !== 'ER_DUP_ENTRY') {
+            console.error('Reserve order number error:', error);
+            throw new DBError(500, 'Failed to reserve order number');
+        }
+    }
+};
 func.getUserOrders = async function (userId, orderId = null) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
