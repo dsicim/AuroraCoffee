@@ -226,7 +226,7 @@ func.enrichProductsWithOptions = async function(products) {
                     cumulative_stock: false,
                     seperate_stock: false,
                     seperate_price: false,
-                    is_required: false,
+                    is_required: true,
                     multi_select: false,
                     priority: 0,
                     values: []
