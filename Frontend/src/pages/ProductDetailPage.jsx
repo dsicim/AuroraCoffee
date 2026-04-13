@@ -95,7 +95,7 @@ function ReviewStar({ fillPercent }) {
       </svg>
       <span
         className="aurora-review-star-fill-shell"
-        style={{ width: `${fillPercent}%` }}
+        style={{ clipPath: `inset(0 ${100 - fillPercent}% 0 0)` }}
       >
         <svg className="aurora-review-star-fill" viewBox="0 0 24 24" fill="currentColor">
           <path d="m12 3 2.7 5.5 6 .9-4.3 4.2 1 6-5.4-2.8-5.4 2.8 1-6L3.3 9.4l6-.9Z" />
