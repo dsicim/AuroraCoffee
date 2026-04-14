@@ -12,7 +12,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
                 code: g.group_code,
                 values: g.values.map(v => v.value_code)
             }
-            if (g.is_required) {
+            if (g.is_required && !g.store_as_variant) {
                 expectedopt.push(optitem);
                 if (!opt || !opt[optitem.code] || !optitem.values.includes(opt[optitem.code])) invalid = true;
             }
