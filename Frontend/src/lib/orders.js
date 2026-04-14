@@ -271,6 +271,37 @@ function parseOrderOptions(rawValue) {
   return null
 }
 
+function findMatchingProductOptionGroup(product, key) {
+  const normalizedKey = normalizeText(key).toLowerCase()
+
+  return (product?.options || []).find((group) => {
+    const candidates = [group?.code, group?.id, group?.name]
+      .map((value) => normalizeText(value).toLowerCase())
+      .filter(Boolean)
+
+    return candidates.includes(normalizedKey)
+  }) || null
+}
+
+function mapOrderOptionsForDisplay(product, options) {
+  const parsedOptions = parseOrderOptions(options)
+
+  if (!parsedOptions) {
+    return null
+  }
+
+  return Object.fromEntries(
+    Object.entries(parsedOptions).map(([groupCode, valueCode]) => {
+      const group = findMatchingProductOptionGroup(product, groupCode)
+      const value = (group?.values || []).find(
+        (optionValue) => normalizeText(optionValue?.valueCode) === normalizeText(valueCode),
+      )
+
+      return [group?.name || groupCode, value?.label || valueCode]
+    }),
+  )
+}
+
 function normalizeOrderSummary(record) {
   const order = extractOrderRecord(record)
 
@@ -362,12 +393,20 @@ function normalizeOrderPayment(cardDetails, installment) {
 function normalizeOrderItem(rawItem, productById) {
   const productId = Number(rawItem?.product_id || rawItem?.productId || rawItem?.id) || null
   const product = productId ? productById.get(productId) : null
+  const variantId = Number(rawItem?.variant_id || rawItem?.variantId) || null
+  const variant =
+    variantId && product?.variants?.length
+      ? product.variants.find((entry) => Number(entry.id) === variantId) || null
+      : null
   const quantity = Math.max(1, Math.floor(rawItem?.quantity || rawItem?.qty) || 1)
+  const optionCodes = parseOrderOptions(rawItem?.options || rawItem?.opt)
 
   return {
     id: productId || String(rawItem?.id || rawItem?.product_id || crypto.randomUUID?.() || Math.random()),
     lineItemId: Number(rawItem?.id) || null,
     productId,
+    variantId,
+    variantCode: normalizeText(rawItem?.variant_code || rawItem?.variantCode) || normalizeText(variant?.variantCode),
     productSlug: product?.slug || '',
     name: normalizeText(rawItem?.product_name || rawItem?.name) || product?.name || 'Product',
     category: normalizeText(rawItem?.category) || getProductCategoryLabel(product),
@@ -382,7 +421,8 @@ function normalizeOrderItem(rawItem, productById) {
     taxAmount: toNullableNumber(rawItem?.tax_amount ?? rawItem?.taxAmount ?? product?.taxAmount),
     quantity,
     imageUrl: normalizeText(rawItem?.image_url || rawItem?.imageUrl) || product?.imageUrl || '',
-    options: parseOrderOptions(rawItem?.options || rawItem?.opt),
+    options: mapOrderOptionsForDisplay(product, optionCodes) || optionCodes,
+    optionCodes,
   }
 }
 

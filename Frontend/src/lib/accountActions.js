@@ -13,6 +13,9 @@ async function normalizeOrderLine(item) {
     quantity: Math.max(1, Math.floor(item.quantity) || 1),
     name: item.name || product.name,
     options: item?.options && typeof item.options === 'object' ? item.options : null,
+    optionCodes: item?.optionCodes && typeof item.optionCodes === 'object' ? item.optionCodes : null,
+    variantId: Number(item?.variantId) || null,
+    variantCode: typeof item?.variantCode === 'string' ? item.variantCode : '',
   }
 }
 
@@ -35,12 +38,13 @@ export async function restoreOrderItemsToCart(items) {
   if (validEntries.length) {
     for (const entry of validEntries) {
       await addCartItem(
-        entry.options
-          ? {
-              ...entry.product,
-              options: entry.options,
-            }
-          : entry.product,
+        {
+          ...entry.product,
+          ...(entry.options ? { options: entry.options } : {}),
+          ...(entry.optionCodes ? { optionCodes: entry.optionCodes } : {}),
+          ...(entry.variantId ? { variantId: entry.variantId } : {}),
+          ...(entry.variantCode ? { variantCode: entry.variantCode } : {}),
+        },
         entry.quantity,
       )
     }
