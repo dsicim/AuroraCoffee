@@ -141,6 +141,42 @@ export function getCartOptionEntries(options) {
   return normalizedOptions ? Object.entries(normalizedOptions) : []
 }
 
+function getNormalizedOptionLabelKey(key) {
+  return formatCartOptionLabel(key).trim().toLowerCase()
+}
+
+export function getCartItemOptionEntries(item) {
+  const displayOptions = normalizeCartOptions(item?.options)
+  const optionCodes = normalizeCartOptions(item?.optionCodes)
+  const variantOptions = decodeVariantSelectionCodes(item?.variantCode)
+
+  if (!displayOptions && !optionCodes && !variantOptions) {
+    return []
+  }
+
+  const seenLabels = new Set()
+  const entries = []
+
+  const appendEntries = (source) => {
+    for (const [key, value] of Object.entries(source || {})) {
+      const normalizedLabelKey = getNormalizedOptionLabelKey(key)
+
+      if (seenLabels.has(normalizedLabelKey)) {
+        continue
+      }
+
+      seenLabels.add(normalizedLabelKey)
+      entries.push([key, value])
+    }
+  }
+
+  appendEntries(displayOptions)
+  appendEntries(optionCodes)
+  appendEntries(variantOptions)
+
+  return entries
+}
+
 export function formatCartOptionLabel(key) {
   switch (String(key || '').trim().toLowerCase()) {
     case 'filter':

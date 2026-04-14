@@ -9,7 +9,7 @@ import {
   cartChangeEvent,
   formatCartOptionLabel,
   getCartItems,
-  getCartOptionEntries,
+  getCartItemOptionEntries,
   reconcileCartStorageWithAuth,
   removeCartItem,
   updateCartItemQuantity,
@@ -17,7 +17,7 @@ import {
 import { getItemsPriceBreakdown, getLinePriceBreakdown, getTaxInclusionCopy } from '../lib/tax'
 
 function renderCartItemOptions(item) {
-  const optionEntries = getCartOptionEntries(item?.options)
+  const optionEntries = getCartItemOptionEntries(item)
 
   if (!optionEntries.length) {
     return null

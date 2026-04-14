@@ -23,7 +23,7 @@ import {
   cartChangeEvent,
   formatCartOptionLabel,
   getCartItems,
-  getCartOptionEntries,
+  getCartItemOptionEntries,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
 import {
@@ -139,7 +139,7 @@ function getDeliveryAddressLines(delivery) {
 }
 
 function renderCartItemOptions(item) {
-  const optionEntries = getCartOptionEntries(item?.options)
+  const optionEntries = getCartItemOptionEntries(item)
 
   if (!optionEntries.length) {
     return null
