@@ -51,7 +51,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.status) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const updateResult = await sql.updateOrderStatus(orderNumber.n, body.data.status, form.paymentId).then(result => {
+            const updateResult = await sql.updateOrderStatus(body.data.id, body.data.status, form.paymentId).then(result => {
                 if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully" } };
                 else return { s: 500, j:true, d: {e: "An unknown error occurred"} };
             }).catch(err => {
