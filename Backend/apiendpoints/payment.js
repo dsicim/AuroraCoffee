@@ -438,6 +438,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                 }
             });
+            console.log(actualCart, body.data.cart);
             if (!cartTampered && !internalIssue) actualCart.forEach(item => {
                 if (!cartTampered) {
                     let matches = body.data.cart.filter(pi => pi.id === item.product_id);
