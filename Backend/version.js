@@ -139,6 +139,7 @@ async function RunServerMaintenance() {
         return null;
     }
     const logs = args.indexOf("--nologs") !== -1;
+    const norestart = args.indexOf("--norestart") !== -1;
     if (logs) logconsole = false;
     const action = args[index + 1];
     if (action === "restart" || action === "update" || action === "reset") {
@@ -169,7 +170,7 @@ async function RunServerMaintenance() {
             }
             console.log("Starting server...");
             const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
-            spawn("node", ["."], {
+            if (!norestart) spawn("node", ["."], {
                 cwd: backendDir,
                 detached: true,
                 stdio: "ignore",
