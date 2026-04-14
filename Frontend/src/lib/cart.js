@@ -597,7 +597,11 @@ async function hydrateServerCartRows(rows) {
     const product = productsById.get(Number(row.product_id))
     const variant =
       product?.variants?.find((entry) => Number(entry.id) === Number(row.variant_id)) || null
-    const parsedOptions = normalizeCartOptions(parseJson(row.options, null))
+    const rawOptions =
+      typeof row.options === 'string'
+        ? parseJson(row.options, null)
+        : row.options
+    const parsedOptions = normalizeCartOptions(rawOptions)
 
     return normalizeStoredCartItem({
       id: `cart-${row.id}`,
