@@ -764,12 +764,16 @@ export default function CheckoutPage() {
           })
         }
 
-        const cartPayload = await buildCheckoutCartPayload(items)
-        const validCartPayload = cartPayload.filter(
-          (item) => Number.isFinite(item.id) && item.id > 0,
-        )
+        const cartPayload = (await buildCheckoutCartPayload(items))
+          .map((item) => ({
+            id: Number(item.id),
+            qty: Math.max(1, Math.floor(item.qty) || 1),
+            opt: item.opt && typeof item.opt === 'object' ? item.opt : {},
+            var: typeof item.var === 'string' ? item.var : '',
+          }))
+          .filter((item) => Number.isFinite(item.id) && item.id > 0)
 
-        if (!validCartPayload.length) {
+        if (!cartPayload.length) {
           throw new Error('Cart items could not be prepared for payment.')
         }
 
@@ -802,7 +806,7 @@ export default function CheckoutPage() {
             }
 
         const paymentResponse = await initiatePayment({
-          cart: validCartPayload,
+          cart: cartPayload,
           shipping: shippingPayload,
           billing: billingPayload,
           expected: pricing.itemsGross,
