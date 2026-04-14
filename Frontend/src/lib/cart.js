@@ -105,21 +105,33 @@ function serializeCartOptions(options) {
   return normalizedOptions ? JSON.stringify(normalizedOptions) : ''
 }
 
-function buildCartVariantKey(productSlug, fallbackId, options) {
+function buildCartVariantKey(productSlug, fallbackId, variantCode, options) {
   const normalizedBase = String(productSlug || fallbackId || '').trim()
 
   if (!normalizedBase) {
     return ''
   }
 
+  const normalizedVariantCode = normalizeVariantCode(variantCode)
   const serializedOptions = serializeCartOptions(options)
-  return serializedOptions ? `${normalizedBase}::${serializedOptions}` : normalizedBase
+  const segments = []
+
+  if (normalizedVariantCode) {
+    segments.push(`var:${normalizedVariantCode}`)
+  }
+
+  if (serializedOptions) {
+    segments.push(`opt:${serializedOptions}`)
+  }
+
+  return segments.length ? `${normalizedBase}::${segments.join('::')}` : normalizedBase
 }
 
 function getCartMergeKey(item) {
   return buildCartVariantKey(
     item?.productSlug,
     item?.productId || item?.id,
+    item?.variantCode,
     item?.optionCodes ?? item?.options,
   )
 }
@@ -158,6 +170,7 @@ function normalizeStoredCartItem(item) {
   const fallbackId = buildCartVariantKey(
     productSlug,
     item.productId || item.id,
+    normalizedVariantCode,
     normalizedOptionCodes ?? normalizedOptions,
   )
 
@@ -286,13 +299,19 @@ function mergeCartItems(baseItems, incomingItems) {
 function buildCartItem(product, quantity = 1, options = null) {
   const normalizedOptions = normalizeCartOptions(options)
   const normalizedOptionCodes = normalizeCartOptions(product.optionCodes)
+  const normalizedVariantCode = normalizeVariantCode(product.variantCode)
 
   return {
-    id: buildCartVariantKey(product.slug, product.id, normalizedOptionCodes ?? normalizedOptions),
+    id: buildCartVariantKey(
+      product.slug,
+      product.id,
+      normalizedVariantCode,
+      normalizedOptionCodes ?? normalizedOptions,
+    ),
     lineItemId: null,
     productId: product.id,
     variantId: Number(product.variantId) || null,
-    variantCode: normalizeVariantCode(product.variantCode),
+    variantCode: normalizedVariantCode,
     productSlug: product.slug,
     name: product.name,
     category: getProductCategoryLabel(product),
@@ -324,6 +343,21 @@ function findMatchingProductOptionGroup(product, key) {
 
     return candidates.includes(normalizedKey)
   }) || null
+}
+
+function filterOptionCodesForPayload(product, options) {
+  const normalizedOptions = normalizeCartOptions(options)
+
+  if (!normalizedOptions) {
+    return null
+  }
+
+  const entries = Object.entries(normalizedOptions).filter(([groupKey]) => {
+    const group = findMatchingProductOptionGroup(product, groupKey)
+    return !group?.storeAsVariant
+  })
+
+  return entries.length ? Object.fromEntries(entries) : null
 }
 
 function mapCartOptionsForDisplay(product, options) {
@@ -544,9 +578,10 @@ async function mergeGuestCartIntoServer(items) {
     }
 
     const product = productsById.get(Number(item.productId))
-    const optionCodes =
-      normalizeCartOptions(item.optionCodes) ||
-      mapCartOptionsForPayload(product, item.options)
+    const optionCodes = filterOptionCodesForPayload(
+      product,
+      normalizeCartOptions(item.optionCodes) || mapCartOptionsForPayload(product, item.options),
+    )
     const variantCode =
       normalizeVariantCode(item.variantCode) ||
       product?.variants?.find((variant) => Number(variant.id) === Number(item.variantId))?.variantCode ||
@@ -671,14 +706,19 @@ export async function addCartProduct(product, quantity = 1) {
   const session = getAuthSession()
 
   if (session?.token) {
-    let payloadOptionCodes = normalizedOptionCodes
+    let payloadOptionCodes = filterOptionCodesForPayload(product, normalizedOptionCodes)
     let payloadVariantCode = normalizedVariantCode
 
     if ((!payloadOptionCodes && normalizedOptions) || (!payloadVariantCode && product.variantId)) {
       const [resolvedProduct] = await fetchProductsByIds([product.id]).catch(() => [])
 
       if (resolvedProduct) {
-        payloadOptionCodes = payloadOptionCodes || mapCartOptionsForPayload(resolvedProduct, normalizedOptions)
+        payloadOptionCodes =
+          payloadOptionCodes ||
+          filterOptionCodesForPayload(
+            resolvedProduct,
+            mapCartOptionsForPayload(resolvedProduct, normalizedOptions),
+          )
         payloadVariantCode =
           payloadVariantCode ||
           resolvedProduct.variants?.find((variant) => Number(variant.id) === Number(product.variantId))?.variantCode ||
@@ -710,7 +750,12 @@ export async function addCartProduct(product, quantity = 1) {
 
   const storageMode = getCartStorageMode()
   const existingItems = readGuestCartItems(storageMode)
-  const nextItemKey = buildCartVariantKey(product.slug, product.id, normalizedOptionCodes ?? normalizedOptions)
+  const nextItemKey = buildCartVariantKey(
+    product.slug,
+    product.id,
+    normalizedVariantCode,
+    normalizedOptionCodes ?? normalizedOptions,
+  )
   const existingItem = existingItems.find((item) => getCartMergeKey(item) === nextItemKey)
 
   const nextItems = existingItem

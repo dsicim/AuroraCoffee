@@ -208,9 +208,11 @@ function buildSelectedOptionCodes(selectedOptionRecords) {
     return null
   }
 
-  return Object.fromEntries(
-    selectedOptionRecords.map(({ group, value }) => [group.code || group.id, value.valueCode || value.id]),
-  )
+  const entries = selectedOptionRecords
+    .filter(({ group }) => !group?.storeAsVariant)
+    .map(({ group, value }) => [group.code || group.id, value.valueCode || value.id])
+
+  return entries.length ? Object.fromEntries(entries) : null
 }
 
 function loadStoredReviews(slug) {
