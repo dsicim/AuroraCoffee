@@ -20,6 +20,7 @@ import {
 } from '../lib/addressBook'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
+  buildCheckoutCartPayload,
   cartChangeEvent,
   formatCartOptionLabel,
   getCartItems,
@@ -763,23 +764,12 @@ export default function CheckoutPage() {
           })
         }
 
-        const cartPayload = items
-          .map((item) => {
-            const payload = {
-              id: Number(item.productId),
-              qty: Math.max(1, Math.floor(item.quantity) || 1),
-              opt: item.optionCodes || {},
-            }
+        const cartPayload = await buildCheckoutCartPayload(items)
+        const validCartPayload = cartPayload.filter(
+          (item) => Number.isFinite(item.id) && item.id > 0,
+        )
 
-            if (item.variantCode) {
-              payload.var = item.variantCode
-            }
-
-            return payload
-          })
-          .filter((item) => Number.isFinite(item.id) && item.id > 0)
-
-        if (!cartPayload.length) {
+        if (!validCartPayload.length) {
           throw new Error('Cart items could not be prepared for payment.')
         }
 
@@ -812,7 +802,7 @@ export default function CheckoutPage() {
             }
 
         const paymentResponse = await initiatePayment({
-          cart: cartPayload,
+          cart: validCartPayload,
           shipping: shippingPayload,
           billing: billingPayload,
           expected: pricing.itemsGross,
