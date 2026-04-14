@@ -22,6 +22,7 @@ async function normalizeOrderLine(item) {
 export async function restoreOrderItemsToCart(items) {
   const validEntries = []
   const skippedItems = []
+  let addedCount = 0
 
   for (const item of items || []) {
     const normalizedItem = await normalizeOrderLine(item)
@@ -37,21 +38,26 @@ export async function restoreOrderItemsToCart(items) {
 
   if (validEntries.length) {
     for (const entry of validEntries) {
-      await addCartItem(
-        {
-          ...entry.product,
-          ...(entry.options ? { options: entry.options } : {}),
-          ...(entry.optionCodes ? { optionCodes: entry.optionCodes } : {}),
-          ...(entry.variantId ? { variantId: entry.variantId } : {}),
-          ...(entry.variantCode ? { variantCode: entry.variantCode } : {}),
-        },
-        entry.quantity,
-      )
+      try {
+        await addCartItem(
+          {
+            ...entry.product,
+            ...(entry.options ? { options: entry.options } : {}),
+            ...(entry.optionCodes ? { optionCodes: entry.optionCodes } : {}),
+            ...(entry.variantId ? { variantId: entry.variantId } : {}),
+            ...(entry.variantCode ? { variantCode: entry.variantCode } : {}),
+          },
+          entry.quantity,
+        )
+        addedCount += entry.quantity
+      } catch {
+        skippedItems.push(entry.name || entry.product.name || 'Unknown item')
+      }
     }
   }
 
   return {
-    addedCount: validEntries.reduce((total, item) => total + item.quantity, 0),
+    addedCount,
     skippedItems,
   }
 }

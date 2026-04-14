@@ -956,7 +956,16 @@ export async function addCartVariants(entries) {
       continue
     }
 
-    nextItems = await addCartItem(entry.product, entry.quantity)
+    nextItems = await addCartItem(
+      {
+        ...entry.product,
+        ...(entry.options ? { options: entry.options } : {}),
+        ...(entry.optionCodes ? { optionCodes: entry.optionCodes } : {}),
+        ...(entry.variantId ? { variantId: entry.variantId } : {}),
+        ...(entry.variantCode ? { variantCode: entry.variantCode } : {}),
+      },
+      entry.quantity,
+    )
   }
 
   return nextItems
