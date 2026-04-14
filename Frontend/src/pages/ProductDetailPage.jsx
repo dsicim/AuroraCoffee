@@ -203,6 +203,16 @@ function buildSelectedOptionsSnapshot(selectedOptionRecords) {
   )
 }
 
+function buildSelectedOptionCodes(selectedOptionRecords) {
+  if (!selectedOptionRecords?.length) {
+    return null
+  }
+
+  return Object.fromEntries(
+    selectedOptionRecords.map(({ group, value }) => [group.code || group.id, value.valueCode || value.id]),
+  )
+}
+
 function loadStoredReviews(slug) {
   if (!slug) {
     return []
@@ -783,6 +793,7 @@ export default function ProductDetailPage() {
   const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
   const priceBreakdown = getUnitPriceBreakdown({ ...product, price: displayPrice })
   const selectedOptionsSnapshot = buildSelectedOptionsSnapshot(selectedOptionRecords)
+  const selectedOptionCodes = buildSelectedOptionCodes(selectedOptionRecords)
   const missingOptionLabels = missingRequiredOptionGroups.map((group) => group.name)
 
   const handleAddToCart = async () => {
@@ -805,7 +816,9 @@ export default function ProductDetailPage() {
       price: displayPrice,
       stock: displayAvailability.totalStock,
       variantId: matchingVariant?.id || null,
+      variantCode: matchingVariant?.variantCode || '',
       options: selectedOptionsSnapshot,
+      optionCodes: selectedOptionCodes,
     })
     setFeedback(`${product.name} was added to cart.`)
   }
