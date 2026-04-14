@@ -78,7 +78,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         });
                     }
                 }).catch(err => {
-
+                    if (err instanceof sql.DBError) return { s: 400, j:true, d: {e: err.error || "An unknown error occurred while getting order"} };
+                    else return { s: 500, j:true, d: {e: "An unknown error occurred while getting order"} };
                 });
             }
             return updateResult;
