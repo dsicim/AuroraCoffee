@@ -454,7 +454,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                 }
             });
-            console.log(actualCart, body.data.cart);
             if (!cartTampered && !internalIssue) actualCart.forEach(item => {
                 if (!cartTampered) {
                     let matches = body.data.cart.filter(pi => pi.id === item.product_id);
@@ -502,12 +501,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             const basketItems = [];
             let outofstock = false;
+            let variantnonexistent = false;
             actualCart.forEach(item => {
                 console.log(item.product_id, products[item.product_id]);
                 console.log("---------------");
                 item.tax = parseInt(products[item.product_id].tax);
-                item.subtotal = Math.round(parseFloat(products[item.product_id].price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
-                item.taxAmount = parseFloat(products[item.product_id].price) - (Math.round(item.subtotal*100)/100);
+                item.product_price = parseFloat(products[item.product_id].price);
+                item.general_stock = products[item.product_id].stock;
+                if (products[item.product_id].has_variants) {
+                    const variant = products[item.product_id].variants.find(v => v.variant_code === item.variant_code);
+                    if (variant) {
+                        item.product_price = variant.price;
+                        item.variant_stock = variant.stock;
+                    }
+                    else variantnonexistent = true;
+                }
+                item.subtotal = Math.round((item.product_price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
+                item.taxAmount = item.product_price - (Math.round(item.subtotal*100)/100);
                 const itemFormat = {
                     id: item.product_id,
                     price: item.product_price,
@@ -516,13 +526,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     category2: products[item.product_id].category_name,
                     itemType: "PHYSICAL",
                 };
-                if (products[item.product_id].stock - item.quantity < 0) outofstock = true;
-                products[item.product_id].stock -= item.quantity;
-                if (item.variant_id) {
-                    const variant = products[item.product_id].variants.find(v => v.id === item.variant_id);
-                    if (!variant || variant.stock - item.quantity < 0) outofstock = true;
-                    else variant.stock -= item.quantity;
-                }
+                if (item.general_stock - item.quantity < 0) outofstock = true;
+                item.general_stock -= item.quantity;
+                if (item.variant_stock - item.quantity < 0) outofstock = true;
+                item.variant_stock -= item.quantity;
                 for (let i = 0; i < item.quantity; i++) {
                     basketItems.push(itemFormat);
                 }
@@ -533,6 +540,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
+            if (variantnonexistent) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart have nonexistent variants", resolution: "Please confirm your cart contents and then try again." } } };
 
 
 
