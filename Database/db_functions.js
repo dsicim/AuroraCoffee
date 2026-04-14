@@ -184,10 +184,17 @@ func.resetDB = async function () {
 //     }
 // };
 
-func.enrichProductsWithOptions = async function(products) {
+func.enrichProductsWithOptions = async function(userId, products) {
     if (!products || products.length === 0) return products;
     const productIds = products.map(p => p.id);
     
+    if (userId) {
+        const [delivereds] = await pool.query(`SELECT * FROM delivered_items WHERE user_id = ? AND product_id IN (?)`, [userId, productIds]);
+        for (const item of delivereds) {
+            products.find(p => p.id === item.product_id).can_comment = true;
+        }
+    }
+
     // Fetch options
     const [options] = await pool.query(`
         SELECT pog.id as group_id, pog.product_id, pog.name as group_name, pog.group_code as group_code, pog.cumulative_stock, pog.separate_stock, pog.separate_price, pog.is_required, pog.multi_select, pog.priority,
@@ -302,8 +309,7 @@ func.enrichProductsWithOptions = async function(products) {
     }
     return products;
 };
-
-func.getAllProducts = async function () {
+func.getAllProducts = async function (userId) {
     try {
         let [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
@@ -311,7 +317,7 @@ func.getAllProducts = async function () {
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
         `);
-        rows = await func.enrichProductsWithOptions(rows);
+        rows = await func.enrichProductsWithOptions(userId, rows);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Get all products error:', error);
@@ -319,7 +325,7 @@ func.getAllProducts = async function () {
     }
 };
 
-func.getProductsByIds = async function (productId) {
+func.getProductsByIds = async function (userId,productId) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -335,7 +341,7 @@ func.getProductsByIds = async function (productId) {
         if (rows.length === 0) {
             throw new DBError(404, 'No products found');
         }
-        rows = await func.enrichProductsWithOptions(rows);
+        rows = await func.enrichProductsWithOptions(userId, rows);
         const foundIds = rows.map(r => r.id);
         const missingIds = productId.filter(id => !foundIds.includes(id));
         return { success: true, products: rows, idsnotfound: missingIds };
@@ -346,7 +352,7 @@ func.getProductsByIds = async function (productId) {
     }
 };
 
-func.searchProducts = async function (query, sortBy = 'newest') {
+func.searchProducts = async function (userId, query, sortBy = 'newest') {
     try {
         let sql = `
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
@@ -374,7 +380,7 @@ func.searchProducts = async function (query, sortBy = 'newest') {
         }
 
         let [rows] = await pool.execute(sql, params);
-        rows = await func.enrichProductsWithOptions(rows);
+        rows = await func.enrichProductsWithOptions(userId, rows);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Search products error:', error);
@@ -827,6 +833,18 @@ func.addDeliveredItems = async function (userId, products) {
         connection.release();
     }
 };
+func.getDeliveredItems = async function (userId) {
+    if (!userId) {
+        throw new DBError(400, 'User ID is required');
+    }
+    try {
+        const [items] = await pool.execute('SELECT * FROM delivered_items WHERE user_id = ?', [userId]);
+        return { success: true, items: items };
+    } catch (error) {
+        console.error('Get delivered items error:', error);
+        throw new DBError(500, 'Failed to fetch delivered items');
+    }
+}
 func.getUserOrders = async function (userId, orderId = null) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');

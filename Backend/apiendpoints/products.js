@@ -1,11 +1,12 @@
 const sql = require("../../Database/server.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
+    const userId = currentUser && !currentUser.e && currentUser.id ? currentUser.id : null;
     if (endpoint.length === 0) {
         if (method === "GET") {
             if (query.ids) {
                 const ids = query.ids.split(",").map(x => parseInt(x)).filter(x => !isNaN(x));
                 if (ids.length > 0) {
-                    return await sql.getProductsByIds(ids).then(async result => {
+                    return await sql.getProductsByIds(userId,ids).then(async result => {
                         if (result.success) {
                             return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
                         }
@@ -26,7 +27,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "all") {
         if (method === "GET") {
-            return await sql.getAllProducts().then(async result => {
+            return await sql.getAllProducts(userId).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { products: result.products } };
                 }
@@ -44,7 +45,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "search") {
         if (method === "GET") {
             if (query.q && query.q.trim().length > 0) {
-                return await sql.searchProducts(query.q.trim(),query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
+                return await sql.searchProducts(userId, query.q.trim(),query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products } };
                     }

@@ -16,6 +16,7 @@ const APIEndpoints = {
     payment: require("./apiendpoints/payment.js"),
     address: require("./apiendpoints/address.js"),
     orders: require("./apiendpoints/orders.js"),
+    comments: require("./apiendpoints/comments.js"),
 };
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
@@ -368,6 +369,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
     else if (endpoint[0] === "payment") return await APIEndpoints.payment.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "address") return await APIEndpoints.address.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "orders") return await APIEndpoints.orders.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "comments") return await APIEndpoints.comments.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI, initDB: sql.initDB };
