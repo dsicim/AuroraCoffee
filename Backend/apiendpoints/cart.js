@@ -6,7 +6,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
     let expectedvar = false;
     let invalid = false;
     o.forEach(g => {
-        if (o.store_as_variant) expectedvar = true;
+        if (g.store_as_variant) expectedvar = true;
         else {
             const optitem = {
                 code: g.group_code,
@@ -87,7 +87,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[body.data.id], body.data.opt, body.data.var);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
-                const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.variant_code === (body.data.var)).stock : product.product[body.data.id].stock;
+                const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.variant_id === (body.data.var)).stock : product.product[body.data.id].stock;
                 const qty = body.data.qty;
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };
                 return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt || {}), body.data.var || null).then(result => {
