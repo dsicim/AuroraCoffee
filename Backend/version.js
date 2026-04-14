@@ -107,15 +107,23 @@ async function runUpdateScript(repoParent) {
         if (log) fs.writeFileSync("./resetlog.log", "");
         await execute("git switch main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git fetch origin", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
+        const { stdout } = await execute("git diff --name-only HEAD..origin/main -- Frontend/",{ cwd: cwd + "/AuroraCoffee" },"./resetlog.log");
+        const frontendChanges = stdout.trim().split("\n").map(s => s.substring(9));
+        const frontendUpdated = frontendChanges.length > 0;
+        if (frontendUpdated) logtext("Frontend changes detected: \n" + frontendChanges.join("\n"));
+        else logtext("No frontend changes detected. Skipping frontend build.");
         await execute("git reset --hard origin/main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         logtext("Updated git repo.");
         await fs.copyFile("./config.json", path.join(cwd, "/AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "/AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
         logtext("Copied config file.");
-        await fs.rm(path.join(cwd, "/AuroraCoffee/Frontend/dist"), { force: true }, err => { });
-        await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        logtext("Built frontend.");
+        if (frontendUpdated) {
+            await fs.rm(path.join(cwd, "/AuroraCoffee/Frontend/dist"), { force: true }, err => { });
+            await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
+            await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
+            logtext("Built frontend.");
+        }
+        logtext("Update completed.");
         return "Success: update completed successfully";
     }
     catch (err) {
