@@ -14,8 +14,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
             }
             if (g.is_required && !g.store_as_variant) {
                 expectedopt.push(optitem);
-                console.log(opt, optitem.values, opt[optitem.code], optitem.values.includes(opt[optitem.code]));
-                if (!opt || !opt[optitem.code] || !optitem.values.includes(opt[optitem.code])) invalid = true;
+                if (!opt || !opt[optitem.code] || !optitem.values.includes(String(opt[optitem.code]))) invalid = true;
             }
             validopt.push(optitem);
         }
@@ -37,7 +36,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
             const k = Object.keys(opt)[i];
             const option = validopt.find(v => v.code === k);
             if (option) {
-                if (!option.values.includes(opt[k])) return { s: false, e: "Option \""+k+"\" doesn't have \""+opt[k]+"\" as a possible option for this product" };
+                if (!option.values.includes(String(opt[k]))) return { s: false, e: "Option \""+k+"\" doesn't have \""+opt[k]+"\" as a possible option for this product" };
             }
             else return { s: false, e: "Option \""+k+"\" doesn't exist for this product" };
         }
