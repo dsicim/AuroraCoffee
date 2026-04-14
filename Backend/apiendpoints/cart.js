@@ -14,16 +14,23 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
             }
             if (g.is_required && !g.store_as_variant) {
                 expectedopt.push(optitem);
+                console.log(opt, optitem.values, opt[optitem.code], optitem.values.includes(opt[optitem.code]));
                 if (!opt || !opt[optitem.code] || !optitem.values.includes(opt[optitem.code])) invalid = true;
             }
             validopt.push(optitem);
         }
     });
+    let editvariant = false;
     if (invalid && (!ignoreRequired || opt)) return { s: false, e: "Invalid or missing required options" };
     if (expectedvar && (!variant || !variant.length) && !ignoreRequired) return { s: false, e: "Variant information is required for this product" };
     if (expectedvar) {
-        const variants = product.variants ? product.variants.map(v => v.variant_code) : [];
-        if (!variants.includes(variant) && (!ignoreRequired || variant)) return { s: false, e: "Invalid variant selected" };
+        const variants = product.variants ? product.variants.map(v => {return {code:v.variant_code,id:v.id}}) : [];
+        const variantObj = variants.find(v => v.code === variant);
+        if (!variantObj && (!ignoreRequired || variant)) return { s: false, e: "Invalid variant selected" };
+        if (variantObj) {
+            editvariant = true;
+            variant = variantObj.id;
+        }
     }
     if (!ignoreRequired || opt) {
         for (let i = 0; i < Object.keys(opt || {}).length; i++) {
@@ -35,6 +42,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
             else return { s: false, e: "Option \""+k+"\" doesn't exist for this product" };
         }
     }
+    if (editvariant) return { s: true, variant: variant };
     return { s: true };
 }
 
@@ -79,6 +87,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!product.product) return { s: 400, j: true, d: { e: "Product ID not found" } };
                 const validation = validateOptions(product.product[body.data.id], body.data.opt, body.data.var);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
+                if (validation.variant) body.data.var = validation.variant;
                 const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.variant_code === (body.data.var)).stock : product.product[body.data.id].stock;
                 const qty = body.data.qty;
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };
@@ -132,7 +141,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!product.product) return { s: 400, j: true, d: { e: "Product ID not found" } };
                 const validation = validateOptions(product.product[item.product_id], body.data.opt, body.data.var, true);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
-                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.variant_code === (body.data.var?body.data.var:item.variant_id)).stock : product.product[item.product_id].stock;
+                if (validation.variant) body.data.var = validation.variant;
+                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.id === (body.data.var?body.data.var:item.variant_id)).stock : product.product[item.product_id].stock;
                 const qty = body.data.qty || item.qty;
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };
                 return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, JSON.stringify(body.data.opt || {}), body.data.var || null).then(result => {
