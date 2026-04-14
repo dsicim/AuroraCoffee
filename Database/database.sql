@@ -60,8 +60,8 @@ CREATE TABLE IF NOT EXISTS delivered_items (
     user_id BIGINT UNSIGNED NOT NULL,
     product_id BIGINT UNSIGNED NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
-    PRIMARY KEY user_product_combo (user_id, product_id),
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    PRIMARY KEY user_product_combo (user_id, product_id)
 );
 
 -- Create carts table
