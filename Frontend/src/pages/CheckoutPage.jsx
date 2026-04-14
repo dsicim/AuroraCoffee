@@ -20,7 +20,6 @@ import {
 } from '../lib/addressBook'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
-  buildCheckoutCartPayload,
   cartChangeEvent,
   formatCartOptionLabel,
   getCartItems,
@@ -764,13 +763,20 @@ export default function CheckoutPage() {
           })
         }
 
-        const cartPayload = (await buildCheckoutCartPayload(items))
-          .map((item) => ({
-            id: Number(item.id),
-            qty: Math.max(1, Math.floor(item.qty) || 1),
-            opt: item.opt && typeof item.opt === 'object' ? item.opt : {},
-            var: typeof item.var === 'string' ? item.var : '',
-          }))
+        const cartPayload = items
+          .map((item) => {
+            const payload = {
+              id: Number(item.productId),
+              qty: Math.max(1, Math.floor(item.quantity) || 1),
+              opt: item?.optionCodes && typeof item.optionCodes === 'object' ? item.optionCodes : {},
+            }
+
+            if (typeof item?.variantCode === 'string' && item.variantCode.trim()) {
+              payload.var = item.variantCode.trim()
+            }
+
+            return payload
+          })
           .filter((item) => Number.isFinite(item.id) && item.id > 0)
 
         if (!cartPayload.length) {
