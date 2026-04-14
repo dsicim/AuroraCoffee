@@ -992,9 +992,10 @@ func.getCart = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
         const [rows] = await pool.execute(`
-            SELECT c.*, p.name AS product_name, p.price AS product_price, p.image_url 
+            SELECT c.*, p.name AS product_name, p.price AS product_price, p.image_url, pv.variant_code AS variant_code 
             FROM cart c 
             JOIN products p ON c.product_id = p.id 
+            JOIN product_variants pv ON c.variant_id = pv.id AND pv.product_id = c.product_id
             WHERE c.user_id = ?
         `, [userId]);
         return { success: true, cart: rows };
