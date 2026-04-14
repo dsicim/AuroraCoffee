@@ -57,16 +57,11 @@ CREATE TABLE IF NOT EXISTS refunds (
 
 -- Create delivered_items table
 CREATE TABLE IF NOT EXISTS delivered_items (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     product_id BIGINT UNSIGNED NOT NULL,
-    details JSON NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE SET NULL,
-    FOREIGN KEY (variant_id) REFERENCES product_variants(id) ON DELETE SET NULL,
-    UNIQUE KEY user_product_combo (user_id, product_id),
-    first_delivery TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    delivered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    PRIMARY KEY user_product_combo (user_id, product_id),
 );
 
 -- Create carts table

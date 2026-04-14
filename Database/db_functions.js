@@ -815,11 +815,7 @@ func.addDeliveredItems = async function (userId, products) {
     try {
         await connection.beginTransaction();
         for (const p of products) {
-            const details = {
-                variant: p.variant || null,
-                options: p.options || {}
-            }
-            const [result] = await pool.execute('INSERT INTO delivered_items (user_id, product_id, details,delivered_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP) ON DUPLICATE KEY UPDATE details = VALUES(details), delivered_at = CURRENT_TIMESTAMP', [userId, p.product_id, JSON.stringify(details), JSON.stringify(details)]);
+            await pool.execute('INSERT IGNORE INTO delivered_items (user_id, product_id) VALUES (?, ?)', [userId, p.product_id]);
         }
         await connection.commit();
         return { success: true, message: 'Delivered items recorded successfully' };
