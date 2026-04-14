@@ -105,7 +105,7 @@ function parseVariantOptions(variantCode) {
         return {};
     }
 }
-async function emailInvoice(config, email, orderNumber, details) {
+async function emailInvoice(config, email, orderNumber, details, textformat) {
     let instemplate = fs.readFileSync("./"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
     if (details.installment.months > 1) {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
@@ -126,7 +126,7 @@ async function emailInvoice(config, email, orderNumber, details) {
         };
         let optionstext = "";
         Object.keys(optionEntries).forEach(key => {
-            optionstext += key + ": " + optionEntries[key] + ", ";
+            optionstext += textformat[product.product_id][key].name + ": " + textformat[product.product_id][key].values[optionEntries[key]] + ", ";
         });
         optionstext = optionstext.length > 2 ? optionstext.slice(0, -2) : "";
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
@@ -502,6 +502,19 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const basketItems = [];
             let outofstock = false;
             let variantnonexistent = false;
+            let textformatproduct = {}
+            productslist.products.forEach(p => {
+                textformatproduct[p.id] = {}
+                p.options.forEach(x => {
+                    textformatproduct[p.id][x.group_code] = {
+                        name: x.name,
+                        values: {}
+                    }
+                    x.values.forEach(v => {
+                        textformatproduct[p.id][x.group_code].values[v.value_code] = v.label;
+                    });
+                });
+            });
             actualCart.forEach(item => {
                 console.log(item.product_id, products[item.product_id]);
                 console.log("---------------");
@@ -691,7 +704,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
-                                    setTimeout(() => emailInvoice(config, currentUser.username, orderNumber.n, payload.o.detailsOpen), 0);
+                                    setTimeout(() => emailInvoice(config, currentUser.username, orderNumber.n, payload.o.detailsOpen, textformatproduct), 0);
                                     return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n } };
                                 }
                                 else return { s: 400, j: true, d: { success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } } };
@@ -723,6 +736,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         payload.o.payment = response.paymentId;
                         payload.o.timeout = new Date().getTime() + (10 * 60 * 1000);
                         payload.o.email = currentUser.username;
+                        payload.o.tfp = textformatproduct;
                         tokens.set(random, payload.o);
                         return { s: 202, j: true, d: { success: true, redirect3DS: true, e: { what: "Payment Processor", why: "3D Secure authentication is initiated", resolution: "You will be sent to " + tvoyBank + "'s payment page to complete the transaction." }, target: "data:text/html;base64," + response.threeDSHtmlContent } };
                     }
@@ -758,6 +772,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let detailsEnc = null;
                 let user = null;
                 let email = null;
+                let textformatproduct = null;
                 for (const [token, info] of tokens) {
                     if (!info || typeof info.timeout !== "number" || info.timeout <= new Date().getTime()) {
                         if (token == form.conversationId) why = "TIMEOUT";
@@ -775,6 +790,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         user = orderInfo.user;
                         email = orderInfo.email;
                         details = aes.pjs(detailsEnc);
+                        textformatproduct = orderInfo.tfp;
                         if (details.e && details.e.startsWith("Failed to parse JSON: ")) {
                             tokens.delete(form.conversationId);
                             why = "MALFORMED_ORDER_DETAILS";
@@ -833,7 +849,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => {}).catch(err => {});
-                                    setTimeout(() => emailInvoice(config, email, orderNumber.n, details), 0);
+                                    setTimeout(() => emailInvoice(config, email, orderNumber.n, details, textformatproduct), 0);
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
