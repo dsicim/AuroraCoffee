@@ -108,8 +108,10 @@ async function runUpdateScript(repoParent) {
         await execute("git switch main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git fetch origin", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         const { stdout } = await execute("git diff --name-only HEAD..origin/main -- Frontend/",{ cwd: cwd + "/AuroraCoffee" },"./resetlog.log");
+        console.log(stdout);
         const frontendChanges = stdout.trim().split("\n").map(s => s.substring(9));
         const frontendUpdated = frontendChanges.length > 0;
+        console.log(frontendChanges);
         if (frontendUpdated) logtext("Frontend changes detected: \n" + frontendChanges.join("\n"));
         else logtext("No frontend changes detected. Skipping frontend build.");
         await execute("git reset --hard origin/main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
