@@ -787,6 +787,45 @@ export function getCartSubtotal() {
   return getCartItems().reduce((total, item) => total + item.price * item.quantity, 0)
 }
 
+export async function enrichCartItems(items) {
+  const normalizedItems = Array.isArray(items) ? items.map(normalizeStoredCartItem).filter(Boolean) : []
+  const productIds = Array.from(
+    new Set(
+      normalizedItems
+        .map((item) => Number(item?.productId))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    ),
+  )
+
+  if (!productIds.length) {
+    return normalizedItems
+  }
+
+  const products = await fetchProductsByIds(productIds).catch(() => [])
+  const productsById = new Map(products.map((product) => [product.id, product]))
+
+  return normalizedItems.map((item) => {
+    const product = productsById.get(Number(item.productId))
+    const optionCodes =
+      normalizeCartOptions(item.optionCodes) ||
+      filterOptionCodesForPayload(product, mapCartOptionsForPayload(product, item.options))
+    const variantCode =
+      normalizeVariantCode(item.variantCode) ||
+      product?.variants?.find((variant) => Number(variant.id) === Number(item.variantId))?.variantCode ||
+      ''
+    const displayOptions =
+      mapCartOptionsForDisplay(product, optionCodes, variantCode) ||
+      normalizeCartOptions(item.options)
+
+    return normalizeStoredCartItem({
+      ...item,
+      optionCodes,
+      variantCode,
+      options: displayOptions,
+    })
+  }).filter(Boolean)
+}
+
 export async function buildCheckoutCartPayload(items) {
   const normalizedItems = (items || []).filter(
     (item) => Number.isFinite(Number(item?.productId)) && Number(item.productId) > 0,

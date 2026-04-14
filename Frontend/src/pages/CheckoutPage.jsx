@@ -20,6 +20,7 @@ import {
 } from '../lib/addressBook'
 import { authChangeEvent, getAuthSession } from '../lib/auth'
 import {
+  enrichCartItems,
   buildCheckoutCartPayload,
   cartChangeEvent,
   formatCartOptionLabel,
@@ -422,15 +423,17 @@ export default function CheckoutPage() {
           // Ignore stale auth failures during storage or payment-return sync.
         }
         await fetchSavedAddresses().catch(() => [])
-        setItems(getCartItems())
+        setItems(await enrichCartItems(getCartItems()))
         setSession(getAuthSession())
         setSavedAddresses(getSavedAddresses())
       })()
     }
 
     const syncCartState = () => {
-      setItems(getCartItems())
-      setSession(getAuthSession())
+      void (async () => {
+        setItems(await enrichCartItems(getCartItems()))
+        setSession(getAuthSession())
+      })()
     }
 
     const syncAccountState = () => {

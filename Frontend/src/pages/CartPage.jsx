@@ -7,6 +7,7 @@ import { getAuthSession } from '../lib/auth'
 import { formatCurrency } from '../lib/currency'
 import {
   cartChangeEvent,
+  enrichCartItems,
   formatCartOptionLabel,
   getCartItems,
   getCartItemOptionEntries,
@@ -48,14 +49,16 @@ export default function CartPage() {
     const syncFromStorage = () => {
       void (async () => {
         await reconcileCartStorageWithAuth()
-        setItems(getCartItems())
+        setItems(await enrichCartItems(getCartItems()))
         setSession(getAuthSession())
       })()
     }
 
     const syncCartState = () => {
-      setItems(getCartItems())
-      setSession(getAuthSession())
+      void (async () => {
+        setItems(await enrichCartItems(getCartItems()))
+        setSession(getAuthSession())
+      })()
     }
 
     window.addEventListener('storage', syncFromStorage)
