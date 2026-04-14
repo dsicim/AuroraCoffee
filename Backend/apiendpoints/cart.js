@@ -87,7 +87,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[body.data.id], body.data.opt, body.data.var);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
-                console.log(product.product[body.data.id].variants, body.data.var);
                 const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.id === body.data.var).stock : product.product[body.data.id].stock;
                 const qty = body.data.qty;
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };

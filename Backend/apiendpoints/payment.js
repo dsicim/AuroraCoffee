@@ -409,12 +409,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!actualCart.s) return { s: 500, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Failed to retrieve cart information: " + actualCart.e, resolution: "Please try again later or contact the developers" } } };
             actualCart = actualCart.cart;
             let expectedPrice = body.data.expected;
-            let totalPrice = 0;
-            actualCart.forEach(item => {
-                totalPrice += parseFloat(item.product_price) * item.quantity;
-            });
 
-            if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             let cartTampered = false;
             let internalIssue = false;
             const productsMentioned = [];
@@ -490,6 +485,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const basketItems = [];
             let outofstock = false;
             actualCart.forEach(item => {
+                console.log(item.product_id, products[item.product_id]);
+                console.log("---------------");
                 item.tax = parseInt(products[item.product_id].tax);
                 item.subtotal = Math.round(parseFloat(products[item.product_id].price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
                 item.taxAmount = parseFloat(products[item.product_id].price) - (Math.round(item.subtotal*100)/100);
@@ -512,7 +509,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     basketItems.push(itemFormat);
                 }
             });
+            let totalPrice = 0;
+            actualCart.forEach(item => {
+                totalPrice += parseFloat(item.product_price) * item.quantity;
+            });
+            if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
+
+
+
 
             async function parseAddress(result, token) {
                 if (result.success) {
