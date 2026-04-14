@@ -95,6 +95,16 @@ function currencyToSymbol(currency, price) {
     if (["NOK", "CHF", "RUB"].includes(currency)) return price.toFixed(2) + symbol;
     else return symbol + price.toFixed(2);
 }
+function parseVariantOptions(variantCode) {
+    const normalizedCode = checkTrim(variantCode);
+    if (!normalizedCode) return {};
+    try {
+        const parsed = JSON.parse(Buffer.from(normalizedCode, "base64").toString("utf-8"));
+        return (parsed && typeof parsed === "object" && !Array.isArray(parsed)) ? parsed : {};
+    } catch (error) {
+        return {};
+    }
+}
 async function emailInvoice(config, email, orderNumber, details) {
     let instemplate = fs.readFileSync("./"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
     if (details.installment.months > 1) {
@@ -110,9 +120,13 @@ async function emailInvoice(config, email, orderNumber, details) {
     const itemstemplate = fs.readFileSync("./orderemailitems.html", "utf-8");
     let itemshtml = "";
     details.products.forEach(product => {
+        const optionEntries = {
+            ...(product.options && typeof product.options === "object" ? product.options : {}),
+            ...parseVariantOptions(product.variant_code)
+        };
         let optionstext = "";
-        Object.keys(product.options || {}).forEach(key => {
-            optionstext += key + ": " + product.options[key] + ", ";
+        Object.keys(optionEntries).forEach(key => {
+            optionstext += key + ": " + optionEntries[key] + ", ";
         });
         optionstext = optionstext.length > 2 ? optionstext.slice(0, -2) : "";
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
@@ -389,6 +403,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         item.opt = {};
                     }
                 }
+                item.var = checkTrim(item.var) || null;
             })
             body.data.cart = body.data.cart.filter(item => item !== undefined);
             if (body.data.cart.length === 0) return { s: 412, j: true, d: { success: false, e: { what: "Shopping Cart", why: "All cart items are invalid", resolution: "Make sure all items in your cart are valid" } } };
@@ -420,6 +435,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else {
                         if (!productsMentioned.includes(providedItem.id)) productsMentioned.push(providedItem.id);
                         matches = matches.filter(match => {
+                            if ((checkTrim(match.variant_code) || null) !== providedItem.var) return false;
                             if (Object.keys(match.options).length !== Object.keys(providedItem.opt).length) return false;
                             for (let key of Object.keys(match.options)) {
                                 if (match.options[key] != providedItem.opt[key]) return false;
@@ -446,6 +462,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else {
                         if (!productsMentioned.includes(item.product_id)) productsMentioned.push(item.product_id);
                         matches = matches.filter(match => {
+                            if ((checkTrim(item.variant_code) || null) !== match.var) return false;
                             if (Object.keys(match.opt).length !== Object.keys(item.options).length) return false;
                             for (let key of Object.keys(match.opt)) {
                                 if (match.opt[key] != item.options[key]) return false;

@@ -154,6 +154,31 @@ export function formatCartOptionLabel(key) {
     }
 }
 
+function decodeVariantSelectionCodes(variantCode) {
+  const normalizedVariantCode = normalizeVariantCode(variantCode)
+
+  if (!normalizedVariantCode) {
+    return null
+  }
+
+  try {
+    const decoder =
+      typeof atob === 'function'
+        ? atob
+        : typeof window !== 'undefined' && typeof window.atob === 'function'
+          ? window.atob.bind(window)
+          : null
+
+    if (!decoder) {
+      return null
+    }
+
+    return normalizeCartOptions(parseJson(decoder(normalizedVariantCode), null))
+  } catch {
+    return null
+  }
+}
+
 function normalizeStoredCartItem(item) {
   if (!item || typeof item !== 'object') {
     return null
@@ -361,23 +386,58 @@ function filterOptionCodesForPayload(product, options) {
   return entries.length ? Object.fromEntries(entries) : null
 }
 
-function mapCartOptionsForDisplay(product, options) {
-  const normalizedOptions = normalizeCartOptions(options)
+function getVariantSelectionCodes(product, variantCode) {
+  const normalizedVariantCode = normalizeVariantCode(variantCode)
 
-  if (!normalizedOptions) {
+  if (!normalizedVariantCode) {
     return null
   }
 
-  return Object.fromEntries(
-    Object.entries(normalizedOptions).map(([groupCode, valueCode]) => {
-      const group = findMatchingProductOptionGroup(product, groupCode)
-      const value = (group?.values || []).find(
-        (optionValue) => String(optionValue?.valueCode || '').trim() === String(valueCode || '').trim(),
-      )
+  const matchingVariant =
+    product?.variants?.find(
+      (entry) => normalizeVariantCode(entry?.variantCode) === normalizedVariantCode,
+    ) || null
 
-      return [group?.name || groupCode, value?.label || valueCode]
-    }),
+  return (
+    normalizeCartOptions(matchingVariant?.optionValueCodes) ||
+    decodeVariantSelectionCodes(normalizedVariantCode)
   )
+}
+
+function mapCartOptionsForDisplay(product, options, variantCode = '') {
+  const normalizedOptions = normalizeCartOptions(options)
+  const variantOptions = getVariantSelectionCodes(product, variantCode)
+
+  if (!normalizedOptions && !variantOptions) {
+    return null
+  }
+
+  const entries = []
+
+  for (const [groupCode, valueCode] of Object.entries(normalizedOptions || {})) {
+    const group = findMatchingProductOptionGroup(product, groupCode)
+    const value = (group?.values || []).find(
+      (optionValue) => String(optionValue?.valueCode || '').trim() === String(valueCode || '').trim(),
+    )
+
+    entries.push([group?.name || groupCode, value?.label || valueCode])
+  }
+
+  for (const [groupCode, valueCode] of Object.entries(variantOptions || {})) {
+    const group = findMatchingProductOptionGroup(product, groupCode)
+
+    if (!group?.storeAsVariant) {
+      continue
+    }
+
+    const value = (group?.values || []).find(
+      (optionValue) => String(optionValue?.valueCode || '').trim() === String(valueCode || '').trim(),
+    )
+
+    entries.push([group?.name || groupCode, value?.label || valueCode])
+  }
+
+  return entries.length ? Object.fromEntries(entries) : null
 }
 
 function mapCartOptionsForPayload(product, options) {
@@ -508,7 +568,7 @@ async function hydrateServerCartRows(rows) {
       lineItemId: Number(row.id) || null,
       productId: Number(row.product_id) || product?.id || null,
       variantId: Number(row.variant_id) || null,
-      variantCode: variant?.variantCode || '',
+      variantCode: variant?.variantCode || row.variant_code || '',
       productSlug: product?.slug || '',
       name: product?.name || row.product_name || 'Product',
       category: product ? getProductCategoryLabel(product) : '',
@@ -525,7 +585,7 @@ async function hydrateServerCartRows(rows) {
       taxAmount: product?.taxAmount ?? null,
       quantity: Math.max(1, Math.floor(row.quantity) || 1),
       imageUrl: product?.imageUrl || row.image_url || '',
-      options: mapCartOptionsForDisplay(product, parsedOptions) ?? parsedOptions,
+      options: mapCartOptionsForDisplay(product, parsedOptions, variant?.variantCode || row.variant_code || '') ?? parsedOptions,
       optionCodes: parsedOptions,
     })
   }).filter(Boolean)

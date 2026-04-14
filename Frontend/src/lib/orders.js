@@ -283,23 +283,83 @@ function findMatchingProductOptionGroup(product, key) {
   }) || null
 }
 
-function mapOrderOptionsForDisplay(product, options) {
-  const parsedOptions = parseOrderOptions(options)
+function decodeVariantSelectionCodes(variantCode) {
+  const normalizedVariantCode = normalizeText(variantCode)
 
-  if (!parsedOptions) {
+  if (!normalizedVariantCode) {
     return null
   }
 
-  return Object.fromEntries(
-    Object.entries(parsedOptions).map(([groupCode, valueCode]) => {
-      const group = findMatchingProductOptionGroup(product, groupCode)
-      const value = (group?.values || []).find(
-        (optionValue) => normalizeText(optionValue?.valueCode) === normalizeText(valueCode),
-      )
+  try {
+    const decoder =
+      typeof atob === 'function'
+        ? atob
+        : typeof window !== 'undefined' && typeof window.atob === 'function'
+          ? window.atob.bind(window)
+          : null
 
-      return [group?.name || groupCode, value?.label || valueCode]
-    }),
+    if (!decoder) {
+      return null
+    }
+
+    return parseOrderOptions(decoder(normalizedVariantCode))
+  } catch {
+    return null
+  }
+}
+
+function getVariantSelectionCodes(product, variantCode) {
+  const normalizedVariantCode = normalizeText(variantCode)
+
+  if (!normalizedVariantCode) {
+    return null
+  }
+
+  const matchingVariant =
+    product?.variants?.find(
+      (entry) => normalizeText(entry?.variantCode) === normalizedVariantCode,
+    ) || null
+
+  return (
+    parseOrderOptions(matchingVariant?.optionValueCodes) ||
+    decodeVariantSelectionCodes(normalizedVariantCode)
   )
+}
+
+function mapOrderOptionsForDisplay(product, options, variantCode = '') {
+  const parsedOptions = parseOrderOptions(options)
+  const variantOptions = getVariantSelectionCodes(product, variantCode)
+
+  if (!parsedOptions && !variantOptions) {
+    return null
+  }
+
+  const entries = []
+
+  for (const [groupCode, valueCode] of Object.entries(parsedOptions || {})) {
+    const group = findMatchingProductOptionGroup(product, groupCode)
+    const value = (group?.values || []).find(
+      (optionValue) => normalizeText(optionValue?.valueCode) === normalizeText(valueCode),
+    )
+
+    entries.push([group?.name || groupCode, value?.label || valueCode])
+  }
+
+  for (const [groupCode, valueCode] of Object.entries(variantOptions || {})) {
+    const group = findMatchingProductOptionGroup(product, groupCode)
+
+    if (!group?.storeAsVariant) {
+      continue
+    }
+
+    const value = (group?.values || []).find(
+      (optionValue) => normalizeText(optionValue?.valueCode) === normalizeText(valueCode),
+    )
+
+    entries.push([group?.name || groupCode, value?.label || valueCode])
+  }
+
+  return entries.length ? Object.fromEntries(entries) : null
 }
 
 function normalizeOrderSummary(record) {
@@ -399,6 +459,9 @@ function normalizeOrderItem(rawItem, productById) {
       ? product.variants.find((entry) => Number(entry.id) === variantId) || null
       : null
   const quantity = Math.max(1, Math.floor(rawItem?.quantity || rawItem?.qty) || 1)
+  const variantCode =
+    normalizeText(rawItem?.variant_code || rawItem?.variantCode) ||
+    normalizeText(variant?.variantCode)
   const optionCodes = parseOrderOptions(rawItem?.options || rawItem?.opt)
 
   return {
@@ -406,7 +469,7 @@ function normalizeOrderItem(rawItem, productById) {
     lineItemId: Number(rawItem?.id) || null,
     productId,
     variantId,
-    variantCode: normalizeText(rawItem?.variant_code || rawItem?.variantCode) || normalizeText(variant?.variantCode),
+    variantCode,
     productSlug: product?.slug || '',
     name: normalizeText(rawItem?.product_name || rawItem?.name) || product?.name || 'Product',
     category: normalizeText(rawItem?.category) || getProductCategoryLabel(product),
@@ -421,7 +484,7 @@ function normalizeOrderItem(rawItem, productById) {
     taxAmount: toNullableNumber(rawItem?.tax_amount ?? rawItem?.taxAmount ?? product?.taxAmount),
     quantity,
     imageUrl: normalizeText(rawItem?.image_url || rawItem?.imageUrl) || product?.imageUrl || '',
-    options: mapOrderOptionsForDisplay(product, optionCodes) || optionCodes,
+    options: mapOrderOptionsForDisplay(product, optionCodes, variantCode) || optionCodes,
     optionCodes,
   }
 }

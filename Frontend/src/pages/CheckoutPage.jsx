@@ -764,11 +764,19 @@ export default function CheckoutPage() {
         }
 
         const cartPayload = items
-          .map((item) => ({
-            id: Number(item.productId),
-            qty: Math.max(1, Math.floor(item.quantity) || 1),
-            opt: item.options || {},
-          }))
+          .map((item) => {
+            const payload = {
+              id: Number(item.productId),
+              qty: Math.max(1, Math.floor(item.quantity) || 1),
+              opt: item.optionCodes || {},
+            }
+
+            if (item.variantCode) {
+              payload.var = item.variantCode
+            }
+
+            return payload
+          })
           .filter((item) => Number.isFinite(item.id) && item.id > 0)
 
         if (!cartPayload.length) {
