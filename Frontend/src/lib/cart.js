@@ -335,8 +335,9 @@ function buildCartItem(product, quantity = 1, options = null) {
 
 function findMatchingProductOptionGroup(product, key) {
   const normalizedKey = String(key || '').trim().toLowerCase()
+  const optionGroups = Array.isArray(product?.options) ? product.options : []
 
-  return (product?.options || []).find((group) => {
+  return optionGroups.find((group) => {
     const candidates = [group?.code, group?.id, group?.name]
       .map((value) => String(value || '').trim().toLowerCase())
       .filter(Boolean)
@@ -706,7 +707,7 @@ export async function addCartProduct(product, quantity = 1) {
   const session = getAuthSession()
 
   if (session?.token) {
-    let payloadOptionCodes = filterOptionCodesForPayload(product, normalizedOptionCodes)
+    let payloadOptionCodes = normalizedOptionCodes
     let payloadVariantCode = normalizedVariantCode
 
     if ((!payloadOptionCodes && normalizedOptions) || (!payloadVariantCode && product.variantId)) {
