@@ -66,6 +66,195 @@ function getCommentStatusLabel(status) {
   }
 }
 
+function normalizeSelectionToken(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+const productSelectThemes = {
+  neutral: {
+    label: 'Neutral',
+    swatch: 'rgba(208,193,178,0.72)',
+    selectStyle: {
+      backgroundColor: 'rgba(255,252,248,0.86)',
+      borderColor: 'rgba(208,193,178,0.38)',
+      color: 'var(--aurora-text-strong)',
+      boxShadow: '0 0 0 0 rgba(0,0,0,0)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(255,252,248,0.86)',
+      borderColor: 'rgba(208,193,178,0.38)',
+      color: 'var(--aurora-text-strong)',
+    },
+  },
+  coffee: {
+    label: 'Coffee',
+    swatch: 'linear-gradient(135deg, #8b684f 0%, #ccb187 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(247, 240, 229, 0.94)',
+      borderColor: 'rgba(164, 131, 92, 0.4)',
+      color: '#6f5139',
+      boxShadow: '0 0 0 2px rgba(191, 159, 122, 0.12)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(247, 240, 229, 0.94)',
+      borderColor: 'rgba(164, 131, 92, 0.4)',
+      color: '#6f5139',
+    },
+  },
+  accessories: {
+    label: 'Accessory',
+    swatch: 'linear-gradient(135deg, #8fb6a7 0%, #d9eee5 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(236, 245, 241, 0.94)',
+      borderColor: 'rgba(126, 159, 135, 0.38)',
+      color: '#567568',
+      boxShadow: '0 0 0 2px rgba(143, 182, 167, 0.14)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(236, 245, 241, 0.94)',
+      borderColor: 'rgba(126, 159, 135, 0.38)',
+      color: '#567568',
+    },
+  },
+  red: {
+    label: 'Red',
+    swatch: 'linear-gradient(135deg, #b84f45 0%, #e0a39c 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(249, 233, 230, 0.96)',
+      borderColor: 'rgba(184, 79, 69, 0.42)',
+      color: '#8b342b',
+      boxShadow: '0 0 0 2px rgba(184, 79, 69, 0.12)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(249, 233, 230, 0.96)',
+      borderColor: 'rgba(184, 79, 69, 0.42)',
+      color: '#8b342b',
+    },
+  },
+  black: {
+    label: 'Black',
+    swatch: 'linear-gradient(135deg, #3f4348 0%, #787f87 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(237, 239, 242, 0.96)',
+      borderColor: 'rgba(89, 95, 103, 0.42)',
+      color: '#343940',
+      boxShadow: '0 0 0 2px rgba(89, 95, 103, 0.1)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(237, 239, 242, 0.96)',
+      borderColor: 'rgba(89, 95, 103, 0.42)',
+      color: '#343940',
+    },
+  },
+  white: {
+    label: 'White',
+    swatch: 'linear-gradient(135deg, #ffffff 0%, #e7ddd2 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: 'rgba(208, 193, 178, 0.52)',
+      color: '#7c6a58',
+      boxShadow: '0 0 0 2px rgba(208, 193, 178, 0.12)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(255, 255, 255, 0.98)',
+      borderColor: 'rgba(208, 193, 178, 0.52)',
+      color: '#7c6a58',
+    },
+  },
+  green: {
+    label: 'Green',
+    swatch: 'linear-gradient(135deg, #6f8b5f 0%, #b5c7a5 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(235, 242, 229, 0.96)',
+      borderColor: 'rgba(111, 139, 95, 0.42)',
+      color: '#5c734f',
+      boxShadow: '0 0 0 2px rgba(111, 139, 95, 0.12)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(235, 242, 229, 0.96)',
+      borderColor: 'rgba(111, 139, 95, 0.42)',
+      color: '#5c734f',
+    },
+  },
+  blue: {
+    label: 'Blue',
+    swatch: 'linear-gradient(135deg, #587fa5 0%, #a8c2d9 100%)',
+    selectStyle: {
+      backgroundColor: 'rgba(233, 240, 248, 0.96)',
+      borderColor: 'rgba(88, 127, 165, 0.4)',
+      color: '#466888',
+      boxShadow: '0 0 0 2px rgba(88, 127, 165, 0.12)',
+    },
+    badgeStyle: {
+      backgroundColor: 'rgba(233, 240, 248, 0.96)',
+      borderColor: 'rgba(88, 127, 165, 0.4)',
+      color: '#466888',
+    },
+  },
+}
+
+function findProductColorTheme(product) {
+  const colorGroup = (product?.options || []).find((group) => {
+    const token = normalizeSelectionToken(group?.code || group?.name)
+    return token === 'color'
+  })
+
+  if (!colorGroup) {
+    return null
+  }
+
+  const matchingValue = (colorGroup.values || []).find((value) => {
+    const token = normalizeSelectionToken(value?.valueCode || value?.label)
+    return Object.hasOwn(productSelectThemes, token)
+  })
+
+  if (!matchingValue) {
+    return null
+  }
+
+  const colorToken = normalizeSelectionToken(matchingValue.valueCode || matchingValue.label)
+  return {
+    ...productSelectThemes[colorToken],
+    label: matchingValue.label || productSelectThemes[colorToken].label,
+  }
+}
+
+function getProductSelectTheme(product) {
+  if (!product) {
+    return productSelectThemes.neutral
+  }
+
+  const explicitColorTheme = findProductColorTheme(product)
+
+  if (explicitColorTheme) {
+    return explicitColorTheme
+  }
+
+  const categoryToken = normalizeSelectionToken(
+    product.parentCategoryName || product.categoryName,
+  )
+
+  if (categoryToken.includes('coffee')) {
+    return productSelectThemes.coffee
+  }
+
+  if (
+    categoryToken.includes('accessor') ||
+    categoryToken.includes('thermos') ||
+    categoryToken.includes('mug') ||
+    categoryToken.includes('grinder') ||
+    categoryToken.includes('equipment')
+  ) {
+    return productSelectThemes.accessories
+  }
+
+  return productSelectThemes.neutral
+}
+
 function ManagerMetricCard({ label, value, detail }) {
   return (
     <div className="aurora-summary-card p-6">
@@ -187,6 +376,10 @@ export default function ProductManagerPage() {
     Boolean(activeModerationKey) && moderationResult.key !== activeModerationKey
   const inventoryStatus =
     error || (loading ? 'Syncing backend catalog.' : 'Backend-backed catalog is active.')
+  const selectedProductTheme = useMemo(
+    () => getProductSelectTheme(selectedProduct),
+    [selectedProduct],
+  )
 
   function handleModerationProductChange(event) {
     setSelectedProductId(event.target.value)
@@ -340,9 +533,10 @@ export default function ProductManagerPage() {
                   Product
                 </span>
                 <select
-                  className="mt-3 w-full rounded-[1.6rem] border border-[rgba(208,193,178,0.38)] bg-[rgba(255,252,248,0.86)] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] outline-none transition focus:border-[rgba(133,176,142,0.44)] focus:ring-2 focus:ring-[rgba(133,176,142,0.18)]"
+                  className="mt-3 w-full rounded-[1.6rem] border px-4 py-3 text-sm font-semibold outline-none transition"
                   value={activeModerationProductId}
                   onChange={handleModerationProductChange}
+                  style={selectedProductTheme.selectStyle}
                 >
                   <option value="">Select a product</option>
                   {moderationProducts.map((product) => (
@@ -351,6 +545,23 @@ export default function ProductManagerPage() {
                     </option>
                   ))}
                 </select>
+                {selectedProduct ? (
+                  <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <span
+                      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
+                      style={selectedProductTheme.badgeStyle}
+                    >
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: selectedProductTheme.swatch }}
+                      />
+                      {selectedProductTheme.label}
+                    </span>
+                    <span className="text-sm leading-7 text-[var(--aurora-text)]">
+                      {selectedProduct.name}
+                    </span>
+                  </div>
+                ) : null}
               </label>
 
               <div>
