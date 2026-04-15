@@ -1713,6 +1713,14 @@ img {
     z-index: 50;
   }
 
+  .aurora-preview-dropdown.is-flow-menu {
+    z-index: 10;
+  }
+
+  .aurora-preview-dropdown.is-flow-menu:has(.aurora-preview-menu) {
+    z-index: 10;
+  }
+
   .aurora-preview-trigger {
     position: relative;
     width: 100%;
@@ -1797,6 +1805,15 @@ img {
       0 24px 42px rgba(8, 15, 26, 0.38);
     scrollbar-width: thin;
     scrollbar-color: rgba(189, 205, 224, 0.34) rgba(255, 255, 255, 0.04);
+  }
+
+  .aurora-preview-menu.is-flow {
+    position: relative;
+    top: auto;
+    left: auto;
+    right: auto;
+    margin-top: 0.7rem;
+    max-height: none;
   }
 
   .aurora-preview-menu::-webkit-scrollbar {

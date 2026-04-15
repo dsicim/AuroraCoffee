@@ -666,6 +666,7 @@ function ProductReviewPanel({ product }) {
                   displayValue={getReviewPrivacyLabel(reviewPrivacy)}
                   placeholder="Choose visibility"
                   options={reviewPrivacyOptions}
+                  menuMode="flow"
                   open={privacyMenuOpen}
                   disabled={reviewFormDisabled}
                   onToggle={setPrivacyMenuOpen}
@@ -782,6 +783,7 @@ function PreviewDropdown({
   displayValue,
   placeholder,
   options,
+  menuMode = 'overlay',
   open,
   disabled = false,
   onToggle,
@@ -807,7 +809,10 @@ function PreviewDropdown({
   }, [onToggle, open])
 
   return (
-    <div ref={wrapperRef} className="aurora-preview-dropdown mt-3">
+    <div
+      ref={wrapperRef}
+      className={`aurora-preview-dropdown mt-3 ${menuMode === 'flow' ? 'is-flow-menu' : ''}`.trim()}
+    >
       <button
         type="button"
         className={`aurora-preview-trigger ${open ? 'is-open' : ''}`}
@@ -830,7 +835,7 @@ function PreviewDropdown({
       </button>
 
       {open && !disabled ? (
-        <div className="aurora-preview-menu">
+        <div className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''}`.trim()}>
           {options.map((option) => {
             const normalizedOption =
               typeof option === 'string'
