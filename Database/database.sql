@@ -22,11 +22,14 @@ CREATE TABLE IF NOT EXISTS comments (
     user_id BIGINT UNSIGNED,
     product_id BIGINT UNSIGNED,
     comment_text TEXT NOT NULL,
+    edited_text TEXT NOT NULL,
     rating INT,
-    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+    edited_rating INT,
+    status ENUM('pending', 'pending_edit', 'approved', 'rejected', 'edit_rejected') DEFAULT 'pending',
+    name_snapshot VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
