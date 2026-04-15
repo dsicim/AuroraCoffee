@@ -281,9 +281,16 @@ export async function fetchApprovedProductComments(productId) {
 }
 
 export async function fetchManagerProductComments(productId, scope = 'pending') {
-  const normalizedProductId = Number(productId)
+  const requestedProductId = String(productId || '').trim().toLowerCase()
+  const normalizedProductId =
+    requestedProductId === 'all'
+      ? 'all'
+      : Number(productId)
 
-  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+  if (
+    normalizedProductId !== 'all' &&
+    (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0)
+  ) {
     return []
   }
 

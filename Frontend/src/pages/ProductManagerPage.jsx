@@ -511,12 +511,18 @@ export default function ProductManagerPage() {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
+  const allProductsSelected = selectedProductId === 'all'
   const selectedProduct = useMemo(
     () =>
       moderationProducts.find((product) => String(product.id) === selectedProductId) || null,
     [moderationProducts, selectedProductId],
   )
-  const activeModerationProductId = selectedProduct ? selectedProductId : ''
+  const activeModerationProductId =
+    allProductsSelected
+      ? 'all'
+      : selectedProduct
+        ? selectedProductId
+        : ''
   const activeModerationKey = activeModerationProductId
     ? `${activeModerationProductId}:${moderationScope}`
     : ''
@@ -532,9 +538,12 @@ export default function ProductManagerPage() {
   const inventoryStatus =
     error || (loading ? 'Syncing backend catalog.' : 'Backend-backed catalog is active.')
   const selectedProductTheme = useMemo(
-    () => getProductSelectTheme(selectedProduct, resolvedTheme),
-    [resolvedTheme, selectedProduct],
+    () => getProductSelectTheme(allProductsSelected ? null : selectedProduct, resolvedTheme),
+    [allProductsSelected, resolvedTheme, selectedProduct],
   )
+  const moderationSelectionLabel = allProductsSelected
+    ? 'All products'
+    : selectedProduct?.name || ''
 
   function handleModerationProductChange(event) {
     setSelectedProductId(event.target.value)
@@ -694,13 +703,14 @@ export default function ProductManagerPage() {
                   style={selectedProductTheme.selectStyle}
                 >
                   <option value="">Select a product</option>
+                  <option value="all">All products</option>
                   {moderationProducts.map((product) => (
                     <option key={product.id} value={product.id}>
                       {product.name}
                     </option>
                   ))}
                 </select>
-                {selectedProduct ? (
+                {activeModerationProductId ? (
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <span
                       className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
@@ -710,10 +720,10 @@ export default function ProductManagerPage() {
                         className="h-2.5 w-2.5 rounded-full"
                         style={{ background: selectedProductTheme.swatch }}
                       />
-                      {selectedProductTheme.label}
+                      {allProductsSelected ? 'Catalog-wide' : selectedProductTheme.label}
                     </span>
                     <span className="text-sm leading-7 text-[var(--aurora-text)]">
-                      {selectedProduct.name}
+                      {moderationSelectionLabel}
                     </span>
                   </div>
                 ) : null}
@@ -746,10 +756,10 @@ export default function ProductManagerPage() {
               <div className="aurora-message aurora-message-error mt-6">{moderationError}</div>
             ) : null}
 
-            {!selectedProduct ? (
+            {!activeModerationProductId ? (
               <SectionEmptyState
                 title="Select a product"
-                description="The backend comment endpoints are product-scoped, so moderation starts after you choose a catalog item."
+                description="Choose a catalog item or switch to All products to inspect the full comment feed."
               />
             ) : moderationLoading ? (
               <SectionEmptyState
@@ -759,7 +769,11 @@ export default function ProductManagerPage() {
             ) : !moderationComments.length ? (
               <SectionEmptyState
                 title={`No ${moderationScope === 'all' ? 'comment records' : moderationScope} comments found`}
-                description={`${selectedProduct.name} does not currently have entries in this queue.`}
+                description={
+                  allProductsSelected
+                    ? 'The catalog-wide feed is empty for this scope.'
+                    : `${selectedProduct.name} does not currently have entries in this queue.`
+                }
               />
             ) : (
               <div className="mt-6 space-y-4">
@@ -775,7 +789,7 @@ export default function ProductManagerPage() {
                         </p>
                       </div>
                       <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
-                        <p>{selectedProduct.name}</p>
+                        <p>{moderationSelectionLabel || 'Selected product'}</p>
                         {record.meta.id ? <p>Comment #{record.meta.id}</p> : null}
                       </div>
                     </div>
