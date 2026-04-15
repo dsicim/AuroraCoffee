@@ -686,7 +686,7 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
             SELECT c.*, u.displayname as user_name
             FROM comments c
             JOIN users u ON c.user_id = u.id
-            WHERE c.product_id = ? ${approvedOnly ? "AND ((c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND ((c.status = 'pending' OR c.status = 'pending_edit')" : "")} ${userId ? "OR c.user_id = ?" : ""})
+            WHERE c.product_id = ? ${approvedOnly ? "AND ((c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND ((c.status = 'pending' OR c.status = 'pending_edit')" : "")}
             ORDER BY c.created_at DESC
         `, userId?[productId, userId] : [productId]);
         return { success: true, comments: rows };
