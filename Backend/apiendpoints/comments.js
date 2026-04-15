@@ -35,17 +35,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (["pending","rejected"].includes(comment.status)) {
                                 upcoming = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
                                 existing = null;
-                                if (adminAccess || comment.self) upcoming.visible = false;
+                                if (!approvedOnly && (adminAccess || comment.self)) upcoming.visible = false;
                             }
                             else if (["approved"].includes(comment.status)) {
                                 existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
                                 upcoming = null;
-                                if (adminAccess || comment.self) existing.visible = true;
+                                if (!approvedOnly && (adminAccess || comment.self)) existing.visible = true;
                             }
                             else if (["pending_edit", "edit_rejected"].includes(comment.status)) {
                                 upcoming = { name: comment.edited_name_snapshot, text: comment.edited_text, rating: comment.edited_rating, time: comment.created_at, edit: comment.edited_edited_at };
                                 existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
-                                if (adminAccess || comment.self) {
+                                if (!approvedOnly && (adminAccess || comment.self)) {
                                     upcoming.visible = false;
                                     existing.visible = true;
                                 }
