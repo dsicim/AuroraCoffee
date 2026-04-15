@@ -2,7 +2,7 @@ const sql = require("../../Database/server.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0 || endpoint[0] === "pending" || endpoint[0] === "rejected" || endpoint[0] === "approved" || endpoint[0] === "me") {
         if (method === "GET") {
-            if (query.id && endpoint[0] !== "me") {
+            if (query.id || endpoint[0] === "me") {
                 let id = query.id === "all" ? "all" : parseInt(query.id);
                 let approvedOnly = true;
                 let actAsUser = Boolean(query.actAsUser === "true");
