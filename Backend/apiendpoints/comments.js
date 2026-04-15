@@ -1,5 +1,36 @@
 const sql = require("../../Database/server.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
+    if (endpoint.length === 0 && endpoint[0] === "pending") {
+        if (method === "GET") {
+            if (query.id) {
+                const id = parseInt(query.id);
+                let approvedOnly = true;
+                let pendingOnly = false;
+                if (currentUser && !currentUser.e && currentUser.id && currentUser.role) {
+                    if (["Admin", "Product Manager"].includes(currentUser.role)) {
+                        approvedOnly = false;
+                        if (endpoint[0] === "pending") pendingOnly = true;
+                        else if (query.approved && query.approved === "true") approvedOnly = true;
+                    }
+                    else if (endpoint[0] === "pending") return { s: 403, j: true, d: { e: "Forbidden" } };
+                }
+                else if (endpoint[0] === "pending") return { s: 401, j: true, d: { e: "Unauthorized" } };
+                if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
+                return await sql.getComments(id, approvedOnly, pendingOnly).then(result => {
+                    if (result.success) {
+                        return { s: 200, j: true, d: { comments: result.comments } };
+                    }
+                    else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }).catch(err => {
+                    console.error("Get comments error:", err);
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
+            }
+            else return { s: 400, j: true, d: { e: "Missing ids query parameter" } };
+        }
+        else if (endpoint[0] === "pending") return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
     if (endpoint.length === 0) {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };

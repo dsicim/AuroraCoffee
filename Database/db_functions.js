@@ -623,6 +623,9 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
                 'UPDATE comments SET comment_text = ?, rating = ?, status = ?, name_snapshot = ? WHERE id = ?',
                 [text, rating, 'pending', namesnapshot, commented.id]
             );
+            if (result.affectedRows === 0) {
+                throw new DBError(404, 'Comment not found');
+            }
             return { success: true, message: 'Comment edit submitted successfully, your comment is now awaiting approval.', commentId: result.insertId };
         }
         else {
@@ -630,6 +633,9 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
                 'UPDATE comments SET edited_text = ?, edited_rating = ?, status = ?, edited_name_snapshot = ? WHERE id = ?',
                 [text, rating, 'pending_edit', namesnapshot, commented.id]
             );
+            if (result.affectedRows === 0) {
+                throw new DBError(404, 'Comment not found');
+            }
             return { success: true, message: 'Comment edit submitted successfully, the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.', commentId: result.insertId };
         }
     } catch (error) {
@@ -639,39 +645,23 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
     }
 };
 
-func.approveComment = async function (commentId) {
-    if (!commentId) {
-        throw new DBError(400, 'Comment ID is required');
+func.setCommentStatus = async function (commentId, status) {
+    if (!commentId && !status) {
+        throw new DBError(400, 'Comment ID and status are required');
     }
     try {
-        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', ['approved', commentId]);
+        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, commentId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Comment not found');
         }
-        return { success: true, message: 'Comment approved successfully' };
+        return { success: true, message: 'Comment status updated successfully' };
     } catch (error) {
-        console.error('Approve comment error:', error);
-        throw new DBError(500, 'Failed to approve comment');
+        console.error('Update comment error:', error);
+        throw new DBError(500, 'Failed to update comment');
     }
 };
 
-func.rejectComment = async function (commentId) {
-    if (!commentId) {
-        throw new DBError(400, 'Comment ID is required');
-    }
-    try {
-        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', ['rejected', commentId]);
-        if (result.affectedRows === 0) {
-            throw new DBError(404, 'Comment not found');
-        }
-        return { success: true, message: 'Comment rejected successfully' };
-    } catch (error) {
-        console.error('Reject comment error:', error);
-        throw new DBError(500, 'Failed to reject comment');
-    }
-};
-
-func.getApprovedComments = async function (productId) {
+func.getComments = async function (productId, approvedOnly = true, pendingOnly = false) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -680,12 +670,12 @@ func.getApprovedComments = async function (productId) {
             SELECT c.*, u.displayname as user_name
             FROM comments c
             JOIN users u ON c.user_id = u.id
-            WHERE c.product_id = ? AND c.status = 'approved'
+            WHERE c.product_id = ? ${approvedOnly ? "AND (c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND (c.status = 'pending' OR c.status = 'pending_edit')" : "")}
             ORDER BY c.created_at DESC
         `, [productId]);
         return { success: true, comments: rows };
     } catch (error) {
-        console.error('Get approved comments error:', error);
+        console.error('Get comments error:', error);
         throw new DBError(500, 'Failed to fetch comments');
     }
 };
