@@ -76,19 +76,71 @@ function toPublicComment(snapshot) {
   return comment
 }
 
-function inferPrivacyMode(authorName) {
+function getDisplayNameWords(displayName) {
+  return normalizeText(displayName)
+    .split(/\s+/)
+    .filter(Boolean)
+}
+
+function buildInitialPreviewWord(word) {
+  let normalizedWord = String(word || '').trim()
+
+  while (normalizedWord.startsWith('.') && normalizedWord.length > 1) {
+    normalizedWord = normalizedWord.slice(1)
+  }
+
+  if (!normalizedWord) {
+    return ''
+  }
+
+  return `${String(word || '').trim()[0]}.`
+}
+
+function inferPrivacySelection(authorName) {
+  const displayNameWords = getDisplayNameWords(getCurrentUserSnapshot()?.user?.displayname)
   const normalizedAuthorName = normalizeText(authorName)
-  const currentUserDisplayName = normalizeText(getCurrentUserSnapshot()?.user?.displayname)
+
+  if (!displayNameWords.length) {
+    return []
+  }
+
+  if (!normalizedAuthorName) {
+    return displayNameWords.map(() => 'initials')
+  }
 
   if (normalizedAuthorName === 'Anonymous') {
+    return displayNameWords.map(() => 'anonymous')
+  }
+
+  const authorWords = normalizedAuthorName.split(/\s+/).filter(Boolean)
+  let authorWordIndex = 0
+
+  return displayNameWords.map((word) => {
+    const authorWord = authorWords[authorWordIndex]
+
+    if (authorWord === word) {
+      authorWordIndex += 1
+      return 'full'
+    }
+
+    if (authorWord === buildInitialPreviewWord(word)) {
+      authorWordIndex += 1
+      return 'initials'
+    }
+
     return 'anonymous'
+  })
+}
+
+function inferPrivacyMode(authorName) {
+  const privacySelection = inferPrivacySelection(authorName)
+
+  if (!privacySelection.length) {
+    return 'initials'
   }
 
-  if (currentUserDisplayName && normalizedAuthorName === currentUserDisplayName) {
-    return 'full'
-  }
-
-  return 'initials'
+  const [firstMode = 'initials'] = privacySelection
+  return privacySelection.every((mode) => mode === firstMode) ? firstMode : 'initials'
 }
 
 function getApprovedSelfCommentStatus(record, currentVisible, hasPendingSnapshot) {
@@ -144,6 +196,7 @@ function normalizeApprovedCommentEntry(rawComment, index) {
         prefill: {
           comment: prefillSource?.comment || '',
           rating: prefillSource?.rating || 0,
+          privacySelection: inferPrivacySelection(prefillSource?.author),
           privacyMode: inferPrivacyMode(prefillSource?.author),
         },
         visibleSnapshot,

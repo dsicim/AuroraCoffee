@@ -219,33 +219,14 @@ function buildSelectedOptionCodes(selectedOptionRecords) {
   return entries.length ? Object.fromEntries(entries) : null
 }
 
-const reviewPrivacyOptions = [
-  {
-    value: 'initials',
-    label: 'Initials only',
-    sideLabel: 'Initials',
-    description: 'Show initials for each part of your display name.',
-  },
-  {
-    value: 'full',
-    label: 'Full name',
-    sideLabel: 'Show',
-    description: 'Show your full display name with the comment.',
-  },
-  {
-    value: 'anonymous',
-    label: 'Anonymous',
-    sideLabel: 'Hide',
-    description: 'Hide your name on the published comment.',
-  },
+const reviewPrivacyColumnOptions = [
+  { value: 'full', label: 'Show' },
+  { value: 'initials', label: 'Initial Only' },
+  { value: 'anonymous', label: 'Hide' },
 ]
 
-function getReviewPrivacyLabel(value) {
-  return reviewPrivacyOptions.find((option) => option.value === value)?.label || 'Initials only'
-}
-
-function getReviewPrivacyCompactLabel(value) {
-  return reviewPrivacyOptions.find((option) => option.value === value)?.sideLabel || 'Initials'
+function normalizeReviewPrivacyMode(value) {
+  return ['full', 'initials', 'anonymous'].includes(value) ? value : 'initials'
 }
 
 function getDisplayNameWords(displayName) {
@@ -255,44 +236,79 @@ function getDisplayNameWords(displayName) {
     .filter(Boolean)
 }
 
-function buildReviewPrivacyPreviewName(mode, displayName) {
+function buildReviewPrivacyInitialWord(word) {
+  let normalizedWord = String(word || '').trim()
+
+  while (normalizedWord.startsWith('.') && normalizedWord.length > 1) {
+    normalizedWord = normalizedWord.slice(1)
+  }
+
+  if (!normalizedWord) {
+    return ''
+  }
+
+  return `${String(word || '').trim()[0]}.`
+}
+
+function buildReviewPrivacyWordPreview(word, mode) {
+  const normalizedMode = normalizeReviewPrivacyMode(mode)
+
+  if (normalizedMode === 'full') {
+    return word
+  }
+
+  if (normalizedMode === 'anonymous') {
+    return '-'
+  }
+
+  return buildReviewPrivacyInitialWord(word) || '-'
+}
+
+function buildReviewPrivacySelection(displayName, mode = 'initials') {
+  const words = getDisplayNameWords(displayName)
+  const normalizedMode = normalizeReviewPrivacyMode(mode)
+
+  return words.map(() => normalizedMode)
+}
+
+function resolveReviewPrivacySelection(selection, displayName, fallbackMode = 'initials') {
   const words = getDisplayNameWords(displayName)
 
   if (!words.length) {
-    return mode === 'anonymous' ? 'Anonymous' : 'Your name'
+    return []
   }
 
-  if (mode === 'full') {
-    return words.join(' ')
+  if (!Array.isArray(selection) || !selection.length) {
+    return buildReviewPrivacySelection(displayName, fallbackMode)
   }
 
-  if (mode === 'anonymous') {
-    return 'Anonymous'
-  }
-
-  return words
-    .map((word) => {
-      let normalizedWord = word
-
-      while (normalizedWord.startsWith('.') && normalizedWord.length > 1) {
-        normalizedWord = normalizedWord.slice(1)
-      }
-
-      return normalizedWord ? `${normalizedWord[0]}.` : ''
-    })
-    .filter(Boolean)
-    .join(' ')
+  return words.map((_, index) => normalizeReviewPrivacyMode(selection[index] || fallbackMode))
 }
 
-function buildReviewPrivacyCode(mode, displayName) {
+function buildReviewPrivacyPreviewName(selection, displayName) {
+  const words = getDisplayNameWords(displayName)
+  const resolvedSelection = resolveReviewPrivacySelection(selection, displayName)
+  const previewWords = words
+    .map((word, index) => buildReviewPrivacyWordPreview(word, resolvedSelection[index]))
+    .filter((word) => word && word !== '-')
+
+  return previewWords.length ? previewWords.join(' ') : 'Anonymous'
+}
+
+function buildReviewPrivacyCode(selectionOrMode, displayName) {
   const words = getDisplayNameWords(displayName)
 
   if (!words.length) {
     return ''
   }
 
-  const privacyCode = mode === 'full' ? 's' : mode === 'anonymous' ? 'h' : 'i'
-  return words.map(() => privacyCode).join('')
+  const resolvedSelection = Array.isArray(selectionOrMode)
+    ? resolveReviewPrivacySelection(selectionOrMode, displayName)
+    : buildReviewPrivacySelection(displayName, selectionOrMode)
+
+  return resolvedSelection
+    .map((mode) => (mode === 'full' ? 's' : mode === 'anonymous' ? 'h' : 'i'))
+    .join('')
 }
 
 function formatReviewDate(value) {
@@ -429,6 +445,95 @@ function ReviewRatingInput({
   )
 }
 
+function ReviewPrivacyMatrix({
+  displayName,
+  selection,
+  open,
+  disabled = false,
+  onToggle,
+  onChange,
+  onHideAll,
+}) {
+  const words = getDisplayNameWords(displayName)
+  const resolvedSelection = resolveReviewPrivacySelection(selection, displayName)
+  const previewName = buildReviewPrivacyPreviewName(resolvedSelection, displayName)
+  const allHidden = words.length > 0 && resolvedSelection.every((mode) => mode === 'anonymous')
+
+  return (
+    <div className="aurora-review-privacy-matrix">
+      <div className="aurora-review-privacy-summary">
+        <span className="aurora-review-privacy-summary-name">{previewName}</span>
+        <div className="aurora-review-privacy-summary-actions">
+          <button
+            type="button"
+            className="aurora-review-privacy-summary-button"
+            disabled={disabled || allHidden}
+            onClick={() => {
+              if (!disabled) {
+                onHideAll()
+              }
+            }}
+          >
+            Hide All
+          </button>
+          <button
+            type="button"
+            className={`aurora-review-privacy-summary-chevron ${open ? 'is-open' : ''}`.trim()}
+            disabled={disabled}
+            aria-expanded={open ? 'true' : 'false'}
+            onClick={() => {
+              if (!disabled) {
+                onToggle(!open)
+              }
+            }}
+          >
+            <PreviewChevronIcon />
+          </button>
+        </div>
+      </div>
+
+      {open ? (
+        <div className="aurora-review-privacy-panel">
+          <div className="aurora-review-privacy-grid aurora-review-privacy-grid-heading">
+            {reviewPrivacyColumnOptions.map((option) => (
+              <span key={option.value} className="aurora-review-privacy-heading-cell">
+                {option.label}
+              </span>
+            ))}
+          </div>
+
+          <div className="aurora-review-privacy-rows">
+            {words.map((word, wordIndex) => (
+              <div key={`${word}-${wordIndex}`} className="aurora-review-privacy-grid">
+                {reviewPrivacyColumnOptions.map((option) => {
+                  const selected = resolvedSelection[wordIndex] === option.value
+
+                  return (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`aurora-review-privacy-cell ${selected ? 'is-selected' : ''}`.trim()}
+                      aria-pressed={selected ? 'true' : 'false'}
+                      disabled={disabled}
+                      onClick={() => {
+                        if (!disabled) {
+                          onChange(wordIndex, option.value)
+                        }
+                      }}
+                    >
+                      {buildReviewPrivacyWordPreview(word, option.value)}
+                    </button>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function ProductReviewPanel({ product }) {
   const location = useLocation()
   const reviewTextareaRef = useRef(null)
@@ -437,8 +542,8 @@ function ProductReviewPanel({ product }) {
   const [reviewRating, setReviewRating] = useState(0)
   const [hoverReviewRating, setHoverReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
-  const [reviewPrivacy, setReviewPrivacy] = useState('initials')
-  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
+  const [reviewPrivacySelection, setReviewPrivacySelection] = useState([])
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(true)
   const [reviews, setReviews] = useState([])
   const [selfComment, setSelfComment] = useState(null)
   const [selfCommentEditing, setSelfCommentEditing] = useState(false)
@@ -606,19 +711,27 @@ function ProductReviewPanel({ product }) {
 
   useEffect(() => {
     setHoverReviewRating(0)
-    setPrivacyMenuOpen(false)
+    setPrivacyMenuOpen(true)
 
     if (!hasSession || !selfComment || !editorMode) {
       setReviewRating(0)
       setReviewComment('')
-      setReviewPrivacy('initials')
+      setReviewPrivacySelection(
+        buildReviewPrivacySelection(currentUser?.displayname, 'initials'),
+      )
       return
     }
 
     setReviewRating(selfComment.prefill?.rating || 0)
     setReviewComment(selfComment.prefill?.comment || '')
-    setReviewPrivacy(selfComment.prefill?.privacyMode || 'initials')
-  }, [editorMode, hasSession, product.id, selfComment])
+    setReviewPrivacySelection(
+      resolveReviewPrivacySelection(
+        selfComment.prefill?.privacySelection,
+        currentUser?.displayname,
+        selfComment.prefill?.privacyMode || 'initials',
+      ),
+    )
+  }, [currentUser?.displayname, editorMode, hasSession, product.id, selfComment])
 
   const metricReviews = useMemo(() => {
     if (selfComment?.visibleSnapshot) {
@@ -660,7 +773,7 @@ function ProductReviewPanel({ product }) {
     event.preventDefault()
 
     const trimmedComment = reviewComment.trim()
-    const privacy = buildReviewPrivacyCode(reviewPrivacy, currentUser?.displayname)
+    const privacy = buildReviewPrivacyCode(reviewPrivacySelection, currentUser?.displayname)
 
     setReviewError('')
     setReviewFeedback('')
@@ -697,7 +810,7 @@ function ProductReviewPanel({ product }) {
         })
 
         setHoverReviewRating(0)
-        setPrivacyMenuOpen(false)
+        setPrivacyMenuOpen(true)
         setReviewFeedback(
           result?.msg ||
           (editorMode
@@ -855,54 +968,43 @@ function ProductReviewPanel({ product }) {
             ) : null}
 
             <AuroraInset>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="sm:flex-1">
-                  <label htmlFor="product-review-comment" className="aurora-review-label">
-                    {editorMode ? 'Edit comment' : 'Comment'}
-                  </label>
-                  <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                    {editorMode
-                      ? 'Refine your current comment and save a new version for moderation.'
-                      : 'Share taste, build quality, or how this product fits into your routine.'}
-                  </p>
-                </div>
-                <div className="sm:w-[18rem]">
-                  <span className="aurora-review-label">Name visibility</span>
-                  <PreviewDropdown
-                    value={reviewPrivacy}
-                    displayValue={getReviewPrivacyLabel(reviewPrivacy)}
-                    placeholder="Choose visibility"
-                    options={reviewPrivacyOptions}
-                    className="aurora-review-privacy-dropdown"
-                    triggerClassName="aurora-review-privacy-trigger"
-                    menuMode="flow"
-                    open={privacyMenuOpen}
-                    disabled={reviewFormDisabled}
-                    onToggle={setPrivacyMenuOpen}
-                    onSelect={(nextValue) => {
-                      setReviewPrivacy(nextValue)
-                      setReviewError('')
-                    }}
-                    triggerContent={({ open }) => (
-                      <>
-                        <span className="aurora-review-privacy-name">
-                          {buildReviewPrivacyPreviewName(reviewPrivacy, currentUser?.displayname)}
-                        </span>
-                        <span className="aurora-review-privacy-controls">
-                          <span className="aurora-review-privacy-mode-pill">
-                            {getReviewPrivacyCompactLabel(reviewPrivacy)}
-                          </span>
-                          <span
-                            className={`aurora-review-privacy-chevron ${open ? 'is-open' : ''}`.trim()}
-                            aria-hidden="true"
-                          >
-                            <PreviewChevronIcon />
-                          </span>
-                        </span>
-                      </>
-                    )}
-                  />
-                </div>
+              <div>
+                <label htmlFor="product-review-comment" className="aurora-review-label">
+                  {editorMode ? 'Edit comment' : 'Comment'}
+                </label>
+                <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  {editorMode
+                    ? 'Refine your current comment and save a new version for moderation.'
+                    : 'Share taste, build quality, or how this product fits into your routine.'}
+                </p>
+              </div>
+
+              <div className="mt-6">
+                <span className="aurora-review-label">Name visibility</span>
+                <ReviewPrivacyMatrix
+                  displayName={currentUser?.displayname}
+                  selection={reviewPrivacySelection}
+                  open={privacyMenuOpen}
+                  disabled={reviewFormDisabled}
+                  onToggle={setPrivacyMenuOpen}
+                  onHideAll={() => {
+                    setReviewPrivacySelection(
+                      buildReviewPrivacySelection(currentUser?.displayname, 'anonymous'),
+                    )
+                    setReviewError('')
+                  }}
+                  onChange={(wordIndex, mode) => {
+                    setReviewPrivacySelection((currentSelection) => {
+                      const nextSelection = resolveReviewPrivacySelection(
+                        currentSelection,
+                        currentUser?.displayname,
+                      )
+                      nextSelection[wordIndex] = normalizeReviewPrivacyMode(mode)
+                      return nextSelection
+                    })
+                    setReviewError('')
+                  }}
+                />
               </div>
 
               <textarea
