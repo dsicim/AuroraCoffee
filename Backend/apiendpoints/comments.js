@@ -17,7 +17,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else if (endpoint[0] === "pending") return { s: 403, j: true, d: { e: "Forbidden" } };
                 }
                 else if (endpoint[0] === "pending") return { s: 401, j: true, d: { e: "Unauthorized" } };
-                if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
+                if (id === "all" && !adminAccess) return { s: 403, j: true, d: { e: "Forbidden" } };
+                if (isNaN(id) && id !== "all") return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
                 return await sql.getComments(id, approvedOnly, pendingOnly, (currentUser && !currentUser.e && currentUser.id) ? currentUser.id : null).then(result => {
                     if (result.success) {
                         result.comments = result.comments.map(comment => {

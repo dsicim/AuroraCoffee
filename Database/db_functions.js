@@ -682,8 +682,9 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
         throw new DBError(400, 'Product ID is required');
     }
     try {
-        const params = [productId];
-        let where = `c.product_id = ?`;
+        const params = [];
+        let where = productId === "all" ? '1' : `c.product_id = ?`;
+        if (productId !== "all") params.push(productId);
         if (approvedOnly) {
             where += ` AND (c.status IN ('approved', 'pending_edit', 'edit_rejected')${userId ? ` OR c.user_id = ?` : ``})`;
             if (userId) params.push(userId);
