@@ -356,6 +356,26 @@ function getProductSelectTheme(product, resolvedTheme) {
   return resolveProductThemeStyles(productSelectThemes.neutral, resolvedTheme)
 }
 
+function getCommentSnapshotSurface(tone, themeStyles, resolvedTheme) {
+  const isDarkTheme = resolvedTheme === themePreferences.dark
+
+  if (tone === 'upcoming') {
+    return themeStyles?.badgeStyle || resolveProductThemeStyles(productSelectThemes.neutral, resolvedTheme).badgeStyle
+  }
+
+  return isDarkTheme
+    ? {
+        backgroundColor: 'rgba(19, 31, 44, 0.68)',
+        borderColor: 'rgba(205, 220, 217, 0.16)',
+        color: 'var(--aurora-text-strong)',
+      }
+    : {
+        backgroundColor: 'rgba(255, 250, 246, 0.84)',
+        borderColor: 'rgba(208, 193, 178, 0.42)',
+        color: 'var(--aurora-text-strong)',
+      }
+}
+
 function ManagerMetricCard({ label, value, detail }) {
   return (
     <div className="aurora-summary-card p-6">
@@ -387,40 +407,73 @@ function SectionEmptyState({ title, description }) {
   )
 }
 
-function CommentSnapshotCard({ title, snapshot, tone = 'neutral' }) {
+function CommentSnapshotCard({
+  title,
+  snapshot,
+  tone = 'neutral',
+  themeStyles,
+  resolvedTheme,
+}) {
   if (!snapshot) {
     return null
   }
 
-  const toneClassName =
+  const isDarkTheme = resolvedTheme === themePreferences.dark
+  const surface = getCommentSnapshotSurface(tone, themeStyles, resolvedTheme)
+  const labelColor =
     tone === 'upcoming'
-      ? 'border-[rgba(133,176,142,0.28)] bg-[rgba(232,241,233,0.72)]'
-      : 'border-[rgba(208,193,178,0.42)] bg-[rgba(255,250,246,0.84)]'
+      ? surface.color || 'var(--aurora-text-strong)'
+      : 'var(--aurora-olive-deep)'
+  const bodyColor = isDarkTheme ? 'rgba(226, 235, 231, 0.84)' : 'var(--aurora-text)'
+  const metaColor = isDarkTheme ? 'rgba(214, 226, 221, 0.68)' : 'var(--aurora-text)'
+  const cardStyle = {
+    background: `linear-gradient(180deg, ${
+      isDarkTheme ? 'rgba(247, 251, 255, 0.06)' : 'rgba(255, 255, 255, 0.22)'
+    }, rgba(255, 255, 255, 0.02)), ${surface.backgroundColor}`,
+    borderColor: surface.borderColor,
+    boxShadow: isDarkTheme
+      ? 'inset 0 1px 0 rgba(241, 248, 255, 0.08)'
+      : 'inset 0 1px 0 rgba(255, 255, 255, 0.28)',
+  }
 
   return (
-    <div className={`rounded-[1.8rem] border px-5 py-4 ${toneClassName}`.trim()}>
+    <div className="rounded-[1.8rem] border px-5 py-4" style={cardStyle}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+          <p
+            className="text-xs font-semibold uppercase tracking-[0.24em]"
+            style={{ color: labelColor }}
+          >
             {title}
           </p>
-          <p className="mt-3 text-base font-semibold text-[var(--aurora-text-strong)]">
+          <p
+            className="mt-3 text-base font-semibold"
+            style={{ color: surface.color || 'var(--aurora-text-strong)' }}
+          >
             {snapshot.author}
           </p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+          <p className="text-sm font-semibold" style={{ color: surface.color || 'var(--aurora-text-strong)' }}>
             {formatCommentRating(snapshot.rating)} / 5
           </p>
-          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--aurora-text)]">
+          <p
+            className="mt-2 text-xs uppercase tracking-[0.2em]"
+            style={{ color: metaColor }}
+          >
             Backend {snapshot.backendRating || '—'}/10
           </p>
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">{snapshot.comment}</p>
+      <p className="mt-4 text-sm leading-7" style={{ color: bodyColor }}>
+        {snapshot.comment}
+      </p>
 
-      <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em] text-[var(--aurora-text)]">
+      <div
+        className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]"
+        style={{ color: metaColor }}
+      >
         <span>Created {formatCommentDate(snapshot.createdAt)}</span>
         {snapshot.editedAt ? <span>Edited {formatCommentDate(snapshot.editedAt)}</span> : null}
       </div>
@@ -731,11 +784,15 @@ export default function ProductManagerPage() {
                       <CommentSnapshotCard
                         title={record.upcoming ? 'Visible version' : 'Comment snapshot'}
                         snapshot={record.existing}
+                        themeStyles={selectedProductTheme}
+                        resolvedTheme={resolvedTheme}
                       />
                       <CommentSnapshotCard
                         title="Pending version"
                         snapshot={record.upcoming}
                         tone="upcoming"
+                        themeStyles={selectedProductTheme}
+                        resolvedTheme={resolvedTheme}
                       />
                     </div>
 
