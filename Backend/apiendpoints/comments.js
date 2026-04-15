@@ -3,7 +3,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint.length === 0 || endpoint[0] === "pending") {
         if (method === "GET") {
             if (query.id) {
-                const id = parseInt(query.id);
+                const id = query.id === "all" ? "all" : parseInt(query.id);
                 let approvedOnly = true;
                 let pendingOnly = false;
                 let adminAccess = false;
