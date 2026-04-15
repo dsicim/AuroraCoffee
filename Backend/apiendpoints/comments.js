@@ -7,8 +7,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let approvedOnly = true;
                 let pendingOnly = false;
                 let adminAccess = false;
-                if (currentUser && !currentUser.e && currentUser.id && currentUser.role) {
-                    if (["Admin", "Product Manager"].includes(currentUser.role)) {
+                if (currentUser && !currentUser.e && currentUser.id) {
+                    if (currentUser.role && ["Admin", "Product Manager"].includes(currentUser.role)) {
                         adminAccess = true;
                         approvedOnly = false;
                         if (endpoint[0] === "pending") pendingOnly = true;
@@ -18,9 +18,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (endpoint[0] === "pending") return { s: 401, j: true, d: { e: "Unauthorized" } };
                 if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
-                return await sql.getComments(id, approvedOnly, pendingOnly).then(result => {
+                return await sql.getComments(id, approvedOnly, pendingOnly, (currentUser && !currentUser.e && currentUser.id) ? currentUser.id : null).then(result => {
                     if (result.success) {
                         result.comments = result.comments.map(comment => {
+                            comment.self = false;
+                            if (currentUser && !currentUser.e && currentUser.id && comment.user_id === currentUser.id) comment.self = true;
                             delete comment.product_id;
                             if (!adminAccess) {
                                 delete comment.id;
@@ -32,14 +34,20 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (["pending","rejected"].includes(comment.status)) {
                                 upcoming = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
                                 existing = null;
+                                if (adminAccess || comment.self) upcoming.visible = false;
                             }
                             else if (["approved"].includes(comment.status)) {
                                 existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
                                 upcoming = null;
+                                if (adminAccess || comment.self) existing.visible = true;
                             }
                             else if (["pending_edit", "edit_rejected"].includes(comment.status)) {
                                 upcoming = { name: comment.edited_name_snapshot, text: comment.edited_text, rating: comment.edited_rating, time: comment.created_at, edit: comment.edited_edited_at };
                                 existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
+                                if (adminAccess || comment.self) {
+                                    upcoming.visible = false;
+                                    existing.visible = true;
+                                }
                             }
                             delete comment.name_snapshot;
                             delete comment.comment_text;
@@ -50,7 +58,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             delete comment.created_at;
                             delete comment.edited_at;
                             delete comment.edited_edited_at;
-                            return approvedOnly ? existing : {comment, upcoming, existing};
+                            if (approvedOnly && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming };
+                            else if (approvedOnly) return { c: existing };
+                            else return {...comment, c: existing, e: existing};
                         });
                         return { s: 200, j: true, d: { comments: result.comments } };
                     }
@@ -116,6 +126,20 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });
 
+        }
+        else if (method === "PATCH") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!currentUser.role || !["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.action) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (!["approve", "reject", "delete"].includes(body.data.action)) return { s: 400, j: true, d: { e: "Invalid action" } };
+            return await sql.setCommentStatus(body.data.id, body.data.action === "approve" ? "approved" : body.data.action === "reject" ? "rejected" : "deleted").then(result => {
+                if (result.success) return { s: 200, j: true, d: { msg: "Comment status updated successfully" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            }).catch(err => {
+                console.error("Set comment status error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }

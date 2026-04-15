@@ -646,22 +646,38 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
 };
 
 func.setCommentStatus = async function (commentId, status) {
-    if (!commentId && !status) {
+    if (!commentId || !status) {
         throw new DBError(400, 'Comment ID and status are required');
     }
     try {
-        const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, commentId]);
-        if (result.affectedRows === 0) {
+        const [rows] = await pool.execute('SELECT * FROM comments WHERE id = ?', [commentId]);
+        if (rows.length === 0) {
             throw new DBError(404, 'Comment not found');
         }
-        return { success: true, message: 'Comment status updated successfully' };
+        const comment = rows[0];
+        const currentStatus = comment.status;
+        if (status === "rejected" && currentStatus === "pending_edit") status = "edit_rejected";
+        if (status === 'approved' && ['pending_edit', 'edit_rejected'].includes(currentStatus)) {
+            const [result] = await pool.execute('UPDATE comments SET status = ?, edited_at = edited_edited_at, comment_text = edited_text, rating = edited_rating, name_snapshot = edited_name_snapshot, edited_edited_at = NULL, edited_text = NULL, edited_rating = NULL, edited_name_snapshot = NULL WHERE id = ?', [status, commentId]);
+            if (result.affectedRows === 0) {
+                throw new DBError(404, 'Comment not found');
+            }
+            return { success: true, message: 'Comment status updated successfully. Existing comment has been replaced. Old comment has been removed.' };
+        }
+        else {
+            const [result] = await pool.execute('UPDATE comments SET status = ? WHERE id = ?', [status, commentId]);
+            if (result.affectedRows === 0) {
+                throw new DBError(404, 'Comment not found');
+            }
+            return { success: true, message: 'Comment status updated successfully' };
+        }
     } catch (error) {
         console.error('Update comment error:', error);
         throw new DBError(500, 'Failed to update comment');
     }
 };
 
-func.getComments = async function (productId, approvedOnly = true, pendingOnly = false) {
+func.getComments = async function (productId, approvedOnly = true, pendingOnly = false, userId = null) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -670,9 +686,9 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
             SELECT c.*, u.displayname as user_name
             FROM comments c
             JOIN users u ON c.user_id = u.id
-            WHERE c.product_id = ? ${approvedOnly ? "AND (c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND (c.status = 'pending' OR c.status = 'pending_edit')" : "")}
+            WHERE c.product_id = ? ${approvedOnly ? "AND ((c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND ((c.status = 'pending' OR c.status = 'pending_edit')" : "")} ${userId ? "OR c.user_id = ?" : ""})
             ORDER BY c.created_at DESC
-        `, [productId]);
+        `, [productId, userId]);
         return { success: true, comments: rows };
     } catch (error) {
         console.error('Get comments error:', error);
