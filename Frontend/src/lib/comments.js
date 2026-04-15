@@ -277,7 +277,7 @@ export async function fetchApprovedProductComments(productId) {
   }
 
   const payload = await requestCommentsJson(
-    `/comments?id=${normalizedProductId}&approved=true`,
+    `/comments/approved?id=${normalizedProductId}&actAsUser=true`,
   )
 
   if (!Array.isArray(payload?.comments)) {
@@ -330,7 +330,7 @@ export async function fetchManagerProductComments(productId, scope = 'pending') 
         : 'pending'
   const path =
     normalizedScope === 'approved'
-      ? `/comments?id=${normalizedProductId}&approved=true`
+      ? `/comments/approved?id=${normalizedProductId}`
       : normalizedScope === 'all'
         ? `/comments?id=${normalizedProductId}`
         : normalizedScope === 'rejected'
