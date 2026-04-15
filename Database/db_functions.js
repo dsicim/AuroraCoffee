@@ -673,6 +673,7 @@ func.setCommentStatus = async function (commentId, status) {
         }
     } catch (error) {
         console.error('Update comment error:', error);
+        if (err instanceof sql.DBError) throw error;
         throw new DBError(500, 'Failed to update comment');
     }
 };
