@@ -16,6 +16,8 @@ export const orderProgressSteps = [
   { key: 'delivered', label: 'Delivered' },
 ]
 
+const MAX_CACHED_ORDER_DETAILS = 30
+
 const knownOrderStatuses = new Set([
   'initialized',
   'pending',
@@ -365,21 +367,34 @@ function mapOrderOptionsForDisplay(product, options, variantCode = '') {
 function normalizeOrderSummary(record) {
   const order = extractOrderRecord(record)
 
+  return toOrderSummaryEntry(order)
+}
+
+function toOrderSummaryEntry(order) {
   if (!order?.id) {
     return null
   }
 
-  const statusPresentation = getOrderStatusPresentation(order.status)
+  const statusPresentation = getOrderStatusPresentation(
+    order.statusKey || order.status,
+  )
+  const submittedAt =
+    normalizeText(order.submittedAt) ||
+    normalizeText(order.createdAt) ||
+    normalizeText(order.created_at)
+  const purchaseId =
+    normalizeText(order.purchaseId) ||
+    normalizeText(order.purchase_id)
 
   return {
     id: String(order.id),
-    reference: String(order.id),
-    purchaseId: normalizeText(order.purchaseId),
+    reference: String(order.reference || order.id),
+    purchaseId,
     status: statusPresentation.key,
     statusKey: statusPresentation.key,
     statusLabel: statusPresentation.label,
-    submittedAt: order.created_at || '',
-    createdAt: order.created_at || '',
+    submittedAt,
+    createdAt: submittedAt,
   }
 }
 
@@ -533,11 +548,21 @@ async function normalizeOrderDetail(record) {
 function persistResolvedOrders(orders, scope, { loaded = false } = {}) {
   cachedOrdersScope = scope
   cachedOrdersLoaded = loaded
-  cachedOrders = sortOrders(orders)
+  cachedOrders = sortOrders(
+    (orders || []).map(toOrderSummaryEntry).filter(Boolean),
+  )
   return cachedOrders
 }
 
 function mergeResolvedOrder(order, scope) {
+  const summary = toOrderSummaryEntry(order)
+
+  if (!summary) {
+    return persistResolvedOrders(cachedOrders, scope, {
+      loaded: cachedOrdersLoaded,
+    })
+  }
+
   const merged = new Map()
 
   if (cachedOrdersScope === scope) {
@@ -546,16 +571,41 @@ function mergeResolvedOrder(order, scope) {
     }
   }
 
-  if (order?.id) {
-    merged.set(order.id, {
-      ...(merged.get(order.id) || {}),
-      ...order,
-    })
-  }
+  merged.set(summary.id, {
+    ...(merged.get(summary.id) || {}),
+    ...summary,
+  })
 
   return persistResolvedOrders(Array.from(merged.values()), scope, {
     loaded: cachedOrdersLoaded,
   })
+}
+
+function readCachedOrderDetail(cacheKey) {
+  const detail = cachedOrderDetails.get(cacheKey) || null
+
+  if (!detail) {
+    return null
+  }
+
+  cachedOrderDetails.delete(cacheKey)
+  cachedOrderDetails.set(cacheKey, detail)
+  return detail
+}
+
+function writeCachedOrderDetail(cacheKey, detail) {
+  cachedOrderDetails.delete(cacheKey)
+  cachedOrderDetails.set(cacheKey, detail)
+
+  while (cachedOrderDetails.size > MAX_CACHED_ORDER_DETAILS) {
+    const oldestCacheKey = cachedOrderDetails.keys().next().value
+
+    if (oldestCacheKey === undefined) {
+      break
+    }
+
+    cachedOrderDetails.delete(oldestCacheKey)
+  }
 }
 
 export function getCachedOrders() {
@@ -583,7 +633,7 @@ export function getCachedOrderById(orderId) {
     return null
   }
 
-  return cachedOrderDetails.get(`${scope}:${String(orderId)}`) || null
+  return readCachedOrderDetail(`${scope}:${String(orderId)}`)
 }
 
 export async function fetchOrders({ force = false } = {}) {
@@ -611,13 +661,7 @@ export async function fetchOrders({ force = false } = {}) {
       const serverOrders = Array.isArray(payload?.orders)
         ? payload.orders.map(normalizeOrderSummary).filter(Boolean)
         : []
-
-      const resolvedOrders = serverOrders.map((summary) => {
-        const cachedDetail = cachedOrderDetails.get(`${scope}:${summary.id}`)
-        return cachedDetail ? { ...cachedDetail, ...summary } : summary
-      })
-
-      const nextOrders = persistResolvedOrders(resolvedOrders, scope, {
+      const nextOrders = persistResolvedOrders(serverOrders, scope, {
         loaded: true,
       })
       dispatchOrdersChange('list')
@@ -649,8 +693,12 @@ export async function fetchOrderById(orderId, { force = false } = {}) {
 
   const cacheKey = `${scope}:${normalizedOrderId}`
 
-  if (!force && cachedOrderDetails.has(cacheKey)) {
-    return cachedOrderDetails.get(cacheKey) || null
+  if (!force) {
+    const cachedDetail = readCachedOrderDetail(cacheKey)
+
+    if (cachedDetail) {
+      return cachedDetail
+    }
   }
 
   if (!force && inFlightOrderDetailPromises.has(cacheKey)) {
@@ -667,7 +715,7 @@ export async function fetchOrderById(orderId, { force = false } = {}) {
         throw new Error('Order not found')
       }
 
-      cachedOrderDetails.set(cacheKey, detailOrder)
+      writeCachedOrderDetail(cacheKey, detailOrder)
       mergeResolvedOrder(detailOrder, scope)
       dispatchOrdersChange('detail', detailOrder.id)
       return detailOrder

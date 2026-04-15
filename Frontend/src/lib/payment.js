@@ -3,6 +3,9 @@ import { getAuthSession } from './auth'
 
 export const paymentMethodsChangeEvent = 'aurora-payment-methods-change'
 
+const MAX_INSTALLMENT_INFO_CACHE_ENTRIES = 40
+const INSTALLMENT_INFO_CACHE_TTL_MS = 10 * 60 * 1000
+
 class PaymentRequestError extends Error {
   constructor(message, details = null) {
     super(message)
@@ -37,6 +40,54 @@ function dispatchPaymentMethodsChange(type = 'list') {
   )
 }
 
+function pruneInstallmentInfoCache(now = Date.now()) {
+  for (const [cacheKey, entry] of installmentInfoCache) {
+    if (!entry || entry.expiresAt <= now) {
+      installmentInfoCache.delete(cacheKey)
+    }
+  }
+
+  while (installmentInfoCache.size > MAX_INSTALLMENT_INFO_CACHE_ENTRIES) {
+    const oldestCacheKey = installmentInfoCache.keys().next().value
+
+    if (oldestCacheKey === undefined) {
+      break
+    }
+
+    installmentInfoCache.delete(oldestCacheKey)
+  }
+}
+
+function readInstallmentInfoCache(cacheKey) {
+  const entry = installmentInfoCache.get(cacheKey)
+
+  if (!entry) {
+    return null
+  }
+
+  if (entry.expiresAt <= Date.now()) {
+    installmentInfoCache.delete(cacheKey)
+    return null
+  }
+
+  installmentInfoCache.delete(cacheKey)
+  installmentInfoCache.set(cacheKey, entry)
+  return entry.value
+}
+
+function writeInstallmentInfoCache(cacheKey, value) {
+  installmentInfoCache.delete(cacheKey)
+  installmentInfoCache.set(cacheKey, {
+    value,
+    expiresAt: Date.now() + INSTALLMENT_INFO_CACHE_TTL_MS,
+  })
+  pruneInstallmentInfoCache()
+}
+
+function clearInstallmentInfoCache() {
+  installmentInfoCache.clear()
+}
+
 function clearPaymentMethodsCache({ emit = false, type = 'clear' } = {}) {
   const hadState =
     cachedPaymentMethods.length > 0 ||
@@ -48,6 +99,7 @@ function clearPaymentMethodsCache({ emit = false, type = 'clear' } = {}) {
   cachedPaymentMethodsScope = null
   cachedPaymentMethodsLoaded = false
   inFlightPaymentMethodsPromise = null
+  clearInstallmentInfoCache()
 
   if (emit && hadState) {
     dispatchPaymentMethodsChange(type)
@@ -171,9 +223,10 @@ export async function fetchInstallmentInfo({ bin, token, price }) {
   }
 
   const cacheKey = buildInstallmentInfoCacheKey(normalizedBin, normalizedToken, price)
+  const cachedInstallmentInfo = readInstallmentInfoCache(cacheKey)
 
-  if (installmentInfoCache.has(cacheKey)) {
-    return installmentInfoCache.get(cacheKey)
+  if (cachedInstallmentInfo) {
+    return cachedInstallmentInfo
   }
 
   if (inFlightInstallmentInfoRequests.has(cacheKey)) {
@@ -194,7 +247,7 @@ export async function fetchInstallmentInfo({ bin, token, price }) {
         installments: Array.isArray(payload?.installments) ? payload.installments : [],
       }
 
-      installmentInfoCache.set(cacheKey, result)
+      writeInstallmentInfoCache(cacheKey, result)
       return result
     })
     .finally(() => {
