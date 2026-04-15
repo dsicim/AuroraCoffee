@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS comments (
     edited_rating INT,
     status ENUM('pending', 'pending_edit', 'approved', 'rejected', 'edit_rejected') DEFAULT 'pending',
     name_snapshot VARCHAR(255) NOT NULL,
+    edited_name_snapshot VARCHAR(255) NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     edited_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,

@@ -604,22 +604,34 @@ func.getUserCards = async function (userId) {
 
 // --- Comment & Rating Functions ---
 
-func.addComment = async function (userId, productId, text, rating) {
+func.addComment = async function (userId, productId, text, rating, namesnapshot) {
     if (!userId || !productId || !text || rating === undefined) {
         throw new DBError(400, 'User ID, Product ID, text and rating are required');
     }
     try {
-        // Check if user has bought and received the product
-        const bought = await func.hasUserBoughtProduct(userId, productId);
-        if (!bought) {
-            throw new DBError(403, 'You can only comment on products you have purchased and received');
+        // Check if user has already commented on the product
+        const commented = await func.hasUserAlreadyCommented(userId, productId);
+        if (commented === false) {
+            const [result] = await pool.execute(
+                'INSERT INTO comments (user_id, product_id, comment_text, rating, status, name_snapshot) VALUES (?, ?, ?, ?, ?, ?)',
+                [userId, productId, text, rating, 'pending', namesnapshot]
+            );
+            return { success: true, message: 'Comment submitted successfully, awaiting approval', commentId: result.insertId };
         }
-
-        const [result] = await pool.execute(
-            'INSERT INTO comments (user_id, product_id, comment_text, rating, status) VALUES (?, ?, ?, ?, ?)',
-            [userId, productId, text, rating, 'pending']
-        );
-        return { success: true, message: 'Comment submitted successfully, awaiting approval', commentId: result.insertId };
+        else if (["rejected", "pending"].includes(commented.status)) {
+            const [result] = await pool.execute(
+                'UPDATE comments SET comment_text = ?, rating = ?, status = ?, name_snapshot = ? WHERE id = ?',
+                [text, rating, 'pending', namesnapshot, commented.id]
+            );
+            return { success: true, message: 'Comment edit submitted successfully, your comment is now awaiting approval.', commentId: result.insertId };
+        }
+        else {
+            const [result] = await pool.execute(
+                'UPDATE comments SET edited_text = ?, edited_rating = ?, status = ?, edited_name_snapshot = ? WHERE id = ?',
+                [text, rating, 'pending_edit', namesnapshot, commented.id]
+            );
+            return { success: true, message: 'Comment edit submitted successfully, the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.', commentId: result.insertId };
+        }
     } catch (error) {
         if (error instanceof DBError) throw error;
         console.error('Add comment error:', error);
@@ -987,15 +999,14 @@ func.approveRefund = async function (refundId) {
     }
 };
 
-func.hasUserBoughtProduct = async function (userId, productId) {
+func.hasUserAlreadyCommented = async function (userId, productId) {
     try {
         const [rows] = await pool.execute(`
-            SELECT 1 FROM orders o
-            JOIN order_items oi ON o.id = oi.order_id
-            WHERE o.user_id = ? AND oi.product_id = ? AND o.status = 'delivered'
+            SELECT id, status FROM comments c
+            WHERE c.user_id = ? AND c.product_id = ?
             LIMIT 1
         `, [userId, productId]);
-        return rows.length > 0;
+        return rows.length > 0 ? { id: rows[0].id, status: rows[0].status } : false;
     } catch (error) {
         console.error('Check purchase error:', error);
         return false;
