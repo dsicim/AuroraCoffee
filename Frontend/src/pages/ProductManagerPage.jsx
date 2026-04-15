@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments } from '../lib/comments'
+import { themePreferences } from '../lib/theme'
+import { useTheme } from '../lib/theme-context'
 import {
   getProductAvailability,
   getProductCategories,
@@ -84,9 +86,20 @@ const productSelectThemes = {
       color: 'var(--aurora-text-strong)',
       boxShadow: '0 0 0 0 rgba(0,0,0,0)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(24, 37, 33, 0.82)',
+      borderColor: 'rgba(205, 220, 217, 0.18)',
+      color: 'var(--aurora-text-strong)',
+      boxShadow: '0 0 0 0 rgba(0,0,0,0)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(255,252,248,0.86)',
       borderColor: 'rgba(208,193,178,0.38)',
+      color: 'var(--aurora-text-strong)',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(24, 37, 33, 0.86)',
+      borderColor: 'rgba(205, 220, 217, 0.18)',
       color: 'var(--aurora-text-strong)',
     },
   },
@@ -99,10 +112,21 @@ const productSelectThemes = {
       color: '#6f5139',
       boxShadow: '0 0 0 2px rgba(191, 159, 122, 0.12)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(63, 46, 35, 0.82)',
+      borderColor: 'rgba(203, 173, 136, 0.34)',
+      color: '#f1dec8',
+      boxShadow: '0 0 0 2px rgba(203, 173, 136, 0.14)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(247, 240, 229, 0.94)',
       borderColor: 'rgba(164, 131, 92, 0.4)',
       color: '#6f5139',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(63, 46, 35, 0.86)',
+      borderColor: 'rgba(203, 173, 136, 0.34)',
+      color: '#f1dec8',
     },
   },
   accessories: {
@@ -114,10 +138,21 @@ const productSelectThemes = {
       color: '#567568',
       boxShadow: '0 0 0 2px rgba(143, 182, 167, 0.14)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(29, 53, 48, 0.84)',
+      borderColor: 'rgba(143, 182, 167, 0.32)',
+      color: '#d8eee4',
+      boxShadow: '0 0 0 2px rgba(143, 182, 167, 0.12)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(236, 245, 241, 0.94)',
       borderColor: 'rgba(126, 159, 135, 0.38)',
       color: '#567568',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(29, 53, 48, 0.88)',
+      borderColor: 'rgba(143, 182, 167, 0.32)',
+      color: '#d8eee4',
     },
   },
   red: {
@@ -129,10 +164,21 @@ const productSelectThemes = {
       color: '#8b342b',
       boxShadow: '0 0 0 2px rgba(184, 79, 69, 0.12)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(74, 33, 31, 0.84)',
+      borderColor: 'rgba(224, 143, 134, 0.34)',
+      color: '#ffd9d4',
+      boxShadow: '0 0 0 2px rgba(224, 143, 134, 0.12)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(249, 233, 230, 0.96)',
       borderColor: 'rgba(184, 79, 69, 0.42)',
       color: '#8b342b',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(74, 33, 31, 0.88)',
+      borderColor: 'rgba(224, 143, 134, 0.34)',
+      color: '#ffd9d4',
     },
   },
   black: {
@@ -144,10 +190,21 @@ const productSelectThemes = {
       color: '#343940',
       boxShadow: '0 0 0 2px rgba(89, 95, 103, 0.1)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(34, 39, 44, 0.9)',
+      borderColor: 'rgba(148, 155, 165, 0.28)',
+      color: '#edf2f6',
+      boxShadow: '0 0 0 2px rgba(148, 155, 165, 0.1)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(237, 239, 242, 0.96)',
       borderColor: 'rgba(89, 95, 103, 0.42)',
       color: '#343940',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(34, 39, 44, 0.92)',
+      borderColor: 'rgba(148, 155, 165, 0.28)',
+      color: '#edf2f6',
     },
   },
   white: {
@@ -159,10 +216,21 @@ const productSelectThemes = {
       color: '#7c6a58',
       boxShadow: '0 0 0 2px rgba(208, 193, 178, 0.12)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(58, 53, 49, 0.86)',
+      borderColor: 'rgba(231, 221, 210, 0.26)',
+      color: '#f3ede6',
+      boxShadow: '0 0 0 2px rgba(231, 221, 210, 0.1)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(255, 255, 255, 0.98)',
       borderColor: 'rgba(208, 193, 178, 0.52)',
       color: '#7c6a58',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(58, 53, 49, 0.88)',
+      borderColor: 'rgba(231, 221, 210, 0.26)',
+      color: '#f3ede6',
     },
   },
   green: {
@@ -174,10 +242,21 @@ const productSelectThemes = {
       color: '#5c734f',
       boxShadow: '0 0 0 2px rgba(111, 139, 95, 0.12)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(41, 56, 37, 0.86)',
+      borderColor: 'rgba(160, 194, 144, 0.3)',
+      color: '#d8ebcf',
+      boxShadow: '0 0 0 2px rgba(160, 194, 144, 0.1)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(235, 242, 229, 0.96)',
       borderColor: 'rgba(111, 139, 95, 0.42)',
       color: '#5c734f',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(41, 56, 37, 0.88)',
+      borderColor: 'rgba(160, 194, 144, 0.3)',
+      color: '#d8ebcf',
     },
   },
   blue: {
@@ -189,10 +268,21 @@ const productSelectThemes = {
       color: '#466888',
       boxShadow: '0 0 0 2px rgba(88, 127, 165, 0.12)',
     },
+    darkSelectStyle: {
+      backgroundColor: 'rgba(34, 48, 64, 0.88)',
+      borderColor: 'rgba(132, 170, 206, 0.32)',
+      color: '#d7e8f7',
+      boxShadow: '0 0 0 2px rgba(132, 170, 206, 0.1)',
+    },
     badgeStyle: {
       backgroundColor: 'rgba(233, 240, 248, 0.96)',
       borderColor: 'rgba(88, 127, 165, 0.4)',
       color: '#466888',
+    },
+    darkBadgeStyle: {
+      backgroundColor: 'rgba(34, 48, 64, 0.9)',
+      borderColor: 'rgba(132, 170, 206, 0.32)',
+      color: '#d7e8f7',
     },
   },
 }
@@ -223,15 +313,26 @@ function findProductColorTheme(product) {
   }
 }
 
-function getProductSelectTheme(product) {
+function resolveProductThemeStyles(themeConfig, resolvedTheme) {
+  const isDarkTheme = resolvedTheme === themePreferences.dark
+
+  return {
+    label: themeConfig.label,
+    swatch: themeConfig.swatch,
+    selectStyle: isDarkTheme ? themeConfig.darkSelectStyle : themeConfig.selectStyle,
+    badgeStyle: isDarkTheme ? themeConfig.darkBadgeStyle : themeConfig.badgeStyle,
+  }
+}
+
+function getProductSelectTheme(product, resolvedTheme) {
   if (!product) {
-    return productSelectThemes.neutral
+    return resolveProductThemeStyles(productSelectThemes.neutral, resolvedTheme)
   }
 
   const explicitColorTheme = findProductColorTheme(product)
 
   if (explicitColorTheme) {
-    return explicitColorTheme
+    return resolveProductThemeStyles(explicitColorTheme, resolvedTheme)
   }
 
   const categoryToken = normalizeSelectionToken(
@@ -239,7 +340,7 @@ function getProductSelectTheme(product) {
   )
 
   if (categoryToken.includes('coffee')) {
-    return productSelectThemes.coffee
+    return resolveProductThemeStyles(productSelectThemes.coffee, resolvedTheme)
   }
 
   if (
@@ -249,10 +350,10 @@ function getProductSelectTheme(product) {
     categoryToken.includes('grinder') ||
     categoryToken.includes('equipment')
   ) {
-    return productSelectThemes.accessories
+    return resolveProductThemeStyles(productSelectThemes.accessories, resolvedTheme)
   }
 
-  return productSelectThemes.neutral
+  return resolveProductThemeStyles(productSelectThemes.neutral, resolvedTheme)
 }
 
 function ManagerMetricCard({ label, value, detail }) {
@@ -328,6 +429,7 @@ function CommentSnapshotCard({ title, snapshot, tone = 'neutral' }) {
 }
 
 export default function ProductManagerPage() {
+  const { resolvedTheme } = useTheme()
   const { products, loading, error } = useProductCatalog()
   const [selectedProductId, setSelectedProductId] = useState('')
   const [moderationScope, setModerationScope] = useState('pending')
@@ -377,8 +479,8 @@ export default function ProductManagerPage() {
   const inventoryStatus =
     error || (loading ? 'Syncing backend catalog.' : 'Backend-backed catalog is active.')
   const selectedProductTheme = useMemo(
-    () => getProductSelectTheme(selectedProduct),
-    [selectedProduct],
+    () => getProductSelectTheme(selectedProduct, resolvedTheme),
+    [resolvedTheme, selectedProduct],
   )
 
   function handleModerationProductChange(event) {
