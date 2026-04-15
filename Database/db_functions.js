@@ -684,7 +684,6 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
     try {
         const params = [productId];
         let where = `c.product_id = ?`;
-        console.log(userId);
         if (approvedOnly) {
             where += ` AND (c.status IN ('approved', 'pending_edit', 'edit_rejected')${userId ? ` OR c.user_id = ?` : ``})`;
             if (userId) params.push(userId);

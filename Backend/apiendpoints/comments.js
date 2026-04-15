@@ -18,7 +18,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (endpoint[0] === "pending") return { s: 401, j: true, d: { e: "Unauthorized" } };
                 if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
-                console.log(`Get comments for product ${id} with approvedOnly=${approvedOnly}, pendingOnly=${pendingOnly}, adminAccess=${adminAccess}, currentUser=${currentUser ? currentUser.id : null}`);
                 return await sql.getComments(id, approvedOnly, pendingOnly, (currentUser && !currentUser.e && currentUser.id) ? currentUser.id : null).then(result => {
                     if (result.success) {
                         result.comments = result.comments.map(comment => {
@@ -59,7 +58,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             delete comment.created_at;
                             delete comment.edited_at;
                             delete comment.edited_edited_at;
-                            if (approvedOnly && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming };
+                            if (approvedOnly && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming, self: true, visible: true, edit_visible: false, pending: (comment.status === "pending_edit") };
+                            else if (approvedOnly && (comment.self && ["pending", "rejected"].includes(comment.status))) return { c: upcoming, self: true, visible: false, edit_visible: false, pending: Boolean(comment.status === "pending") };
+                            else if (approvedOnly && comment.self) return { c: existing, self: true, visible: true, edit_visible: true, pending: false };
                             else if (approvedOnly) return { c: existing };
                             else return {...comment, c: existing, e: upcoming };
                         });
