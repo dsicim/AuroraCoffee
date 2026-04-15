@@ -393,6 +393,7 @@ function ProductReviewPanel({ product }) {
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
   const [reviews, setReviews] = useState([])
   const [selfComment, setSelfComment] = useState(null)
+  const [selfCommentEditing, setSelfCommentEditing] = useState(false)
   const [commentsLoading, setCommentsLoading] = useState(true)
   const [commentsError, setCommentsError] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
@@ -409,8 +410,11 @@ function ProductReviewPanel({ product }) {
     (currentUserState.status === currentUserFetchStatus.idle ||
       currentUserState.status === currentUserFetchStatus.loading)
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
-  const editorMode = Boolean(selfComment)
+  const editorMode = Boolean(selfComment && selfCommentEditing)
   const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
+  const hasVisibleSelfComment = Boolean(selfComment?.visibleSnapshot)
+  const hasPendingSelfComment = Boolean(selfComment?.pendingSnapshot)
+  const selfCommentCardSnapshot = selfComment?.visibleSnapshot || selfComment?.pendingSnapshot || null
   let reviewInfoMessage = ''
 
   if (hasSession) {
@@ -425,7 +429,7 @@ function ProductReviewPanel({ product }) {
   }
 
   const selfCommentNotice = useMemo(() => {
-    if (!selfComment) {
+    if (!selfComment || !editorMode) {
       return ''
     }
 
@@ -446,7 +450,7 @@ function ProductReviewPanel({ product }) {
     }
 
     return ''
-  }, [selfComment])
+  }, [editorMode, selfComment])
 
   useEffect(() => {
     const syncSession = () => {
@@ -514,6 +518,7 @@ function ProductReviewPanel({ product }) {
     setCommentsError('')
     setReviews([])
     setSelfComment(null)
+    setSelfCommentEditing(false)
 
     void fetchApprovedProductComments(product.id)
       .then((nextResult) => {
@@ -546,7 +551,7 @@ function ProductReviewPanel({ product }) {
     setHoverReviewRating(0)
     setPrivacyMenuOpen(false)
 
-    if (!hasSession || !selfComment) {
+    if (!hasSession || !selfComment || !editorMode) {
       setReviewRating(0)
       setReviewComment('')
       setReviewPrivacy('initials')
@@ -556,7 +561,7 @@ function ProductReviewPanel({ product }) {
     setReviewRating(selfComment.prefill?.rating || 0)
     setReviewComment(selfComment.prefill?.comment || '')
     setReviewPrivacy(selfComment.prefill?.privacyMode || 'initials')
-  }, [hasSession, product.id, selfComment])
+  }, [editorMode, hasSession, product.id, selfComment])
 
   const metricReviews = useMemo(() => {
     if (selfComment?.visibleSnapshot) {
@@ -584,6 +589,8 @@ function ProductReviewPanel({ product }) {
         ? 'Your pending comment is loaded in the editor above.'
       : editorMode && !selfComment?.draftAvailable
         ? 'Your current comment is awaiting approval. Use the editor above to resubmit it.'
+        : selfComment && !reviews.length
+          ? 'No other approved comments yet.'
         : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'
 
   const handleReviewSubmit = (event) => {
@@ -639,6 +646,7 @@ function ProductReviewPanel({ product }) {
           const nextResult = await fetchApprovedProductComments(product.id)
           setReviews(nextResult.comments || [])
           setSelfComment(nextResult.selfComment || null)
+          setSelfCommentEditing(false)
           setCommentsError('')
         } catch (error) {
           setCommentsError(error?.message || 'Approved comments could not be refreshed.')
@@ -680,108 +688,184 @@ function ProductReviewPanel({ product }) {
         </div>
       </AuroraInset>
 
-      {hasSession ? (
-        <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
-          <AuroraInset>
-            <div className="aurora-review-form-heading">
-              <div>
-                <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Your rating'}</p>
-                <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
-                  {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
-                </h4>
-              </div>
-              <span className="aurora-review-score-pill">Half-step stars</span>
-            </div>
-
-            <ReviewRatingInput
-              value={reviewRating}
-              hoverValue={hoverReviewRating}
-              disabled={reviewFormDisabled}
-              onChange={(value) => {
-                setReviewRating(value)
-                setReviewError('')
-              }}
-              onHoverChange={setHoverReviewRating}
-            />
-
-            <div className="aurora-review-rating-scale">
-              <span>Needs work</span>
-              <span>Outstanding</span>
-            </div>
-          </AuroraInset>
-
-          {reviewInfoMessage ? (
-            <p className="aurora-message aurora-message-info">{reviewInfoMessage}</p>
-          ) : null}
-          {selfCommentNotice ? (
-            <p className="aurora-message aurora-message-info">{selfCommentNotice}</p>
-          ) : null}
-
-          <AuroraInset>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="sm:flex-1">
-                <label htmlFor="product-review-comment" className="aurora-review-label">
-                  {editorMode ? 'Edit comment' : 'Comment'}
-                </label>
-                <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                  {editorMode
-                    ? 'Refine your current comment and save a new version for moderation.'
-                    : 'Share taste, build quality, or how this product fits into your routine.'}
-                </p>
-              </div>
-              <div className="sm:w-[18rem]">
-                <span className="aurora-review-label">Name visibility</span>
-                <PreviewDropdown
-                  value={reviewPrivacy}
-                  displayValue={getReviewPrivacyLabel(reviewPrivacy)}
-                  placeholder="Choose visibility"
-                  options={reviewPrivacyOptions}
-                  menuMode="flow"
-                  open={privacyMenuOpen}
-                  disabled={reviewFormDisabled}
-                  onToggle={setPrivacyMenuOpen}
-                  onSelect={(nextValue) => {
-                    setReviewPrivacy(nextValue)
-                    setReviewError('')
-                  }}
-                />
-              </div>
-            </div>
-
-            <textarea
-              id="product-review-comment"
-              ref={reviewTextareaRef}
-              className="aurora-review-textarea"
-              rows="5"
-              maxLength="320"
-              placeholder={
-                editorMode
-                  ? `Update your thoughts on ${product.name}. Mention what changed or what still stands out.`
-                  : `What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`
-              }
-              disabled={reviewFormDisabled}
-              value={reviewComment}
-              onChange={(event) => {
-                setReviewComment(event.target.value)
-                setReviewError('')
-              }}
-            />
-
-            <div className="aurora-review-form-footer">
-              <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                {reviewComment.length}/320 characters
+      {hasSession && selfComment && !editorMode ? (
+        <AuroraInset className="aurora-review-card">
+          <div className="aurora-review-card-header">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--aurora-olive-deep)]">
+                {hasPendingSelfComment
+                  ? hasVisibleSelfComment
+                    ? 'Pending update'
+                    : 'Pending review'
+                  : 'Your comment'}
               </p>
+              <p className="mt-2 text-sm text-[var(--aurora-text)]">
+                {selfCommentCardSnapshot?.createdAt
+                  ? formatReviewDate(selfCommentCardSnapshot.createdAt)
+                  : 'Waiting for moderation'}
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {selfCommentCardSnapshot ? (
+                <div className="aurora-review-card-score">
+                  <ReviewStars value={selfCommentCardSnapshot.rating} compact />
+                  <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                    {formatReviewScore(selfCommentCardSnapshot.rating)}
+                  </span>
+                </div>
+              ) : null}
               <LiquidGlassButton
-                type="submit"
+                type="button"
                 size="compact"
+                variant="secondary"
                 disabled={reviewFormDisabled}
-                loading={submitBusy}
+                onClick={() => {
+                  setReviewError('')
+                  setReviewFeedback('')
+                  setSelfCommentEditing(true)
+                }}
               >
-                {submitBusy ? (editorMode ? 'Saving...' : 'Posting...') : (editorMode ? 'Save changes' : 'Post comment')}
+                Edit comment
               </LiquidGlassButton>
             </div>
-          </AuroraInset>
-        </form>
+          </div>
+
+          <p className="text-base leading-8 text-[var(--aurora-text)]">
+            {selfCommentCardSnapshot?.comment ||
+              'Your comment is in moderation. Open the editor if you want to replace the current draft.'}
+          </p>
+
+          {hasPendingSelfComment ? (
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              {hasVisibleSelfComment
+                ? 'A newer version of your comment is waiting for moderation. Use Edit comment to revise or replace that draft.'
+                : 'Your comment is waiting for moderation. Use Edit comment if you want to update the draft before it is reviewed.'}
+            </p>
+          ) : null}
+        </AuroraInset>
+      ) : null}
+
+      {hasSession ? (
+        !selfComment || editorMode ? (
+          <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
+            <AuroraInset>
+              <div className="aurora-review-form-heading">
+                <div>
+                  <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Your rating'}</p>
+                  <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
+                    {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
+                  </h4>
+                </div>
+                <span className="aurora-review-score-pill">Half-step stars</span>
+              </div>
+
+              <ReviewRatingInput
+                value={reviewRating}
+                hoverValue={hoverReviewRating}
+                disabled={reviewFormDisabled}
+                onChange={(value) => {
+                  setReviewRating(value)
+                  setReviewError('')
+                }}
+                onHoverChange={setHoverReviewRating}
+              />
+
+              <div className="aurora-review-rating-scale">
+                <span>Needs work</span>
+                <span>Outstanding</span>
+              </div>
+            </AuroraInset>
+
+            {reviewInfoMessage ? (
+              <p className="aurora-message aurora-message-info">{reviewInfoMessage}</p>
+            ) : null}
+            {selfCommentNotice ? (
+              <p className="aurora-message aurora-message-info">{selfCommentNotice}</p>
+            ) : null}
+
+            <AuroraInset>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="sm:flex-1">
+                  <label htmlFor="product-review-comment" className="aurora-review-label">
+                    {editorMode ? 'Edit comment' : 'Comment'}
+                  </label>
+                  <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                    {editorMode
+                      ? 'Refine your current comment and save a new version for moderation.'
+                      : 'Share taste, build quality, or how this product fits into your routine.'}
+                  </p>
+                </div>
+                <div className="sm:w-[18rem]">
+                  <span className="aurora-review-label">Name visibility</span>
+                  <PreviewDropdown
+                    value={reviewPrivacy}
+                    displayValue={getReviewPrivacyLabel(reviewPrivacy)}
+                    placeholder="Choose visibility"
+                    options={reviewPrivacyOptions}
+                    menuMode="flow"
+                    open={privacyMenuOpen}
+                    disabled={reviewFormDisabled}
+                    onToggle={setPrivacyMenuOpen}
+                    onSelect={(nextValue) => {
+                      setReviewPrivacy(nextValue)
+                      setReviewError('')
+                    }}
+                  />
+                </div>
+              </div>
+
+              <textarea
+                id="product-review-comment"
+                ref={reviewTextareaRef}
+                className="aurora-review-textarea"
+                rows="5"
+                maxLength="320"
+                placeholder={
+                  editorMode
+                    ? `Update your thoughts on ${product.name}. Mention what changed or what still stands out.`
+                    : `What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`
+                }
+                disabled={reviewFormDisabled}
+                value={reviewComment}
+                onChange={(event) => {
+                  setReviewComment(event.target.value)
+                  setReviewError('')
+                }}
+              />
+
+              <div className="aurora-review-form-footer">
+                <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                  {reviewComment.length}/320 characters
+                </p>
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  {editorMode ? (
+                    <LiquidGlassButton
+                      type="button"
+                      size="compact"
+                      variant="secondary"
+                      disabled={submitBusy}
+                      onClick={() => {
+                        setReviewError('')
+                        setReviewFeedback('')
+                        setSelfCommentEditing(false)
+                      }}
+                    >
+                      Cancel
+                    </LiquidGlassButton>
+                  ) : null}
+                  <LiquidGlassButton
+                    type="submit"
+                    size="compact"
+                    disabled={reviewFormDisabled}
+                    loading={submitBusy}
+                  >
+                    {submitBusy ? (editorMode ? 'Saving...' : 'Posting...') : (editorMode ? 'Save changes' : 'Post comment')}
+                  </LiquidGlassButton>
+                </div>
+              </div>
+            </AuroraInset>
+          </form>
+        ) : null
       ) : (
         <AuroraInset className="aurora-review-login-prompt">
           <p className="aurora-kicker">Members only</p>
