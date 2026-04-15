@@ -452,7 +452,7 @@ function ReviewPrivacyMatrix({
   disabled = false,
   onToggle,
   onChange,
-  onHideAll,
+  onToggleAll,
 }) {
   const words = getDisplayNameWords(displayName)
   const resolvedSelection = resolveReviewPrivacySelection(selection, displayName)
@@ -467,14 +467,14 @@ function ReviewPrivacyMatrix({
           <button
             type="button"
             className="aurora-review-privacy-summary-button"
-            disabled={disabled || allHidden}
+            disabled={disabled}
             onClick={() => {
               if (!disabled) {
-                onHideAll()
+                onToggleAll(allHidden ? 'full' : 'anonymous')
               }
             }}
           >
-            Hide All
+            {allHidden ? 'Show All' : 'Hide All'}
           </button>
           <button
             type="button"
@@ -987,9 +987,9 @@ function ProductReviewPanel({ product }) {
                   open={privacyMenuOpen}
                   disabled={reviewFormDisabled}
                   onToggle={setPrivacyMenuOpen}
-                  onHideAll={() => {
+                  onToggleAll={(mode) => {
                     setReviewPrivacySelection(
-                      buildReviewPrivacySelection(currentUser?.displayname, 'anonymous'),
+                      buildReviewPrivacySelection(currentUser?.displayname, mode),
                     )
                     setReviewError('')
                   }}
