@@ -223,22 +223,29 @@ const reviewPrivacyOptions = [
   {
     value: 'initials',
     label: 'Initials only',
+    sideLabel: 'Initials',
     description: 'Show initials for each part of your display name.',
   },
   {
     value: 'full',
     label: 'Full name',
+    sideLabel: 'Show',
     description: 'Show your full display name with the comment.',
   },
   {
     value: 'anonymous',
     label: 'Anonymous',
+    sideLabel: 'Hide',
     description: 'Hide your name on the published comment.',
   },
 ]
 
 function getReviewPrivacyLabel(value) {
   return reviewPrivacyOptions.find((option) => option.value === value)?.label || 'Initials only'
+}
+
+function getReviewPrivacyCompactLabel(value) {
+  return reviewPrivacyOptions.find((option) => option.value === value)?.sideLabel || 'Initials'
 }
 
 function buildReviewPrivacyCode(mode, displayName) {
@@ -301,6 +308,14 @@ function ReviewStar({ fillPercent }) {
         </svg>
       </span>
     </span>
+  )
+}
+
+function PreviewChevronIcon() {
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 7 5 5 5-5" />
+    </svg>
   )
 }
 
@@ -825,6 +840,8 @@ function ProductReviewPanel({ product }) {
                     displayValue={getReviewPrivacyLabel(reviewPrivacy)}
                     placeholder="Choose visibility"
                     options={reviewPrivacyOptions}
+                    className="aurora-review-privacy-dropdown"
+                    triggerClassName="aurora-review-privacy-trigger"
                     menuMode="flow"
                     open={privacyMenuOpen}
                     disabled={reviewFormDisabled}
@@ -833,6 +850,24 @@ function ProductReviewPanel({ product }) {
                       setReviewPrivacy(nextValue)
                       setReviewError('')
                     }}
+                    triggerContent={({ open }) => (
+                      <>
+                        <span className="aurora-review-privacy-name">
+                          {String(currentUser?.displayname || 'Your name').trim() || 'Your name'}
+                        </span>
+                        <span className="aurora-review-privacy-controls">
+                          <span className="aurora-review-privacy-mode-pill">
+                            {getReviewPrivacyCompactLabel(reviewPrivacy)}
+                          </span>
+                          <span
+                            className={`aurora-review-privacy-chevron ${open ? 'is-open' : ''}`.trim()}
+                            aria-hidden="true"
+                          >
+                            <PreviewChevronIcon />
+                          </span>
+                        </span>
+                      </>
+                    )}
                   />
                 </div>
               </div>
@@ -962,6 +997,10 @@ function PreviewDropdown({
   displayValue,
   placeholder,
   options,
+  className = '',
+  triggerClassName = '',
+  menuClassName = '',
+  triggerContent = null,
   menuMode = 'overlay',
   open,
   disabled = false,
@@ -969,6 +1008,10 @@ function PreviewDropdown({
   onSelect,
 }) {
   const wrapperRef = useRef(null)
+  const resolvedTriggerContent =
+    typeof triggerContent === 'function'
+      ? triggerContent({ open, disabled, value, displayValue })
+      : triggerContent
 
   useEffect(() => {
     if (!open) {
@@ -990,11 +1033,11 @@ function PreviewDropdown({
   return (
     <div
       ref={wrapperRef}
-      className={`aurora-preview-dropdown mt-3 ${menuMode === 'flow' ? 'is-flow-menu' : ''}`.trim()}
+      className={`aurora-preview-dropdown mt-3 ${menuMode === 'flow' ? 'is-flow-menu' : ''} ${className}`.trim()}
     >
       <button
         type="button"
-        className={`aurora-preview-trigger ${open ? 'is-open' : ''}`}
+        className={`aurora-preview-trigger ${open ? 'is-open' : ''} ${triggerClassName}`.trim()}
         disabled={disabled}
         onClick={() => {
           if (!disabled) {
@@ -1003,18 +1046,20 @@ function PreviewDropdown({
         }}
         aria-expanded={open ? 'true' : 'false'}
       >
-        <span className={`aurora-preview-trigger-label ${displayValue || value ? '' : 'is-placeholder'}`}>
-          {displayValue || value || placeholder}
-        </span>
-        <span className="aurora-preview-select-icon" aria-hidden="true">
-          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m5 7 5 5 5-5" />
-          </svg>
-        </span>
+        {resolvedTriggerContent || (
+          <>
+            <span className={`aurora-preview-trigger-label ${displayValue || value ? '' : 'is-placeholder'}`}>
+              {displayValue || value || placeholder}
+            </span>
+            <span className="aurora-preview-select-icon" aria-hidden="true">
+              <PreviewChevronIcon />
+            </span>
+          </>
+        )}
       </button>
 
       {open && !disabled ? (
-        <div className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''}`.trim()}>
+        <div className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''} ${menuClassName}`.trim()}>
           {options.map((option) => {
             const normalizedOption =
               typeof option === 'string'
