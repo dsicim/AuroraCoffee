@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
-import { fetchManagerProductComments } from '../lib/comments'
+import { fetchManagerProductComments, moderateProductComment } from '../lib/comments'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {
@@ -13,19 +13,24 @@ import {
 
 const moderationScopeOptions = [
   {
-    value: 'pending',
-    label: 'Pending',
-    description: 'Comments and edits waiting for moderation review.',
-  },
-  {
     value: 'all',
     label: 'All',
     description: 'Approved, pending, rejected, and edit states for the selected product.',
   },
   {
+    value: 'pending',
+    label: 'Pending',
+    description: 'Comments and edits waiting for moderation review.',
+  },
+  {
     value: 'approved',
     label: 'Approved',
     description: 'The storefront-visible comment set for the selected product.',
+  },
+  {
+    value: 'rejected',
+    label: 'Rejected',
+    description: 'Rejected comments and rejected edits that can still be reviewed or restored.',
   },
 ]
 
@@ -466,7 +471,14 @@ function CommentSnapshotCard({
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-7" style={{ color: bodyColor }}>
+      <p
+        className="mt-4 text-sm leading-7"
+        style={{
+          color: bodyColor,
+          overflowWrap: 'anywhere',
+          wordBreak: 'break-word',
+        }}
+      >
         {snapshot.comment}
       </p>
 
@@ -490,6 +502,12 @@ export default function ProductManagerPage() {
     key: '',
     comments: [],
     error: '',
+  })
+  const [moderationActionState, setModerationActionState] = useState({
+    recordId: '',
+    action: '',
+    error: '',
+    success: '',
   })
 
   const lowStockProducts = useMemo(
@@ -553,6 +571,62 @@ export default function ProductManagerPage() {
     setModerationScope(nextScope)
   }
 
+  function handleModerationAction(record, action) {
+    const commentId = Number(record?.meta?.id)
+
+    if (!Number.isFinite(commentId) || commentId <= 0 || !activeModerationKey) {
+      return
+    }
+
+    setModerationActionState({
+      recordId: record.id,
+      action,
+      error: '',
+      success: '',
+    })
+
+    void (async () => {
+      try {
+        const result = await moderateProductComment(commentId, action)
+
+        try {
+          const comments = await fetchManagerProductComments(
+            activeModerationProductId,
+            moderationScope,
+          )
+
+          setModerationResult({
+            key: activeModerationKey,
+            comments,
+            error: '',
+          })
+        } catch (fetchError) {
+          setModerationResult((current) => ({
+            key: activeModerationKey,
+            comments: current.key === activeModerationKey ? current.comments : [],
+            error: fetchError?.message || 'Could not refresh comment moderation data.',
+          }))
+        }
+
+        setModerationActionState({
+          recordId: record.id,
+          action: '',
+          error: '',
+          success:
+            result?.msg ||
+            `Comment ${action === 'approve' ? 'approved' : 'rejected'} successfully.`,
+        })
+      } catch (actionError) {
+        setModerationActionState({
+          recordId: record.id,
+          action: '',
+          error: actionError?.message || 'Could not update comment status.',
+          success: '',
+        })
+      }
+    })()
+  }
+
   useEffect(() => {
     if (!activeModerationKey) {
       return
@@ -588,6 +662,15 @@ export default function ProductManagerPage() {
       active = false
     }
   }, [activeModerationKey, activeModerationProductId, moderationScope])
+
+  useEffect(() => {
+    setModerationActionState({
+      recordId: '',
+      action: '',
+      error: '',
+      success: '',
+    })
+  }, [activeModerationKey])
 
   return (
     <RoleOverviewLayout
@@ -768,7 +851,13 @@ export default function ProductManagerPage() {
               />
             ) : !moderationComments.length ? (
               <SectionEmptyState
-                title={`No ${moderationScope === 'all' ? 'comment records' : moderationScope} comments found`}
+                title={`No ${
+                  moderationScope === 'all'
+                    ? 'comment records'
+                    : moderationScope === 'rejected'
+                      ? 'rejected comments'
+                      : moderationScope
+                } found`}
                 description={
                   allProductsSelected
                     ? 'The catalog-wide feed is empty for this scope.'
@@ -777,53 +866,98 @@ export default function ProductManagerPage() {
               />
             ) : (
               <div className="mt-6 space-y-4">
-                {moderationComments.map((record) => (
-                  <article key={record.id} className="aurora-ops-card p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                          {record.meta.userName || 'Anonymous'}
-                        </p>
-                        <p className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">
-                          {getCommentStatusLabel(record.meta.status)}
+                {moderationComments.map((record) => {
+                  const normalizedStatus = String(record.meta.status || '').trim().toLowerCase()
+                  const recordHasEndpointId = Number.isFinite(Number(record.meta.id)) && Number(record.meta.id) > 0
+                  const recordActionBusy = moderationActionState.recordId === record.id && Boolean(moderationActionState.action)
+                  const approveDisabled = recordActionBusy || !recordHasEndpointId || normalizedStatus === 'approved'
+                  const rejectDisabled =
+                    recordActionBusy ||
+                    !recordHasEndpointId ||
+                    normalizedStatus === 'rejected' ||
+                    normalizedStatus === 'edit_rejected'
+                  const actionHint = recordHasEndpointId
+                    ? 'Use approve or reject to update the current moderation state.'
+                    : 'This view does not expose comment IDs. Switch to Pending or All to moderate this record.'
+                  const actionSuccess =
+                    moderationActionState.recordId === record.id
+                      ? moderationActionState.success
+                      : ''
+                  const actionError =
+                    moderationActionState.recordId === record.id
+                      ? moderationActionState.error
+                      : ''
+
+                  return (
+                    <article key={record.id} className="aurora-ops-card p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                            {record.meta.userName || 'Anonymous'}
+                          </p>
+                          <p className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">
+                            {getCommentStatusLabel(record.meta.status)}
+                          </p>
+                        </div>
+                        <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
+                          <p>{moderationSelectionLabel || 'Selected product'}</p>
+                          {record.meta.id ? <p>Comment #{record.meta.id}</p> : null}
+                        </div>
+                      </div>
+
+                      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                        <CommentSnapshotCard
+                          title={record.upcoming ? 'Visible version' : 'Comment snapshot'}
+                          snapshot={record.existing}
+                          themeStyles={selectedProductTheme}
+                          resolvedTheme={resolvedTheme}
+                        />
+                        <CommentSnapshotCard
+                          title="Pending version"
+                          snapshot={record.upcoming}
+                          tone="upcoming"
+                          themeStyles={selectedProductTheme}
+                          resolvedTheme={resolvedTheme}
+                        />
+                      </div>
+
+                      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[rgba(208,193,178,0.32)] pt-4">
+                        <LiquidGlassButton
+                          variant="secondary"
+                          size="compact"
+                          disabled={approveDisabled}
+                          loading={recordActionBusy && moderationActionState.action === 'approve'}
+                          onClick={() => {
+                            handleModerationAction(record, 'approve')
+                          }}
+                        >
+                          Approve
+                        </LiquidGlassButton>
+                        <LiquidGlassButton
+                          variant="danger"
+                          size="compact"
+                          disabled={rejectDisabled}
+                          loading={recordActionBusy && moderationActionState.action === 'reject'}
+                          onClick={() => {
+                            handleModerationAction(record, 'reject')
+                          }}
+                        >
+                          Reject
+                        </LiquidGlassButton>
+                        <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                          {actionHint}
                         </p>
                       </div>
-                      <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
-                        <p>{moderationSelectionLabel || 'Selected product'}</p>
-                        {record.meta.id ? <p>Comment #{record.meta.id}</p> : null}
-                      </div>
-                    </div>
 
-                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
-                      <CommentSnapshotCard
-                        title={record.upcoming ? 'Visible version' : 'Comment snapshot'}
-                        snapshot={record.existing}
-                        themeStyles={selectedProductTheme}
-                        resolvedTheme={resolvedTheme}
-                      />
-                      <CommentSnapshotCard
-                        title="Pending version"
-                        snapshot={record.upcoming}
-                        tone="upcoming"
-                        themeStyles={selectedProductTheme}
-                        resolvedTheme={resolvedTheme}
-                      />
-                    </div>
-
-                    <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[rgba(208,193,178,0.32)] pt-4">
-                      <LiquidGlassButton variant="secondary" size="compact" disabled>
-                        Approve
-                      </LiquidGlassButton>
-                      <LiquidGlassButton variant="danger" size="compact" disabled>
-                        Reject
-                      </LiquidGlassButton>
-                      <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                        Action buttons stay disabled until the backend exposes a comment status
-                        endpoint.
-                      </p>
-                    </div>
-                  </article>
-                ))}
+                      {actionError ? (
+                        <div className="aurora-message aurora-message-error mt-4">{actionError}</div>
+                      ) : null}
+                      {actionSuccess ? (
+                        <div className="aurora-message aurora-message-success mt-4">{actionSuccess}</div>
+                      ) : null}
+                    </article>
+                  )
+                })}
               </div>
             )}
           </section>

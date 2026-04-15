@@ -77,6 +77,18 @@ function inferPrivacyMode(authorName) {
   return 'initials'
 }
 
+function getApprovedSelfCommentStatus(record, currentVisible, hasPendingSnapshot) {
+  if (hasPendingSnapshot) {
+    return record.pending === true ? 'pending_edit' : 'edit_rejected'
+  }
+
+  if (currentVisible) {
+    return 'approved'
+  }
+
+  return record.pending === true ? 'pending' : 'rejected'
+}
+
 function normalizeApprovedCommentEntry(rawComment, index) {
   const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
   const hasCurrentSnapshot = Object.prototype.hasOwnProperty.call(record, 'c')
@@ -109,10 +121,12 @@ function normalizeApprovedCommentEntry(rawComment, index) {
         ? toPublicComment(currentSnapshot)
         : null)
     const prefillSource = editableDraftSnapshot || visibleSnapshot || null
+    const status = getApprovedSelfCommentStatus(record, currentVisible, hasPendingSnapshot)
 
     return {
       comment: null,
       selfComment: {
+        status,
         prefill: {
           comment: prefillSource?.comment || '',
           rating: prefillSource?.rating || 0,
@@ -155,9 +169,15 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
 }
 
 function normalizeManagerCommentRecord(rawComment, index, scope) {
+  const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
+
   if (scope === 'approved') {
+    if (record.self === true && record.visible === false) {
+      return null
+    }
+
     const existing = toPublicComment(
-      normalizeCommentRecord(rawComment?.c || rawComment, index, 'approved'),
+      normalizeCommentRecord(record?.c || record, index, 'approved'),
     )
 
     if (!existing) {
@@ -177,10 +197,14 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
     }
   }
 
-  const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
   const existing = normalizeManagerCommentSnapshot(record?.c, index, 'existing')
   const upcoming = normalizeManagerCommentSnapshot(record?.e, index, 'upcoming')
   const status = normalizeText(record?.status) || (upcoming ? 'pending' : 'approved')
+
+  if (scope === 'pending' && record.self === true && status === 'approved') {
+    return null
+  }
+
   const id = Number(record?.id) || null
   const userId = Number(record?.user_id) || null
   const userName =
@@ -297,28 +321,57 @@ export async function fetchManagerProductComments(productId, scope = 'pending') 
   requireAuthSession()
 
   const normalizedScope =
-    scope === 'approved'
+    scope === 'all'
+      ? 'all'
+      : scope === 'approved'
       ? 'approved'
-      : scope === 'all'
-        ? 'all'
+      : scope === 'rejected'
+        ? 'rejected'
         : 'pending'
   const path =
     normalizedScope === 'approved'
       ? `/comments?id=${normalizedProductId}&approved=true`
       : normalizedScope === 'all'
         ? `/comments?id=${normalizedProductId}`
+        : normalizedScope === 'rejected'
+          ? `/comments/rejected?id=${normalizedProductId}`
         : `/comments/pending?id=${normalizedProductId}`
   const payload = await requestCommentsJson(path)
 
   return Array.isArray(payload?.comments)
     ? payload.comments
-        .map((comment, index) => normalizeManagerCommentRecord(comment, index, normalizedScope))
+        .map((comment, index) =>
+          normalizeManagerCommentRecord(comment, index, normalizedScope),
+        )
         .filter(Boolean)
     : []
 }
 
 export async function fetchProductComments(productId) {
   return fetchApprovedProductComments(productId)
+}
+
+export async function moderateProductComment(commentId, action) {
+  const normalizedCommentId = Number(commentId)
+  const normalizedAction = normalizeText(action).toLowerCase()
+
+  if (!Number.isFinite(normalizedCommentId) || normalizedCommentId <= 0) {
+    throw new CommentRequestError('Invalid comment', 400)
+  }
+
+  if (!['approve', 'reject', 'delete'].includes(normalizedAction)) {
+    throw new CommentRequestError('Invalid moderation action', 400)
+  }
+
+  requireAuthSession()
+
+  return requestCommentsJson('/comments', {
+    method: 'PATCH',
+    body: JSON.stringify({
+      id: normalizedCommentId,
+      action: normalizedAction,
+    }),
+  })
 }
 
 export async function submitProductComment({

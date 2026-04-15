@@ -412,8 +412,9 @@ function ProductReviewPanel({ product }) {
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
   const editorMode = Boolean(selfComment && selfCommentEditing)
   const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
-  const hasVisibleSelfComment = Boolean(selfComment?.visibleSnapshot)
-  const hasPendingSelfComment = Boolean(selfComment?.pendingSnapshot)
+  const selfCommentStatus = String(selfComment?.status || '').trim().toLowerCase()
+  const hasPendingSelfComment = ['pending', 'pending_edit'].includes(selfCommentStatus)
+  const hasRejectedSelfComment = ['rejected', 'edit_rejected'].includes(selfCommentStatus)
   const selfCommentCardSnapshot = selfComment?.visibleSnapshot || selfComment?.pendingSnapshot || null
   let reviewInfoMessage = ''
 
@@ -433,16 +434,24 @@ function ProductReviewPanel({ product }) {
       return ''
     }
 
-    if (selfComment.pendingSnapshot && !selfComment.visibleSnapshot) {
+    if (selfCommentStatus === 'pending') {
       return 'Your current pending comment is loaded here. Saving again will replace that draft with your latest changes.'
+    }
+
+    if (selfCommentStatus === 'rejected') {
+      return 'Your last comment was rejected. Update it here to submit a new version for moderation.'
     }
 
     if (!selfComment.draftAvailable) {
       return 'Your current comment is awaiting approval. The current API does not return that draft text yet, so editing starts from a blank form.'
     }
 
-    if (selfComment.pendingSnapshot && selfComment.visibleSnapshot) {
+    if (selfCommentStatus === 'pending_edit') {
       return 'You already have a pending edit. Saving again will replace that draft with your latest changes.'
+    }
+
+    if (selfCommentStatus === 'edit_rejected') {
+      return 'Your last edit was rejected. Update it here to submit a fresh revision for moderation.'
     }
 
     if (selfComment.visibleSnapshot) {
@@ -450,7 +459,7 @@ function ProductReviewPanel({ product }) {
     }
 
     return ''
-  }, [editorMode, selfComment])
+  }, [editorMode, selfComment, selfCommentStatus])
 
   useEffect(() => {
     const syncSession = () => {
@@ -585,8 +594,14 @@ function ProductReviewPanel({ product }) {
     ? 'Loading approved comments.'
     : editorMode && selfComment?.visibleSnapshot
       ? 'Your published comment is being edited above.'
-      : editorMode && selfComment?.pendingSnapshot
+      : editorMode && selfCommentStatus === 'pending'
         ? 'Your pending comment is loaded in the editor above.'
+      : editorMode && selfCommentStatus === 'rejected'
+        ? 'Your rejected comment draft is loaded in the editor above.'
+      : editorMode && selfCommentStatus === 'edit_rejected'
+        ? 'Your rejected edit is loaded in the editor above.'
+      : editorMode && selfCommentStatus === 'pending_edit'
+        ? 'Your pending edit is loaded in the editor above.'
       : editorMode && !selfComment?.draftAvailable
         ? 'Your current comment is awaiting approval. Use the editor above to resubmit it.'
         : selfComment && !reviews.length
@@ -693,11 +708,15 @@ function ProductReviewPanel({ product }) {
           <div className="aurora-review-card-header">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-[var(--aurora-olive-deep)]">
-                {hasPendingSelfComment
-                  ? hasVisibleSelfComment
-                    ? 'Pending update'
-                    : 'Pending review'
-                  : 'Your comment'}
+                {selfCommentStatus === 'pending'
+                  ? 'Pending review'
+                  : selfCommentStatus === 'rejected'
+                    ? 'Rejected'
+                    : selfCommentStatus === 'pending_edit'
+                      ? 'Pending update'
+                      : selfCommentStatus === 'edit_rejected'
+                        ? 'Rejected update'
+                        : 'Your comment'}
               </p>
               <p className="mt-2 text-sm text-[var(--aurora-text)]">
                 {selfCommentCardSnapshot?.createdAt
@@ -735,11 +754,15 @@ function ProductReviewPanel({ product }) {
               'Your comment is in moderation. Open the editor if you want to replace the current draft.'}
           </p>
 
-          {hasPendingSelfComment ? (
+          {hasPendingSelfComment || hasRejectedSelfComment ? (
             <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-              {hasVisibleSelfComment
+              {selfCommentStatus === 'pending_edit'
                 ? 'A newer version of your comment is waiting for moderation. Use Edit comment to revise or replace that draft.'
-                : 'Your comment is waiting for moderation. Use Edit comment if you want to update the draft before it is reviewed.'}
+                : selfCommentStatus === 'edit_rejected'
+                  ? 'Your last edit was rejected. Use Edit comment to replace it with a new draft.'
+                  : selfCommentStatus === 'rejected'
+                    ? 'Your last comment was rejected. Use Edit comment to revise it and submit again.'
+                    : 'Your comment is waiting for moderation. Use Edit comment if you want to update the draft before it is reviewed.'}
             </p>
           ) : null}
         </AuroraInset>
