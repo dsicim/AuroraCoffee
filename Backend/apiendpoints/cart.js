@@ -65,7 +65,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                const product = await sql.getProductsByIds([body.data.id]).then(async result => {
+                const product = await sql.getProductsByIds(null,[body.data.id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
                         result.products.forEach(p => {
@@ -119,7 +119,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!cart.s) return { s: 400, j: true, d: { e: cart.e || "Failed to fetch cart" } };
                 const item = cart.cart.find(item => item.id === body.data.id);
                 if (!item) return { s: 400, j: true, d: { e: "Item not found in cart" } };
-                const product = await sql.getProductsByIds([item.product_id]).then(async result => {
+                const product = await sql.getProductsByIds(null, [item.product_id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
                         result.products.forEach(p => {
@@ -185,7 +185,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             cartData.forEach(item => {
                 if (item.id && !productsMentioned.includes(item.id) && !isNaN(parseInt(item.id))) productsMentioned.push(parseInt(item.id));
             });
-            const products = (productsMentioned.length > 0) ? await sql.getProductsByIds(productsMentioned).then(async result => {
+            const products = (productsMentioned.length > 0) ? await sql.getProductsByIds(null, productsMentioned).then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
                     }

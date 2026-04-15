@@ -482,7 +482,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (internalIssue) return { s: 500, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Internal data integrity issue detected in cart information", resolution: "Please remove identical items with identical options and quantities from your cart and then try again." } } };
             if (cartTampered) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart has been modified by the same user from another device", resolution: "Please confirm your up-to date cart contents before confirming your order." } } };
-            let productslist = await sql.getProductsByIds(productsMentioned).then(result => {
+            let productslist = await sql.getProductsByIds(null,productsMentioned).then(result => {
                 if (result.success) return { s: true, products: result.products, idsnotfound: result.idsnotfound };
                 else {
                     return { s: false, e: result };
