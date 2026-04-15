@@ -52,6 +52,81 @@ function normalizeCommentRecord(rawComment, index) {
   }
 }
 
+function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
+  const author = normalizeText(snapshot?.name) || 'Anonymous'
+  const comment = normalizeText(snapshot?.text)
+  const createdAt = normalizeText(snapshot?.time)
+  const editedAt = normalizeText(snapshot?.edit) || null
+  const backendRating = Number(snapshot?.rating)
+  const rating = toUiRating(backendRating)
+
+  if (!comment || !rating) {
+    return null
+  }
+
+  return {
+    id: `${createdAt || 'comment'}:${author}:${suffix}:${index}`,
+    author,
+    comment,
+    rating,
+    backendRating: Number.isFinite(backendRating) ? backendRating : toBackendRating(rating),
+    createdAt,
+    editedAt,
+  }
+}
+
+function normalizeManagerCommentRecord(rawComment, index, scope) {
+  if (scope === 'approved') {
+    const existing = normalizeCommentRecord(rawComment, index)
+
+    if (!existing) {
+      return null
+    }
+
+    return {
+      id: existing.id,
+      meta: {
+        id: null,
+        userId: null,
+        userName: existing.author,
+        status: 'approved',
+      },
+      existing,
+      upcoming: null,
+    }
+  }
+
+  const meta = rawComment?.comment && typeof rawComment.comment === 'object'
+    ? rawComment.comment
+    : {}
+  const existing = normalizeManagerCommentSnapshot(rawComment?.existing, index, 'existing')
+  const upcoming = normalizeManagerCommentSnapshot(rawComment?.upcoming, index, 'upcoming')
+  const status = normalizeText(meta?.status) || (upcoming ? 'pending' : 'approved')
+  const id = Number(meta?.id) || null
+  const userId = Number(meta?.user_id) || null
+  const userName =
+    normalizeText(meta?.user_name) ||
+    existing?.author ||
+    upcoming?.author ||
+    'Anonymous'
+
+  if (!existing && !upcoming) {
+    return null
+  }
+
+  return {
+    id: String(id || `${status}:${userName}:${index}`),
+    meta: {
+      id,
+      userId,
+      userName,
+      status,
+    },
+    existing,
+    upcoming,
+  }
+}
+
 export class CommentRequestError extends Error {
   constructor(message, status = 500, details = null) {
     super(message)
@@ -62,12 +137,12 @@ export class CommentRequestError extends Error {
 }
 
 async function requestCommentsJson(path, options = {}) {
-  const { auth = false, headers, ...fetchOptions } = options
+  const { headers, ...fetchOptions } = options
   const response = await fetch(buildApiUrl(path), {
     ...fetchOptions,
     headers: {
       ...(fetchOptions.body ? { 'Content-Type': 'application/json' } : {}),
-      ...(auth ? getAuthorizationHeaders() : {}),
+      ...getAuthorizationHeaders(),
       ...(headers || {}),
     },
   })
@@ -85,7 +160,13 @@ async function requestCommentsJson(path, options = {}) {
   return data
 }
 
-export async function fetchProductComments(productId) {
+function requireAuthSession() {
+  if (!getAuthSession()?.token) {
+    throw new CommentRequestError('Unauthorized', 401)
+  }
+}
+
+export async function fetchApprovedProductComments(productId) {
   const normalizedProductId = Number(productId)
 
   if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
@@ -101,6 +182,40 @@ export async function fetchProductComments(productId) {
         .map((comment, index) => normalizeCommentRecord(comment, index))
         .filter(Boolean)
     : []
+}
+
+export async function fetchManagerProductComments(productId, scope = 'pending') {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    return []
+  }
+
+  requireAuthSession()
+
+  const normalizedScope =
+    scope === 'approved'
+      ? 'approved'
+      : scope === 'all'
+        ? 'all'
+        : 'pending'
+  const path =
+    normalizedScope === 'approved'
+      ? `/comments?id=${normalizedProductId}&approved=true`
+      : normalizedScope === 'all'
+        ? `/comments?id=${normalizedProductId}`
+        : `/comments/pending?id=${normalizedProductId}`
+  const payload = await requestCommentsJson(path)
+
+  return Array.isArray(payload?.comments)
+    ? payload.comments
+        .map((comment, index) => normalizeManagerCommentRecord(comment, index, normalizedScope))
+        .filter(Boolean)
+    : []
+}
+
+export async function fetchProductComments(productId) {
+  return fetchApprovedProductComments(productId)
 }
 
 export async function submitProductComment({
@@ -130,13 +245,10 @@ export async function submitProductComment({
     throw new CommentRequestError('Privacy setting is required', 400)
   }
 
-  if (!getAuthSession()?.token) {
-    throw new CommentRequestError('Unauthorized', 401)
-  }
+  requireAuthSession()
 
   return requestCommentsJson('/comments', {
     method: 'POST',
-    auth: true,
     body: JSON.stringify({
       id: normalizedProductId,
       rating: backendRating,

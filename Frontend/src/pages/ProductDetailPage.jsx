@@ -14,7 +14,7 @@ import {
   getCurrentUserSnapshot,
 } from '../lib/auth'
 import { addCartItem } from '../lib/cart'
-import { fetchProductComments, submitProductComment } from '../lib/comments'
+import { fetchApprovedProductComments, submitProductComment } from '../lib/comments'
 import { formatCurrency } from '../lib/currency'
 import {
   getProductAvailability,
@@ -487,7 +487,7 @@ function ProductReviewPanel({ product }) {
     setCommentsLoading(true)
     setCommentsError('')
 
-    void fetchProductComments(product.id)
+    void fetchApprovedProductComments(product.id)
       .then((nextReviews) => {
         if (!active) {
           return
@@ -572,7 +572,7 @@ function ProductReviewPanel({ product }) {
         setReviewFeedback('Your comment was submitted and is awaiting approval.')
 
         try {
-          const nextReviews = await fetchProductComments(product.id)
+          const nextReviews = await fetchApprovedProductComments(product.id)
           setReviews(nextReviews)
           setCommentsError('')
         } catch (error) {

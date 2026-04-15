@@ -1,83 +1,270 @@
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
-import { formatCurrency } from '../lib/currency'
-import { getProductAvailability, getProductCategories, useProductCatalog } from '../lib/products'
+import { fetchManagerProductComments } from '../lib/comments'
+import {
+  getProductAvailability,
+  getProductCategories,
+  useProductCatalog,
+} from '../lib/products'
+
+const moderationScopeOptions = [
+  {
+    value: 'pending',
+    label: 'Pending',
+    description: 'Comments and edits waiting for moderation review.',
+  },
+  {
+    value: 'all',
+    label: 'All',
+    description: 'Approved, pending, rejected, and edit states for the selected product.',
+  },
+  {
+    value: 'approved',
+    label: 'Approved',
+    description: 'The storefront-visible comment set for the selected product.',
+  },
+]
+
+function formatCommentDate(value) {
+  try {
+    return new Intl.DateTimeFormat('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }).format(new Date(value))
+  } catch {
+    return 'Unknown date'
+  }
+}
+
+function formatCommentRating(value) {
+  if (!value) {
+    return '0'
+  }
+
+  return Number.isInteger(value) ? `${value}` : value.toFixed(1)
+}
+
+function getCommentStatusLabel(status) {
+  switch (String(status || '').trim().toLowerCase()) {
+    case 'pending':
+      return 'Pending review'
+    case 'pending_edit':
+      return 'Pending edit'
+    case 'edit_rejected':
+      return 'Edit rejected'
+    case 'rejected':
+      return 'Rejected'
+    case 'approved':
+      return 'Approved'
+    default:
+      return String(status || 'Unknown')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\b\w/g, (character) => character.toUpperCase())
+  }
+}
+
+function ManagerMetricCard({ label, value, detail }) {
+  return (
+    <div className="aurora-summary-card p-6">
+      <div className="aurora-widget-body">
+        <div className="aurora-widget-heading">
+          <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+            {label}
+          </p>
+          <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+            {value}
+          </p>
+        </div>
+        <p className="text-sm leading-7 text-[var(--aurora-text)]">{detail}</p>
+      </div>
+    </div>
+  )
+}
+
+function SectionEmptyState({ title, description }) {
+  return (
+    <div className="aurora-ops-card mt-6 border-dashed px-6 py-10 text-center">
+      <p className="font-display text-3xl text-[var(--aurora-text-strong)]">{title}</p>
+      {description ? (
+        <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
+          {description}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+function CommentSnapshotCard({ title, snapshot, tone = 'neutral' }) {
+  if (!snapshot) {
+    return null
+  }
+
+  const toneClassName =
+    tone === 'upcoming'
+      ? 'border-[rgba(133,176,142,0.28)] bg-[rgba(232,241,233,0.72)]'
+      : 'border-[rgba(208,193,178,0.42)] bg-[rgba(255,250,246,0.84)]'
+
+  return (
+    <div className={`rounded-[1.8rem] border px-5 py-4 ${toneClassName}`.trim()}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+            {title}
+          </p>
+          <p className="mt-3 text-base font-semibold text-[var(--aurora-text-strong)]">
+            {snapshot.author}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+            {formatCommentRating(snapshot.rating)} / 5
+          </p>
+          <p className="mt-2 text-xs uppercase tracking-[0.2em] text-[var(--aurora-text)]">
+            Backend {snapshot.backendRating || '—'}/10
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">{snapshot.comment}</p>
+
+      <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em] text-[var(--aurora-text)]">
+        <span>Created {formatCommentDate(snapshot.createdAt)}</span>
+        {snapshot.editedAt ? <span>Edited {formatCommentDate(snapshot.editedAt)}</span> : null}
+      </div>
+    </div>
+  )
+}
 
 export default function ProductManagerPage() {
-  const { products, loaded, loading, error } = useProductCatalog()
-  const lowStockProducts = products.filter(
-    (product) => product.stock > 0 && product.stock <= 3,
+  const { products, loading, error } = useProductCatalog()
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [moderationScope, setModerationScope] = useState('pending')
+  const [moderationResult, setModerationResult] = useState({
+    key: '',
+    comments: [],
+    error: '',
+  })
+
+  const lowStockProducts = useMemo(
+    () =>
+      products
+        .filter((product) => product.stock > 0 && product.stock <= 3)
+        .sort((left, right) => left.stock - right.stock),
+    [products],
   )
-  const soldOutProducts = products.filter(
-    (product) => !getProductAvailability(product).hasStock,
+  const soldOutCount = useMemo(
+    () => products.filter((product) => !getProductAvailability(product).hasStock).length,
+    [products],
   )
-  const categories = getProductCategories(products)
-  const highestStockProduct = [...products].sort((left, right) => right.stock - left.stock)[0]
+  const categoryCount = useMemo(
+    () => Math.max(0, getProductCategories(products).length - 1),
+    [products],
+  )
+  const moderationProducts = useMemo(
+    () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
+    [products],
+  )
+  const selectedProduct = useMemo(
+    () =>
+      moderationProducts.find((product) => String(product.id) === selectedProductId) || null,
+    [moderationProducts, selectedProductId],
+  )
+  const activeModerationProductId = selectedProduct ? selectedProductId : ''
+  const activeModerationKey = activeModerationProductId
+    ? `${activeModerationProductId}:${moderationScope}`
+    : ''
+  const moderationScopeDescription =
+    moderationScopeOptions.find((option) => option.value === moderationScope)?.description ||
+    ''
+  const moderationComments =
+    moderationResult.key === activeModerationKey ? moderationResult.comments : []
+  const moderationError =
+    moderationResult.key === activeModerationKey ? moderationResult.error : ''
+  const moderationLoading =
+    Boolean(activeModerationKey) && moderationResult.key !== activeModerationKey
+  const inventoryStatus =
+    error || (loading ? 'Syncing backend catalog.' : 'Backend-backed catalog is active.')
+
+  function handleModerationProductChange(event) {
+    setSelectedProductId(event.target.value)
+  }
+
+  function handleModerationScopeChange(nextScope) {
+    setModerationScope(nextScope)
+  }
+
+  useEffect(() => {
+    if (!activeModerationKey) {
+      return
+    }
+
+    let active = true
+
+    void fetchManagerProductComments(activeModerationProductId, moderationScope)
+      .then((comments) => {
+        if (!active) {
+          return
+        }
+
+        setModerationResult({
+          key: activeModerationKey,
+          comments,
+          error: '',
+        })
+      })
+      .catch((fetchError) => {
+        if (!active) {
+          return
+        }
+
+        setModerationResult({
+          key: activeModerationKey,
+          comments: [],
+          error: fetchError?.message || 'Could not load comment moderation data.',
+        })
+      })
+
+    return () => {
+      active = false
+    }
+  }, [activeModerationKey, activeModerationProductId, moderationScope])
 
   return (
     <RoleOverviewLayout
       eyebrow="Product manager"
-      title="Keep the catalog coherent, stocked, and ready to extend"
-      description="This landing page is centered on the live catalog: product coverage, low-stock visibility, and current inventory state."
+      title="Manage the live catalog"
+      description="Use this page to watch inventory pressure and inspect product-scoped comment queues without extra dashboard filler."
     >
-      <div className="grid gap-8 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-8">
-          <section className="aurora-summary-strip">
-            <div className="aurora-summary-lead p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="aurora-kicker">Catalog health</p>
-                  <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                    {loading ? 'Loading' : `${lowStockProducts.length} low-stock product${lowStockProducts.length === 1 ? '' : 's'}`}
-                  </h2>
-                </div>
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {error || 'Inventory risk is derived from the current backend product feed.'}
-                </p>
-              </div>
-            </div>
+      <div className="space-y-8">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <ManagerMetricCard
+            label="Products"
+            value={loading && !products.length ? '—' : products.length}
+            detail="Catalog items currently visible from the backend feed."
+          />
+          <ManagerMetricCard
+            label="Categories"
+            value={loading && !products.length ? '—' : categoryCount}
+            detail="Customer-facing product groupings currently represented."
+          />
+          <ManagerMetricCard
+            label="Low stock"
+            value={loading && !products.length ? '—' : lowStockProducts.length}
+            detail="Products with one to three units left."
+          />
+          <ManagerMetricCard
+            label="Sold out"
+            value={loading && !products.length ? '—' : soldOutCount}
+            detail="Products that currently have no available stock."
+          />
+        </section>
 
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Products
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {loaded ? products.length : '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
+        <p className="text-sm leading-7 text-[var(--aurora-text)]">{inventoryStatus}</p>
 
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Categories
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {loaded ? Math.max(0, categories.length - 1) : '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="aurora-summary-card p-6">
-              <div className="aurora-widget-body">
-                <div className="aurora-widget-heading">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Sold out
-                  </p>
-                  <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
-                    {loaded ? soldOutProducts.length : '—'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
-
+        <div className="grid gap-8 xl:grid-cols-[0.82fr_1.18fr]">
           <section id="stock-watch" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
@@ -96,91 +283,165 @@ export default function ProductManagerPage() {
               </Link>
             </div>
 
-            {!lowStockProducts.length ? (
-              <div className="aurora-ops-card mt-8 border-dashed px-6 py-10 text-center">
-                <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
-                  No low-stock products right now
-                </p>
-              </div>
+            <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+              This list stays focused on products with one to three units left. Sold-out items are
+              tracked in the summary row above.
+            </p>
+
+            {loading && !products.length ? (
+              <SectionEmptyState
+                title="Loading catalog"
+                description="Fetching the current backend product feed."
+              />
+            ) : !lowStockProducts.length ? (
+              <SectionEmptyState
+                title="No low-stock products"
+                description="Nothing is currently in the one to three unit range."
+              />
             ) : (
-              <div className="mt-8 space-y-4">
-                {lowStockProducts
-                  .sort((left, right) => left.stock - right.stock)
-                  .slice(0, 6)
-                  .map((product) => (
-                    <article key={product.slug} className="aurora-ops-card p-5">
-                      <div className="aurora-widget-header">
-                        <div className="aurora-widget-heading">
-                          <p className="font-semibold text-[var(--aurora-text-strong)]">
-                            {product.name}
-                          </p>
-                          <p className="text-sm text-[var(--aurora-text)]">
-                            {product.categoryName || product.parentCategoryName || 'Catalog'}
-                          </p>
-                        </div>
-                        <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                          {product.stock} left
-                        </p>
-                      </div>
-                    </article>
-                  ))}
+              <div className="mt-6 space-y-3">
+                {lowStockProducts.slice(0, 8).map((product) => (
+                  <article
+                    key={product.slug}
+                    className="aurora-ops-card flex items-center justify-between gap-4 p-5"
+                  >
+                    <div>
+                      <p className="font-semibold text-[var(--aurora-text-strong)]">
+                        {product.name}
+                      </p>
+                      <p className="mt-1 text-sm leading-7 text-[var(--aurora-text)]">
+                        {product.categoryName || product.parentCategoryName || 'Catalog'}
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                      {product.stock} left
+                    </p>
+                  </article>
+                ))}
               </div>
             )}
           </section>
-        </div>
 
-        <div className="space-y-8">
-          <section className="aurora-ops-panel p-8">
-            <div className="aurora-widget-body">
+          <section id="comment-moderation" className="aurora-ops-panel p-8">
+            <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Catalog pulse
+                  Comment moderation
                 </p>
+                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                  Inspect comment states by product
+                </h2>
               </div>
-              <div className="space-y-4 text-sm leading-7 text-[var(--aurora-text)]">
-                <div className="aurora-ops-card px-5 py-4">
-                  <p className="font-semibold text-[var(--aurora-text-strong)]">
-                    Category coverage
-                  </p>
-                  <p className="mt-2">{Math.max(0, categories.length - 1)} customer-facing categories are currently represented.</p>
-                </div>
-                <div className="aurora-ops-card px-5 py-4">
-                  <p className="font-semibold text-[var(--aurora-text-strong)]">
-                    Highest stock product
-                  </p>
-                  <p className="mt-2">
-                    {highestStockProduct?.name || 'No product data'} · {highestStockProduct ? formatCurrency(highestStockProduct.price) : formatCurrency(0)}
-                  </p>
-                </div>
-                <div className="aurora-ops-card px-5 py-4">
-                  <p className="font-semibold text-[var(--aurora-text-strong)]">
-                    Loading state
-                  </p>
-                  <p className="mt-2">{loading ? 'Syncing backend catalog.' : error || 'Backend-backed catalog is active.'}</p>
+            </div>
+
+            <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+              <label className="block">
+                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                  Product
+                </span>
+                <select
+                  className="mt-3 w-full rounded-[1.6rem] border border-[rgba(208,193,178,0.38)] bg-[rgba(255,252,248,0.86)] px-4 py-3 text-sm font-semibold text-[var(--aurora-text-strong)] outline-none transition focus:border-[rgba(133,176,142,0.44)] focus:ring-2 focus:ring-[rgba(133,176,142,0.18)]"
+                  value={activeModerationProductId}
+                  onChange={handleModerationProductChange}
+                >
+                  <option value="">Select a product</option>
+                  {moderationProducts.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                  Scope
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {moderationScopeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      className={`aurora-pill ${moderationScope === option.value ? 'aurora-pill-active' : ''}`.trim()}
+                      onClick={() => handleModerationScopeChange(option.value)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-          </section>
 
-          <section className="aurora-solid-plate rounded-[2.5rem] p-8">
-            <div className="aurora-widget-body">
-              <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Quick actions
-                </p>
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              {moderationScopeDescription}
+            </p>
+
+            {moderationError ? (
+              <div className="aurora-message aurora-message-error mt-6">{moderationError}</div>
+            ) : null}
+
+            {!selectedProduct ? (
+              <SectionEmptyState
+                title="Select a product"
+                description="The backend comment endpoints are product-scoped, so moderation starts after you choose a catalog item."
+              />
+            ) : moderationLoading ? (
+              <SectionEmptyState
+                title={`Loading ${moderationScope} comments`}
+                description=""
+              />
+            ) : !moderationComments.length ? (
+              <SectionEmptyState
+                title={`No ${moderationScope === 'all' ? 'comment records' : moderationScope} comments found`}
+                description={`${selectedProduct.name} does not currently have entries in this queue.`}
+              />
+            ) : (
+              <div className="mt-6 space-y-4">
+                {moderationComments.map((record) => (
+                  <article key={record.id} className="aurora-ops-card p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                          {record.meta.userName || 'Anonymous'}
+                        </p>
+                        <p className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">
+                          {getCommentStatusLabel(record.meta.status)}
+                        </p>
+                      </div>
+                      <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
+                        <p>{selectedProduct.name}</p>
+                        {record.meta.id ? <p>Comment #{record.meta.id}</p> : null}
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-4 lg:grid-cols-2">
+                      <CommentSnapshotCard
+                        title={record.upcoming ? 'Visible version' : 'Comment snapshot'}
+                        snapshot={record.existing}
+                      />
+                      <CommentSnapshotCard
+                        title="Pending version"
+                        snapshot={record.upcoming}
+                        tone="upcoming"
+                      />
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[rgba(208,193,178,0.32)] pt-4">
+                      <LiquidGlassButton variant="secondary" size="compact" disabled>
+                        Approve
+                      </LiquidGlassButton>
+                      <LiquidGlassButton variant="danger" size="compact" disabled>
+                        Reject
+                      </LiquidGlassButton>
+                      <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                        Action buttons stay disabled until the backend exposes a comment status
+                        endpoint.
+                      </p>
+                    </div>
+                  </article>
+                ))}
               </div>
-              <div className="aurora-widget-actions">
-                <LiquidGlassButton as="a" href="#stock-watch" variant="secondary">
-                  Review low stock
-                </LiquidGlassButton>
-                <LiquidGlassButton as={Link} to="/products" variant="secondary">
-                  Open catalog
-                </LiquidGlassButton>
-                <LiquidGlassButton as={Link} to="/" variant="quiet">
-                  Browse site
-                </LiquidGlassButton>
-              </div>
-            </div>
+            )}
           </section>
         </div>
       </div>
