@@ -1,6 +1,6 @@
 const sql = require("../../Database/server.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
-    if (endpoint.length === 0 && endpoint[0] === "pending") {
+    if (endpoint.length === 0 || endpoint[0] === "pending") {
         if (method === "GET") {
             if (query.id) {
                 const id = parseInt(query.id);
