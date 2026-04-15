@@ -87,7 +87,6 @@ async function handleAPI(method, endpoint, query, body, headers) {
         }
         else currentUser = { e: "Invalid token" };
     }
-    console.log("Current user:", currentUser);
     if (endpoint[0] === "auth") {
         endpoint.shift();
         if (endpoint[0] === "login") {

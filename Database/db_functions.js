@@ -682,13 +682,22 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
         throw new DBError(400, 'Product ID is required');
     }
     try {
+        const params = [productId];
+        let where = `c.product_id = ?`;
+        if (approvedOnly) {
+            where += ` AND (c.status IN ('approved', 'pending_edit', 'edit_rejected')${userId ? ` OR c.user_id = ?` : ``})`;
+            if (userId) params.push(userId);
+        } else if (pendingOnly) {
+            where += ` AND (c.status IN ('pending', 'pending_edit')${userId ? ` OR c.user_id = ?` : ``})`;
+            if (userId) params.push(userId);
+        }
         const [rows] = await pool.execute(`
             SELECT c.*, u.displayname as user_name
             FROM comments c
             JOIN users u ON c.user_id = u.id
-            WHERE c.product_id = ? ${approvedOnly ? "AND (c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND ((c.status = 'pending' OR c.status = 'pending_edit')" : "")}
+            WHERE ${where}
             ORDER BY c.created_at DESC
-        `, userId?[productId, userId] : [productId]);
+        `, params);
         return { success: true, comments: rows };
     } catch (error) {
         console.error('Get comments error:', error);
