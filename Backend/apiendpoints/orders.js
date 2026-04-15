@@ -69,7 +69,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         const order = aes.pjs(decrypted.value);
                         if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                         const allProducts = order.products.map(p => ({ product_id: p.product_id, variant_id: p.variant_id, details: { options: p.options } }));
-                        return await sql.addDeliveredItems(currentUser.id, allProducts).then(result => {
+                        return await sql.addDeliveredItems(result.order.user_id, allProducts).then(result => {
                             if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully. The user now can comment on products." } };
                             else return { s: 500, j:true, d: {e: "An unknown error occurred"} };;
                         }).catch(err => {
