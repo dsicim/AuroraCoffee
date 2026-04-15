@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { authChangeEvent, getAuthSession } from './auth'
 import { buildApiUrl } from './api'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
@@ -6,6 +7,8 @@ export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 let catalogProducts = []
 let catalogProductsLoaded = false
 let productsPromise = null
+let productsPromiseScope = null
+let catalogScope = null
 const productLookupById = new Map()
 
 function dispatchProductCatalogChange(type = 'sync') {
@@ -26,10 +29,52 @@ function clearProductsCache({ emit = true } = {}) {
   catalogProducts = []
   catalogProductsLoaded = false
   productsPromise = null
+  productsPromiseScope = null
+  catalogScope = null
   productLookupById.clear()
 
   if (emit && hadState) {
     dispatchProductCatalogChange('clear')
+  }
+}
+
+function getProductCatalogScope() {
+  const session = getAuthSession()
+
+  if (!session?.token) {
+    return 'guest'
+  }
+
+  return session.email?.trim().toLowerCase() || session.token.trim()
+}
+
+function ensureProductCatalogScope(scope) {
+  if (catalogScope === scope) {
+    return
+  }
+
+  clearProductsCache()
+  catalogScope = scope
+}
+
+function getAuthorizationHeaders() {
+  const session = getAuthSession()
+  return session?.token ? { authorization: session.token } : {}
+}
+
+function getScopedCatalogSnapshot() {
+  const scope = getProductCatalogScope()
+
+  if (catalogScope !== scope) {
+    return {
+      products: [],
+      loaded: false,
+    }
+  }
+
+  return {
+    products: catalogProducts,
+    loaded: catalogProductsLoaded,
   }
 }
 
@@ -208,6 +253,7 @@ function normalizeProduct(rawProduct) {
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
     hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
+    canComment: toBoolean(rawProduct.can_comment ?? rawProduct.canComment),
     options: optionGroups,
     variants,
     taxRate: toNullableNumber(rawProduct.tax_rate ?? rawProduct.taxRate ?? rawProduct.tax),
@@ -241,6 +287,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     parentCategoryName:
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
     hasVariants: incomingProduct.hasVariants ?? existingProduct.hasVariants,
+    canComment: incomingProduct.canComment ?? existingProduct.canComment,
     options: incomingProduct.options?.length ? incomingProduct.options : existingProduct.options,
     variants: incomingProduct.variants?.length ? incomingProduct.variants : existingProduct.variants,
     taxRate: incomingProduct.taxRate ?? existingProduct.taxRate,
@@ -252,7 +299,11 @@ function mergeProductRecord(existingProduct, incomingProduct) {
   }
 }
 
-function updateProductLookup(products) {
+function updateProductLookup(products, scope = catalogScope) {
+  if (scope !== catalogScope) {
+    return []
+  }
+
   const normalizedProducts = products.map(normalizeProduct)
 
   for (const product of normalizedProducts) {
@@ -263,7 +314,11 @@ function updateProductLookup(products) {
   return normalizedProducts
 }
 
-function storeCatalogProducts(products) {
+function storeCatalogProducts(products, scope = catalogScope) {
+  if (scope !== catalogScope) {
+    return []
+  }
+
   const normalizedProducts = products.map(normalizeProduct)
 
   catalogProducts = normalizedProducts
@@ -293,8 +348,14 @@ function hydrateWithKnownSlugs(rawProducts) {
   })
 }
 
-async function requestJson(path) {
-  const response = await fetch(buildApiUrl(path))
+async function requestJson(path, options = {}) {
+  const response = await fetch(buildApiUrl(path), {
+    ...options,
+    headers: {
+      ...getAuthorizationHeaders(),
+      ...(options.headers || {}),
+    },
+  })
   const payload = await response.json().catch(() => ({}))
   const data = payload?.d ?? payload
 
@@ -305,25 +366,35 @@ async function requestJson(path) {
   return data
 }
 
-async function requestProducts() {
+async function requestProducts(scope) {
   const payload = await requestJson('/products/all')
-  const normalizedProducts = storeCatalogProducts(buildSlugMap(payload?.products || []))
+  const normalizedProducts = storeCatalogProducts(buildSlugMap(payload?.products || []), scope)
   return normalizedProducts
 }
 
 export async function fetchAllProducts({ force = false } = {}) {
-  if (!force && productsPromise) {
+  const scope = getProductCatalogScope()
+  ensureProductCatalogScope(scope)
+
+  if (!force && productsPromise && productsPromiseScope === scope) {
     return productsPromise
   }
 
-  productsPromise = requestProducts().finally(() => {
-    productsPromise = null
+  productsPromiseScope = scope
+  productsPromise = requestProducts(scope).finally(() => {
+    if (productsPromiseScope === scope) {
+      productsPromise = null
+      productsPromiseScope = null
+    }
   })
 
   return productsPromise
 }
 
 export async function fetchProductsByIds(ids) {
+  const scope = getProductCatalogScope()
+  ensureProductCatalogScope(scope)
+
   const normalizedIds = Array.from(
     new Set(
       (ids || [])
@@ -346,7 +417,12 @@ export async function fetchProductsByIds(ids) {
 
   const payload = await requestJson(`/products?ids=${normalizedIds.join(',')}`)
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  updateProductLookup(hydratedProducts)
+
+  if (catalogScope !== scope) {
+    return []
+  }
+
+  updateProductLookup(hydratedProducts, scope)
 
   return normalizedIds
     .map((id) => productLookupById.get(id))
@@ -354,6 +430,9 @@ export async function fetchProductsByIds(ids) {
 }
 
 export async function searchProducts(query, sortBy = 'newest') {
+  const scope = getProductCatalogScope()
+  ensureProductCatalogScope(scope)
+
   const normalizedQuery = String(query || '').trim()
 
   if (!normalizedQuery) {
@@ -373,19 +452,21 @@ export async function searchProducts(query, sortBy = 'newest') {
     `/products/search?q=${encodeURIComponent(normalizedQuery)}&s=${encodeURIComponent(backendSort)}`,
   )
   const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
-  const normalizedProducts = updateProductLookup(hydratedProducts)
+
+  if (catalogScope !== scope) {
+    return []
+  }
+
+  const normalizedProducts = updateProductLookup(hydratedProducts, scope)
   return normalizedProducts.map((product) => productLookupById.get(product.id) || product)
 }
 
 export function getCachedProducts() {
-  return catalogProducts
+  return getScopedCatalogSnapshot().products
 }
 
 export function getProductCatalogSnapshot() {
-  return {
-    products: getCachedProducts(),
-    loaded: catalogProductsLoaded,
-  }
+  return getScopedCatalogSnapshot()
 }
 
 export function invalidateProductCatalogCache() {
@@ -523,6 +604,8 @@ export function useProductCatalog() {
 
   useEffect(() => {
     let active = true
+    let loadRequestId = 0
+
     const syncSnapshot = () => {
       if (!active) {
         return
@@ -536,37 +619,56 @@ export function useProductCatalog() {
       }
     }
 
+    const loadProducts = ({ force = false } = {}) => {
+      const requestId = ++loadRequestId
+      setLoading(true)
+
+      return fetchAllProducts({ force })
+        .then((nextProducts) => {
+          if (!active || requestId !== loadRequestId) {
+            return
+          }
+
+          setSnapshot({
+            products: nextProducts,
+            loaded: true,
+          })
+          setError('')
+        })
+        .catch((fetchError) => {
+          if (!active || requestId !== loadRequestId) {
+            return
+          }
+
+          setError(fetchError.message || 'Could not load products')
+        })
+        .finally(() => {
+          if (active && requestId === loadRequestId) {
+            setLoading(false)
+          }
+        })
+    }
+
+    const handleAuthChange = () => {
+      if (!active) {
+        return
+      }
+
+      setSnapshot(getProductCatalogSnapshot())
+      setError('')
+      void loadProducts({ force: true })
+    }
+
     window.addEventListener(productCatalogChangeEvent, syncSnapshot)
+    window.addEventListener(authChangeEvent, handleAuthChange)
     syncSnapshot()
 
-    fetchAllProducts()
-      .then((nextProducts) => {
-        if (!active) {
-          return
-        }
-
-        setSnapshot({
-          products: nextProducts,
-          loaded: true,
-        })
-        setError('')
-      })
-      .catch((fetchError) => {
-        if (!active) {
-          return
-        }
-
-        setError(fetchError.message || 'Could not load products')
-      })
-      .finally(() => {
-        if (active) {
-          setLoading(false)
-        }
-      })
+    void loadProducts()
 
     return () => {
       active = false
       window.removeEventListener(productCatalogChangeEvent, syncSnapshot)
+      window.removeEventListener(authChangeEvent, handleAuthChange)
     }
   }, [])
 

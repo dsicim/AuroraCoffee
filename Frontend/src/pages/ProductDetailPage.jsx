@@ -5,8 +5,16 @@ import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
 import StorefrontLayout from '../components/StorefrontLayout'
-import { authChangeEvent, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthSession,
+  getCurrentUserSnapshot,
+} from '../lib/auth'
 import { addCartItem } from '../lib/cart'
+import { fetchProductComments, submitProductComment } from '../lib/comments'
 import { formatCurrency } from '../lib/currency'
 import {
   getProductAvailability,
@@ -47,10 +55,6 @@ function buildAttributeCards(product) {
     { title: formatDetailAttribute(product.capacity), subtitle: 'Capacity', icon: 'grid' },
     { title: formatDetailAttribute(getProductCategoryLabel(product)), subtitle: 'Category', icon: 'spark' },
   ]
-}
-
-function getReviewStorageKey(slug) {
-  return `aurora-product-review-preview:${slug}`
 }
 
 function normalizeOptionCode(value) {
@@ -215,25 +219,40 @@ function buildSelectedOptionCodes(selectedOptionRecords) {
   return entries.length ? Object.fromEntries(entries) : null
 }
 
-function loadStoredReviews(slug) {
-  if (!slug) {
-    return []
+const reviewPrivacyOptions = [
+  {
+    value: 'initials',
+    label: 'Initials only',
+    description: 'Show initials for each part of your display name.',
+  },
+  {
+    value: 'full',
+    label: 'Full name',
+    description: 'Show your full display name with the comment.',
+  },
+  {
+    value: 'anonymous',
+    label: 'Anonymous',
+    description: 'Hide your name on the published comment.',
+  },
+]
+
+function getReviewPrivacyLabel(value) {
+  return reviewPrivacyOptions.find((option) => option.value === value)?.label || 'Initials only'
+}
+
+function buildReviewPrivacyCode(mode, displayName) {
+  const words = String(displayName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+
+  if (!words.length) {
+    return ''
   }
 
-  try {
-    const rawReviews = window.localStorage.getItem(getReviewStorageKey(slug))
-    const parsedReviews = rawReviews ? JSON.parse(rawReviews) : []
-
-    if (!Array.isArray(parsedReviews)) {
-      return []
-    }
-
-    return parsedReviews
-      .filter((review) => typeof review?.comment === 'string' && Number.isFinite(review?.rating))
-      .slice(0, 6)
-  } catch {
-    return []
-  }
+  const privacyCode = mode === 'full' ? 's' : mode === 'anonymous' ? 'h' : 'i'
+  return words.map(() => privacyCode).join('')
 }
 
 function formatReviewDate(value) {
@@ -306,12 +325,13 @@ function ReviewRatingInput({
   hoverValue,
   onChange,
   onHoverChange,
+  disabled = false,
 }) {
   const activeValue = hoverValue || value
 
   return (
     <div
-      className="aurora-review-rating-picker"
+      className={`aurora-review-rating-picker ${disabled ? 'opacity-60' : ''}`.trim()}
       onMouseLeave={() => {
         onHoverChange(0)
       }}
@@ -332,17 +352,24 @@ function ReviewRatingInput({
                   className={`aurora-review-step-button ${value === step ? 'is-selected' : ''} ${stepIndex === 0 ? 'is-left' : 'is-right'}`}
                   aria-label={`Rate ${step} out of 5`}
                   aria-pressed={value === step ? 'true' : 'false'}
+                  disabled={disabled}
                   onMouseEnter={() => {
-                    onHoverChange(step)
+                    if (!disabled) {
+                      onHoverChange(step)
+                    }
                   }}
                   onFocus={() => {
-                    onHoverChange(step)
+                    if (!disabled) {
+                      onHoverChange(step)
+                    }
                   }}
                   onBlur={() => {
                     onHoverChange(0)
                   }}
                   onClick={() => {
-                    onChange(step)
+                    if (!disabled) {
+                      onChange(step)
+                    }
                   }}
                 />
               ))}
@@ -358,26 +385,75 @@ function ProductReviewPanel({ product }) {
   const location = useLocation()
   const reviewTextareaRef = useRef(null)
   const [session, setSession] = useState(() => getAuthSession())
+  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const [reviewRating, setReviewRating] = useState(0)
   const [hoverReviewRating, setHoverReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
+  const [reviewPrivacy, setReviewPrivacy] = useState('initials')
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
+  const [reviews, setReviews] = useState([])
+  const [commentsLoading, setCommentsLoading] = useState(true)
+  const [commentsError, setCommentsError] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
-  const [localReviews, setLocalReviews] = useState(() => loadStoredReviews(product.slug))
+  const [reviewError, setReviewError] = useState('')
+  const [submitBusy, setSubmitBusy] = useState(false)
   const hasSession = Boolean(session?.token)
+  const currentUser =
+    currentUserState.status === currentUserFetchStatus.ok
+      ? currentUserState.user
+      : null
+  const canComment = Boolean(product?.canComment)
+  const isCurrentUserLoading =
+    hasSession &&
+    (currentUserState.status === currentUserFetchStatus.idle ||
+      currentUserState.status === currentUserFetchStatus.loading)
+  const hasDisplayName = Boolean(currentUser?.displayname?.trim())
+  const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
+  let reviewInfoMessage = ''
+
+  if (hasSession) {
+    if (!canComment) {
+      reviewInfoMessage =
+        'Purchase and delivery are required before you can comment on this product.'
+    } else if (isCurrentUserLoading) {
+      reviewInfoMessage = 'Loading your comment settings.'
+    } else if (!hasDisplayName) {
+      reviewInfoMessage = 'We could not load your profile name. Reload and try again.'
+    }
+  }
 
   useEffect(() => {
     const syncSession = () => {
       setSession(getAuthSession())
+      setCurrentUserState(getCurrentUserSnapshot())
+    }
+
+    const syncCurrentUser = () => {
+      setCurrentUserState(getCurrentUserSnapshot())
     }
 
     window.addEventListener('storage', syncSession)
     window.addEventListener(authChangeEvent, syncSession)
+    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
 
     return () => {
       window.removeEventListener('storage', syncSession)
       window.removeEventListener(authChangeEvent, syncSession)
+      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
     }
   }, [])
+
+  useEffect(() => {
+    if (
+      !session?.token ||
+      (currentUserState.token === session.token &&
+        currentUserState.status !== currentUserFetchStatus.idle)
+    ) {
+      return
+    }
+
+    void fetchCurrentUserResult(session.token)
+  }, [currentUserState.status, currentUserState.token, session?.token])
 
   useEffect(() => {
     if (!reviewFeedback) {
@@ -394,19 +470,6 @@ function ProductReviewPanel({ product }) {
   }, [reviewFeedback])
 
   useEffect(() => {
-    try {
-      window.localStorage.setItem(
-        getReviewStorageKey(product.slug),
-        JSON.stringify(localReviews),
-      )
-    } catch {
-      return undefined
-    }
-
-    return undefined
-  }, [localReviews, product.slug])
-
-  useEffect(() => {
     const textarea = reviewTextareaRef.current
 
     if (!textarea) {
@@ -416,16 +479,48 @@ function ProductReviewPanel({ product }) {
     textarea.style.height = 'auto'
     textarea.style.height = `${Math.max(textarea.scrollHeight, 136)}px`
     return undefined
-  }, [reviewComment, product.slug])
+  }, [reviewComment, product.id])
+
+  useEffect(() => {
+    let active = true
+
+    setCommentsLoading(true)
+    setCommentsError('')
+
+    void fetchProductComments(product.id)
+      .then((nextReviews) => {
+        if (!active) {
+          return
+        }
+
+        setReviews(nextReviews)
+      })
+      .catch((error) => {
+        if (!active) {
+          return
+        }
+
+        setCommentsError(error?.message || 'Could not load comments.')
+      })
+      .finally(() => {
+        if (active) {
+          setCommentsLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [product.id])
 
   const reviewAverage = useMemo(() => {
-    if (!localReviews.length) {
+    if (!reviews.length) {
       return 0
     }
 
-    const totalRating = localReviews.reduce((sum, review) => sum + review.rating, 0)
-    return totalRating / localReviews.length
-  }, [localReviews])
+    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
+    return totalRating / reviews.length
+  }, [reviews])
 
   const activeReviewValue = hoverReviewRating || reviewRating || reviewAverage
 
@@ -433,31 +528,62 @@ function ProductReviewPanel({ product }) {
     event.preventDefault()
 
     const trimmedComment = reviewComment.trim()
+    const privacy = buildReviewPrivacyCode(reviewPrivacy, currentUser?.displayname)
+
+    setReviewError('')
+    setReviewFeedback('')
 
     if (!reviewRating) {
-      setReviewFeedback('Choose a half-step rating before posting your comment.')
+      setReviewError('Choose a half-step rating before posting your comment.')
       return
     }
 
     if (!trimmedComment) {
-      setReviewFeedback('Write a short comment before posting it.')
+      setReviewError('Write a short comment before posting it.')
       return
     }
 
-    setLocalReviews((current) => [
-      {
-        id: `preview-${Date.now()}`,
-        author: 'You',
-        rating: reviewRating,
-        comment: trimmedComment,
-        createdAt: new Date().toISOString(),
-      },
-      ...current,
-    ].slice(0, 6))
-    setReviewRating(0)
-    setHoverReviewRating(0)
-    setReviewComment('')
-    setReviewFeedback('Your comment was added to this browser preview.')
+    if (reviewFormDisabled) {
+      setReviewError(reviewInfoMessage || 'Commenting is unavailable right now.')
+      return
+    }
+
+    if (!privacy) {
+      setReviewError('We could not determine your comment privacy settings.')
+      return
+    }
+
+    void (async () => {
+      setSubmitBusy(true)
+
+      try {
+        await submitProductComment({
+          productId: product.id,
+          rating: reviewRating,
+          comment: trimmedComment,
+          privacy,
+        })
+
+        setReviewRating(0)
+        setHoverReviewRating(0)
+        setReviewComment('')
+        setReviewPrivacy('initials')
+        setPrivacyMenuOpen(false)
+        setReviewFeedback('Your comment was submitted and is awaiting approval.')
+
+        try {
+          const nextReviews = await fetchProductComments(product.id)
+          setReviews(nextReviews)
+          setCommentsError('')
+        } catch (error) {
+          setCommentsError(error?.message || 'Approved comments could not be refreshed.')
+        }
+      } catch (error) {
+        setReviewError(error?.message || 'Could not post your comment.')
+      } finally {
+        setSubmitBusy(false)
+      }
+    })()
   }
 
   return (
@@ -474,9 +600,11 @@ function ProductReviewPanel({ product }) {
             {formatReviewScore(reviewAverage)}
           </p>
           <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-            {localReviews.length
-              ? `${localReviews.length} saved ${localReviews.length === 1 ? 'comment' : 'comments'} for this product in this browser.`
-              : 'No comments yet. Set the first half-step rating below.'}
+            {commentsLoading && !reviews.length
+              ? 'Loading approved comments for this product.'
+              : reviews.length
+                ? `${reviews.length} approved ${reviews.length === 1 ? 'comment' : 'comments'} for this product.`
+                : 'No approved comments yet.'}
           </p>
         </div>
         <div className="aurora-review-metrics-side">
@@ -503,7 +631,11 @@ function ProductReviewPanel({ product }) {
             <ReviewRatingInput
               value={reviewRating}
               hoverValue={hoverReviewRating}
-              onChange={setReviewRating}
+              disabled={reviewFormDisabled}
+              onChange={(value) => {
+                setReviewRating(value)
+                setReviewError('')
+              }}
               onHoverChange={setHoverReviewRating}
             />
 
@@ -513,10 +645,38 @@ function ProductReviewPanel({ product }) {
             </div>
           </AuroraInset>
 
+          {reviewInfoMessage ? (
+            <p className="aurora-message aurora-message-info">{reviewInfoMessage}</p>
+          ) : null}
+
           <AuroraInset>
-            <label htmlFor="product-review-comment" className="aurora-review-label">
-              Comment
-            </label>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="sm:flex-1">
+                <label htmlFor="product-review-comment" className="aurora-review-label">
+                  Comment
+                </label>
+                <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  Share taste, build quality, or how this product fits into your routine.
+                </p>
+              </div>
+              <div className="sm:w-[18rem]">
+                <span className="aurora-review-label">Name visibility</span>
+                <PreviewDropdown
+                  value={reviewPrivacy}
+                  displayValue={getReviewPrivacyLabel(reviewPrivacy)}
+                  placeholder="Choose visibility"
+                  options={reviewPrivacyOptions}
+                  open={privacyMenuOpen}
+                  disabled={reviewFormDisabled}
+                  onToggle={setPrivacyMenuOpen}
+                  onSelect={(nextValue) => {
+                    setReviewPrivacy(nextValue)
+                    setReviewError('')
+                  }}
+                />
+              </div>
+            </div>
+
             <textarea
               id="product-review-comment"
               ref={reviewTextareaRef}
@@ -524,9 +684,11 @@ function ProductReviewPanel({ product }) {
               rows="5"
               maxLength="320"
               placeholder={`What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`}
+              disabled={reviewFormDisabled}
               value={reviewComment}
               onChange={(event) => {
                 setReviewComment(event.target.value)
+                setReviewError('')
               }}
             />
 
@@ -534,8 +696,13 @@ function ProductReviewPanel({ product }) {
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
                 {reviewComment.length}/320 characters
               </p>
-              <LiquidGlassButton type="submit" size="compact">
-                Post comment
+              <LiquidGlassButton
+                type="submit"
+                size="compact"
+                disabled={reviewFormDisabled}
+                loading={submitBusy}
+              >
+                {submitBusy ? 'Posting...' : 'Post comment'}
               </LiquidGlassButton>
             </div>
           </AuroraInset>
@@ -561,13 +728,19 @@ function ProductReviewPanel({ product }) {
         </AuroraInset>
       )}
 
+      {reviewError ? (
+        <p className="aurora-message aurora-message-error">{reviewError}</p>
+      ) : null}
       {reviewFeedback ? (
         <p className="aurora-message aurora-message-success">{reviewFeedback}</p>
       ) : null}
+      {commentsError ? (
+        <p className="aurora-message aurora-message-error">{commentsError}</p>
+      ) : null}
 
       <div className="aurora-review-list">
-        {localReviews.length ? (
-          localReviews.map((review) => (
+        {reviews.length ? (
+          reviews.map((review) => (
             <AuroraInset key={review.id} className="aurora-review-card">
               <div className="aurora-review-card-header">
                 <div>
@@ -593,7 +766,9 @@ function ProductReviewPanel({ product }) {
         ) : (
           <AuroraInset className="aurora-review-empty">
             <p className="text-base leading-8 text-[var(--aurora-text)]">
-              This space is ready for product comments. Start with a half-step rating and a short note above.
+              {commentsLoading
+                ? 'Loading approved comments.'
+                : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'}
             </p>
           </AuroraInset>
         )}
@@ -608,6 +783,7 @@ function PreviewDropdown({
   placeholder,
   options,
   open,
+  disabled = false,
   onToggle,
   onSelect,
 }) {
@@ -635,7 +811,12 @@ function PreviewDropdown({
       <button
         type="button"
         className={`aurora-preview-trigger ${open ? 'is-open' : ''}`}
-        onClick={() => onToggle(!open)}
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            onToggle(!open)
+          }
+        }}
         aria-expanded={open ? 'true' : 'false'}
       >
         <span className={`aurora-preview-trigger-label ${displayValue || value ? '' : 'is-placeholder'}`}>
@@ -648,7 +829,7 @@ function PreviewDropdown({
         </span>
       </button>
 
-      {open ? (
+      {open && !disabled ? (
         <div className="aurora-preview-menu">
           {options.map((option) => {
             const normalizedOption =
