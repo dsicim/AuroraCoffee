@@ -50,7 +50,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             delete comment.created_at;
                             delete comment.edited_at;
                             delete comment.edited_edited_at;
-                            return {comment, upcoming, existing};
+                            return approvedOnly ? existing : {comment, upcoming, existing};
                         });
                         return { s: 200, j: true, d: { comments: result.comments } };
                     }
