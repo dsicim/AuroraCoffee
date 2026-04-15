@@ -678,7 +678,7 @@ func.setCommentStatus = async function (commentId, status) {
     }
 };
 
-func.getComments = async function (productId, approvedOnly = true, pendingOnly = false, rejectedOnly = false, userId = null) {
+func.getComments = async function (productId, approvedOnly = true, pendingOnly = false, rejectedOnly = false, meOnly = false, userId = null) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -686,7 +686,10 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
         const params = [];
         let where = productId === "all" ? '1' : `c.product_id = ?`;
         if (productId !== "all") params.push(productId);
-        if (approvedOnly) {
+        if (meOnly) {
+            where += ` AND c.user_id = ?`;
+            params.push(userId);
+        } else if (approvedOnly) {
             where += ` AND (c.status IN ('approved', 'pending_edit', 'edit_rejected')${userId ? ` OR c.user_id = ?` : ``})`;
             if (userId) params.push(userId);
         } else if (pendingOnly) {
