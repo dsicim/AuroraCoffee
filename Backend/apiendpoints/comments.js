@@ -34,7 +34,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint.length === 0) {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.rating || !body.data.comment || !body.data.privacy || parseInt(body.data.rating) === NaN || parseInt(body.data.rating) < 1 || parseInt(body.data.rating) > 10) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.rating || !body.data.comment || !body.data.privacy || String(parseInt(body.data.rating)) === "NaN" || parseInt(body.data.rating) < 1 || parseInt(body.data.rating) > 10) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const comment = body.data.comment.trim();
             if (comment.length === 0) return { s: 400, j: true, d: { e: "Comment cannot be empty" } };
             if (comment.length > 2000) return { s: 400, j: true, d: { e: "Comment cannot be longer than 2000 characters" } };
