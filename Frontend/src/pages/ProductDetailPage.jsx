@@ -392,6 +392,7 @@ function ProductReviewPanel({ product }) {
   const [reviewPrivacy, setReviewPrivacy] = useState('initials')
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
   const [reviews, setReviews] = useState([])
+  const [selfComment, setSelfComment] = useState(null)
   const [commentsLoading, setCommentsLoading] = useState(true)
   const [commentsError, setCommentsError] = useState('')
   const [reviewFeedback, setReviewFeedback] = useState('')
@@ -408,6 +409,7 @@ function ProductReviewPanel({ product }) {
     (currentUserState.status === currentUserFetchStatus.idle ||
       currentUserState.status === currentUserFetchStatus.loading)
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
+  const editorMode = Boolean(selfComment)
   const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
   let reviewInfoMessage = ''
 
@@ -421,6 +423,30 @@ function ProductReviewPanel({ product }) {
       reviewInfoMessage = 'We could not load your profile name. Reload and try again.'
     }
   }
+
+  const selfCommentNotice = useMemo(() => {
+    if (!selfComment) {
+      return ''
+    }
+
+    if (selfComment.pendingSnapshot && !selfComment.visibleSnapshot) {
+      return 'Your current pending comment is loaded here. Saving again will replace that draft with your latest changes.'
+    }
+
+    if (!selfComment.draftAvailable) {
+      return 'Your current comment is awaiting approval. The current API does not return that draft text yet, so editing starts from a blank form.'
+    }
+
+    if (selfComment.pendingSnapshot && selfComment.visibleSnapshot) {
+      return 'You already have a pending edit. Saving again will replace that draft with your latest changes.'
+    }
+
+    if (selfComment.visibleSnapshot) {
+      return 'Your current comment is loaded here. Saving will submit an updated version for moderation.'
+    }
+
+    return ''
+  }, [selfComment])
 
   useEffect(() => {
     const syncSession = () => {
@@ -486,14 +512,17 @@ function ProductReviewPanel({ product }) {
 
     setCommentsLoading(true)
     setCommentsError('')
+    setReviews([])
+    setSelfComment(null)
 
     void fetchApprovedProductComments(product.id)
-      .then((nextReviews) => {
+      .then((nextResult) => {
         if (!active) {
           return
         }
 
-        setReviews(nextReviews)
+        setReviews(nextResult.comments || [])
+        setSelfComment(nextResult.selfComment || null)
       })
       .catch((error) => {
         if (!active) {
@@ -511,18 +540,51 @@ function ProductReviewPanel({ product }) {
     return () => {
       active = false
     }
-  }, [product.id])
+  }, [product.id, session?.token])
+
+  useEffect(() => {
+    setHoverReviewRating(0)
+    setPrivacyMenuOpen(false)
+
+    if (!hasSession || !selfComment) {
+      setReviewRating(0)
+      setReviewComment('')
+      setReviewPrivacy('initials')
+      return
+    }
+
+    setReviewRating(selfComment.prefill?.rating || 0)
+    setReviewComment(selfComment.prefill?.comment || '')
+    setReviewPrivacy(selfComment.prefill?.privacyMode || 'initials')
+  }, [hasSession, product.id, selfComment])
+
+  const metricReviews = useMemo(() => {
+    if (selfComment?.visibleSnapshot) {
+      return [selfComment.visibleSnapshot, ...reviews]
+    }
+
+    return reviews
+  }, [reviews, selfComment])
 
   const reviewAverage = useMemo(() => {
-    if (!reviews.length) {
+    if (!metricReviews.length) {
       return 0
     }
 
-    const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0)
-    return totalRating / reviews.length
-  }, [reviews])
+    const totalRating = metricReviews.reduce((sum, review) => sum + review.rating, 0)
+    return totalRating / metricReviews.length
+  }, [metricReviews])
 
   const activeReviewValue = hoverReviewRating || reviewRating || reviewAverage
+  const emptyReviewMessage = commentsLoading
+    ? 'Loading approved comments.'
+    : editorMode && selfComment?.visibleSnapshot
+      ? 'Your published comment is being edited above.'
+      : editorMode && selfComment?.pendingSnapshot
+        ? 'Your pending comment is loaded in the editor above.'
+      : editorMode && !selfComment?.draftAvailable
+        ? 'Your current comment is awaiting approval. Use the editor above to resubmit it.'
+        : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'
 
   const handleReviewSubmit = (event) => {
     event.preventDefault()
@@ -557,23 +619,26 @@ function ProductReviewPanel({ product }) {
       setSubmitBusy(true)
 
       try {
-        await submitProductComment({
+        const result = await submitProductComment({
           productId: product.id,
           rating: reviewRating,
           comment: trimmedComment,
           privacy,
         })
 
-        setReviewRating(0)
         setHoverReviewRating(0)
-        setReviewComment('')
-        setReviewPrivacy('initials')
         setPrivacyMenuOpen(false)
-        setReviewFeedback('Your comment was submitted and is awaiting approval.')
+        setReviewFeedback(
+          result?.msg ||
+          (editorMode
+            ? 'Your comment changes were submitted for moderation.'
+            : 'Your comment was submitted and is awaiting approval.'),
+        )
 
         try {
-          const nextReviews = await fetchApprovedProductComments(product.id)
-          setReviews(nextReviews)
+          const nextResult = await fetchApprovedProductComments(product.id)
+          setReviews(nextResult.comments || [])
+          setSelfComment(nextResult.selfComment || null)
           setCommentsError('')
         } catch (error) {
           setCommentsError(error?.message || 'Approved comments could not be refreshed.')
@@ -588,8 +653,8 @@ function ProductReviewPanel({ product }) {
 
   return (
     <AuroraWidget
-      title="Share your take"
-      subtitle="Half-step rating and quick comment"
+      title={editorMode ? 'Edit your comment' : 'Share your take'}
+      subtitle={editorMode ? 'Update your rating and published text' : 'Half-step rating and quick comment'}
       icon="star"
       className="aurora-showroom-panel aurora-product-review-panel mx-auto w-full p-5 sm:p-8"
     >
@@ -600,10 +665,10 @@ function ProductReviewPanel({ product }) {
             {formatReviewScore(reviewAverage)}
           </p>
           <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-            {commentsLoading && !reviews.length
+            {commentsLoading && !metricReviews.length
               ? 'Loading approved comments for this product.'
-              : reviews.length
-                ? `${reviews.length} approved ${reviews.length === 1 ? 'comment' : 'comments'} for this product.`
+              : metricReviews.length
+                ? `${metricReviews.length} approved ${metricReviews.length === 1 ? 'comment' : 'comments'} for this product.`
                 : 'No approved comments yet.'}
           </p>
         </div>
@@ -620,7 +685,7 @@ function ProductReviewPanel({ product }) {
           <AuroraInset>
             <div className="aurora-review-form-heading">
               <div>
-                <p className="aurora-kicker">Your rating</p>
+                <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Your rating'}</p>
                 <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
                   {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
                 </h4>
@@ -648,15 +713,20 @@ function ProductReviewPanel({ product }) {
           {reviewInfoMessage ? (
             <p className="aurora-message aurora-message-info">{reviewInfoMessage}</p>
           ) : null}
+          {selfCommentNotice ? (
+            <p className="aurora-message aurora-message-info">{selfCommentNotice}</p>
+          ) : null}
 
           <AuroraInset>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="sm:flex-1">
                 <label htmlFor="product-review-comment" className="aurora-review-label">
-                  Comment
+                  {editorMode ? 'Edit comment' : 'Comment'}
                 </label>
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                  Share taste, build quality, or how this product fits into your routine.
+                  {editorMode
+                    ? 'Refine your current comment and save a new version for moderation.'
+                    : 'Share taste, build quality, or how this product fits into your routine.'}
                 </p>
               </div>
               <div className="sm:w-[18rem]">
@@ -684,7 +754,11 @@ function ProductReviewPanel({ product }) {
               className="aurora-review-textarea"
               rows="5"
               maxLength="320"
-              placeholder={`What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`}
+              placeholder={
+                editorMode
+                  ? `Update your thoughts on ${product.name}. Mention what changed or what still stands out.`
+                  : `What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`
+              }
               disabled={reviewFormDisabled}
               value={reviewComment}
               onChange={(event) => {
@@ -703,7 +777,7 @@ function ProductReviewPanel({ product }) {
                 disabled={reviewFormDisabled}
                 loading={submitBusy}
               >
-                {submitBusy ? 'Posting...' : 'Post comment'}
+                {submitBusy ? (editorMode ? 'Saving...' : 'Posting...') : (editorMode ? 'Save changes' : 'Post comment')}
               </LiquidGlassButton>
             </div>
           </AuroraInset>
@@ -767,9 +841,7 @@ function ProductReviewPanel({ product }) {
         ) : (
           <AuroraInset className="aurora-review-empty">
             <p className="text-base leading-8 text-[var(--aurora-text)]">
-              {commentsLoading
-                ? 'Loading approved comments.'
-                : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'}
+              {emptyReviewMessage}
             </p>
           </AuroraInset>
         )}

@@ -1,5 +1,5 @@
 import { buildApiUrl } from './api'
-import { getAuthSession } from './auth'
+import { getAuthSession, getCurrentUserSnapshot } from './auth'
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
@@ -30,7 +30,7 @@ function toBackendRating(value) {
   return Math.max(1, Math.min(10, Math.round(numericValue * 2)))
 }
 
-function normalizeCommentRecord(rawComment, index) {
+function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
   const author = normalizeText(rawComment?.name) || 'Anonymous'
   const comment = normalizeText(rawComment?.text)
   const createdAt = normalizeText(rawComment?.time)
@@ -42,13 +42,92 @@ function normalizeCommentRecord(rawComment, index) {
   }
 
   return {
-    id: `${createdAt || 'comment'}:${author}:${index}`,
+    id: `${createdAt || 'comment'}:${suffix}:${author}:${index}`,
     author,
     comment,
     rating,
     backendRating: toBackendRating(rating),
     createdAt,
     editedAt,
+    visibilityFlag: rawComment?.visible === true,
+  }
+}
+
+function toPublicComment(snapshot) {
+  if (!snapshot) {
+    return null
+  }
+
+  const { visibilityFlag: _visibilityFlag, ...comment } = snapshot
+  return comment
+}
+
+function inferPrivacyMode(authorName) {
+  const normalizedAuthorName = normalizeText(authorName)
+  const currentUserDisplayName = normalizeText(getCurrentUserSnapshot()?.user?.displayname)
+
+  if (normalizedAuthorName === 'Anonymous') {
+    return 'anonymous'
+  }
+
+  if (currentUserDisplayName && normalizedAuthorName === currentUserDisplayName) {
+    return 'full'
+  }
+
+  return 'initials'
+}
+
+function normalizeApprovedCommentEntry(rawComment, index) {
+  const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
+  const hasCurrentSnapshot = Object.prototype.hasOwnProperty.call(record, 'c')
+  const hasPendingSnapshot = Object.prototype.hasOwnProperty.call(record, 'e')
+  const currentSnapshot = normalizeCommentRecord(
+    hasCurrentSnapshot ? record.c : record,
+    index,
+    'current',
+  )
+  const pendingSnapshot = normalizeCommentRecord(
+    hasPendingSnapshot ? record.e : null,
+    index,
+    'pending',
+  )
+  const explicitSelfFlag = record.self === true
+  const currentVisible =
+    record.visible === true ||
+    (record.visible !== false && currentSnapshot?.visibilityFlag === true)
+  const explicitSelf =
+    explicitSelfFlag ||
+    hasPendingSnapshot ||
+    (hasCurrentSnapshot && record.c === null) ||
+    currentSnapshot?.visibilityFlag === true
+
+  if (explicitSelf) {
+    const visibleSnapshot = currentVisible ? toPublicComment(currentSnapshot) : null
+    const editableDraftSnapshot =
+      toPublicComment(pendingSnapshot) ||
+      (explicitSelfFlag && currentSnapshot && !currentVisible
+        ? toPublicComment(currentSnapshot)
+        : null)
+    const prefillSource = editableDraftSnapshot || visibleSnapshot || null
+
+    return {
+      comment: null,
+      selfComment: {
+        prefill: {
+          comment: prefillSource?.comment || '',
+          rating: prefillSource?.rating || 0,
+          privacyMode: inferPrivacyMode(prefillSource?.author),
+        },
+        visibleSnapshot,
+        pendingSnapshot: editableDraftSnapshot,
+        draftAvailable: Boolean(prefillSource),
+      },
+    }
+  }
+
+  return {
+    comment: toPublicComment(currentSnapshot),
+    selfComment: null,
   }
 }
 
@@ -77,7 +156,9 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
 
 function normalizeManagerCommentRecord(rawComment, index, scope) {
   if (scope === 'approved') {
-    const existing = normalizeCommentRecord(rawComment, index)
+    const existing = toPublicComment(
+      normalizeCommentRecord(rawComment?.c || rawComment, index, 'approved'),
+    )
 
     if (!existing) {
       return null
@@ -96,16 +177,14 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
     }
   }
 
-  const meta = rawComment?.comment && typeof rawComment.comment === 'object'
-    ? rawComment.comment
-    : {}
-  const existing = normalizeManagerCommentSnapshot(rawComment?.existing, index, 'existing')
-  const upcoming = normalizeManagerCommentSnapshot(rawComment?.upcoming, index, 'upcoming')
-  const status = normalizeText(meta?.status) || (upcoming ? 'pending' : 'approved')
-  const id = Number(meta?.id) || null
-  const userId = Number(meta?.user_id) || null
+  const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
+  const existing = normalizeManagerCommentSnapshot(record?.c, index, 'existing')
+  const upcoming = normalizeManagerCommentSnapshot(record?.e, index, 'upcoming')
+  const status = normalizeText(record?.status) || (upcoming ? 'pending' : 'approved')
+  const id = Number(record?.id) || null
+  const userId = Number(record?.user_id) || null
   const userName =
-    normalizeText(meta?.user_name) ||
+    normalizeText(record?.user_name) ||
     existing?.author ||
     upcoming?.author ||
     'Anonymous'
@@ -170,18 +249,35 @@ export async function fetchApprovedProductComments(productId) {
   const normalizedProductId = Number(productId)
 
   if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
-    return []
+    return { comments: [], selfComment: null }
   }
 
   const payload = await requestCommentsJson(
     `/comments?id=${normalizedProductId}&approved=true`,
   )
 
-  return Array.isArray(payload?.comments)
-    ? payload.comments
-        .map((comment, index) => normalizeCommentRecord(comment, index))
-        .filter(Boolean)
-    : []
+  if (!Array.isArray(payload?.comments)) {
+    return { comments: [], selfComment: null }
+  }
+
+  const result = {
+    comments: [],
+    selfComment: null,
+  }
+
+  payload.comments.forEach((comment, index) => {
+    const normalizedEntry = normalizeApprovedCommentEntry(comment, index)
+
+    if (normalizedEntry.comment) {
+      result.comments.push(normalizedEntry.comment)
+    }
+
+    if (!result.selfComment && normalizedEntry.selfComment) {
+      result.selfComment = normalizedEntry.selfComment
+    }
+  })
+
+  return result
 }
 
 export async function fetchManagerProductComments(productId, scope = 'pending') {
