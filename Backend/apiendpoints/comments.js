@@ -33,7 +33,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         result.comments = result.comments.map(comment => {
                             comment.self = false;
                             if (currentUser && !currentUser.e && currentUser.id && comment.user_id === currentUser.id) comment.self = true;
-                            delete comment.product_id;
+                            if (id !== "all") delete comment.product_id;
                             if (!adminAccess || actAsUser) {
                                 delete comment.id;
                                 delete comment.user_id;
@@ -68,11 +68,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             delete comment.created_at;
                             delete comment.edited_at;
                             delete comment.edited_edited_at;
-                            if (actAsUser && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming, self: true, visible: true, edit_visible: false, pending: (comment.status === "pending_edit") };
-                            else if (actAsUser && (comment.self && ["pending", "rejected"].includes(comment.status))) return { c: upcoming, self: true, visible: false, edit_visible: false, pending: Boolean(comment.status === "pending") };
-                            else if (actAsUser && comment.self) return { c: existing, self: true, visible: true, edit_visible: true, pending: false };
-                            else if (actAsUser) return { c: existing };
-                            else return {...comment, c: existing, e: upcoming };
+                            if (actAsUser && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming, self: true, visible: true, edit_visible: false, pending: (comment.status === "pending_edit"), product: comment.product_id };
+                            else if (actAsUser && (comment.self && ["pending", "rejected"].includes(comment.status))) return { c: upcoming, self: true, visible: false, edit_visible: false, pending: Boolean(comment.status === "pending"), product: comment.product_id };
+                            else if (actAsUser && comment.self) return { c: existing, self: true, visible: true, edit_visible: true, pending: false, product: comment.product_id };
+                            else if (actAsUser) return { c: existing, product: comment.product_id };
+                            else return {...comment, c: existing, e: upcoming, product: comment.product_id };
                         });
                         return { s: 200, j: true, d: { comments: result.comments } };
                     }
