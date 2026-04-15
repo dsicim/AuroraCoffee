@@ -64,7 +64,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     if (result.success) {
                         result.order.details = aes.pjs(result.order.details);
                         if (result.order.details.e && result.order.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
-                        const decrypted = aes.decrypt(result.order.details, currentUser.id);
+                        const decrypted = aes.decrypt(result.order.details, result.order.user_id);
                         if (!decrypted.s) throw new Error("Decryption failed");
                         const order = aes.pjs(decrypted.value);
                         if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
