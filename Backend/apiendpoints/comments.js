@@ -6,8 +6,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const id = parseInt(query.id);
                 let approvedOnly = true;
                 let pendingOnly = false;
+                let adminAccess = false;
                 if (currentUser && !currentUser.e && currentUser.id && currentUser.role) {
                     if (["Admin", "Product Manager"].includes(currentUser.role)) {
+                        adminAccess = true;
                         approvedOnly = false;
                         if (endpoint[0] === "pending") pendingOnly = true;
                         else if (query.approved && query.approved === "true") approvedOnly = true;
@@ -18,6 +20,38 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
                 return await sql.getComments(id, approvedOnly, pendingOnly).then(result => {
                     if (result.success) {
+                        result.comments = result.comments.map(comment => {
+                            delete comment.product_id;
+                            if (!adminAccess) {
+                                delete comment.id;
+                                delete comment.user_id;
+                                delete comment.user_name;
+                            }
+                            let upcoming = {};
+                            let existing = {};
+                            if (["pending","rejected"].includes(comment.status)) {
+                                upcoming = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
+                                existing = null;
+                            }
+                            else if (["approved"].includes(comment.status)) {
+                                existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
+                                upcoming = null;
+                            }
+                            else if (["pending_edit", "edit_rejected"].includes(comment.status)) {
+                                upcoming = { name: comment.edited_name_snapshot, text: comment.edited_text, rating: comment.edited_rating, time: comment.created_at, edit: comment.edited_edited_at };
+                                existing = { name: comment.name_snapshot, text: comment.comment_text, rating: comment.rating, time: comment.created_at, edit: comment.edited_at };
+                            }
+                            delete comment.name_snapshot;
+                            delete comment.comment_text;
+                            delete comment.rating;
+                            delete comment.edited_name_snapshot;
+                            delete comment.edited_text;
+                            delete comment.edited_rating;
+                            delete comment.created_at;
+                            delete comment.edited_at;
+                            delete comment.edited_edited_at;
+                            return {comment, upcoming, existing};
+                        });
                         return { s: 200, j: true, d: { comments: result.comments } };
                     }
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -74,7 +108,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (product.can_comment !== true) return { s: 403, j: true, d: { e: "You are unable to comment on this product. Purchase this product to leave a comment. If you have already purchased it, please wait until it is delivered to you." } };
 
             return await sql.addComment(currentUser.id, body.data.id, comment, parseInt(body.data.rating), nameresult).then(result => {
-                if (result.success) return { s: 200, j: true, d: { msg: "Comment added successfully" } };
+                if (result.success) return { s: 200, j: true, d: { msg: result.message } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             }).catch(err => {
                 console.error("Add comment error:", err);

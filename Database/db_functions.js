@@ -620,7 +620,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
         }
         else if (["rejected", "pending"].includes(commented.status)) {
             const [result] = await pool.execute(
-                'UPDATE comments SET comment_text = ?, rating = ?, status = ?, name_snapshot = ? WHERE id = ?',
+                'UPDATE comments SET comment_text = ?, rating = ?, status = ?, name_snapshot = ?, created_at = CURRENT_TIMESTAMP, edited_at = CURRENT_TIMESTAMP, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
                 [text, rating, 'pending', namesnapshot, commented.id]
             );
             if (result.affectedRows === 0) {
@@ -630,7 +630,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
         }
         else {
             const [result] = await pool.execute(
-                'UPDATE comments SET edited_text = ?, edited_rating = ?, status = ?, edited_name_snapshot = ? WHERE id = ?',
+                'UPDATE comments SET edited_text = ?, edited_rating = ?, status = ?, edited_name_snapshot = ?, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
                 [text, rating, 'pending_edit', namesnapshot, commented.id]
             );
             if (result.affectedRows === 0) {
