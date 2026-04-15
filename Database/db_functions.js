@@ -678,7 +678,7 @@ func.setCommentStatus = async function (commentId, status) {
     }
 };
 
-func.getComments = async function (productId, approvedOnly = true, pendingOnly = false, userId = null) {
+func.getComments = async function (productId, approvedOnly = true, pendingOnly = false, rejectedOnly = false, userId = null) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -691,6 +691,9 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
             if (userId) params.push(userId);
         } else if (pendingOnly) {
             where += ` AND (c.status IN ('pending', 'pending_edit')${userId ? ` OR c.user_id = ?` : ``})`;
+            if (userId) params.push(userId);
+        } else if (rejectedOnly) {
+            where += ` AND (c.status IN ('rejected', 'edit_rejected')${userId ? ` OR c.user_id = ?` : ``})`;
             if (userId) params.push(userId);
         }
         const [rows] = await pool.execute(`
