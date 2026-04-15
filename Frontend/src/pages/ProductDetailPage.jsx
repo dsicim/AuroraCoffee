@@ -248,11 +248,44 @@ function getReviewPrivacyCompactLabel(value) {
   return reviewPrivacyOptions.find((option) => option.value === value)?.sideLabel || 'Initials'
 }
 
-function buildReviewPrivacyCode(mode, displayName) {
-  const words = String(displayName || '')
+function getDisplayNameWords(displayName) {
+  return String(displayName || '')
     .trim()
     .split(/\s+/)
     .filter(Boolean)
+}
+
+function buildReviewPrivacyPreviewName(mode, displayName) {
+  const words = getDisplayNameWords(displayName)
+
+  if (!words.length) {
+    return mode === 'anonymous' ? 'Anonymous' : 'Your name'
+  }
+
+  if (mode === 'full') {
+    return words.join(' ')
+  }
+
+  if (mode === 'anonymous') {
+    return 'Anonymous'
+  }
+
+  return words
+    .map((word) => {
+      let normalizedWord = word
+
+      while (normalizedWord.startsWith('.') && normalizedWord.length > 1) {
+        normalizedWord = normalizedWord.slice(1)
+      }
+
+      return normalizedWord ? `${normalizedWord[0]}.` : ''
+    })
+    .filter(Boolean)
+    .join(' ')
+}
+
+function buildReviewPrivacyCode(mode, displayName) {
+  const words = getDisplayNameWords(displayName)
 
   if (!words.length) {
     return ''
@@ -853,7 +886,7 @@ function ProductReviewPanel({ product }) {
                     triggerContent={({ open }) => (
                       <>
                         <span className="aurora-review-privacy-name">
-                          {String(currentUser?.displayname || 'Your name').trim() || 'Your name'}
+                          {buildReviewPrivacyPreviewName(reviewPrivacy, currentUser?.displayname)}
                         </span>
                         <span className="aurora-review-privacy-controls">
                           <span className="aurora-review-privacy-mode-pill">

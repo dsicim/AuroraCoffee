@@ -1,6 +1,8 @@
 import { buildApiUrl } from './api'
 import { getAuthSession, getCurrentUserSnapshot } from './auth'
 
+export const commentsChangeEvent = 'aurora-comments-change'
+
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -8,6 +10,18 @@ function normalizeText(value) {
 function getAuthorizationHeaders() {
   const session = getAuthSession()
   return session?.token ? { authorization: session.token } : {}
+}
+
+function dispatchCommentsChange(type = 'sync') {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(
+    new CustomEvent(commentsChangeEvent, {
+      detail: { type },
+    }),
+  )
 }
 
 function toUiRating(value) {
@@ -230,6 +244,102 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
   }
 }
 
+function getSelfCommentStatusLabel(status) {
+  switch (normalizeText(status).toLowerCase()) {
+    case 'pending':
+      return 'Pending review'
+    case 'rejected':
+      return 'Rejected'
+    case 'pending_edit':
+      return 'Pending update'
+    case 'edit_rejected':
+      return 'Rejected update'
+    default:
+      return 'Approved'
+  }
+}
+
+function getSelfCommentSortTime(comment) {
+  const candidates = [
+    comment?.editedAt,
+    comment?.createdAt,
+    comment?.publishedSnapshot?.editedAt,
+    comment?.publishedSnapshot?.createdAt,
+  ]
+
+  for (const value of candidates) {
+    const parsed = Date.parse(String(value || ''))
+
+    if (Number.isFinite(parsed)) {
+      return parsed
+    }
+  }
+
+  return 0
+}
+
+function normalizeCurrentUserComment(product, selfComment) {
+  if (!product || !selfComment) {
+    return null
+  }
+
+  const status = normalizeText(selfComment.status).toLowerCase() || 'approved'
+  const latestSnapshot = selfComment.pendingSnapshot || selfComment.visibleSnapshot || null
+  const productName = normalizeText(product?.name) || 'Product'
+  const productCategory =
+    normalizeText(product?.categoryName) ||
+    normalizeText(product?.parentCategoryName) ||
+    ''
+
+  return {
+    id: `${product.id}:${status}:${latestSnapshot?.createdAt || latestSnapshot?.editedAt || 'comment'}`,
+    productId: Number(product.id) || 0,
+    productSlug: normalizeText(product?.slug) || String(product.id),
+    productName,
+    productCategory,
+    status,
+    statusLabel: getSelfCommentStatusLabel(status),
+    comment: latestSnapshot?.comment || '',
+    rating: latestSnapshot?.rating || 0,
+    backendRating:
+      latestSnapshot?.backendRating ??
+      (latestSnapshot?.rating ? toBackendRating(latestSnapshot.rating) : null),
+    createdAt: normalizeText(latestSnapshot?.createdAt),
+    editedAt: normalizeText(latestSnapshot?.editedAt) || null,
+    publishedSnapshot: selfComment.visibleSnapshot || null,
+    pendingSnapshot: selfComment.pendingSnapshot || null,
+    hasPublishedVersion: Boolean(selfComment.visibleSnapshot && selfComment.pendingSnapshot),
+    draftAvailable: Boolean(selfComment.draftAvailable),
+    sortTime: getSelfCommentSortTime({
+      ...latestSnapshot,
+      publishedSnapshot: selfComment.visibleSnapshot || null,
+    }),
+  }
+}
+
+async function mapWithConcurrency(items, concurrency, worker) {
+  const results = new Array(items.length)
+  let nextIndex = 0
+  const workerCount = Math.max(1, Math.min(items.length, Math.floor(concurrency) || 1))
+
+  await Promise.all(
+    Array.from({ length: workerCount }, async () => {
+      while (true) {
+        const currentIndex = nextIndex
+        nextIndex += 1
+
+        if (currentIndex >= items.length) {
+          return
+        }
+
+        results[currentIndex] = await worker(items[currentIndex], currentIndex)
+      }
+    }),
+  )
+
+  return results
+}
+
 export class CommentRequestError extends Error {
   constructor(message, status = 500, details = null) {
     super(message)
@@ -351,6 +461,56 @@ export async function fetchProductComments(productId) {
   return fetchApprovedProductComments(productId)
 }
 
+export async function fetchCurrentUserComments(products, { concurrency = 6 } = {}) {
+  requireAuthSession()
+
+  const productsToInspect = Array.from(
+    new Map(
+      (Array.isArray(products) ? products : [])
+        .filter((product) => Number(product?.id) > 0 && product?.canComment)
+        .map((product) => [Number(product.id), product]),
+    ).values(),
+  )
+
+  if (!productsToInspect.length) {
+    return []
+  }
+
+  let hasSuccessfulRequest = false
+  let firstError = null
+
+  const results = await mapWithConcurrency(
+    productsToInspect,
+    concurrency,
+    async (product) => {
+      try {
+        const result = await fetchApprovedProductComments(product.id)
+        hasSuccessfulRequest = true
+        return normalizeCurrentUserComment(product, result.selfComment)
+      } catch (error) {
+        if (!firstError) {
+          firstError = error
+        }
+
+        return null
+      }
+    },
+  )
+
+  if (!hasSuccessfulRequest && firstError) {
+    throw firstError
+  }
+
+  return results
+    .filter(Boolean)
+    .sort((left, right) => right.sortTime - left.sortTime)
+    .map((comment) => {
+      const nextComment = { ...comment }
+      delete nextComment.sortTime
+      return nextComment
+    })
+}
+
 export async function moderateProductComment(commentId, action) {
   const normalizedCommentId = Number(commentId)
   const normalizedAction = normalizeText(action).toLowerCase()
@@ -365,13 +525,16 @@ export async function moderateProductComment(commentId, action) {
 
   requireAuthSession()
 
-  return requestCommentsJson('/comments', {
+  const result = await requestCommentsJson('/comments', {
     method: 'PATCH',
     body: JSON.stringify({
       id: normalizedCommentId,
       action: normalizedAction,
     }),
   })
+
+  dispatchCommentsChange(`moderate:${normalizedAction}`)
+  return result
 }
 
 export async function submitProductComment({
@@ -403,7 +566,7 @@ export async function submitProductComment({
 
   requireAuthSession()
 
-  return requestCommentsJson('/comments', {
+  const result = await requestCommentsJson('/comments', {
     method: 'POST',
     body: JSON.stringify({
       id: normalizedProductId,
@@ -412,4 +575,7 @@ export async function submitProductComment({
       privacy: normalizedPrivacy,
     }),
   })
+
+  dispatchCommentsChange('submit')
+  return result
 }

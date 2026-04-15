@@ -20,6 +20,7 @@ import {
   getCartSubtotal,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
+import { commentsChangeEvent, fetchCurrentUserComments } from '../lib/comments'
 import { formatCurrency } from '../lib/currency'
 import {
   fetchOrders,
@@ -41,8 +42,47 @@ function formatTimestamp(value) {
   })
 }
 
+function formatCommentTimestamp(value) {
+  const timestamp = Date.parse(value || '')
+
+  if (!Number.isFinite(timestamp)) {
+    return 'Time unavailable'
+  }
+
+  return new Date(timestamp).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatCommentRating(value) {
+  if (!value) {
+    return 'No rating'
+  }
+
+  return `${Number.isInteger(value) ? value : value.toFixed(1)} / 5`
+}
+
+function getCustomerCommentStatusCopy(comment) {
+  switch (String(comment?.status || '').trim().toLowerCase()) {
+    case 'pending':
+      return comment?.draftAvailable
+        ? 'Awaiting moderation before it appears on the product page.'
+        : 'Awaiting moderation. The current API does not return the pending draft text yet.'
+    case 'rejected':
+      return 'Rejected by moderation. Open the product page to revise and resubmit it.'
+    case 'pending_edit':
+      return 'A newer edit is in moderation while your approved version stays live on the product page.'
+    case 'edit_rejected':
+      return 'Your last edit was rejected. The currently approved version is still visible on the product page.'
+    default:
+      return 'Visible on the product page.'
+  }
+}
+
 export default function CustomerPage() {
-  const { products } = useProductCatalog()
+  const { products, loaded: productsLoaded } = useProductCatalog()
   const [orders, setOrders] = useState(() => getOrdersSnapshot().orders)
   const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
@@ -51,6 +91,12 @@ export default function CustomerPage() {
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
   const [feedback, setFeedback] = useState('')
+  const [activityTab, setActivityTab] = useState('favorites')
+  const [customerComments, setCustomerComments] = useState([])
+  const [customerCommentsLoading, setCustomerCommentsLoading] = useState(false)
+  const [customerCommentsLoaded, setCustomerCommentsLoaded] = useState(false)
+  const [customerCommentsError, setCustomerCommentsError] = useState('')
+  const [commentsRefreshKey, setCommentsRefreshKey] = useState(0)
 
   useEffect(() => {
     let active = true
@@ -125,6 +171,18 @@ export default function CustomerPage() {
   }, [])
 
   useEffect(() => {
+    const handleCommentsChange = () => {
+      setCommentsRefreshKey((currentValue) => currentValue + 1)
+    }
+
+    window.addEventListener(commentsChangeEvent, handleCommentsChange)
+
+    return () => {
+      window.removeEventListener(commentsChangeEvent, handleCommentsChange)
+    }
+  }, [])
+
+  useEffect(() => {
     if (!feedback) {
       return undefined
     }
@@ -137,6 +195,58 @@ export default function CustomerPage() {
       window.clearTimeout(timeoutId)
     }
   }, [feedback])
+
+  useEffect(() => {
+    let active = true
+
+    if (activityTab !== 'comments') {
+      return undefined
+    }
+
+    const loadCustomerComments = async () => {
+      if (!active) {
+        return
+      }
+
+      setCustomerCommentsLoading(true)
+      setCustomerCommentsLoaded(false)
+      setCustomerCommentsError('')
+
+      if (!productsLoaded) {
+        return
+      }
+
+      try {
+        const nextComments = await fetchCurrentUserComments(products)
+
+        if (!active) {
+          return
+        }
+
+        setCustomerComments(nextComments)
+      } catch (loadError) {
+        if (!active) {
+          return
+        }
+
+        setCustomerComments([])
+        setCustomerCommentsError(
+          loadError instanceof Error ? loadError.message : 'Comments could not be loaded.',
+        )
+      } finally {
+        if (active && productsLoaded) {
+          setCustomerCommentsLoading(false)
+          setCustomerCommentsLoaded(true)
+        }
+      }
+    }
+
+    void loadCustomerComments()
+
+    return () => {
+      active = false
+    }
+  }, [activityTab, commentsRefreshKey, products, productsLoaded])
 
   const mostRecentOrder = ordersLoaded ? orders[0] || null : null
   const latestOrderPath = mostRecentOrder
@@ -312,58 +422,138 @@ export default function CustomerPage() {
           </section>
 
           <section className="aurora-ops-panel p-8">
-            <div className="flex items-end justify-between gap-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-                  Favorites
+                  Personal activity
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  Saved products
+                  {activityTab === 'comments' ? 'Your comments' : 'Saved products'}
                 </h2>
               </div>
-              <Link
-                to="/account/favorites"
-                className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-              >
-                View all
-              </Link>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className={`aurora-pill ${activityTab === 'favorites' ? 'aurora-pill-active' : ''}`.trim()}
+                  onClick={() => {
+                    setActivityTab('favorites')
+                  }}
+                >
+                  Favorites
+                </button>
+                <button
+                  type="button"
+                  className={`aurora-pill ${activityTab === 'comments' ? 'aurora-pill-active' : ''}`.trim()}
+                  onClick={() => {
+                    setActivityTab('comments')
+                  }}
+                >
+                  Comments
+                </button>
+              </div>
             </div>
 
-            {!favoriteProducts.length ? (
-              <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                Save products from the catalog and they will appear here for a quick return.
-              </p>
+            {activityTab === 'favorites' ? (
+              !favoriteProducts.length ? (
+                <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                  Save products from the catalog and they will appear here for a quick return.
+                </p>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  {favoriteProducts.slice(0, 2).map((product) => (
+                    <div key={product.slug} className="aurora-ops-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[var(--aurora-text-strong)]">
+                          {product.name}
+                        </p>
+                        <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                          {product.categoryName || product.parentCategoryName || 'Product'}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Link
+                          to={`/products/${product.slug}`}
+                          className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                        >
+                          View product
+                        </Link>
+                        <LiquidGlassButton
+                          type="button"
+                          variant="soft"
+                          size="compact"
+                          onClick={() => handleQuickAddFavorite(product.slug)}
+                        >
+                          Add to cart
+                        </LiquidGlassButton>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )
             ) : (
-              <div className="mt-6 space-y-3">
-                {favoriteProducts.slice(0, 2).map((product) => (
-                  <div key={product.slug} className="aurora-ops-card flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[var(--aurora-text-strong)]">
-                        {product.name}
-                      </p>
-                      <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                        {product.categoryName || product.parentCategoryName || 'Product'}
-                      </p>
-                    </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Link
-                        to={`/products/${product.slug}`}
-                        className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-                      >
-                        View product
-                      </Link>
-                      <LiquidGlassButton
-                        type="button"
-                        variant="soft"
-                        size="compact"
-                        onClick={() => handleQuickAddFavorite(product.slug)}
-                      >
-                        Add to cart
-                      </LiquidGlassButton>
-                    </div>
+              <>
+                {customerCommentsError ? (
+                  <div className="aurora-message aurora-message-error mt-6">
+                    {customerCommentsError}
                   </div>
-                ))}
-              </div>
+                ) : null}
+
+                {customerCommentsLoading && !customerCommentsLoaded ? (
+                  <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                    Loading the comments you have left across delivered products.
+                  </p>
+                ) : !customerComments.length ? (
+                  <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                    Comments you leave on delivered products will appear here with their current moderation status.
+                  </p>
+                ) : (
+                  <div className="mt-6 space-y-3">
+                    {customerComments.map((comment) => (
+                      <div key={comment.id} className="aurora-ops-card p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[var(--aurora-text-strong)]">
+                              {comment.productName}
+                            </p>
+                            <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                              {[comment.productCategory, formatCommentTimestamp(comment.editedAt || comment.createdAt)]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                            <span className="aurora-chip text-[11px] tracking-[0.14em]">
+                              {comment.statusLabel}
+                            </span>
+                            {comment.rating ? (
+                              <span className="aurora-chip text-[11px] tracking-[0.14em]">
+                                {formatCommentRating(comment.rating)}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                          {comment.comment || 'This comment is in moderation, and the current API does not return its draft text yet.'}
+                        </p>
+
+                        <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+                          {getCustomerCommentStatusCopy(comment)}
+                        </p>
+
+                        <div className="mt-4 flex flex-wrap gap-3">
+                          <Link
+                            to={`/products/${encodeURIComponent(comment.productSlug || String(comment.productId))}`}
+                            className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+                          >
+                            Open product
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </section>
         </div>
