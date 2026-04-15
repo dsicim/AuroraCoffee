@@ -18,6 +18,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (endpoint[0] === "pending") return { s: 401, j: true, d: { e: "Unauthorized" } };
                 if (isNaN(id)) return { s: 400, j: true, d: { e: "Invalid id query parameter" } };
+                console.log(`Get comments for product ${id} with approvedOnly=${approvedOnly}, pendingOnly=${pendingOnly}, adminAccess=${adminAccess}, currentUser=${currentUser ? currentUser.id : null}`);
                 return await sql.getComments(id, approvedOnly, pendingOnly, (currentUser && !currentUser.e && currentUser.id) ? currentUser.id : null).then(result => {
                     if (result.success) {
                         result.comments = result.comments.map(comment => {
