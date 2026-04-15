@@ -60,7 +60,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             delete comment.edited_edited_at;
                             if (approvedOnly && (comment.self && ["pending_edit", "edit_rejected"].includes(comment.status))) return { c: existing, e: upcoming };
                             else if (approvedOnly) return { c: existing };
-                            else return {...comment, c: existing, e: existing};
+                            else return {...comment, c: existing, e: upcoming };
                         });
                         return { s: 200, j: true, d: { comments: result.comments } };
                     }
