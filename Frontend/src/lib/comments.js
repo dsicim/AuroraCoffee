@@ -212,6 +212,31 @@ function normalizeApprovedCommentEntry(rawComment, index) {
   }
 }
 
+function collectApprovedCommentEntries(rawComments) {
+  const result = {
+    comments: [],
+    selfComment: null,
+  }
+
+  if (!Array.isArray(rawComments)) {
+    return result
+  }
+
+  rawComments.forEach((comment, index) => {
+    const normalizedEntry = normalizeApprovedCommentEntry(comment, index)
+
+    if (normalizedEntry.comment) {
+      result.comments.push(normalizedEntry.comment)
+    }
+
+    if (!result.selfComment && normalizedEntry.selfComment) {
+      result.selfComment = normalizedEntry.selfComment
+    }
+  })
+
+  return result
+}
+
 function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
   const author = normalizeText(snapshot?.name) || 'Anonymous'
   const comment = normalizeText(snapshot?.text)
@@ -439,32 +464,29 @@ export async function fetchApprovedProductComments(productId) {
     return { comments: [], selfComment: null }
   }
 
-  const payload = await requestCommentsJson(
-    `/comments/approved?id=${normalizedProductId}&actAsUser=true`,
+  const approvedRequest = requestCommentsJson(
+    `/comments/approved?id=${normalizedProductId}`,
   )
+  const session = getAuthSession()
 
-  if (!Array.isArray(payload?.comments)) {
-    return { comments: [], selfComment: null }
+  if (!session?.token) {
+    const payload = await approvedRequest
+    return collectApprovedCommentEntries(payload?.comments)
   }
 
-  const result = {
-    comments: [],
-    selfComment: null,
+  const [approvedPayload, selfPayload] = await Promise.all([
+    approvedRequest,
+    requestCommentsJson(
+      `/comments/me?id=${normalizedProductId}&actAsUser=true`,
+    ),
+  ])
+  const publicComments = collectApprovedCommentEntries(approvedPayload?.comments)
+  const ownComments = collectApprovedCommentEntries(selfPayload?.comments)
+
+  return {
+    comments: publicComments.comments,
+    selfComment: ownComments.selfComment,
   }
-
-  payload.comments.forEach((comment, index) => {
-    const normalizedEntry = normalizeApprovedCommentEntry(comment, index)
-
-    if (normalizedEntry.comment) {
-      result.comments.push(normalizedEntry.comment)
-    }
-
-    if (!result.selfComment && normalizedEntry.selfComment) {
-      result.selfComment = normalizedEntry.selfComment
-    }
-  })
-
-  return result
 }
 
 export async function fetchManagerProductComments(productId, scope = 'pending') {
@@ -529,29 +551,59 @@ export async function fetchCurrentUserComments(products, { concurrency = 6 } = {
     return []
   }
 
-  let hasSuccessfulRequest = false
-  let firstError = null
+  let results = []
 
-  const results = await mapWithConcurrency(
-    productsToInspect,
-    concurrency,
-    async (product) => {
-      try {
-        const result = await fetchApprovedProductComments(product.id)
-        hasSuccessfulRequest = true
-        return normalizeCurrentUserComment(product, result.selfComment)
-      } catch (error) {
-        if (!firstError) {
-          firstError = error
-        }
+  try {
+    const payload = await requestCommentsJson('/comments/me?actAsUser=true')
+    const rawComments = Array.isArray(payload?.comments) ? payload.comments : []
+    const commentsByProductId = new Map()
 
-        return null
+    rawComments.forEach((comment, index) => {
+      const normalizedEntry = normalizeApprovedCommentEntry(comment, index)
+      const productId = Number(comment?.product)
+
+      if (!normalizedEntry.selfComment || !Number.isFinite(productId) || productId <= 0) {
+        return
       }
-    },
-  )
 
-  if (!hasSuccessfulRequest && firstError) {
-    throw firstError
+      commentsByProductId.set(productId, normalizedEntry.selfComment)
+    })
+
+    results = productsToInspect.map((product) =>
+      normalizeCurrentUserComment(
+        product,
+        commentsByProductId.get(Number(product.id)) || null,
+      ),
+    )
+
+    if (rawComments.length > 0 && !commentsByProductId.size) {
+      throw new CommentRequestError('Current user comments response is missing product ids')
+    }
+  } catch (error) {
+    let hasSuccessfulRequest = false
+    let firstError = error
+
+    results = await mapWithConcurrency(
+      productsToInspect,
+      concurrency,
+      async (product) => {
+        try {
+          const result = await fetchApprovedProductComments(product.id)
+          hasSuccessfulRequest = true
+          return normalizeCurrentUserComment(product, result.selfComment)
+        } catch (fallbackError) {
+          if (!firstError) {
+            firstError = fallbackError
+          }
+
+          return null
+        }
+      },
+    )
+
+    if (!hasSuccessfulRequest && firstError) {
+      throw firstError
+    }
   }
 
   return results
