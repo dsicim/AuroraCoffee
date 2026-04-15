@@ -688,7 +688,7 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
             JOIN users u ON c.user_id = u.id
             WHERE c.product_id = ? ${approvedOnly ? "AND ((c.status = 'approved' OR c.status = 'pending_edit' OR c.status = 'edit_rejected')" : (pendingOnly ? "AND ((c.status = 'pending' OR c.status = 'pending_edit')" : "")} ${userId ? "OR c.user_id = ?" : ""})
             ORDER BY c.created_at DESC
-        `, [productId, userId]);
+        `, userId?[productId, userId] : [productId]);
         return { success: true, comments: rows };
     } catch (error) {
         console.error('Get comments error:', error);
