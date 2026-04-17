@@ -14,6 +14,10 @@ import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
 import ProductMedia from './ProductMedia'
 
+function keepHyphenatedWordsTogether(value) {
+  return String(value || '').replaceAll('-', '\u2011')
+}
+
 export default function ProductCard({ product, compact = false }) {
   const availability = getProductAvailability(product)
   const isOutOfStock = !availability.hasStock
@@ -73,10 +77,10 @@ export default function ProductCard({ product, compact = false }) {
             ) : null}
           </div>
 
-          <div className="aurora-widget-subsurface p-4">
+          <div className="aurora-widget-subsurface aurora-product-card-copy-surface p-4">
             <div className="aurora-widget-body">
               <p className="aurora-product-card-description text-sm leading-7 text-[var(--aurora-text)]">
-                {product.description}
+                {keepHyphenatedWordsTogether(product.description)}
               </p>
 
               {notes.length ? (
@@ -111,7 +115,7 @@ export default function ProductCard({ product, compact = false }) {
         />
       </div>
 
-      <div className="aurora-widget-subsurface mt-auto p-4">
+      <div className="aurora-widget-subsurface aurora-product-card-commerce-surface mt-auto p-4">
         <div className="aurora-product-card-commerce">
           <div>
             <p className="aurora-product-card-price-label text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">

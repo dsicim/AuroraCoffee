@@ -1492,6 +1492,12 @@ export default function CheckoutPage() {
                             className="aurora-link text-sm"
                             onClick={() => {
                               void (async () => {
+                                const confirmed = window.confirm('Remove this saved card?')
+
+                                if (!confirmed) {
+                                  return
+                                }
+
                                 try {
                                   const nextCards = await deletePaymentMethod(card.id)
                                   setSavedCards(nextCards)

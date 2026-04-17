@@ -188,6 +188,10 @@ export default function CartPage() {
                       <LiquidGlassButton
                         type="button"
                         onClick={() => {
+                          if (!window.confirm('Remove this item from your cart?')) {
+                            return
+                          }
+
                           void removeCartItem(item.id)
                         }}
                         variant="quiet"

@@ -111,7 +111,7 @@ export default function AccountPage() {
       description="Track recent orders, manage delivery details, and keep favorite products ready for the next checkout."
     >
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-8">
           <section className="grid gap-4 md:grid-cols-3">
             <div className="aurora-summary-lead p-6">
               <div className="aurora-widget-body">
@@ -169,14 +169,14 @@ export default function AccountPage() {
           </section>
         </div>
 
-        <div className="space-y-8">
+        <div className="min-w-0 space-y-8">
           <section className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
                 <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                   Latest order
                 </p>
-                <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                <h2 className="aurora-break-token mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
                   {mostRecentOrder
                     ? mostRecentOrder.id
                     : ordersLoaded

@@ -471,6 +471,12 @@ export default function AddressesPage() {
                         size="compact"
                         onClick={() => {
                           void (async () => {
+                            const confirmed = window.confirm('Delete this saved address?')
+
+                            if (!confirmed) {
+                              return
+                            }
+
                             const nextAddresses = await deleteSavedAddress(address.id)
                             setAddresses(nextAddresses)
 

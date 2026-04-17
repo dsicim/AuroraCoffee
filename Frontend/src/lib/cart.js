@@ -171,7 +171,9 @@ export function getCartItemOptionEntries(item) {
   }
 
   appendEntries(displayOptions)
-  appendEntries(optionCodes)
+  if (!displayOptions) {
+    appendEntries(optionCodes)
+  }
   appendEntries(variantOptions)
 
   return entries

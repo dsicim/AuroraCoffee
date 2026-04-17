@@ -143,7 +143,7 @@ export default function OrdersPage() {
                   <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                     Order ID
                   </p>
-                  <h2 className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
+                  <h2 className="aurora-break-token mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
                     {order.id}
                   </h2>
                   <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">

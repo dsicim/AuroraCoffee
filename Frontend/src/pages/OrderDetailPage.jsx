@@ -245,7 +245,7 @@ export default function OrderDetailPage() {
                     Submitted on {formatTimestamp(order.submittedAt)}
                   </span>
                 </div>
-                <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
+                <h2 className="aurora-break-token mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
                   {order.id}
                 </h2>
                 {order.purchaseId ? (

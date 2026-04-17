@@ -601,6 +601,16 @@ img {
     overflow-wrap: break-word;
   }
 
+  .aurora-break-token {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .aurora-account-intro .aurora-heading {
+    overflow-wrap: anywhere;
+  }
+
   .aurora-widget-body {
     display: grid;
     gap: 1rem;
@@ -4561,7 +4571,8 @@ img {
 .aurora-product-card-description,
 .aurora-product-card-note {
   max-width: 100%;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .aurora-product-card-notes {
@@ -4574,9 +4585,18 @@ img {
   line-height: 1.35;
 }
 
+.aurora-product-card-copy-surface,
+.aurora-product-card-commerce-surface {
+  min-width: 0;
+}
+
 .aurora-product-card-price,
 .aurora-product-card-price-label {
   white-space: nowrap;
+}
+
+.aurora-product-card-price {
+  line-height: 1;
 }
 
 @media (min-width: 640px) {
@@ -5635,6 +5655,17 @@ body {
     gap: 0.85rem;
   }
 
+  .aurora-product-card .aurora-product-card-copy-surface,
+  .aurora-product-card .aurora-product-card-commerce-surface {
+    padding: 1rem;
+    border-color: color-mix(in srgb, var(--aurora-fresh) 18%, var(--aurora-border));
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--aurora-surface-strong) 70%, transparent), color-mix(in srgb, var(--aurora-surface) 84%, transparent));
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px) saturate(118%);
+    -webkit-backdrop-filter: blur(8px) saturate(118%);
+  }
+
   .aurora-header-search-form {
     position: fixed;
     left: 1rem;
@@ -5679,19 +5710,25 @@ body {
   }
 
   .aurora-product-card-price {
-    font-size: clamp(1.65rem, 10vw, 1.875rem);
+    margin-top: 0.45rem;
+    font-size: clamp(1.95rem, 10vw, 2.2rem);
+    line-height: 0.95;
   }
 
   .aurora-product-card-price-label {
+    display: block;
     letter-spacing: 0.18em;
+    line-height: 1.2;
   }
 
   .aurora-product-card-notes {
+    display: grid;
     gap: 0.4rem;
+    grid-template-columns: 1fr;
   }
 
   .aurora-product-card-note {
-    flex: 1 1 min(100%, 7.5rem);
+    width: 100%;
     justify-content: center;
     padding-inline: 0.75rem;
     text-align: center;
