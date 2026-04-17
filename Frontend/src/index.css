@@ -1836,6 +1836,29 @@ img {
     max-height: none;
   }
 
+  .aurora-preview-menu.is-viewport {
+    scroll-padding-block: 0.8rem;
+  }
+
+  @media (max-width: 767px), (max-height: 540px) {
+    .aurora-preview-dropdown.is-viewport-menu:has(.aurora-preview-menu) {
+      z-index: 70;
+    }
+
+    .aurora-preview-menu.is-viewport {
+      position: fixed;
+      top: calc(env(safe-area-inset-top, 0px) + 5.5rem);
+      right: max(1rem, env(safe-area-inset-right, 0px));
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
+      left: max(1rem, env(safe-area-inset-left, 0px));
+      z-index: 90;
+      margin-top: 0;
+      max-height: none;
+      overscroll-behavior: contain;
+      scrollbar-gutter: stable;
+    }
+  }
+
   .aurora-preview-menu::-webkit-scrollbar {
     width: 0.55rem;
   }

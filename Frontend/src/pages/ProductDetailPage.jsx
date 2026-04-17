@@ -1157,6 +1157,8 @@ function PreviewDropdown({
   onSelect,
 }) {
   const wrapperRef = useRef(null)
+  const usesFlowLayout = menuMode === 'flow' || menuMode === 'viewport'
+  const usesViewportLayout = menuMode === 'viewport'
   const resolvedTriggerContent =
     typeof triggerContent === 'function'
       ? triggerContent({ open, disabled, value, displayValue })
@@ -1182,7 +1184,9 @@ function PreviewDropdown({
   return (
     <div
       ref={wrapperRef}
-      className={`aurora-preview-dropdown mt-3 ${menuMode === 'flow' ? 'is-flow-menu' : ''} ${className}`.trim()}
+      className={`aurora-preview-dropdown mt-3 ${usesFlowLayout ? 'is-flow-menu' : ''} ${
+        usesViewportLayout ? 'is-viewport-menu' : ''
+      } ${className}`.trim()}
     >
       <button
         type="button"
@@ -1216,7 +1220,9 @@ function PreviewDropdown({
 
       {open && !disabled ? (
         <div
-          className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''} ${menuClassName}`.trim()}
+          className={`aurora-preview-menu ${usesFlowLayout ? 'is-flow' : ''} ${
+            usesViewportLayout ? 'is-viewport' : ''
+          } ${menuClassName}`.trim()}
           role="listbox"
         >
           {options.map((option) => {
@@ -1503,7 +1509,7 @@ export default function ProductDetailPage() {
                           description: optionValue.description,
                           sideLabel: formatOptionPriceDelta(optionValue, selectedValue, product.price),
                         }))}
-                        menuMode="flow"
+                        menuMode="viewport"
                         open={activeOptionMenu === groupKey}
                         onToggle={(nextOpen) => {
                           setOpenOptionMenu({
