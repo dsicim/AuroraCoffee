@@ -5693,12 +5693,8 @@ body {
     border-radius: 1.5rem;
     background:
       radial-gradient(ellipse at 24% 0%, rgba(255, 255, 255, 0.62), transparent 48%),
-      linear-gradient(
-        180deg,
-        color-mix(in srgb, var(--aurora-surface-strong) 94%, var(--aurora-glass)),
-        color-mix(in srgb, var(--aurora-surface) 96%, var(--aurora-glass))
-      ),
-      var(--aurora-surface);
+      linear-gradient(180deg, rgb(255, 252, 248), rgb(248, 242, 235) 58%, rgb(241, 234, 226)),
+      rgb(241, 234, 226);
     transform-origin: top right;
   }
 
