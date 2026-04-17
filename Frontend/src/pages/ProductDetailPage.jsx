@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
@@ -1157,6 +1157,7 @@ function PreviewDropdown({
   onSelect,
 }) {
   const wrapperRef = useRef(null)
+  const menuRef = useRef(null)
   const usesFlowLayout = menuMode === 'flow' || menuMode === 'viewport'
   const usesViewportLayout = menuMode === 'viewport'
   const resolvedTriggerContent =
@@ -1180,6 +1181,66 @@ function PreviewDropdown({
       window.removeEventListener('pointerdown', handlePointerDown)
     }
   }, [onToggle, open])
+
+  useLayoutEffect(() => {
+    if (!open || !usesViewportLayout) {
+      return undefined
+    }
+
+    const updateViewportMenuStyle = () => {
+      const trigger = wrapperRef.current?.querySelector('.aurora-preview-trigger')
+      const menu = menuRef.current
+
+      if (!trigger || !menu) {
+        return
+      }
+
+      const triggerRect = trigger.getBoundingClientRect()
+      const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0
+      const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0
+      const margin = 16
+      const gap = 10
+      const preferredWidth = Math.min(triggerRect.width, Math.max(0, viewportWidth - margin * 2))
+      const left = Math.min(
+        Math.max(triggerRect.left, margin),
+        Math.max(margin, viewportWidth - preferredWidth - margin),
+      )
+      const spaceBelow = viewportHeight - triggerRect.bottom - margin - gap
+      const spaceAbove = triggerRect.top - margin - gap
+      const shouldOpenAbove = spaceBelow < 260 && spaceAbove > spaceBelow
+      const availableSpace = Math.max(0, shouldOpenAbove ? spaceAbove : spaceBelow)
+      const shouldUseViewportPanel = availableSpace < 96
+      const availableHeight = Math.floor(
+        shouldUseViewportPanel
+          ? Math.max(96, viewportHeight - margin * 2)
+          : availableSpace,
+      )
+
+      Object.assign(menu.style, {
+        position: 'fixed',
+        right: 'auto',
+        left: `${Math.round(left)}px`,
+        width: `${Math.round(preferredWidth)}px`,
+        maxHeight: `${availableHeight}px`,
+        top:
+          shouldUseViewportPanel || !shouldOpenAbove
+            ? `${Math.round(shouldUseViewportPanel ? margin : triggerRect.bottom + gap)}px`
+            : 'auto',
+        bottom: !shouldUseViewportPanel && shouldOpenAbove
+          ? `${Math.round(viewportHeight - triggerRect.top + gap)}px`
+          : 'auto',
+      })
+    }
+
+    updateViewportMenuStyle()
+    window.addEventListener('resize', updateViewportMenuStyle)
+    window.addEventListener('scroll', updateViewportMenuStyle, true)
+
+    return () => {
+      window.removeEventListener('resize', updateViewportMenuStyle)
+      window.removeEventListener('scroll', updateViewportMenuStyle, true)
+    }
+  }, [open, usesViewportLayout])
 
   return (
     <div
@@ -1220,6 +1281,7 @@ function PreviewDropdown({
 
       {open && !disabled ? (
         <div
+          ref={menuRef}
           className={`aurora-preview-menu ${usesFlowLayout ? 'is-flow' : ''} ${
             usesViewportLayout ? 'is-viewport' : ''
           } ${menuClassName}`.trim()}

@@ -1837,25 +1837,22 @@ img {
   }
 
   .aurora-preview-menu.is-viewport {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 5.5rem);
+    right: max(1rem, env(safe-area-inset-right, 0px));
+    left: max(1rem, env(safe-area-inset-left, 0px));
+    z-index: 90;
+    margin-top: 0;
+    max-height: calc(100vh - 6.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     scroll-padding-block: 0.8rem;
+    scrollbar-gutter: stable;
   }
 
-  @media (max-width: 767px), (max-height: 540px) {
-    .aurora-preview-dropdown.is-viewport-menu:has(.aurora-preview-menu) {
-      z-index: 70;
-    }
-
+  @supports (height: 100svh) {
     .aurora-preview-menu.is-viewport {
-      position: fixed;
-      top: calc(env(safe-area-inset-top, 0px) + 5.5rem);
-      right: max(1rem, env(safe-area-inset-right, 0px));
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 1rem);
-      left: max(1rem, env(safe-area-inset-left, 0px));
-      z-index: 90;
-      margin-top: 0;
-      max-height: none;
-      overscroll-behavior: contain;
-      scrollbar-gutter: stable;
+      max-height: calc(100svh - 6.5rem);
     }
   }
 
