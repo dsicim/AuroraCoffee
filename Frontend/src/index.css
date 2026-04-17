@@ -4092,11 +4092,11 @@ img {
     border-color: rgba(208, 226, 245, 0.14);
     background:
       radial-gradient(circle at 14% 14%, rgba(235, 245, 255, 0.12), transparent 22%),
-      linear-gradient(180deg, rgba(238, 246, 255, 0.12), rgba(18, 28, 42, 0.48) 58%, rgba(14, 23, 35, 0.36)),
-      rgba(14, 22, 34, 0.78);
+      linear-gradient(180deg, rgba(38, 52, 70, 0.98), rgba(20, 31, 45, 0.99) 58%, rgba(13, 22, 34, 1)),
+      rgb(13, 22, 34);
     box-shadow:
       inset 0 1px 0 rgba(241, 248, 255, 0.14),
-      0 24px 40px rgba(0, 7, 18, 0.34);
+      0 24px 40px rgba(0, 7, 18, 0.42);
   }
 
   [data-theme='dark'] .aurora-preview-option {
@@ -4104,7 +4104,7 @@ img {
     color: var(--aurora-text-strong);
     background:
       linear-gradient(180deg, rgba(238, 246, 255, 0.08), rgba(18, 29, 42, 0.18)),
-      rgba(18, 29, 43, 0.42);
+      rgb(23, 35, 50);
   }
 
   [data-theme='dark'] .aurora-preview-option:hover,
@@ -4112,7 +4112,7 @@ img {
     border-color: rgba(157, 189, 224, 0.28);
     background:
       linear-gradient(180deg, rgba(242, 249, 255, 0.12), rgba(39, 57, 78, 0.24)),
-      rgba(37, 54, 76, 0.56);
+      rgb(37, 54, 76);
     box-shadow: 0 12px 24px rgba(5, 12, 23, 0.24);
   }
 
