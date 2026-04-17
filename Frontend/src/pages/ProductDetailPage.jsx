@@ -1205,8 +1205,16 @@ function PreviewDropdown({
         Math.max(triggerRect.left, margin),
         Math.max(margin, viewportWidth - preferredWidth - margin),
       )
-      const spaceBelow = viewportHeight - triggerRect.bottom - margin - gap
-      const spaceAbove = triggerRect.top - margin - gap
+      const anchorTop = Math.min(
+        Math.max(triggerRect.top, margin),
+        Math.max(margin, viewportHeight - margin),
+      )
+      const anchorBottom = Math.min(
+        Math.max(triggerRect.bottom, margin),
+        Math.max(margin, viewportHeight - margin),
+      )
+      const spaceBelow = viewportHeight - anchorBottom - margin - gap
+      const spaceAbove = anchorTop - margin - gap
       const shouldOpenAbove = spaceBelow < 260 && spaceAbove > spaceBelow
       const availableSpace = Math.max(0, shouldOpenAbove ? spaceAbove : spaceBelow)
       const shouldUseViewportPanel = availableSpace < 96
@@ -1224,10 +1232,10 @@ function PreviewDropdown({
         maxHeight: `${availableHeight}px`,
         top:
           shouldUseViewportPanel || !shouldOpenAbove
-            ? `${Math.round(shouldUseViewportPanel ? margin : triggerRect.bottom + gap)}px`
+            ? `${Math.round(shouldUseViewportPanel ? margin : anchorBottom + gap)}px`
             : 'auto',
         bottom: !shouldUseViewportPanel && shouldOpenAbove
-          ? `${Math.round(viewportHeight - triggerRect.top + gap)}px`
+          ? `${Math.round(viewportHeight - anchorTop + gap)}px`
           : 'auto',
       })
     }
