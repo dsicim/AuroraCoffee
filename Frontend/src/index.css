@@ -5702,6 +5702,18 @@ body {
     transform-origin: top right;
   }
 
+  [data-theme='dark'] .aurora-header-search-form {
+    border-color: rgba(208, 226, 245, 0.34);
+    background:
+      radial-gradient(ellipse at 24% 0%, rgba(235, 245, 255, 0.13), transparent 46%),
+      linear-gradient(180deg, rgb(37, 50, 66), rgb(18, 29, 42) 58%, rgb(13, 22, 34)),
+      rgb(13, 22, 34);
+    box-shadow:
+      inset 0 1px 0 rgba(241, 248, 255, 0.16),
+      0 18px 34px rgba(0, 7, 18, 0.36),
+      0 0 0 1px rgba(142, 170, 197, 0.1);
+  }
+
   .aurora-header-search-input {
     font-size: 0.82rem;
   }
