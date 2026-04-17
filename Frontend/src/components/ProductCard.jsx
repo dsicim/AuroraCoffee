@@ -75,16 +75,16 @@ export default function ProductCard({ product, compact = false }) {
 
           <div className="aurora-widget-subsurface p-4">
             <div className="aurora-widget-body">
-              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+              <p className="aurora-product-card-description text-sm leading-7 text-[var(--aurora-text)]">
                 {product.description}
               </p>
 
               {notes.length ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="aurora-product-card-notes flex flex-wrap gap-2">
                   {notes.map((note) => (
                     <span
                       key={note}
-                      className="rounded-full border border-[rgba(95,102,78,0.18)] bg-[rgba(230,230,219,0.44)] px-3 py-1 text-xs font-medium text-[var(--aurora-olive-deep)]"
+                      className="aurora-product-card-note rounded-full border border-[rgba(95,102,78,0.18)] bg-[rgba(230,230,219,0.44)] px-3 py-1 text-xs font-medium text-[var(--aurora-olive-deep)]"
                     >
                       {note}
                     </span>
@@ -114,10 +114,10 @@ export default function ProductCard({ product, compact = false }) {
       <div className="aurora-widget-subsurface mt-auto p-4">
         <div className="aurora-product-card-commerce">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+            <p className="aurora-product-card-price-label text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
               Price
             </p>
-            <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
+            <p className="aurora-product-card-price mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
               {formatCurrency(product.price)}
             </p>
             <p className="text-sm text-[var(--aurora-text)]">
