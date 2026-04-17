@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { buildApiUrl } from './api'
+import { getGeneratedProductImageUrl } from './productImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 
@@ -249,7 +250,7 @@ function normalizeProduct(rawProduct) {
     flavorNotes: normalizeText(rawProduct.flavor_notes),
     material: normalizeText(rawProduct.material),
     capacity: normalizeText(rawProduct.capacity),
-    imageUrl: normalizeText(rawProduct.image_url),
+    imageUrl: normalizeText(rawProduct.image_url) || getGeneratedProductImageUrl(rawProduct),
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
     hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
