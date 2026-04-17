@@ -1,10 +1,81 @@
 import { addCartItem } from './cart'
 import { findProductByReference, getProductAvailability } from './products'
 
+function normalizeCode(value) {
+  return typeof value === 'string' || typeof value === 'number'
+    ? String(value).trim()
+    : ''
+}
+
+function normalizeOptionCodes(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const entries = Object.entries(value)
+    .map(([key, optionValue]) => [normalizeCode(key), normalizeCode(optionValue)])
+    .filter(([key, optionValue]) => Boolean(key && optionValue))
+
+  return entries.length ? Object.fromEntries(entries) : null
+}
+
+function findOrderLineVariant(product, item) {
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+
+  if (!variants.length) {
+    return null
+  }
+
+  const variantId = Number(item?.variantId) || 0
+  const variantCode = normalizeCode(item?.variantCode)
+
+  if (variantId) {
+    return variants.find((variant) => Number(variant?.id) === variantId) || null
+  }
+
+  if (variantCode) {
+    return variants.find((variant) => normalizeCode(variant?.variantCode) === variantCode) || null
+  }
+
+  const optionCodes = normalizeOptionCodes(item?.optionCodes)
+
+  if (!optionCodes) {
+    return null
+  }
+
+  return variants.find((variant) => {
+    const variantOptionCodes = normalizeOptionCodes(variant?.optionValueCodes)
+
+    if (!variantOptionCodes) {
+      return false
+    }
+
+    return Object.entries(optionCodes).every(
+      ([groupKey, valueCode]) => variantOptionCodes[groupKey] === valueCode,
+    )
+  }) || null
+}
+
 async function normalizeOrderLine(item) {
   const product = await findProductByReference(item?.productSlug || item?.productId || item?.id)
 
   if (!product) {
+    return null
+  }
+
+  const availability = getProductAvailability(product)
+
+  if (!availability.hasStock) {
+    return null
+  }
+
+  const variantRequired = Boolean(
+    product?.variants?.length &&
+    (item?.variantId || item?.variantCode || item?.optionCodes),
+  )
+  const matchingVariant = variantRequired ? findOrderLineVariant(product, item) : null
+
+  if (variantRequired && (!matchingVariant || (Number(matchingVariant.stock) || 0) <= 0)) {
     return null
   }
 

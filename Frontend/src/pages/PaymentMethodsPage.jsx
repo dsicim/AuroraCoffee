@@ -10,6 +10,7 @@ import {
   paymentMethodsChangeEvent,
   savePaymentMethod,
 } from '../lib/payment'
+import { validateCardExpiry } from '../lib/validation'
 
 const initialForm = {
   alias: '',
@@ -22,7 +23,7 @@ const initialForm = {
 function validateCardForm(form) {
   const errors = {}
   const digits = String(form.cardNumber || '').replace(/\D/g, '')
-  const expiryDigits = String(form.expiry || '').replace(/\D/g, '')
+  const expiryValidation = validateCardExpiry(form.expiry)
   const cvcDigits = String(form.cvc || '').replace(/\D/g, '')
 
   if (!String(form.cardholder || '').trim()) {
@@ -33,10 +34,8 @@ function validateCardForm(form) {
     errors.cardNumber = 'Card number must be 16 digits'
   }
 
-  if (!/^(0[1-9]|1[0-2])\/\d{2}$/.test(String(form.expiry || '').trim())) {
-    errors.expiry = 'Expiry must be in MM/YY format'
-  } else if (expiryDigits.length < 4) {
-    errors.expiry = 'Expiry must be in MM/YY format'
+  if (!expiryValidation.s) {
+    errors.expiry = expiryValidation.e
   }
 
   if (cvcDigits.length < 3) {
@@ -44,6 +43,21 @@ function validateCardForm(form) {
   }
 
   return errors
+}
+
+function formatCardNumber(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 16)
+  return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim()
+}
+
+function formatExpiry(value) {
+  const digits = value.replace(/\D/g, '').slice(0, 4)
+
+  if (digits.length <= 2) {
+    return digits
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2)}`
 }
 
 function getCardSummary(card) {
@@ -204,13 +218,13 @@ export default function PaymentMethodsPage() {
       description="Store a card for faster checkout. Only summary details are shown here, and you can delete any card you no longer want to keep on file."
     >
       {feedback ? (
-        <div className="aurora-message aurora-message-success mb-6">
+        <div className="aurora-message aurora-message-success mb-6" role="status" aria-live="polite">
           {feedback}
         </div>
       ) : null}
 
       {errors.form ? (
-        <div className="aurora-message aurora-message-error mb-6">
+        <div className="aurora-message aurora-message-error mb-6" role="alert">
           {errors.form}
         </div>
       ) : null}
@@ -236,6 +250,8 @@ export default function PaymentMethodsPage() {
               <span className="aurora-field-label">Card nickname</span>
               <input
                 type="text"
+                name="card-nickname"
+                autoComplete="off"
                 value={form.alias}
                 onChange={(event) => handleChange('alias', event.target.value)}
                 placeholder="Visa for groceries"
@@ -250,6 +266,8 @@ export default function PaymentMethodsPage() {
               <span className="aurora-field-label">Cardholder name</span>
               <input
                 type="text"
+                name="cc-name"
+                autoComplete="cc-name"
                 value={form.cardholder}
                 onChange={(event) => handleChange('cardholder', event.target.value)}
                 className="aurora-input"
@@ -266,9 +284,10 @@ export default function PaymentMethodsPage() {
               <input
                 type="text"
                 inputMode="numeric"
+                name="cc-number"
                 autoComplete="cc-number"
                 value={form.cardNumber}
-                onChange={(event) => handleChange('cardNumber', event.target.value)}
+                onChange={(event) => handleChange('cardNumber', formatCardNumber(event.target.value))}
                 placeholder="4111 1111 1111 1111"
                 className="aurora-input"
               />
@@ -284,9 +303,10 @@ export default function PaymentMethodsPage() {
               <input
                 type="text"
                 inputMode="numeric"
+                name="cc-exp"
                 autoComplete="cc-exp"
                 value={form.expiry}
-                onChange={(event) => handleChange('expiry', event.target.value)}
+                onChange={(event) => handleChange('expiry', formatExpiry(event.target.value))}
                 placeholder="MM/YY"
                 className="aurora-input"
               />
@@ -302,9 +322,12 @@ export default function PaymentMethodsPage() {
               <input
                 type="text"
                 inputMode="numeric"
+                name="cc-csc"
                 autoComplete="cc-csc"
                 value={form.cvc}
-                onChange={(event) => handleChange('cvc', event.target.value)}
+                onChange={(event) =>
+                  handleChange('cvc', event.target.value.replace(/\D/g, '').slice(0, 4))
+                }
                 placeholder="123"
                 className="aurora-input"
               />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import auroraLogo from '../assets/aurora-logo.jpeg'
 import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
@@ -26,6 +26,14 @@ const navItems = [
   { label: 'Products', to: '/products' },
 ]
 
+function getProductSearchFromLocation(location) {
+  if (location.pathname !== '/products') {
+    return ''
+  }
+
+  return new URLSearchParams(location.search).get('search') || ''
+}
+
 export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -35,6 +43,9 @@ export default function Header() {
   const keepHeaderVisibleRef = useRef(false)
   const menuRef = useRef(null)
   const searchInputRef = useRef(null)
+  const searchButtonRef = useRef(null)
+  const cartButtonRef = useRef(null)
+  const mobileNavButtonRef = useRef(null)
   const { themePreference, resolvedTheme, setThemePreference } = useTheme()
   const [session, setSession] = useState(getAuthSession())
   const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
@@ -130,6 +141,48 @@ export default function Header() {
       window.removeEventListener('mousedown', handlePointerDown)
     }
   }, [menuOpen, searchOpen])
+
+  const closeHeaderInteractions = useCallback((returnFocus = false) => {
+    const focusTarget = menuOpen
+      ? cartButtonRef
+      : mobileNavOpen
+        ? mobileNavButtonRef
+        : searchOpen
+          ? searchButtonRef
+          : null
+
+    setMenuOpen(false)
+    setMobileNavOpen(false)
+    setSearchOpen(false)
+    setHeaderHidden(false)
+
+    if (returnFocus && focusTarget?.current) {
+      window.requestAnimationFrame(() => {
+        focusTarget.current?.focus()
+      })
+    }
+  }, [menuOpen, mobileNavOpen, searchOpen])
+
+  useEffect(() => {
+    if (!headerInteractionOpen) {
+      return undefined
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key !== 'Escape') {
+        return
+      }
+
+      event.preventDefault()
+      closeHeaderInteractions(true)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [headerInteractionOpen, closeHeaderInteractions])
 
   useEffect(() => {
     keepHeaderVisibleRef.current = headerInteractionOpen
@@ -231,6 +284,7 @@ export default function Header() {
 
   const openHeaderSearch = () => {
     setMenuOpen(false)
+    setHeaderSearch(getProductSearchFromLocation(location))
     setSearchOpen(true)
     setHeaderHidden(false)
     window.requestAnimationFrame(() => {
@@ -275,8 +329,10 @@ export default function Header() {
             <div className="flex min-w-0 items-center gap-2.5 sm:gap-4">
               <LiquidGlassIconButton
                 type="button"
+                ref={mobileNavButtonRef}
                 aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
                 aria-expanded={mobileNavOpen}
+                aria-controls="aurora-mobile-nav-panel"
                 onClick={() => {
                   setMenuOpen(false)
                   setSearchOpen(false)
@@ -333,6 +389,7 @@ export default function Header() {
                       variant="chip"
                       size="compact"
                       selected={isActive}
+                      aria-current={isActive ? 'page' : undefined}
                     >
                       {item.label}
                     </LiquidGlassButton>
@@ -349,6 +406,7 @@ export default function Header() {
                   <form
                     className="aurora-header-search-form"
                     role="search"
+                    aria-label="Product search"
                     onSubmit={handleHeaderSearchSubmit}
                   >
                     <input
@@ -358,11 +416,14 @@ export default function Header() {
                       onChange={(event) => setHeaderSearch(event.target.value)}
                       onKeyDown={(event) => {
                         if (event.key === 'Escape') {
-                          setSearchOpen(false)
+                          closeHeaderInteractions(true)
                         }
                       }}
                       placeholder="Search products"
                       aria-label="Search products"
+                      name="header-search"
+                      autoComplete="off"
+                      spellCheck={false}
                       className="aurora-header-search-input"
                     />
                     <LiquidGlassIconButton
@@ -388,6 +449,7 @@ export default function Header() {
                 ) : (
                   <LiquidGlassIconButton
                     type="button"
+                    ref={searchButtonRef}
                     aria-label="Open product search"
                     onClick={openHeaderSearch}
                   >
@@ -411,9 +473,11 @@ export default function Header() {
               <div className="relative">
                 <LiquidGlassIconButton
                   type="button"
+                  ref={cartButtonRef}
                   aria-label={`Open cart menu with ${cartCount} item${cartCount === 1 ? '' : 's'}`}
                   aria-haspopup="menu"
                   aria-expanded={menuOpen}
+                  aria-controls="aurora-cart-menu"
                   className="relative"
                   contentClassName="relative"
                   selected={menuOpen}
@@ -451,10 +515,15 @@ export default function Header() {
           <>
             <div
               className="aurora-menu-backdrop fixed inset-0 z-40 md:hidden"
-              onClick={() => setMenuOpen(false)}
+              onClick={() => closeHeaderInteractions(false)}
               aria-hidden="true"
             />
-            <div className="aurora-cart-menu-popover">
+            <div
+              id="aurora-cart-menu"
+              className="aurora-cart-menu-popover"
+              role="menu"
+              aria-label="Cart and account menu"
+            >
               <div className="aurora-showcase-band aurora-account-menu aurora-cart-menu p-3">
                 <div className="aurora-cart-menu-summary rounded-[1.35rem] px-4">
                   <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
@@ -470,6 +539,7 @@ export default function Header() {
                     as={Link}
                     to="/cart"
                     onClick={() => setMenuOpen(false)}
+                    role="menuitem"
                     variant="quiet"
                     size="compact"
                     className="w-full"
@@ -481,6 +551,7 @@ export default function Header() {
                     as={Link}
                     to="/account/orders"
                     onClick={() => setMenuOpen(false)}
+                    role="menuitem"
                     variant="quiet"
                     size="compact"
                     className="w-full"
@@ -492,6 +563,7 @@ export default function Header() {
                     as={Link}
                     to="/account"
                     onClick={() => setMenuOpen(false)}
+                    role="menuitem"
                     variant="quiet"
                     size="compact"
                     className="w-full"
@@ -505,6 +577,7 @@ export default function Header() {
                   <LiquidGlassButton
                     type="button"
                     onClick={handleLogout}
+                    role="menuitem"
                     variant="danger"
                     size="compact"
                     className="aurora-logout-button mt-3 w-full"
@@ -517,6 +590,7 @@ export default function Header() {
                     as={Link}
                     to="/login"
                     onClick={() => setMenuOpen(false)}
+                    role="menuitem"
                     variant="secondary"
                     size="compact"
                     className="mt-3 w-full"
@@ -530,13 +604,22 @@ export default function Header() {
           </>
         ) : null}
 
+        {searchOpen ? (
+          <div
+            className="aurora-search-backdrop fixed inset-0 md:hidden"
+            onClick={() => closeHeaderInteractions(false)}
+            aria-hidden="true"
+          />
+        ) : null}
+
         {mobileNavOpen ? (
           <div className="mt-2 md:hidden">
             <LiquidGlassFrame
+              id="aurora-mobile-nav-panel"
               className="aurora-glass-dock aurora-mobile-nav-panel glass-nav rounded-[1.5rem]"
               contentClassName="p-2"
             >
-              <div className="aurora-mobile-nav-stack flex flex-col gap-2">
+              <nav className="aurora-mobile-nav-stack flex flex-col gap-2" aria-label="Mobile navigation">
                 {navItems.map((item) => {
                   const isActive = location.pathname === item.to
 
@@ -548,6 +631,7 @@ export default function Header() {
                       variant="chip"
                       size="compact"
                       selected={isActive}
+                      aria-current={isActive ? 'page' : undefined}
                       onClick={() => setMobileNavOpen(false)}
                     >
                       {item.label}
@@ -572,7 +656,7 @@ export default function Header() {
                     />
                   </div>
                 </div>
-              </div>
+              </nav>
             </LiquidGlassFrame>
           </div>
         ) : null}

@@ -17,6 +17,8 @@ export default function ProductMedia({
       <img
         src={src}
         alt={alt}
+        width="800"
+        height="800"
         loading={loading}
         decoding="async"
         className={`aurora-product-media-image ${imageClassName}`.trim()}

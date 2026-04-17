@@ -94,6 +94,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [restoringAction, setRestoringAction] = useState('')
 
   useEffect(() => {
     let active = true
@@ -166,21 +167,53 @@ export default function OrderDetailPage() {
   }, [feedback])
 
   const handleRestoreOrder = async (redirectToCart = false) => {
-    if (!order?.items?.length) {
+    const actionKey = redirectToCart ? 'reorder-all' : 'add-all'
+
+    if (!order?.items?.length || restoringAction) {
       return
     }
 
-    const result = await restoreOrderItemsToCart(order.items)
-    setFeedback(buildRestoreMessage(result, `Order ${order.id}`))
+    setRestoringAction(actionKey)
 
-    if (redirectToCart && result.addedCount) {
-      navigate('/cart')
+    try {
+      const result = await restoreOrderItemsToCart(order.items)
+      setFeedback(buildRestoreMessage(result, `Order ${order.id}`))
+
+      if (redirectToCart && result.addedCount) {
+        navigate('/cart')
+      }
+    } catch (restoreError) {
+      setFeedback(
+        restoreError instanceof Error
+          ? restoreError.message
+          : 'Could not restore this order to cart.',
+      )
+    } finally {
+      setRestoringAction('')
     }
   }
 
   const handleRestoreItem = async (item) => {
-    const result = await restoreOrderItemsToCart([item])
-    setFeedback(buildRestoreMessage(result, item.name || 'Item'))
+    const actionKey = `item-${item.lineItemId || item.id || item.name || 'unknown'}`
+
+    if (restoringAction) {
+      return
+    }
+
+    setRestoringAction(actionKey)
+
+    try {
+      const result = await restoreOrderItemsToCart([item])
+      setFeedback(buildRestoreMessage(result, item.name || 'Item'))
+    } catch (restoreError) {
+      setFeedback(
+        restoreError instanceof Error
+          ? restoreError.message
+          : 'Could not add this item again.',
+      )
+    } finally {
+      setRestoringAction('')
+    }
   }
 
   const progressState = getOrderProgressState(order)
@@ -194,7 +227,7 @@ export default function OrderDetailPage() {
       description="Follow the backend delivery stages, review the package contents, and reorder any available items."
     >
       {feedback ? (
-        <div className="aurora-message aurora-message-success mb-6">
+        <div className="aurora-message aurora-message-success mb-6" role="status" aria-live="polite">
           {feedback}
         </div>
       ) : null}
@@ -259,11 +292,25 @@ export default function OrderDetailPage() {
                 <LiquidGlassButton as={Link} to="/account/orders" variant="quiet" size="compact">
                   Back to orders
                 </LiquidGlassButton>
-                <LiquidGlassButton type="button" variant="secondary" size="compact" onClick={() => handleRestoreOrder(true)}>
-                  Reorder all
+                <LiquidGlassButton
+                  type="button"
+                  variant="secondary"
+                  size="compact"
+                  onClick={() => handleRestoreOrder(true)}
+                  loading={restoringAction === 'reorder-all'}
+                  disabled={Boolean(restoringAction)}
+                >
+                  {restoringAction === 'reorder-all' ? 'Restoring...' : 'Reorder all'}
                 </LiquidGlassButton>
-                <LiquidGlassButton type="button" variant="soft" size="compact" onClick={() => handleRestoreOrder(false)}>
-                  Add items to cart
+                <LiquidGlassButton
+                  type="button"
+                  variant="soft"
+                  size="compact"
+                  onClick={() => handleRestoreOrder(false)}
+                  loading={restoringAction === 'add-all'}
+                  disabled={Boolean(restoringAction)}
+                >
+                  {restoringAction === 'add-all' ? 'Adding...' : 'Add items to cart'}
                 </LiquidGlassButton>
               </div>
             </div>
@@ -328,15 +375,19 @@ export default function OrderDetailPage() {
                             Included VAT {formatCurrency(linePricing.lineTax)}
                           </p>
                           {renderOrderItemOptions(item)}
-                          <LiquidGlassButton
-                            type="button"
-                            variant="quiet"
-                            size="compact"
-                            onClick={() => handleRestoreItem(item)}
-                            className="mt-4"
-                          >
-                            Add again
-                          </LiquidGlassButton>
+	                          <LiquidGlassButton
+	                            type="button"
+	                            variant="quiet"
+	                            size="compact"
+	                            onClick={() => handleRestoreItem(item)}
+	                            loading={restoringAction === `item-${item.lineItemId || item.id || item.name || 'unknown'}`}
+	                            disabled={Boolean(restoringAction)}
+	                            className="mt-4"
+	                          >
+	                            {restoringAction === `item-${item.lineItemId || item.id || item.name || 'unknown'}`
+	                              ? 'Adding...'
+	                              : 'Add again'}
+	                          </LiquidGlassButton>
                         </div>
 
                         <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">

@@ -19,6 +19,8 @@ const sortOptions = [
   { value: 'price-asc', label: 'Price: Low to high' },
   { value: 'price-desc', label: 'Price: High to low' },
 ]
+const defaultCategory = 'All'
+const sortOptionValues = new Set(sortOptions.map((option) => option.value))
 
 function sortProducts(items, sortBy) {
   const sortableItems = [...items]
@@ -44,8 +46,6 @@ export default function ProductsPage() {
   const { products, loaded, loading, error } = useProductCatalog()
   const [searchParams, setSearchParams] = useSearchParams()
   const search = searchParams.get('search') || ''
-  const [category, setCategory] = useState('All')
-  const [sortBy, setSortBy] = useState('newest')
   const [remoteResults, setRemoteResults] = useState(null)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
@@ -54,6 +54,10 @@ export default function ProductsPage() {
     () => (loaded ? getProductCategories(products) : []),
     [loaded, products],
   )
+  const categoryParam = searchParams.get('category') || defaultCategory
+  const category = categories.includes(categoryParam) ? categoryParam : defaultCategory
+  const sortParam = searchParams.get('sort') || 'newest'
+  const sortBy = sortOptionValues.has(sortParam) ? sortParam : 'newest'
   const normalizedSearch = search.trim().toLowerCase()
   const sourceProducts = remoteResults || products
 
@@ -68,6 +72,31 @@ export default function ProductsPage() {
     }
 
     setSearchParams(nextParams, { replace: true })
+  }
+
+  const updateCategory = (nextCategory) => {
+    const nextParams = new URLSearchParams(searchParams)
+
+    if (nextCategory && nextCategory !== defaultCategory) {
+      nextParams.set('category', nextCategory)
+    } else {
+      nextParams.delete('category')
+    }
+
+    setSearchParams(nextParams)
+  }
+
+  const updateSort = (nextSort) => {
+    const nextParams = new URLSearchParams(searchParams)
+    const normalizedSort = sortOptionValues.has(nextSort) ? nextSort : 'newest'
+
+    if (normalizedSort === 'newest') {
+      nextParams.delete('sort')
+    } else {
+      nextParams.set('sort', normalizedSort)
+    }
+
+    setSearchParams(nextParams)
   }
 
   useEffect(() => {
@@ -150,7 +179,7 @@ export default function ProductsPage() {
         <div className="aurora-solid-plate hidden rounded-[1.7rem] p-5 sm:block">
           <p className="aurora-kicker">Available now</p>
           <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-            {loading ? '...' : products.length}
+            {loading ? '…' : products.length}
           </p>
           <p className="mt-2 text-sm leading-6 text-[var(--aurora-text)]">
             Products loaded from the current catalog.
@@ -175,7 +204,7 @@ export default function ProductsPage() {
                 Shop the catalog
               </h2>
             </div>
-            <p className="text-sm leading-6 text-[var(--aurora-text)]">
+            <p className="text-sm leading-6 text-[var(--aurora-text)]" role="status" aria-live="polite">
               {catalogMessage}
             </p>
           </div>
@@ -204,6 +233,9 @@ export default function ProductsPage() {
                   value={search}
                   onChange={(event) => updateSearch(event.target.value)}
                   placeholder="Search coffee, notes, gear, or brew method"
+                  name="product-search"
+                  autoComplete="off"
+                  spellCheck={false}
                   className="glass-search-input"
                 />
               </div>
@@ -214,11 +246,12 @@ export default function ProductsPage() {
                 Sort results
               </span>
               <div className="glass-dropdown-surface">
-                <select
-                  value={sortBy}
-                  onChange={(event) => setSortBy(event.target.value)}
-                  className="glass-dropdown-select"
-                >
+	                <select
+	                  value={sortBy}
+	                  onChange={(event) => updateSort(event.target.value)}
+	                  name="sort"
+	                  className="glass-dropdown-select"
+	                >
                   {sortOptions.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -242,7 +275,8 @@ export default function ProductsPage() {
                   variant="chip"
                   size="compact"
                   selected={category === option}
-                  onClick={() => setCategory(option)}
+                  aria-pressed={category === option}
+                  onClick={() => updateCategory(option)}
                 >
                   {option}
                 </LiquidGlassButton>

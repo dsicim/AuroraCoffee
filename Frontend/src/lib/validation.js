@@ -78,6 +78,26 @@ export function validateCityPostalCode(city, postalCode) {
   return { s: true }
 }
 
+export function validateCardExpiry(expiry, now = new Date()) {
+  const normalizedExpiry = String(expiry || '').trim()
+  const match = /^(0[1-9]|1[0-2])\/(\d{2})$/.exec(normalizedExpiry)
+
+  if (!match) {
+    return { s: false, e: 'Expiry must be in MM/YY format' }
+  }
+
+  const expiryMonth = Number(match[1])
+  const expiryYear = 2000 + Number(match[2])
+  const currentMonth = now.getMonth() + 1
+  const currentYear = now.getFullYear()
+
+  if (expiryYear < currentYear || (expiryYear === currentYear && expiryMonth < currentMonth)) {
+    return { s: false, e: 'Expiry date cannot be in the past' }
+  }
+
+  return { s: true }
+}
+
 export function validatePassword(password, ids = []) {
   if (password.length < 8) {
     return { s: false, e: 'Password must be at least 8 characters long' }

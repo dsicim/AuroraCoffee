@@ -72,6 +72,10 @@ function getOptionValueCode(optionValue) {
   return normalizeOptionCode(optionValue?.valueCode || optionValue?.id || optionValue?.label)
 }
 
+function isOptionGroupRequired(group) {
+  return group?.isRequired !== false
+}
+
 function getResolvedOptionSelections(optionGroups, selectedValues) {
   const normalizedSelectedValues =
     selectedValues && typeof selectedValues === 'object' ? selectedValues : {}
@@ -119,25 +123,33 @@ function getMatchingVariant(product, optionGroups, selectedValues) {
     return null
   }
 
-  const selectedVariantCodes = relevantGroups
-    .map((group) => normalizeOptionCode(selectedValues[getOptionGroupKey(group)]))
-    .filter(Boolean)
+  const selectedVariantEntries = relevantGroups
+    .map((group) => [
+      getOptionGroupKey(group),
+      normalizeOptionCode(selectedValues[getOptionGroupKey(group)]),
+    ])
+    .filter(([, valueCode]) => Boolean(valueCode))
 
-  if (!selectedVariantCodes.length) {
+  if (!selectedVariantEntries.length) {
     return null
   }
 
   return product.variants.find((variant) => {
-    const variantCodes = Object.values(variant?.optionValueCodes || {})
-      .map((value) => normalizeOptionCode(value))
-      .filter(Boolean)
+    const variantCodes = Object.fromEntries(
+      Object.entries(variant?.optionValueCodes || {})
+        .map(([key, value]) => [normalizeOptionCode(key), normalizeOptionCode(value)])
+        .filter(([key, value]) => Boolean(key && value)),
+    )
 
-    if (variantCodes.length) {
-      return selectedVariantCodes.every((code) => variantCodes.includes(code))
+    if (Object.keys(variantCodes).length) {
+      return selectedVariantEntries.every(
+        ([groupKey, valueCode]) => variantCodes[groupKey] === valueCode,
+      )
     }
 
     return relevantGroups.length === 1 &&
-      normalizeOptionCode(variant?.variantCode) === selectedVariantCodes[0]
+      selectedVariantEntries.length === 1 &&
+      normalizeOptionCode(variant?.variantCode) === selectedVariantEntries[0][1]
   }) || null
 }
 
@@ -1333,18 +1345,36 @@ export default function ProductDetailPage() {
 
     return optionGroups
       .slice(0, index)
-      .every((previousGroup) => Boolean(selectedOptionsByGroup[getOptionGroupKey(previousGroup)]))
+      .every(
+        (previousGroup) =>
+          !isOptionGroupRequired(previousGroup) ||
+          Boolean(selectedOptionsByGroup[getOptionGroupKey(previousGroup)]),
+      )
   })
   const selectedOptionRecords = getSelectedOptionRecords(optionGroups, selectedOptionsByGroup)
   const activeOptionMenu =
     openOptionMenu.productSlug === product.slug ? openOptionMenu.groupKey : ''
   const missingRequiredOptionGroups = optionGroups.filter(
-    (group) => !selectedOptionsByGroup[getOptionGroupKey(group)],
+    (group) => isOptionGroupRequired(group) && !selectedOptionsByGroup[getOptionGroupKey(group)],
   )
   const matchingVariant = getMatchingVariant(product, optionGroups, selectedOptionsByGroup)
-  const requiresVariantMatch = Boolean(product.hasVariants && optionGroups.some((group) => group.storeAsVariant))
+  const requiredVariantGroups = optionGroups.filter(
+    (group) => group.storeAsVariant && isOptionGroupRequired(group),
+  )
+  const selectedVariantGroups = optionGroups.filter(
+    (group) => group.storeAsVariant && selectedOptionsByGroup[getOptionGroupKey(group)],
+  )
+  const requiresVariantMatch = Boolean(product.hasVariants && requiredVariantGroups.length)
+  const hasUnavailableVariantCombination = Boolean(
+    product.hasVariants &&
+    selectedVariantGroups.length &&
+    !matchingVariant,
+  )
   const hasRequiredOptions = missingRequiredOptionGroups.length === 0
-  const hasCompleteSelection = hasRequiredOptions && (!requiresVariantMatch || Boolean(matchingVariant))
+  const hasCompleteSelection =
+    hasRequiredOptions &&
+    !hasUnavailableVariantCombination &&
+    (!requiresVariantMatch || Boolean(matchingVariant))
   const displayAvailability = matchingVariant
     ? {
         hasStock: (matchingVariant.stock || 0) > 0,
@@ -1367,7 +1397,7 @@ export default function ProductDetailPage() {
       return
     }
 
-    if (requiresVariantMatch && !matchingVariant) {
+    if (hasUnavailableVariantCombination) {
       setFeedback('This option combination is currently unavailable.')
       return
     }
@@ -1460,7 +1490,7 @@ export default function ProductDetailPage() {
                           {group.name}
                         </p>
                         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
-                          Required
+                          {isOptionGroupRequired(group) ? 'Required' : 'Optional'}
                         </span>
                       </div>
                       <PreviewDropdown
@@ -1499,7 +1529,7 @@ export default function ProductDetailPage() {
                   )
                 })}
 
-                {requiresVariantMatch && hasRequiredOptions && !matchingVariant ? (
+                {hasRequiredOptions && hasUnavailableVariantCombination ? (
                   <p className="aurora-message mt-1">
                     That option combination does not map to an available product variant yet.
                   </p>
@@ -1546,13 +1576,15 @@ export default function ProductDetailPage() {
                 ? 'Unavailable'
                 : !hasRequiredOptions
                   ? 'Select options first'
-                  : requiresVariantMatch && !matchingVariant
+                  : hasUnavailableVariantCombination
                     ? 'Unavailable combination'
                     : 'Add to cart'}
             </LiquidGlassButton>
 
             {feedback ? (
-              <p className="aurora-message aurora-message-success mt-4">{feedback}</p>
+              <p className="aurora-message aurora-message-success mt-4" role="status" aria-live="polite">
+                {feedback}
+              </p>
             ) : null}
           </AuroraInset>
 

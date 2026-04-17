@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import StorefrontLayout from '../components/StorefrontLayout'
@@ -49,6 +49,7 @@ import {
 import { getItemsPriceBreakdown, getLinePriceBreakdown } from '../lib/tax'
 import {
   validateCityPostalCode,
+  validateCardExpiry,
   validateEmail,
   validateTurkishCity,
 } from '../lib/validation'
@@ -267,7 +268,7 @@ function validateBillingForm(billing) {
 function validatePaymentForm(payment) {
   const errors = {}
   const digits = payment.cardNumber.replace(/\D/g, '')
-  const expiryIsValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(payment.expiry)
+  const expiryValidation = validateCardExpiry(payment.expiry)
   const cvcDigits = payment.cvc.replace(/\D/g, '')
 
   if (!payment.cardholder.trim()) {
@@ -278,8 +279,8 @@ function validatePaymentForm(payment) {
     errors.cardNumber = 'Card number must be 16 digits'
   }
 
-  if (!expiryIsValid) {
-    errors.expiry = 'Expiry must be in MM/YY format'
+  if (!expiryValidation.s) {
+    errors.expiry = expiryValidation.e
   }
 
   if (cvcDigits.length < 3) {
@@ -365,6 +366,7 @@ function getInstallmentSelectionDescription(installmentInfo, selectedInstallment
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
+  const checkoutFormRef = useRef(null)
   const initialSession = getAuthSession()
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => initialSession)
@@ -379,6 +381,7 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState('')
   const [savedCards, setSavedCards] = useState(() => getPaymentMethodsSnapshot().cards)
   const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
+  const [usingNewCard, setUsingNewCard] = useState(false)
   const [saveCardForLater, setSaveCardForLater] = useState(false)
   const [installmentInfo, setInstallmentInfo] = useState(null)
   const [selectedInstallments, setSelectedInstallments] = useState('')
@@ -412,6 +415,7 @@ export default function CheckoutPage() {
   const pricing = getItemsPriceBreakdown(items, {
     payableTotal: selectedInstallmentOption?.total ?? total,
   })
+  const firstErrorMessage = Object.values(errors).find(Boolean) || ''
 
   useEffect(() => {
     const syncFromStorage = () => {
@@ -465,6 +469,7 @@ export default function CheckoutPage() {
     if (!isLoggedIn) {
       setSavedCards([])
       setSelectedSavedCardId('')
+      setUsingNewCard(false)
       return
     }
 
@@ -478,9 +483,11 @@ export default function CheckoutPage() {
       const snapshot = getPaymentMethodsSnapshot()
       setSavedCards(snapshot.cards)
       setSelectedSavedCardId((current) =>
-        current && snapshot.cards.some((card) => card.id === current)
-          ? current
-          : snapshot.cards[0]?.id || '',
+        usingNewCard
+          ? ''
+          : current && snapshot.cards.some((card) => card.id === current)
+            ? current
+            : snapshot.cards[0]?.id || '',
       )
     }
 
@@ -494,9 +501,11 @@ export default function CheckoutPage() {
 
         setSavedCards(cards)
         setSelectedSavedCardId((current) =>
-          current && cards.some((card) => card.id === current)
-            ? current
-            : cards[0]?.id || '',
+          usingNewCard
+            ? ''
+            : current && cards.some((card) => card.id === current)
+              ? current
+              : cards[0]?.id || '',
         )
       } catch (paymentError) {
         if (active) {
@@ -515,7 +524,17 @@ export default function CheckoutPage() {
       active = false
       window.removeEventListener(paymentMethodsChangeEvent, syncSavedCards)
     }
-  }, [isLoggedIn])
+  }, [isLoggedIn, usingNewCard])
+
+  useEffect(() => {
+    if (!selectedAddressId) {
+      return
+    }
+
+    if (!savedAddresses.some((address) => address.id === selectedAddressId)) {
+      setSelectedAddressId('')
+    }
+  }, [savedAddresses, selectedAddressId])
 
   useEffect(() => {
     if (!session?.email) {
@@ -555,6 +574,7 @@ export default function CheckoutPage() {
 
     setSelectedAddressId(snapshot?.selectedAddressId || '')
     setSelectedSavedCardId(snapshot?.selectedSavedCardId || '')
+    setUsingNewCard(!snapshot?.selectedSavedCardId)
     setSelectedInstallments(snapshot?.selectedInstallments || '')
     setSaveCardForLater(Boolean(snapshot?.saveCardForLater))
     setPaymentSummaryOverride(snapshot?.paymentSummary || null)
@@ -687,6 +707,58 @@ export default function CheckoutPage() {
     setSelectedInstallments(value)
   }
 
+  const focusFirstError = (nextErrors) => {
+    const fieldOrder = [
+      'firstName',
+      'lastName',
+      'email',
+      'addressLine1',
+      'province',
+      'district',
+      'postalCode',
+      'phone',
+      'billingFirstName',
+      'billingLastName',
+      'billingAddressLine1',
+      'billingProvince',
+      'billingDistrict',
+      'billingPostalCode',
+      'billingPhone',
+      'cardholder',
+      'cardNumber',
+      'expiry',
+      'cvc',
+    ]
+    const firstField = fieldOrder.find((field) => nextErrors[field])
+
+    if (!firstField) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      const target = checkoutFormRef.current?.querySelector(
+        `[data-checkout-field="${firstField}"]`,
+      )
+
+      if (!target) {
+        return
+      }
+
+      target.focus({ preventScroll: true })
+      target.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    })
+  }
+
+  const getFieldProps = (field) => {
+    const hasError = Boolean(errors[field])
+
+    return {
+      'data-checkout-field': field,
+      'aria-invalid': hasError ? 'true' : undefined,
+      'aria-describedby': hasError ? `checkout-${field}-error` : undefined,
+    }
+  }
+
   const handleNextStep = () => {
     if (currentStep.key === 'delivery') {
       const deliveryErrors = validateDeliveryForm(delivery)
@@ -726,10 +798,13 @@ export default function CheckoutPage() {
       }
 
       if (Object.keys(deliveryErrors).length || Object.keys(billingErrors).length) {
-        setErrors({
+        const nextErrors = {
           ...deliveryErrors,
           ...billingErrors,
-        })
+        }
+
+        setErrors(nextErrors)
+        focusFirstError(nextErrors)
         return
       }
     }
@@ -741,6 +816,7 @@ export default function CheckoutPage() {
 
       if (Object.keys(paymentErrors).length) {
         setErrors(paymentErrors)
+        focusFirstError(paymentErrors)
         return
       }
     }
@@ -883,6 +959,11 @@ export default function CheckoutPage() {
         const address = await fetchSavedAddressById(addressId)
 
         if (!address) {
+          setSelectedAddressId('')
+          setErrors((current) => ({
+            ...current,
+            delivery: 'That saved address is no longer available. Review the delivery fields before continuing.',
+          }))
           return
         }
 
@@ -903,7 +984,11 @@ export default function CheckoutPage() {
 
   const renderFieldError = (field) =>
     errors[field] ? (
-      <p className="mt-2 text-sm font-medium text-[var(--aurora-text-strong)]">
+      <p
+        id={`checkout-${field}-error`}
+        className="mt-2 text-sm font-medium text-[var(--aurora-text-strong)]"
+        role="alert"
+      >
         {errors[field]}
       </p>
     ) : null
@@ -1012,7 +1097,10 @@ export default function CheckoutPage() {
   return (
     <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
       <section className="grid gap-8 lg:grid-cols-[1.05fr_0.95fr]">
-        <div className="aurora-showroom-panel p-6 sm:p-8">
+        <div className="aurora-showroom-panel p-6 sm:p-8" ref={checkoutFormRef}>
+          <div className="sr-only" role="status" aria-live="polite">
+            {firstErrorMessage}
+          </div>
           <div className="grid gap-3 sm:grid-cols-4">
             {checkoutSteps.map((step, index) => {
               const isActive = index === stepIndex
@@ -1053,10 +1141,10 @@ export default function CheckoutPage() {
                     </div>
                     <Link
                       to="/account/addresses"
-                      state={{
-                        returnTo: '/cart',
-                        returnLabel: 'Back to cart',
-                      }}
+	                      state={{
+	                        returnTo: '/checkout',
+	                        returnLabel: 'Back to checkout',
+	                      }}
                       className="aurora-link text-sm"
                     >
                       Manage saved addresses
@@ -1092,9 +1180,10 @@ export default function CheckoutPage() {
                   name="given-name"
                   autoComplete="given-name"
                   value={delivery.firstName}
-                  onChange={(event) => handleDeliveryChange('firstName', event.target.value)}
-                  className="aurora-input"
-                />
+	                  onChange={(event) => handleDeliveryChange('firstName', event.target.value)}
+	                  {...getFieldProps('firstName')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('firstName')}
               </label>
 
@@ -1106,10 +1195,11 @@ export default function CheckoutPage() {
                   type="text"
                   name="family-name"
                   autoComplete="family-name"
-                  value={delivery.lastName}
-                  onChange={(event) => handleDeliveryChange('lastName', event.target.value)}
-                  className="aurora-input"
-                />
+	                  value={delivery.lastName}
+	                  onChange={(event) => handleDeliveryChange('lastName', event.target.value)}
+	                  {...getFieldProps('lastName')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('lastName')}
               </label>
 
@@ -1121,10 +1211,11 @@ export default function CheckoutPage() {
                   type="email"
                   name="email"
                   autoComplete="email"
-                  value={delivery.email}
-                  onChange={(event) => handleDeliveryChange('email', event.target.value)}
-                  className="aurora-input"
-                />
+	                  value={delivery.email}
+	                  onChange={(event) => handleDeliveryChange('email', event.target.value)}
+	                  {...getFieldProps('email')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('email')}
               </label>
 
@@ -1136,10 +1227,11 @@ export default function CheckoutPage() {
                   type="text"
                   name="address-line1"
                   autoComplete="shipping address-line1"
-                  value={delivery.addressLine1}
-                  onChange={(event) => handleDeliveryChange('addressLine1', event.target.value)}
-                  className="aurora-input"
-                />
+	                  value={delivery.addressLine1}
+	                  onChange={(event) => handleDeliveryChange('addressLine1', event.target.value)}
+	                  {...getFieldProps('addressLine1')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('addressLine1')}
               </label>
 
@@ -1164,10 +1256,11 @@ export default function CheckoutPage() {
                 <select
                   name="address-level1"
                   autoComplete="shipping address-level1"
-                  value={delivery.province}
-                  onChange={(event) => handleDeliveryChange('province', event.target.value)}
-                  className="aurora-select"
-                >
+	                  value={delivery.province}
+	                  onChange={(event) => handleDeliveryChange('province', event.target.value)}
+	                  {...getFieldProps('province')}
+	                  className="aurora-select"
+	                >
                   <option value="">Select a province</option>
                   {cityOptions.map((option) => (
                     <option key={option} value={getCityOptionValue(option)}>
@@ -1186,10 +1279,11 @@ export default function CheckoutPage() {
                   type="text"
                   name="address-level2"
                   autoComplete="shipping address-level2"
-                  value={delivery.district}
-                  onChange={(event) => handleDeliveryChange('district', event.target.value)}
-                  className="aurora-input"
-                />
+	                  value={delivery.district}
+	                  onChange={(event) => handleDeliveryChange('district', event.target.value)}
+	                  {...getFieldProps('district')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('district')}
               </label>
 
@@ -1203,15 +1297,16 @@ export default function CheckoutPage() {
                   maxLength={5}
                   name="postal-code"
                   autoComplete="shipping postal-code"
-                  value={delivery.postalCode}
-                  onChange={(event) =>
-                    handleDeliveryChange(
-                      'postalCode',
-                      sanitizePostalCode(event.target.value),
-                    )
-                  }
-                  className="aurora-input"
-                />
+	                  value={delivery.postalCode}
+	                  onChange={(event) =>
+	                    handleDeliveryChange(
+	                      'postalCode',
+	                      sanitizePostalCode(event.target.value),
+	                    )
+	                  }
+	                  {...getFieldProps('postalCode')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('postalCode')}
               </label>
 
@@ -1224,10 +1319,11 @@ export default function CheckoutPage() {
                   inputMode="tel"
                   name="tel"
                   autoComplete="tel"
-                  value={delivery.phone}
-                  onChange={(event) => handleDeliveryChange('phone', event.target.value)}
-                  className="aurora-input"
-                />
+	                  value={delivery.phone}
+	                  onChange={(event) => handleDeliveryChange('phone', event.target.value)}
+	                  {...getFieldProps('phone')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('phone')}
               </label>
 
@@ -1302,10 +1398,11 @@ export default function CheckoutPage() {
                         type="text"
                         name="billing-given-name"
                         autoComplete="billing given-name"
-                        value={billing.firstName}
-                        onChange={(event) => handleBillingChange('firstName', event.target.value)}
-                        className="aurora-input"
-                      />
+	                        value={billing.firstName}
+	                        onChange={(event) => handleBillingChange('firstName', event.target.value)}
+	                        {...getFieldProps('billingFirstName')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingFirstName')}
                     </label>
 
@@ -1317,10 +1414,11 @@ export default function CheckoutPage() {
                         type="text"
                         name="billing-family-name"
                         autoComplete="billing family-name"
-                        value={billing.lastName}
-                        onChange={(event) => handleBillingChange('lastName', event.target.value)}
-                        className="aurora-input"
-                      />
+	                        value={billing.lastName}
+	                        onChange={(event) => handleBillingChange('lastName', event.target.value)}
+	                        {...getFieldProps('billingLastName')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingLastName')}
                     </label>
 
@@ -1332,10 +1430,11 @@ export default function CheckoutPage() {
                         type="text"
                         name="billing-address-line1"
                         autoComplete="billing address-line1"
-                        value={billing.addressLine1}
-                        onChange={(event) => handleBillingChange('addressLine1', event.target.value)}
-                        className="aurora-input"
-                      />
+	                        value={billing.addressLine1}
+	                        onChange={(event) => handleBillingChange('addressLine1', event.target.value)}
+	                        {...getFieldProps('billingAddressLine1')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingAddressLine1')}
                     </label>
 
@@ -1360,10 +1459,11 @@ export default function CheckoutPage() {
                       <select
                         name="billing-address-level1"
                         autoComplete="billing address-level1"
-                        value={billing.province}
-                        onChange={(event) => handleBillingChange('province', event.target.value)}
-                        className="aurora-select"
-                      >
+	                        value={billing.province}
+	                        onChange={(event) => handleBillingChange('province', event.target.value)}
+	                        {...getFieldProps('billingProvince')}
+	                        className="aurora-select"
+	                      >
                         <option value="">Select a province</option>
                         {billingCityOptions.map((option) => (
                           <option key={option} value={getCityOptionValue(option)}>
@@ -1382,10 +1482,11 @@ export default function CheckoutPage() {
                         type="text"
                         name="billing-address-level2"
                         autoComplete="billing address-level2"
-                        value={billing.district}
-                        onChange={(event) => handleBillingChange('district', event.target.value)}
-                        className="aurora-input"
-                      />
+	                        value={billing.district}
+	                        onChange={(event) => handleBillingChange('district', event.target.value)}
+	                        {...getFieldProps('billingDistrict')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingDistrict')}
                     </label>
 
@@ -1399,15 +1500,16 @@ export default function CheckoutPage() {
                         maxLength={5}
                         name="billing-postal-code"
                         autoComplete="billing postal-code"
-                        value={billing.postalCode}
-                        onChange={(event) =>
-                          handleBillingChange(
-                            'postalCode',
-                            sanitizePostalCode(event.target.value),
-                          )
-                        }
-                        className="aurora-input"
-                      />
+	                        value={billing.postalCode}
+	                        onChange={(event) =>
+	                          handleBillingChange(
+	                            'postalCode',
+	                            sanitizePostalCode(event.target.value),
+	                          )
+	                        }
+	                        {...getFieldProps('billingPostalCode')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingPostalCode')}
                     </label>
 
@@ -1420,20 +1522,21 @@ export default function CheckoutPage() {
                         inputMode="tel"
                         name="billing-tel"
                         autoComplete="billing tel"
-                        value={billing.phone}
-                        onChange={(event) => handleBillingChange('phone', event.target.value)}
-                        className="aurora-input"
-                      />
+	                        value={billing.phone}
+	                        onChange={(event) => handleBillingChange('phone', event.target.value)}
+	                        {...getFieldProps('billingPhone')}
+	                        className="aurora-input"
+	                      />
                       {renderFieldError('billingPhone')}
                     </label>
                   </div>
                 ) : null}
               </div>
 
-              {errors.delivery ? (
-                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
-                  {errors.delivery}
-                </p>
+	              {errors.delivery ? (
+	                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]" role="alert">
+	                  {errors.delivery}
+	                </p>
               ) : null}
             </div>
           ) : null}
@@ -1455,10 +1558,11 @@ export default function CheckoutPage() {
                       <button
                         type="button"
                         className="aurora-link text-sm"
-                        onClick={() => {
-                          setPaymentSummaryOverride(null)
-                          setSelectedSavedCardId('')
-                        }}
+	                        onClick={() => {
+	                          setPaymentSummaryOverride(null)
+	                          setUsingNewCard(true)
+	                          setSelectedSavedCardId('')
+	                        }}
                       >
                         Use a new card
                       </button>
@@ -1471,10 +1575,11 @@ export default function CheckoutPage() {
                         <button
                           type="button"
                           className="min-w-0 flex-1 text-left"
-                          onClick={() => {
-                            setPaymentSummaryOverride(null)
-                            setSelectedSavedCardId(card.id)
-                          }}
+	                          onClick={() => {
+	                            setPaymentSummaryOverride(null)
+	                            setUsingNewCard(false)
+	                            setSelectedSavedCardId(card.id)
+	                          }}
                         >
                           <p className="font-semibold text-[var(--aurora-text-strong)]">
                             {card.alias || card.family || 'Saved card'}
@@ -1531,12 +1636,13 @@ export default function CheckoutPage() {
                     </span>
                     <input
                       type="text"
-                      name="cc-name"
-                      autoComplete="cc-name"
-                      value={payment.cardholder}
-                      onChange={(event) => handlePaymentChange('cardholder', event.target.value)}
-                      className="aurora-input"
-                    />
+	                      name="cc-name"
+	                      autoComplete="cc-name"
+	                      value={payment.cardholder}
+	                      onChange={(event) => handlePaymentChange('cardholder', event.target.value)}
+	                      {...getFieldProps('cardholder')}
+	                      className="aurora-input"
+	                    />
                     {renderFieldError('cardholder')}
                   </label>
 
@@ -1550,12 +1656,13 @@ export default function CheckoutPage() {
                       name="cc-number"
                       autoComplete="cc-number"
                       value={payment.cardNumber}
-                      onChange={(event) =>
-                        handlePaymentChange('cardNumber', formatCardNumber(event.target.value))
-                      }
-                      placeholder="1234 5678 9012 3456"
-                      className="aurora-input"
-                    />
+	                      onChange={(event) =>
+	                        handlePaymentChange('cardNumber', formatCardNumber(event.target.value))
+	                      }
+	                      placeholder="1234 5678 9012 3456"
+	                      {...getFieldProps('cardNumber')}
+	                      className="aurora-input"
+	                    />
                     {renderFieldError('cardNumber')}
                   </label>
 
@@ -1569,12 +1676,13 @@ export default function CheckoutPage() {
                       name="cc-exp"
                       autoComplete="cc-exp"
                       value={payment.expiry}
-                      onChange={(event) =>
-                        handlePaymentChange('expiry', formatExpiry(event.target.value))
-                      }
-                      placeholder="MM/YY"
-                      className="aurora-input"
-                    />
+	                      onChange={(event) =>
+	                        handlePaymentChange('expiry', formatExpiry(event.target.value))
+	                      }
+	                      placeholder="MM/YY"
+	                      {...getFieldProps('expiry')}
+	                      className="aurora-input"
+	                    />
                     {renderFieldError('expiry')}
                   </label>
                 </>
@@ -1596,15 +1704,16 @@ export default function CheckoutPage() {
                   name="cc-csc"
                   autoComplete="cc-csc"
                   value={payment.cvc}
-                  onChange={(event) =>
-                    handlePaymentChange(
-                      'cvc',
-                      event.target.value.replace(/\D/g, '').slice(0, 4),
-                    )
-                  }
-                  placeholder="123"
-                  className="aurora-input"
-                />
+	                  onChange={(event) =>
+	                    handlePaymentChange(
+	                      'cvc',
+	                      event.target.value.replace(/\D/g, '').slice(0, 4),
+	                    )
+	                  }
+	                  placeholder="123"
+	                  {...getFieldProps('cvc')}
+	                  className="aurora-input"
+	                />
                 {renderFieldError('cvc')}
               </label>
 
@@ -1695,10 +1804,10 @@ export default function CheckoutPage() {
                 </div>
               ) : null}
 
-              {errors.payment ? (
-                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]">
-                  {errors.payment}
-                </p>
+	              {errors.payment ? (
+	                <p className="sm:col-span-2 text-sm font-medium text-[var(--aurora-text-strong)]" role="alert">
+	                  {errors.payment}
+	                </p>
               ) : null}
             </div>
           ) : null}

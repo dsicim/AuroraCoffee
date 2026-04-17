@@ -162,13 +162,16 @@ export default function CartPage() {
                       </div>
 
                       <div className="aurora-widget-subsurface flex items-center justify-between gap-3 px-3 py-2">
-                        <LiquidGlassStepperButton
-                          type="button"
-                          aria-label={`Decrease ${item.name} quantity`}
-                          onClick={() => {
-                            void updateCartItemQuantity(item.id, item.quantity - 1)
-                          }}
-                        >
+	                        <LiquidGlassStepperButton
+	                          type="button"
+	                          aria-label={`Decrease ${item.name} quantity`}
+	                          disabled={item.quantity <= 1}
+	                          onClick={() => {
+	                            if (item.quantity > 1) {
+	                              void updateCartItemQuantity(item.id, item.quantity - 1)
+	                            }
+	                          }}
+	                        >
                           -
                         </LiquidGlassStepperButton>
                         <span className="min-w-8 text-center text-sm font-semibold text-[var(--aurora-text-strong)]">

@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { createElement, forwardRef } from 'react'
 
 const variantClassMap = {
   primary: 'button-variant-primary',
@@ -23,7 +23,7 @@ function joinClasses(...values) {
   return values.filter(Boolean).join(' ')
 }
 
-export default function LiquidGlassButton({
+const LiquidGlassButton = forwardRef(function LiquidGlassButton({
   as = 'button',
   variant = 'primary',
   size = 'default',
@@ -35,7 +35,7 @@ export default function LiquidGlassButton({
   contentClassName = '',
   children,
   ...props
-}) {
+}, ref) {
   const Tag = as
   const isButtonElement = as === 'button'
   const isDisabled = disabled || loading
@@ -73,7 +73,10 @@ export default function LiquidGlassButton({
     <div className={wrapperClassName}>
       {createElement(
         Tag,
-        controlProps,
+        {
+          ...controlProps,
+          ref,
+        },
         <span className={joinClasses('button-label', contentClassName)}>
           {children}
         </span>,
@@ -81,26 +84,30 @@ export default function LiquidGlassButton({
       <div className="button-shadow" />
     </div>
   )
-}
+})
 
-export function LiquidGlassIconButton(props) {
+export default LiquidGlassButton
+
+export const LiquidGlassIconButton = forwardRef(function LiquidGlassIconButton(props, ref) {
   return (
     <LiquidGlassButton
+      ref={ref}
       variant="icon"
       size="icon"
       iconOnly
       {...props}
     />
   )
-}
+})
 
-export function LiquidGlassStepperButton(props) {
+export const LiquidGlassStepperButton = forwardRef(function LiquidGlassStepperButton(props, ref) {
   return (
     <LiquidGlassButton
+      ref={ref}
       variant="stepper"
       size="stepper"
       iconOnly
       {...props}
     />
   )
-}
+})
