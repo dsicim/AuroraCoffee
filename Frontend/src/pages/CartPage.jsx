@@ -93,7 +93,7 @@ export default function CartPage() {
             <div>
               <p className="aurora-kicker">Your cart</p>
               <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-                Review your order
+                Review before checkout
               </h2>
             </div>
             <span className="aurora-chip">
@@ -107,10 +107,10 @@ export default function CartPage() {
                 Your cart is empty
               </p>
               <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
-                Add a few coffees from the catalog to start building your next order.
+                Add a coffee, mug, or brew tool to start your next Aurora order.
               </p>
               <LiquidGlassButton as={Link} to="/products" size="hero" className="mt-6">
-                Browse the catalog
+                Shop products
               </LiquidGlassButton>
             </div>
           ) : (
@@ -234,7 +234,7 @@ export default function CartPage() {
               <div className="flex items-center justify-between">
                 <span>Storage mode</span>
                 <span className="font-semibold text-[var(--aurora-text-strong)]">
-                  {isLoggedIn ? 'Linked to current auth choice' : 'Guest cart'}
+                  {isLoggedIn ? 'Saved to account' : 'Guest cart'}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-[rgba(138,144,119,0.18)] pt-4">
@@ -248,7 +248,7 @@ export default function CartPage() {
 
           <AuroraInset className="mt-6 text-sm leading-7 text-[var(--aurora-text)]">
             {isLoggedIn
-              ? 'You are signed in. Prices are shown tax-inclusive; continue to checkout to confirm delivery and payment details.'
+              ? 'You are signed in. Continue to confirm delivery, payment, and final order details.'
               : 'You can build the cart while browsing. Prices are shown tax-inclusive, and you will be asked to sign in before checkout.'}
           </AuroraInset>
 
@@ -264,7 +264,7 @@ export default function CartPage() {
 
           <div className="mt-5 flex flex-wrap gap-3">
               <LiquidGlassButton as={Link} to="/products" variant="secondary">
-              Add more products
+              Continue shopping
               </LiquidGlassButton>
               <LiquidGlassButton as={Link} to="/" variant="quiet">
               Back to home

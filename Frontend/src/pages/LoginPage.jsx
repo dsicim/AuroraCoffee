@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
+import PasswordField from '../components/PasswordField'
 import { buildApiUrl } from '../lib/api'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import { saveAuthSession } from '../lib/auth'
@@ -154,6 +155,8 @@ export default function LoginPage() {
           </span>
           <input
             type="email"
+            name="email"
+            autoComplete="email"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value)
@@ -164,21 +167,20 @@ export default function LoginPage() {
           />
         </label>
 
-        <label className="block">
-          <span className="aurora-field-label">
-            Password
-          </span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value)
-              setFeedback('')
-            }}
-            placeholder="Enter your password"
-            className="aurora-input"
-          />
-        </label>
+        <PasswordField
+          id="login-password"
+          label="Password"
+          name="password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value)
+          }}
+          placeholder="Enter your password"
+          autoComplete="current-password"
+          onClearFeedback={() => {
+            setFeedback('')
+          }}
+        />
 
         <div className="aurora-form-inline sm:flex-row sm:items-center sm:justify-end">
           <Link to="/forgotpassword" className="aurora-link">

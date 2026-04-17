@@ -5,6 +5,7 @@ import LiquidGlassDefs from './LiquidGlassDefs'
 
 export default function StorefrontLayout({
   hero = null,
+  heroFullBleed = false,
   children,
   contentClassName = '',
 }) {
@@ -14,9 +15,15 @@ export default function StorefrontLayout({
       <AuroraAtmosphere />
       <Header />
 
-      <main className="aurora-main">
+      <main className={`aurora-main ${heroFullBleed ? 'aurora-main--full-hero' : ''}`.trim()}>
+        {hero && heroFullBleed ? (
+          <section className="aurora-page-intro aurora-page-intro-full relative">
+            {hero}
+          </section>
+        ) : null}
+
         <div className={`aurora-container relative aurora-page-rail ${contentClassName}`}>
-          {hero ? (
+          {hero && !heroFullBleed ? (
             <section className="aurora-page-intro relative">
               {hero}
             </section>

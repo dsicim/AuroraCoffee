@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
+import PasswordField from '../components/PasswordField'
 import { buildApiUrl } from '../lib/api'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import { saveAuthSession } from '../lib/auth'
@@ -133,37 +134,35 @@ export default function ResetPasswordPage() {
       helper="Successful password resets return the user to sign in again, unless the backend responds with a fresh authenticated session."
     >
       <form className="space-y-5" onSubmit={handleSubmit}>
-        <label className="block">
-          <span className="aurora-field-label">
-            New password
-          </span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value)
-              setFeedback('')
-            }}
-            placeholder="Enter your new password"
-            className="aurora-input"
-          />
-        </label>
+        <PasswordField
+          id="reset-password"
+          label="New password"
+          name="password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value)
+          }}
+          placeholder="Enter your new password"
+          autoComplete="new-password"
+          onClearFeedback={() => {
+            setFeedback('')
+          }}
+        />
 
-        <label className="block">
-          <span className="aurora-field-label">
-            Confirm new password
-          </span>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => {
-              setConfirmPassword(event.target.value)
-              setFeedback('')
-            }}
-            placeholder="Re-enter your new password"
-            className="aurora-input"
-          />
-        </label>
+        <PasswordField
+          id="reset-confirm-password"
+          label="Confirm new password"
+          name="confirmPassword"
+          value={confirmPassword}
+          onChange={(event) => {
+            setConfirmPassword(event.target.value)
+          }}
+          placeholder="Re-enter your new password"
+          autoComplete="new-password"
+          onClearFeedback={() => {
+            setFeedback('')
+          }}
+        />
 
         <LiquidGlassButton
           type="submit"

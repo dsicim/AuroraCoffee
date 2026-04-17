@@ -106,7 +106,7 @@ export default function AccountLayout({
 
           <section className="aurora-content-split aurora-account-content relative isolate lg:grid-cols-[15.5rem_minmax(0,1fr)] xl:grid-cols-[16.5rem_minmax(0,1fr)]">
             <aside className="aurora-operational-card aurora-account-sidebar relative z-20 h-fit rounded-[2rem] p-5">
-              <p className="aurora-kicker">Navigate</p>
+              <p className="aurora-kicker">Account tools</p>
               <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">
                 {accountLinks.map((item) => {
                   const isActive =
@@ -131,7 +131,7 @@ export default function AccountLayout({
 
               <div className="aurora-divider my-5" />
               <p className="text-sm text-[var(--aurora-text)]">
-                Keep the main account tools in one place.
+                Orders, saved addresses, cards, and favorites stay one tap apart.
               </p>
             </aside>
 

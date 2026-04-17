@@ -118,10 +118,10 @@ const productSelectThemes = {
       boxShadow: '0 0 0 2px rgba(191, 159, 122, 0.12)',
     },
     darkSelectStyle: {
-      backgroundColor: 'rgba(63, 46, 35, 0.82)',
-      borderColor: 'rgba(203, 173, 136, 0.34)',
-      color: '#f1dec8',
-      boxShadow: '0 0 0 2px rgba(203, 173, 136, 0.14)',
+      backgroundColor: 'rgba(18, 31, 40, 0.82)',
+      borderColor: 'rgba(135, 182, 215, 0.34)',
+      color: '#d8f2d0',
+      boxShadow: '0 0 0 2px rgba(201, 155, 221, 0.12)',
     },
     badgeStyle: {
       backgroundColor: 'rgba(247, 240, 229, 0.94)',
@@ -129,9 +129,9 @@ const productSelectThemes = {
       color: '#6f5139',
     },
     darkBadgeStyle: {
-      backgroundColor: 'rgba(63, 46, 35, 0.86)',
-      borderColor: 'rgba(203, 173, 136, 0.34)',
-      color: '#f1dec8',
+      backgroundColor: 'rgba(18, 31, 40, 0.86)',
+      borderColor: 'rgba(135, 182, 215, 0.34)',
+      color: '#d8f2d0',
     },
   },
   accessories: {

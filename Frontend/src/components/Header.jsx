@@ -19,13 +19,6 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import {
-  getRoleLandingPath,
-  getRoleLabel,
-  normalizeUserRole,
-  openRolePopup,
-  userRoles,
-} from '../lib/roles'
 import { useTheme } from '../lib/theme-context'
 
 const navItems = [
@@ -36,56 +29,31 @@ const navItems = [
 export default function Header() {
   const location = useLocation()
   const navigate = useNavigate()
+  const scrollFrameRef = useRef(null)
+  const lastScrollYRef = useRef(0)
+  const upwardScrollDistanceRef = useRef(0)
+  const keepHeaderVisibleRef = useRef(false)
   const menuRef = useRef(null)
+  const searchInputRef = useRef(null)
   const { themePreference, resolvedTheme, setThemePreference } = useTheme()
   const [session, setSession] = useState(getAuthSession())
   const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [headerHidden, setHeaderHidden] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [headerSearch, setHeaderSearch] = useState('')
+  const headerInteractionOpen = menuOpen || mobileNavOpen || searchOpen
   const hasSession = Boolean(session?.token)
   const user = currentUserState.status === currentUserFetchStatus.ok
     ? currentUserState.user
     : null
   const displayName = user?.displayname || 'Coffee Lover'
-  const normalizedRole = normalizeUserRole(user?.role)
-  const roleLabel = getRoleLabel(user?.role)
-  const isRoleKnown = Boolean(normalizedRole)
-  const roleLandingPath = isRoleKnown ? getRoleLandingPath(normalizedRole) : '/'
-  const roleBadgeLabel = roleLabel || 'Loading'
   const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
   const themeStatusCopy = themePreference === 'system'
     ? `Following system: ${currentThemeLabel}`
     : `Manual theme: ${currentThemeLabel}`
-
-  const customerAccountLinks = [
-    { label: 'Customer Home', to: '/customer' },
-    { label: 'Account', to: '/account' },
-    { label: 'Orders', to: '/account/orders' },
-    { label: 'Saved Addresses', to: '/account/addresses' },
-    { label: 'Payment Methods', to: '/account/payment-methods' },
-    { label: 'Favorites', to: '/account/favorites' },
-  ]
-
-  const accountLinks = normalizedRole === userRoles.customer
-    ? customerAccountLinks
-    : normalizedRole === userRoles.admin
-    ? [
-      { label: 'Admin Home', to: '/', popupRole: userRoles.admin },
-      ...customerAccountLinks,
-      { label: 'Sales Manager Home', to: '/sales-manager' },
-      { label: 'Product Manager Home', to: '/product-manager' },
-    ]
-    : isRoleKnown
-      ? [
-        { label: `${normalizedRole} Home`, to: roleLandingPath },
-        { label: 'Browse Storefront', to: '/' },
-        { label: 'View Catalog', to: '/products' },
-      ]
-      : [
-        { label: 'Browse Storefront', to: '/' },
-        { label: 'View Catalog', to: '/products' },
-      ]
 
   useEffect(() => {
     const syncSessionState = () => {
@@ -145,13 +113,14 @@ export default function Header() {
   }, [currentUserState.status, currentUserState.token, session?.token])
 
   useEffect(() => {
-    if (!menuOpen) {
+    if (!menuOpen && !searchOpen) {
       return undefined
     }
 
     const handlePointerDown = (event) => {
       if (!menuRef.current?.contains(event.target)) {
         setMenuOpen(false)
+        setSearchOpen(false)
       }
     }
 
@@ -160,12 +129,81 @@ export default function Header() {
     return () => {
       window.removeEventListener('mousedown', handlePointerDown)
     }
-  }, [menuOpen])
+  }, [menuOpen, searchOpen])
+
+  useEffect(() => {
+    keepHeaderVisibleRef.current = headerInteractionOpen
+
+    if (!headerInteractionOpen) {
+      return undefined
+    }
+
+    const frameId = window.requestAnimationFrame(() => {
+      setHeaderHidden(false)
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [headerInteractionOpen])
+
+  useEffect(() => {
+    lastScrollYRef.current = window.scrollY
+    const revealDistance = 112
+
+    const revealHeader = () => {
+      upwardScrollDistanceRef.current = 0
+      setHeaderHidden(false)
+    }
+
+    const handleScroll = () => {
+      if (scrollFrameRef.current !== null) {
+        return
+      }
+
+      scrollFrameRef.current = window.requestAnimationFrame(() => {
+        const currentScrollY = window.scrollY
+        const scrollDelta = currentScrollY - lastScrollYRef.current
+
+        if (currentScrollY <= 16 || keepHeaderVisibleRef.current) {
+          revealHeader()
+        } else if (scrollDelta > 12 && currentScrollY > 128) {
+          upwardScrollDistanceRef.current = 0
+          setHeaderHidden(true)
+        } else if (scrollDelta < -1) {
+          upwardScrollDistanceRef.current += Math.abs(scrollDelta)
+
+          if (upwardScrollDistanceRef.current >= revealDistance) {
+            revealHeader()
+          }
+        } else if (scrollDelta > 0) {
+          upwardScrollDistanceRef.current = 0
+        }
+
+        lastScrollYRef.current = currentScrollY
+        scrollFrameRef.current = null
+      })
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    window.addEventListener('focusin', revealHeader)
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('focusin', revealHeader)
+
+      if (scrollFrameRef.current !== null) {
+        window.cancelAnimationFrame(scrollFrameRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const frameId = window.requestAnimationFrame(() => {
       setMenuOpen(false)
       setMobileNavOpen(false)
+      setSearchOpen(false)
+      setHeaderHidden(false)
     })
 
     return () => {
@@ -177,6 +215,7 @@ export default function Header() {
     void (async () => {
       setMenuOpen(false)
       setMobileNavOpen(false)
+      setSearchOpen(false)
       clearAuthSession()
       try {
         await reconcileCartStorageWithAuth()
@@ -190,9 +229,43 @@ export default function Header() {
     })()
   }
 
+  const openHeaderSearch = () => {
+    setMenuOpen(false)
+    setSearchOpen(true)
+    setHeaderHidden(false)
+    window.requestAnimationFrame(() => {
+      searchInputRef.current?.focus()
+    })
+  }
+
+  const handleHeaderSearchSubmit = (event) => {
+    event.preventDefault()
+
+    const normalizedSearch = headerSearch.trim()
+    const searchPath = normalizedSearch
+      ? `/products?search=${encodeURIComponent(normalizedSearch)}`
+      : '/products'
+
+    setMenuOpen(false)
+    setSearchOpen(false)
+    setMobileNavOpen(false)
+    navigate(searchPath)
+  }
+
   return (
-    <header className="sticky top-0 z-40 px-2 pt-1 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6">
-      <div className="aurora-container">
+    <header
+      className={[
+        'aurora-site-header sticky top-0 z-40 px-2 pt-1 sm:px-6 sm:pt-4 lg:px-10 lg:pt-6',
+        headerHidden ? 'is-hidden' : 'is-visible',
+      ].join(' ')}
+    >
+      <div
+        className={[
+          'aurora-container aurora-header-shell',
+          menuOpen ? 'is-cart-menu-open' : '',
+        ].join(' ')}
+        ref={menuRef}
+      >
         <LiquidGlassFrame
           className="aurora-glass-dock glass-nav relative overflow-visible rounded-[2rem]"
           contentClassName="px-2 py-1.5 sm:px-4 sm:py-3 lg:px-5"
@@ -204,7 +277,11 @@ export default function Header() {
                 type="button"
                 aria-label={mobileNavOpen ? 'Close navigation' : 'Open navigation'}
                 aria-expanded={mobileNavOpen}
-                onClick={() => setMobileNavOpen((current) => !current)}
+                onClick={() => {
+                  setMenuOpen(false)
+                  setSearchOpen(false)
+                  setMobileNavOpen((current) => !current)
+                }}
                 className="md:hidden"
                 selected={mobileNavOpen}
               >
@@ -264,151 +341,194 @@ export default function Header() {
               </div>
             </nav>
 
-            <div className="flex items-center justify-end gap-2 justify-self-end sm:gap-3">
-              <LiquidGlassIconButton
-                as={Link}
-                to="/cart"
-                aria-label={`Cart with ${cartCount} item${cartCount === 1 ? '' : 's'}`}
-                className="relative"
-                contentClassName="relative"
-              >
-                <svg
-                  aria-hidden="true"
-                  viewBox="0 0 24 24"
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.9"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <circle cx="9" cy="20" r="1.5" />
-                  <circle cx="18" cy="20" r="1.5" />
-                  <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.76L20 8H7" />
-                </svg>
-                <span className="absolute -right-1 -top-1 min-w-5 rounded-full bg-[var(--aurora-sky)] px-1.5 py-0.5 text-center text-[10px] font-bold leading-none text-[var(--aurora-cream)]">
-                  {cartCount}
-                </span>
-              </LiquidGlassIconButton>
-
-              {hasSession ? (
-                <div
-                  className="relative"
-                  ref={menuRef}
-                  onMouseEnter={() => setMenuOpen(true)}
-                  onMouseLeave={() => setMenuOpen(false)}
-                >
-                  <LiquidGlassButton
-                    type="button"
-                    variant="quiet"
-                    size="compact"
-                    aria-haspopup="menu"
-                    aria-expanded={menuOpen}
-                    onClick={() => setMenuOpen((current) => !current)}
-                    selected={menuOpen}
-                    className="aurora-account-trigger"
+            <div
+              className="aurora-header-actions relative flex items-center justify-end gap-2 justify-self-end sm:gap-3"
+            >
+              <div className="aurora-header-search">
+                {searchOpen ? (
+                  <form
+                    className="aurora-header-search-form"
+                    role="search"
+                    onSubmit={handleHeaderSearchSubmit}
                   >
-                    <span className="hidden sm:inline">{displayName}</span>
-                    <span className="rounded-full bg-[rgba(255,255,255,0.14)] px-2 py-1 text-[10px] uppercase tracking-[0.22em] text-[var(--aurora-olive-deep)] sm:hidden">
-                      Menu
-                    </span>
+                    <input
+                      ref={searchInputRef}
+                      type="search"
+                      value={headerSearch}
+                      onChange={(event) => setHeaderSearch(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Escape') {
+                          setSearchOpen(false)
+                        }
+                      }}
+                      placeholder="Search products"
+                      aria-label="Search products"
+                      className="aurora-header-search-input"
+                    />
+                    <LiquidGlassIconButton
+                      type="submit"
+                      aria-label="Search products"
+                      className="aurora-header-search-submit"
+                    >
+                      <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.9"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.5-3.5" />
+                      </svg>
+                    </LiquidGlassIconButton>
+                  </form>
+                ) : (
+                  <LiquidGlassIconButton
+                    type="button"
+                    aria-label="Open product search"
+                    onClick={openHeaderSearch}
+                  >
                     <svg
                       aria-hidden="true"
-                      viewBox="0 0 20 20"
-                      className={`h-4 w-4 transition ${menuOpen ? 'rotate-180' : ''}`}
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5"
                       fill="none"
                       stroke="currentColor"
-                      strokeWidth="1.8"
+                      strokeWidth="1.9"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     >
-                      <path d="m5 7 5 6 5-6" />
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
                     </svg>
-                  </LiquidGlassButton>
+                  </LiquidGlassIconButton>
+                )}
+              </div>
 
-                  {menuOpen ? (
-                    <>
-                      <div
-                        className="aurora-menu-backdrop fixed inset-0 z-40 md:hidden"
-                        onClick={() => setMenuOpen(false)}
-                        aria-hidden="true"
-                      />
-                      <div className="fixed inset-x-3 top-[6.4rem] z-50 md:absolute md:right-0 md:left-auto md:top-full md:z-30 md:w-72 md:pt-4">
-                        <div className="aurora-showcase-band aurora-account-menu p-3">
-                        <Link
-                          to={normalizedRole === userRoles.customer ? '/account' : roleLandingPath}
-                          onClick={() => setMenuOpen(false)}
-                          className="aurora-solid-plate aurora-account-menu-profile block rounded-[1.5rem] px-4 py-4"
-                        >
-                          <p className="aurora-kicker">{roleBadgeLabel}</p>
-                          <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
-                            {displayName}
-                          </p>
-                        </Link>
-
-                        <div className="mt-3 space-y-1.5">
-                          {accountLinks.map((item) => (
-                            item.popupRole ? (
-                              <LiquidGlassButton
-                                type="button"
-                                key={item.label}
-                                onClick={() => {
-                                  openRolePopup(item.popupRole)
-                                  setMenuOpen(false)
-                                }}
-                                variant="quiet"
-                                size="compact"
-                                className="w-full"
-                                contentClassName="w-full justify-start"
-                              >
-                                {item.label}
-                              </LiquidGlassButton>
-                            ) : (
-                              <LiquidGlassButton
-                                as={Link}
-                                key={item.to}
-                                to={item.to}
-                                onClick={() => setMenuOpen(false)}
-                                variant="quiet"
-                                size="compact"
-                                className="w-full"
-                                contentClassName="w-full justify-start"
-                              >
-                                {item.label}
-                              </LiquidGlassButton>
-                            )
-                          ))}
-                        </div>
-
-                        <LiquidGlassButton
-                          type="button"
-                          onClick={handleLogout}
-                          variant="danger"
-                          size="compact"
-                          className="aurora-logout-button mt-3 w-full"
-                          contentClassName="w-full justify-start"
-                        >
-                          Logout
-                        </LiquidGlassButton>
-                        </div>
-                      </div>
-                    </>
-                  ) : null}
-                </div>
-              ) : (
-                <LiquidGlassButton
-                  as={Link}
-                  to="/login"
-                  variant="secondary"
-                  size="compact"
-                  contentClassName="whitespace-nowrap"
+              <div className="relative">
+                <LiquidGlassIconButton
+                  type="button"
+                  aria-label={`Open cart menu with ${cartCount} item${cartCount === 1 ? '' : 's'}`}
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                  className="relative"
+                  contentClassName="relative"
+                  selected={menuOpen}
+                  onClick={() => {
+                    setSearchOpen(false)
+                    setMobileNavOpen(false)
+                    setMenuOpen((current) => !current)
+                    setHeaderHidden(false)
+                  }}
                 >
-                  Login
-                </LiquidGlassButton>
-              )}
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="9" cy="20" r="1.5" />
+                    <circle cx="18" cy="20" r="1.5" />
+                    <path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.8a1 1 0 0 0 1-.76L20 8H7" />
+                  </svg>
+                  <span className="aurora-cart-count-badge absolute -right-1 -top-1 min-w-5 rounded-full px-1.5 py-0.5 text-center text-[10px] font-bold leading-none">
+                    {cartCount}
+                  </span>
+                </LiquidGlassIconButton>
+              </div>
             </div>
           </div>
         </LiquidGlassFrame>
+
+        {menuOpen ? (
+          <>
+            <div
+              className="aurora-menu-backdrop fixed inset-0 z-40 md:hidden"
+              onClick={() => setMenuOpen(false)}
+              aria-hidden="true"
+            />
+            <div className="aurora-cart-menu-popover">
+              <div className="aurora-showcase-band aurora-account-menu aurora-cart-menu p-3">
+                <div className="aurora-cart-menu-summary rounded-[1.35rem] px-4">
+                  <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                    {hasSession ? displayName : 'Guest shopper'}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--aurora-text)]">
+                    {cartCount} item{cartCount === 1 ? '' : 's'} in cart
+                  </p>
+                </div>
+
+                <div className="mt-3 space-y-1.5">
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/cart"
+                    onClick={() => setMenuOpen(false)}
+                    variant="quiet"
+                    size="compact"
+                    className="w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Cart
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/account/orders"
+                    onClick={() => setMenuOpen(false)}
+                    variant="quiet"
+                    size="compact"
+                    className="w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Orders
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/account"
+                    onClick={() => setMenuOpen(false)}
+                    variant="quiet"
+                    size="compact"
+                    className="w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Account
+                  </LiquidGlassButton>
+                </div>
+
+                {hasSession ? (
+                  <LiquidGlassButton
+                    type="button"
+                    onClick={handleLogout}
+                    variant="danger"
+                    size="compact"
+                    className="aurora-logout-button mt-3 w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Logout
+                  </LiquidGlassButton>
+                ) : (
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/login"
+                    onClick={() => setMenuOpen(false)}
+                    variant="secondary"
+                    size="compact"
+                    className="mt-3 w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Login
+                  </LiquidGlassButton>
+                )}
+              </div>
+            </div>
+          </>
+        ) : null}
 
         {mobileNavOpen ? (
           <div className="mt-2 md:hidden">

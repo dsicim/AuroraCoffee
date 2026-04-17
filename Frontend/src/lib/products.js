@@ -366,6 +366,19 @@ async function requestJson(path, options = {}) {
   return data
 }
 
+export function getProductRequestErrorMessage(
+  error,
+  fallback = 'Catalog could not be reached from this local preview.',
+) {
+  const message = String(error?.message || '').trim()
+
+  if (!message || message === 'Load failed' || message === 'Failed to fetch') {
+    return fallback
+  }
+
+  return message || fallback
+}
+
 async function requestProducts(scope) {
   const payload = await requestJson('/products/all')
   const normalizedProducts = storeCatalogProducts(buildSlugMap(payload?.products || []), scope)
@@ -640,7 +653,7 @@ export function useProductCatalog() {
             return
           }
 
-          setError(fetchError.message || 'Could not load products')
+          setError(getProductRequestErrorMessage(fetchError))
         })
         .finally(() => {
           if (active && requestId === loadRequestId) {

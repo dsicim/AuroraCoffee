@@ -4,6 +4,7 @@ import AuroraWidget from '../components/AuroraWidget'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
 import StorefrontLayout from '../components/StorefrontLayout'
+import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { useProductCatalog } from '../lib/products'
 
 export default function HomePage() {
@@ -28,24 +29,20 @@ export default function HomePage() {
   )
 
   const hero = (
-    <section className="aurora-showcase-band p-6 sm:p-8 lg:p-10">
-      <div className="aurora-stack-6">
-        <div className="aurora-stack-6">
-          <div className="aurora-stack-4">
-            <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
-              Aurora catalog
-            </p>
-            <h1 className="font-display text-5xl leading-[0.98] text-[var(--aurora-text-strong)] md:text-6xl">
-              Browse the latest products from the live catalog.
-            </h1>
-            <p className="max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-              Start from the full product feed, open any item by name, and move into the catalog without relying on static mock data.
-            </p>
-          </div>
+    <section className="aurora-home-hero">
+      <div className="aurora-home-hero-inner">
+        <div className="aurora-home-copy">
+          <p className="aurora-kicker">Aurora Coffee Roastery</p>
+          <h1 className="aurora-home-title">
+            Aurora Coffee
+          </h1>
+          <p className="aurora-copy max-w-xl text-base sm:text-lg">
+            Fresh-roasted coffees, brewing gear, and seasonal picks with a smooth path from discovery to checkout.
+          </p>
 
           <div className="flex flex-wrap gap-3">
             <LiquidGlassButton as={Link} to="/products" size="hero">
-              Browse products
+              Shop coffee
             </LiquidGlassButton>
             {suggestedProduct ? (
               <LiquidGlassButton
@@ -54,9 +51,23 @@ export default function HomePage() {
                 variant="secondary"
                 size="hero"
               >
-                Open suggested product
+                Try today&apos;s pick
               </LiquidGlassButton>
             ) : null}
+          </div>
+        </div>
+
+        <div className="aurora-home-visual" aria-hidden="true">
+          <img
+            src={coffeeSketch}
+            alt=""
+            loading="eager"
+            decoding="async"
+            className="aurora-home-sketch"
+          />
+          <div className="aurora-home-roast-note">
+            <span>Roasted small</span>
+            <strong>Shipped fresh</strong>
           </div>
         </div>
       </div>
@@ -64,12 +75,31 @@ export default function HomePage() {
   )
 
   return (
-    <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
-      <section className="aurora-stack-6">
+    <StorefrontLayout hero={hero} heroFullBleed contentClassName="aurora-home-shell">
+      <section className="aurora-home-feature-grid">
+        <div className="aurora-showroom-panel p-5 sm:p-8">
+          <p className="aurora-kicker">Shop faster</p>
+          <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Roast detail up front. Checkout tools close by.
+          </h2>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
+            Product pages keep tasting notes, stock, price, options, and cart actions together so the next step stays obvious.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <LiquidGlassButton as={Link} to="/products" variant="secondary">
+              Browse all products
+            </LiquidGlassButton>
+            <LiquidGlassButton as={Link} to="/account" variant="quiet">
+              Account tools
+            </LiquidGlassButton>
+          </div>
+        </div>
+
         <AuroraWidget
-          title="Suggested product"
+          title="Today's pick"
+          subtitle="Fresh from the catalog"
           icon="spark"
-          className="aurora-summary-lead p-6 sm:p-8"
+          className="aurora-summary-lead p-5 sm:p-8"
         >
           {loading ? (
             <p className="text-sm leading-7 text-[var(--aurora-text)]">

@@ -12,6 +12,7 @@ import { getTaxInclusionCopy } from '../lib/tax'
 import FavoriteToggleButton from './FavoriteToggleButton'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
+import ProductMedia from './ProductMedia'
 
 export default function ProductCard({ product, compact = false }) {
   const availability = getProductAvailability(product)
@@ -19,23 +20,36 @@ export default function ProductCard({ product, compact = false }) {
   const notes = getProductFlavorNotes(product)
   const metaLine = getProductMetaLine(product)
   const detailRoute = `/products/${product.slug}`
+  const typeLabel = getProductTypeLabel(product)
+  const categoryLabel = getProductCategoryLabel(product)
+  const showCategory = categoryLabel && categoryLabel !== typeLabel
 
   return (
     <LiquidGlassFrame
       as="article"
-      className="aurora-bento-card glass-card"
+      className="aurora-bento-card glass-card aurora-product-card"
       contentClassName="flex h-full flex-col gap-5 p-5 sm:p-6"
     >
       <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.22),transparent_60%)]" />
+
+      <Link
+        to={detailRoute}
+        className="aurora-product-card-media-link"
+        aria-label={`View ${product.name}`}
+      >
+        <ProductMedia product={product} className="is-card" />
+      </Link>
 
       <Link to={detailRoute} className="block flex-1">
         <div className="aurora-widget-body h-full">
           <div className="aurora-widget-heading">
             <div className="flex flex-wrap items-center gap-2.5">
-              <p className="aurora-kicker">{getProductTypeLabel(product)}</p>
-              <span className="aurora-chip text-[10px] tracking-[0.18em]">
-                {getProductCategoryLabel(product)}
-              </span>
+              <p className="aurora-kicker">{typeLabel}</p>
+              {showCategory ? (
+                <span className="aurora-chip text-[10px] tracking-[0.18em]">
+                  {categoryLabel}
+                </span>
+              ) : null}
             </div>
             <h3 className="aurora-heading mt-1 text-3xl transition hover:text-[var(--aurora-sky-deep)]">
               {product.name}
@@ -58,12 +72,6 @@ export default function ProductCard({ product, compact = false }) {
               </span>
             ) : null}
           </div>
-
-          <FavoriteToggleButton
-            productId={product.slug}
-            productName={product.name}
-            compact
-          />
 
           <div className="aurora-widget-subsurface p-4">
             <div className="aurora-widget-body">
@@ -95,9 +103,17 @@ export default function ProductCard({ product, compact = false }) {
         </div>
       </Link>
 
+      <div className="aurora-product-card-favorite">
+        <FavoriteToggleButton
+          productId={product.slug}
+          productName={product.name}
+          compact
+        />
+      </div>
+
       <div className="aurora-widget-subsurface mt-auto p-4">
-        <div className="aurora-widget-body">
-          <div className="aurora-widget-heading">
+        <div className="aurora-product-card-commerce">
+          <div>
             <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
               Price
             </p>
@@ -114,9 +130,9 @@ export default function ProductCard({ product, compact = false }) {
             ) : null}
           </div>
 
-          <div className="aurora-widget-actions flex-col items-start sm:flex-row sm:items-center">
+          <div className="aurora-widget-actions flex-col items-start sm:items-end">
             <Link to={detailRoute} className="aurora-link text-sm">
-              View details
+              Details
             </Link>
             <LiquidGlassButton
               as={Link}
@@ -124,7 +140,7 @@ export default function ProductCard({ product, compact = false }) {
               size="compact"
               className="w-full sm:w-auto"
             >
-              Open product
+              Choose
             </LiquidGlassButton>
           </div>
         </div>

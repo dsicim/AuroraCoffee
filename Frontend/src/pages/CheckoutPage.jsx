@@ -927,11 +927,11 @@ export default function CheckoutPage() {
           Your cart is empty
         </h1>
         <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-          Add products to your cart before moving into the checkout flow.
+          Add coffee or brew gear before moving into delivery and payment.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-4">
           <LiquidGlassButton as={Link} to="/products" size="hero">
-            Browse catalog
+            Shop products
           </LiquidGlassButton>
           <LiquidGlassButton as={Link} to="/cart" variant="quiet" size="hero">
             Back to cart
@@ -957,10 +957,10 @@ export default function CheckoutPage() {
         <div>
           <p className="aurora-kicker">Checkout</p>
           <h1 className="mt-4 max-w-4xl font-display text-5xl leading-[0.98] text-[var(--aurora-text-strong)] md:text-6xl">
-            {currentStep.key === 'success' ? 'Order confirmed' : 'Complete your order'}
+            {currentStep.key === 'success' ? 'Order confirmed' : 'Finish checkout'}
           </h1>
           <p className="mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-            Delivery details, payment details, and final review stay inside one clear transaction flow.
+            Delivery, payment, and review stay in one focused flow before the payment endpoint is called.
           </p>
         </div>
 
@@ -974,7 +974,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                Units moving through the checkout flow.
+                Units in this checkout.
               </p>
             </div>
           </div>
@@ -987,7 +987,7 @@ export default function CheckoutPage() {
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                Tax-inclusive customer total for the current selection.
+                Tax-inclusive total before final review.
               </p>
             </div>
           </div>
@@ -1089,6 +1089,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="text"
+                  name="given-name"
+                  autoComplete="given-name"
                   value={delivery.firstName}
                   onChange={(event) => handleDeliveryChange('firstName', event.target.value)}
                   className="aurora-input"
@@ -1102,6 +1104,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="text"
+                  name="family-name"
+                  autoComplete="family-name"
                   value={delivery.lastName}
                   onChange={(event) => handleDeliveryChange('lastName', event.target.value)}
                   className="aurora-input"
@@ -1115,6 +1119,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
                   value={delivery.email}
                   onChange={(event) => handleDeliveryChange('email', event.target.value)}
                   className="aurora-input"
@@ -1128,6 +1134,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="text"
+                  name="address-line1"
+                  autoComplete="shipping address-line1"
                   value={delivery.addressLine1}
                   onChange={(event) => handleDeliveryChange('addressLine1', event.target.value)}
                   className="aurora-input"
@@ -1141,6 +1149,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="text"
+                  name="address-line2"
+                  autoComplete="shipping address-line2"
                   value={delivery.addressLine2}
                   onChange={(event) => handleDeliveryChange('addressLine2', event.target.value)}
                   className="aurora-input"
@@ -1152,6 +1162,8 @@ export default function CheckoutPage() {
                   Province
                 </span>
                 <select
+                  name="address-level1"
+                  autoComplete="shipping address-level1"
                   value={delivery.province}
                   onChange={(event) => handleDeliveryChange('province', event.target.value)}
                   className="aurora-select"
@@ -1172,6 +1184,8 @@ export default function CheckoutPage() {
                 </span>
                 <input
                   type="text"
+                  name="address-level2"
+                  autoComplete="shipping address-level2"
                   value={delivery.district}
                   onChange={(event) => handleDeliveryChange('district', event.target.value)}
                   className="aurora-input"
@@ -1187,6 +1201,8 @@ export default function CheckoutPage() {
                   type="text"
                   inputMode="numeric"
                   maxLength={5}
+                  name="postal-code"
+                  autoComplete="shipping postal-code"
                   value={delivery.postalCode}
                   onChange={(event) =>
                     handleDeliveryChange(
@@ -1206,6 +1222,8 @@ export default function CheckoutPage() {
                 <input
                   type="tel"
                   inputMode="tel"
+                  name="tel"
+                  autoComplete="tel"
                   value={delivery.phone}
                   onChange={(event) => handleDeliveryChange('phone', event.target.value)}
                   className="aurora-input"
@@ -1282,6 +1300,8 @@ export default function CheckoutPage() {
                       </span>
                       <input
                         type="text"
+                        name="billing-given-name"
+                        autoComplete="billing given-name"
                         value={billing.firstName}
                         onChange={(event) => handleBillingChange('firstName', event.target.value)}
                         className="aurora-input"
@@ -1295,6 +1315,8 @@ export default function CheckoutPage() {
                       </span>
                       <input
                         type="text"
+                        name="billing-family-name"
+                        autoComplete="billing family-name"
                         value={billing.lastName}
                         onChange={(event) => handleBillingChange('lastName', event.target.value)}
                         className="aurora-input"
@@ -1308,6 +1330,8 @@ export default function CheckoutPage() {
                       </span>
                       <input
                         type="text"
+                        name="billing-address-line1"
+                        autoComplete="billing address-line1"
                         value={billing.addressLine1}
                         onChange={(event) => handleBillingChange('addressLine1', event.target.value)}
                         className="aurora-input"
@@ -1321,6 +1345,8 @@ export default function CheckoutPage() {
                       </span>
                       <input
                         type="text"
+                        name="billing-address-line2"
+                        autoComplete="billing address-line2"
                         value={billing.addressLine2}
                         onChange={(event) => handleBillingChange('addressLine2', event.target.value)}
                         className="aurora-input"
@@ -1332,6 +1358,8 @@ export default function CheckoutPage() {
                         Billing province
                       </span>
                       <select
+                        name="billing-address-level1"
+                        autoComplete="billing address-level1"
                         value={billing.province}
                         onChange={(event) => handleBillingChange('province', event.target.value)}
                         className="aurora-select"
@@ -1352,6 +1380,8 @@ export default function CheckoutPage() {
                       </span>
                       <input
                         type="text"
+                        name="billing-address-level2"
+                        autoComplete="billing address-level2"
                         value={billing.district}
                         onChange={(event) => handleBillingChange('district', event.target.value)}
                         className="aurora-input"
@@ -1367,6 +1397,8 @@ export default function CheckoutPage() {
                         type="text"
                         inputMode="numeric"
                         maxLength={5}
+                        name="billing-postal-code"
+                        autoComplete="billing postal-code"
                         value={billing.postalCode}
                         onChange={(event) =>
                           handleBillingChange(
@@ -1386,6 +1418,8 @@ export default function CheckoutPage() {
                       <input
                         type="tel"
                         inputMode="tel"
+                        name="billing-tel"
+                        autoComplete="billing tel"
                         value={billing.phone}
                         onChange={(event) => handleBillingChange('phone', event.target.value)}
                         className="aurora-input"
@@ -1491,6 +1525,8 @@ export default function CheckoutPage() {
                     </span>
                     <input
                       type="text"
+                      name="cc-name"
+                      autoComplete="cc-name"
                       value={payment.cardholder}
                       onChange={(event) => handlePaymentChange('cardholder', event.target.value)}
                       className="aurora-input"
@@ -1505,6 +1541,8 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       inputMode="numeric"
+                      name="cc-number"
+                      autoComplete="cc-number"
                       value={payment.cardNumber}
                       onChange={(event) =>
                         handlePaymentChange('cardNumber', formatCardNumber(event.target.value))
@@ -1522,6 +1560,8 @@ export default function CheckoutPage() {
                     <input
                       type="text"
                       inputMode="numeric"
+                      name="cc-exp"
+                      autoComplete="cc-exp"
                       value={payment.expiry}
                       onChange={(event) =>
                         handlePaymentChange('expiry', formatExpiry(event.target.value))
@@ -1547,6 +1587,8 @@ export default function CheckoutPage() {
                 <input
                   type="text"
                   inputMode="numeric"
+                  name="cc-csc"
+                  autoComplete="cc-csc"
                   value={payment.cvc}
                   onChange={(event) =>
                     handlePaymentChange(
@@ -1895,7 +1937,7 @@ export default function CheckoutPage() {
             <div className="aurora-widget-heading">
               <p className="aurora-kicker">Order summary</p>
               <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                Invoice preview
+                Order preview
               </h2>
             </div>
 
@@ -1958,7 +2000,7 @@ export default function CheckoutPage() {
             <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)]">
               {currentStep.key === 'success'
                 ? 'The cart has been cleared and the success step now reflects the submitted order snapshot.'
-                : 'Review the tax-inclusive cart, included VAT, and payment method before sending the order to the payment endpoint.'}
+                : 'Review cart, included VAT, delivery, and payment before sending the order.'}
             </div>
           </div>
         </aside>

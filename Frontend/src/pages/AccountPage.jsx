@@ -107,8 +107,8 @@ export default function AccountPage() {
   return (
     <AccountLayout
       eyebrow="Account"
-      title="Saved details"
-      description="Orders, addresses, and favorites."
+      title="Your coffee account"
+      description="Track recent orders, manage delivery details, and keep favorite products ready for the next checkout."
     >
       <div className="grid gap-8 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="space-y-8">
@@ -123,7 +123,7 @@ export default function AccountPage() {
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
                   {mostRecentOrder
-                    ? mostRecentOrder.id
+                    ? 'Latest order ready to review'
                     : ordersLoaded
                       ? 'No orders yet'
                       : 'Loading latest order'}
@@ -143,7 +143,7 @@ export default function AccountPage() {
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
                   {hasSavedAddresses
-                    ? 'Saved addresses available'
+                    ? 'Ready for checkout'
                     : addressesLoaded
                       ? 'No saved addresses yet'
                       : 'Loading saved addresses'}
@@ -162,7 +162,7 @@ export default function AccountPage() {
                   </p>
                 </div>
                 <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  Saved products
+                  Saved for later
                 </p>
               </div>
             </div>

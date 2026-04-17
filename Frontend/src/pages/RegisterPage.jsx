@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AuthLayout from '../components/AuthLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
+import PasswordField from '../components/PasswordField'
 import { buildApiUrl } from '../lib/api'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import { saveAuthSession } from '../lib/auth'
@@ -169,6 +170,8 @@ export default function RegisterPage() {
           </span>
           <input
             type="text"
+            name="name"
+            autoComplete="name"
             value={name}
             onChange={(event) => {
               setName(event.target.value)
@@ -186,6 +189,8 @@ export default function RegisterPage() {
           </span>
           <input
             type="email"
+            name="email"
+            autoComplete="email"
             value={email}
             onChange={(event) => {
               setEmail(event.target.value)
@@ -197,39 +202,37 @@ export default function RegisterPage() {
           />
         </label>
 
-        <label className="block">
-          <span className="aurora-field-label">
-            Password
-          </span>
-          <input
-            type="password"
-            value={password}
-            onChange={(event) => {
-              setPassword(event.target.value)
-              setFeedback('')
-              setSubmitted(false)
-            }}
-            placeholder="Create a password"
-            className="aurora-input"
-          />
-        </label>
+        <PasswordField
+          id="register-password"
+          label="Password"
+          name="password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value)
+          }}
+          placeholder="Create a password"
+          autoComplete="new-password"
+          onClearFeedback={() => {
+            setFeedback('')
+            setSubmitted(false)
+          }}
+        />
 
-        <label className="block">
-          <span className="aurora-field-label">
-            Confirm password
-          </span>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(event) => {
-              setConfirmPassword(event.target.value)
-              setFeedback('')
-              setSubmitted(false)
-            }}
-            placeholder="Repeat your password"
-            className="aurora-input"
-          />
-        </label>
+        <PasswordField
+          id="register-confirm-password"
+          label="Confirm password"
+          name="confirmPassword"
+          value={confirmPassword}
+          onChange={(event) => {
+            setConfirmPassword(event.target.value)
+          }}
+          placeholder="Repeat your password"
+          autoComplete="new-password"
+          onClearFeedback={() => {
+            setFeedback('')
+            setSubmitted(false)
+          }}
+        />
 
         <LiquidGlassButton
           type="submit"

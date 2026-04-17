@@ -4,6 +4,7 @@ import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
+import ProductMedia from '../components/ProductMedia'
 import StorefrontLayout from '../components/StorefrontLayout'
 import {
   authChangeEvent,
@@ -480,6 +481,7 @@ function ReviewPrivacyMatrix({
             type="button"
             className={`aurora-review-privacy-summary-chevron ${open ? 'is-open' : ''}`.trim()}
             disabled={disabled}
+            aria-label={open ? 'Collapse name visibility options' : 'Expand name visibility options'}
             aria-expanded={open ? 'true' : 'false'}
             onClick={() => {
               if (!disabled) {
@@ -1174,9 +1176,16 @@ function PreviewDropdown({
         type="button"
         className={`aurora-preview-trigger ${open ? 'is-open' : ''} ${triggerClassName}`.trim()}
         disabled={disabled}
+        aria-haspopup="listbox"
         onClick={() => {
           if (!disabled) {
             onToggle(!open)
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Escape' && open) {
+            event.stopPropagation()
+            onToggle(false)
           }
         }}
         aria-expanded={open ? 'true' : 'false'}
@@ -1194,7 +1203,10 @@ function PreviewDropdown({
       </button>
 
       {open && !disabled ? (
-        <div className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''} ${menuClassName}`.trim()}>
+        <div
+          className={`aurora-preview-menu ${menuMode === 'flow' ? 'is-flow' : ''} ${menuClassName}`.trim()}
+          role="listbox"
+        >
           {options.map((option) => {
             const normalizedOption =
               typeof option === 'string'
@@ -1206,6 +1218,8 @@ function PreviewDropdown({
                 key={normalizedOption.value}
                 type="button"
                 className={`aurora-preview-option ${value === normalizedOption.value ? 'is-selected' : ''}`}
+                role="option"
+                aria-selected={value === normalizedOption.value}
                 onClick={() => {
                   onSelect(normalizedOption.value)
                   onToggle(false)
@@ -1387,6 +1401,12 @@ export default function ProductDetailPage() {
           icon="coffee"
           className="aurora-summary-lead aurora-product-hero-card aurora-product-summary-panel mx-auto w-full p-5 sm:p-8"
         >
+          <ProductMedia
+            product={product}
+            className="is-detail mb-6"
+            loading="eager"
+          />
+
           <AuroraInset className="mb-6">
             <div className="mb-4 flex justify-start sm:justify-end">
               <span className="aurora-chip aurora-product-category-chip">{getProductCategoryLabel(product)}</span>
@@ -1401,8 +1421,8 @@ export default function ProductDetailPage() {
         </AuroraWidget>
 
         <AuroraWidget
-          title="Product details"
-          subtitle={getProductCategoryLabel(product)}
+          title="Choose and add to cart"
+          subtitle="Price, stock, and options"
           icon="spark"
           className="aurora-showroom-panel aurora-product-detail-panel mx-auto w-full p-5 sm:p-8"
           headerAside={<FavoriteToggleButton productId={product.slug} productName={product.name} />}
@@ -1487,10 +1507,10 @@ export default function ProductDetailPage() {
               </div>
             ) : null}
 
-            <div className="relative z-10 flex items-start justify-between gap-4">
+            <div className="relative z-10 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                  Current price
+                  Ready to buy
                 </p>
                 <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
                   {formatCurrency(displayPrice)}
@@ -1560,7 +1580,7 @@ export default function ProductDetailPage() {
         <section className="aurora-showroom-panel mx-auto w-full p-5 sm:p-8">
           <p className="aurora-kicker">Related products</p>
           <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-            More from the catalog
+            Keep browsing
           </h2>
 
           <div className="mt-8 grid gap-6 xl:grid-cols-2">
