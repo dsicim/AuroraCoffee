@@ -284,7 +284,9 @@ async function fetchCurrentUserResultNetwork(token, options = {}) {
   try {
     const response = await fetch(buildApiUrl('/users/me'), {
       method: 'GET',
+      cache: 'no-store',
       headers: {
+        accept: 'application/json',
         authorization: token,
       },
     })
