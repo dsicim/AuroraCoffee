@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useLocation, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
@@ -1171,7 +1172,10 @@ function PreviewDropdown({
     }
 
     const handlePointerDown = (event) => {
-      if (!wrapperRef.current?.contains(event.target)) {
+      const isInsideTrigger = wrapperRef.current?.contains(event.target)
+      const isInsideMenu = menuRef.current?.contains(event.target)
+
+      if (!isInsideTrigger && !isInsideMenu) {
         onToggle(false)
       }
     }
@@ -1250,6 +1254,54 @@ function PreviewDropdown({
     }
   }, [open, usesViewportLayout])
 
+  const menu = open && !disabled ? (
+    <div
+      ref={menuRef}
+      className={`aurora-preview-menu ${usesFlowLayout ? 'is-flow' : ''} ${
+        usesViewportLayout ? 'is-viewport' : ''
+      } ${menuClassName}`.trim()}
+      role="listbox"
+    >
+      {options.map((option) => {
+        const normalizedOption =
+          typeof option === 'string'
+            ? { value: option, label: option, description: '' }
+            : option
+
+        return (
+          <button
+            key={normalizedOption.value}
+            type="button"
+            className={`aurora-preview-option ${value === normalizedOption.value ? 'is-selected' : ''}`}
+            role="option"
+            aria-selected={value === normalizedOption.value}
+            onClick={() => {
+              onSelect(normalizedOption.value)
+              onToggle(false)
+            }}
+          >
+            <span className="aurora-preview-option-copy">
+              <span className="aurora-preview-option-label">{normalizedOption.label}</span>
+              {normalizedOption.description ? (
+                <span className="aurora-preview-option-meta">{normalizedOption.description}</span>
+              ) : null}
+            </span>
+            {value === normalizedOption.value ? (
+              <span className="aurora-preview-option-trailing">
+                {normalizedOption.sideLabel ? (
+                  <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
+                ) : null}
+                <span className="aurora-preview-check">Selected</span>
+              </span>
+            ) : normalizedOption.sideLabel ? (
+              <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  ) : null
+
   return (
     <div
       ref={wrapperRef}
@@ -1287,53 +1339,7 @@ function PreviewDropdown({
         )}
       </button>
 
-      {open && !disabled ? (
-        <div
-          ref={menuRef}
-          className={`aurora-preview-menu ${usesFlowLayout ? 'is-flow' : ''} ${
-            usesViewportLayout ? 'is-viewport' : ''
-          } ${menuClassName}`.trim()}
-          role="listbox"
-        >
-          {options.map((option) => {
-            const normalizedOption =
-              typeof option === 'string'
-                ? { value: option, label: option, description: '' }
-                : option
-
-            return (
-              <button
-                key={normalizedOption.value}
-                type="button"
-                className={`aurora-preview-option ${value === normalizedOption.value ? 'is-selected' : ''}`}
-                role="option"
-                aria-selected={value === normalizedOption.value}
-                onClick={() => {
-                  onSelect(normalizedOption.value)
-                  onToggle(false)
-                }}
-              >
-                <span className="aurora-preview-option-copy">
-                  <span className="aurora-preview-option-label">{normalizedOption.label}</span>
-                  {normalizedOption.description ? (
-                    <span className="aurora-preview-option-meta">{normalizedOption.description}</span>
-                  ) : null}
-                </span>
-                {value === normalizedOption.value ? (
-                  <span className="aurora-preview-option-trailing">
-                    {normalizedOption.sideLabel ? (
-                      <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
-                    ) : null}
-                    <span className="aurora-preview-check">Selected</span>
-                  </span>
-                ) : normalizedOption.sideLabel ? (
-                  <span className="aurora-preview-option-side">{normalizedOption.sideLabel}</span>
-                ) : null}
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
+      {usesViewportLayout && menu ? createPortal(menu, document.body) : menu}
     </div>
   )
 }
