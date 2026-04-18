@@ -1598,7 +1598,7 @@ export default function ProductDetailPage() {
                           description: optionValue.description,
                           sideLabel: formatOptionPriceDelta(optionValue, selectedValue, product.price),
                         }))}
-                        menuMode="viewport"
+                        menuMode="flow"
                         open={activeOptionMenu === groupKey}
                         onToggle={(nextOpen) => {
                           setOpenOptionMenu({
