@@ -1812,6 +1812,7 @@ img {
     overflow-x: hidden;
     overflow-y: auto;
     isolation: isolate;
+    scroll-snap-type: y proximity;
     border: 1px solid rgba(255, 248, 241, 0.42);
     border-radius: 1.5rem;
     background:
@@ -1881,6 +1882,7 @@ img {
     border-radius: 1.15rem;
     text-align: left;
     color: rgba(244, 248, 252, 0.98);
+    scroll-snap-align: start;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
       rgba(255, 255, 255, 0.02);
