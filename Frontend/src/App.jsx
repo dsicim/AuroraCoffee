@@ -6,6 +6,7 @@ import { userRoles } from './lib/roles'
 
 const AccountPage = lazy(() => import('./pages/AccountPage'))
 const AddressesPage = lazy(() => import('./pages/AddressesPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 const CartPage = lazy(() => import('./pages/CartPage'))
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'))
 const Checkout3DSCallbackPage = lazy(() => import('./pages/Checkout3DSCallbackPage'))
@@ -84,6 +85,14 @@ export default function App() {
             element={(
               <ProtectedRoleRoute requiredRole={userRoles.customer}>
                 <PaymentMethodsPage />
+              </ProtectedRoleRoute>
+            )}
+          />
+          <Route
+            path="/admin"
+            element={(
+              <ProtectedRoleRoute requiredRole={userRoles.admin}>
+                <AdminPage />
               </ProtectedRoleRoute>
             )}
           />

@@ -2302,6 +2302,41 @@ img {
     );
   }
 
+  .aurora-access-dropdown {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .aurora-access-trigger .button-label {
+    align-items: center;
+  }
+
+  .aurora-access-chevron {
+    flex: 0 0 auto;
+    opacity: 0.82;
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .aurora-access-dropdown.is-open .aurora-access-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+  }
+
+  .aurora-access-menu {
+    display: grid;
+    gap: 0.35rem;
+    border-radius: 1.35rem;
+    border: 1px solid rgba(255, 252, 249, 0.72);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(244, 239, 234, 0.62)),
+      rgba(248, 246, 243, 0.76);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      0 16px 32px rgba(52, 39, 31, 0.08);
+    padding: 0.45rem;
+  }
+
   .aurora-account-sidebar .button-wrap.button-variant-quiet,
   .aurora-account-menu .button-wrap.button-variant-quiet {
     --button-fill-start: rgba(255, 255, 255, 0.88);
@@ -4450,6 +4485,16 @@ img {
     background:
       linear-gradient(180deg, rgba(31, 45, 62, 0.88) 0%, rgba(18, 29, 43, 0.94) 100%),
       rgba(19, 30, 44, 0.94);
+  }
+
+  [data-theme='dark'] .aurora-access-menu {
+    border-color: rgba(205, 223, 244, 0.16);
+    background:
+      linear-gradient(180deg, rgba(31, 45, 62, 0.82), rgba(18, 29, 43, 0.78)),
+      rgba(19, 30, 44, 0.82);
+    box-shadow:
+      inset 0 1px 0 rgba(236, 247, 239, 0.08),
+      0 16px 34px rgba(0, 7, 18, 0.26);
   }
 
   [data-theme='dark'] .aurora-account-trigger.button-wrap.button-variant-quiet,

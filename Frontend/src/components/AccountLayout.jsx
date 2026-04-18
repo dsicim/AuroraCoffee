@@ -1,21 +1,156 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import AuroraAtmosphere from './AuroraAtmosphere'
 import Footer from './Footer'
 import Header from './Header'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassDefs from './LiquidGlassDefs'
-import { authChangeEvent, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthSession,
+  getCurrentUserSnapshot,
+} from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
+import { getAccessibleRoleLevels } from '../lib/roles'
 
 const accountLinks = [
-  { label: 'Customer Home', to: '/customer' },
   { label: 'Overview', to: '/account' },
   { label: 'Orders', to: '/account/orders' },
   { label: 'Saved Addresses', to: '/account/addresses' },
   { label: 'Payment Methods', to: '/account/payment-methods' },
   { label: 'Favorites', to: '/account/favorites' },
 ]
+
+const customerHomeLink = { label: 'Customer Home', to: '/customer' }
+
+function isRouteActive(pathname, to) {
+  if (to === '/') {
+    return pathname === '/'
+  }
+
+  if (to === '/account') {
+    return pathname === to
+  }
+
+  return pathname === to || pathname.startsWith(`${to}/`)
+}
+
+function AccessLevelControl({ accessLevels, pathname }) {
+  const [open, setOpen] = useState(false)
+  const dropdownRef = useRef(null)
+  const customerHomeActive = isRouteActive(pathname, customerHomeLink.to)
+  const levels = accessLevels.length ? accessLevels : [customerHomeLink]
+
+  useEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const handlePointerDown = (event) => {
+      if (!dropdownRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setOpen(false)
+      }
+    }
+
+    window.addEventListener('mousedown', handlePointerDown)
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('mousedown', handlePointerDown)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  if (levels.length <= 1) {
+    return (
+      <LiquidGlassButton
+        as={Link}
+        to={customerHomeLink.to}
+        variant={customerHomeActive ? 'secondary' : 'quiet'}
+        size="compact"
+        className="w-full"
+        contentClassName="w-full justify-start"
+      >
+        {customerHomeLink.label}
+      </LiquidGlassButton>
+    )
+  }
+
+  return (
+    <div
+      ref={dropdownRef}
+      className={[
+        'aurora-access-dropdown',
+        open ? 'is-open' : '',
+      ].join(' ')}
+    >
+      <LiquidGlassButton
+        type="button"
+        variant={customerHomeActive || open ? 'secondary' : 'quiet'}
+        size="compact"
+        selected={open}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-controls="aurora-access-level-menu"
+        onClick={() => setOpen((current) => !current)}
+        className="aurora-access-trigger w-full"
+        contentClassName="w-full justify-between gap-3"
+      >
+        <span>{customerHomeLink.label}</span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 20 20"
+          className="aurora-access-chevron h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="m5 8 5 5 5-5" />
+        </svg>
+      </LiquidGlassButton>
+
+      {open ? (
+        <div
+          id="aurora-access-level-menu"
+          className="aurora-access-menu"
+          role="menu"
+          aria-label="Access levels"
+        >
+          {levels.map((item) => {
+            const isActive = isRouteActive(pathname, item.to)
+
+            return (
+              <LiquidGlassButton
+                as={Link}
+                key={item.role}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                role="menuitem"
+                variant={isActive ? 'secondary' : 'quiet'}
+                size="compact"
+                className="w-full"
+                contentClassName="w-full justify-start"
+              >
+                {item.label}
+              </LiquidGlassButton>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 export default function AccountLayout({
   eyebrow,
@@ -26,21 +161,51 @@ export default function AccountLayout({
   const location = useLocation()
   const navigate = useNavigate()
   const [session, setSession] = useState(() => getAuthSession())
+  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const hasSession = Boolean(session?.token)
+  const user = currentUserState.status === currentUserFetchStatus.ok
+    ? currentUserState.user
+    : null
+  const accessLevels = getAccessibleRoleLevels(user?.role)
 
   useEffect(() => {
     const syncSession = () => {
       setSession(getAuthSession())
     }
 
+    const syncCurrentUser = () => {
+      setCurrentUserState(getCurrentUserSnapshot())
+    }
+
     window.addEventListener('storage', syncSession)
     window.addEventListener(authChangeEvent, syncSession)
+    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
 
     return () => {
       window.removeEventListener('storage', syncSession)
       window.removeEventListener(authChangeEvent, syncSession)
+      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
     }
   }, [])
+
+  useEffect(() => {
+    if (!session?.token) {
+      return
+    }
+
+    if (
+      currentUserState.token === session.token &&
+      (
+        currentUserState.status === currentUserFetchStatus.ok ||
+        currentUserState.status === currentUserFetchStatus.loading ||
+        currentUserState.status === currentUserFetchStatus.unauthorized
+      )
+    ) {
+      return
+    }
+
+    void fetchCurrentUserResult(session.token)
+  }, [currentUserState.status, currentUserState.token, session?.token])
 
   useEffect(() => {
     if (!hasSession) {
@@ -108,10 +273,14 @@ export default function AccountLayout({
             <aside className="aurora-operational-card aurora-account-sidebar relative z-20 h-fit rounded-[2rem] p-5">
               <p className="aurora-kicker">Account tools</p>
               <nav className="aurora-account-sidebar-nav mt-5 grid gap-2">
+                <AccessLevelControl
+                  accessLevels={accessLevels}
+                  pathname={location.pathname}
+                />
+
                 {accountLinks.map((item) => {
                   const isActive =
-                    location.pathname === item.to ||
-                    (item.to !== '/account' && location.pathname.startsWith(`${item.to}/`))
+                    isRouteActive(location.pathname, item.to)
 
                   return (
                     <LiquidGlassButton

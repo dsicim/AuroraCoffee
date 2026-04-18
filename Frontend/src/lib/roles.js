@@ -5,6 +5,13 @@ export const userRoles = {
   productManager: 'Product Manager',
 }
 
+export const roleAccessLevels = [
+  { role: userRoles.customer, label: 'Customer Home', to: '/customer' },
+  { role: userRoles.productManager, label: 'Product Manager', to: '/product-manager' },
+  { role: userRoles.salesManager, label: 'Sales Manager', to: '/sales-manager' },
+  { role: userRoles.admin, label: 'Admin', to: '/admin' },
+]
+
 export function normalizeUserRole(role) {
   const normalizedRole = String(role || '').trim()
 
@@ -31,7 +38,7 @@ export function getRoleLandingPath(role) {
   const normalizedRole = normalizeUserRole(role)
 
   if (normalizedRole === userRoles.admin) {
-    return '/'
+    return '/admin'
   }
 
   if (normalizedRole === userRoles.customer) {
@@ -49,6 +56,34 @@ export function getRoleLandingPath(role) {
   return '/'
 }
 
+export function getAccessibleRoleLevels(role) {
+  const normalizedRole = normalizeUserRole(role)
+
+  if (normalizedRole === userRoles.admin) {
+    return roleAccessLevels
+  }
+
+  if (normalizedRole === userRoles.productManager) {
+    return roleAccessLevels.filter(({ role: accessRole }) => (
+      accessRole === userRoles.customer ||
+      accessRole === userRoles.productManager
+    ))
+  }
+
+  if (normalizedRole === userRoles.salesManager) {
+    return roleAccessLevels.filter(({ role: accessRole }) => (
+      accessRole === userRoles.customer ||
+      accessRole === userRoles.salesManager
+    ))
+  }
+
+  if (normalizedRole === userRoles.customer) {
+    return roleAccessLevels.filter(({ role: accessRole }) => accessRole === userRoles.customer)
+  }
+
+  return []
+}
+
 export function getRoleLabel(role) {
   const normalizedRole = normalizeUserRole(role)
 
@@ -61,18 +96,15 @@ export function getRoleLabel(role) {
 }
 
 export function canAccessRole(role, requiredRole) {
-  const normalizedRole = normalizeUserRole(role)
   const normalizedRequiredRole = normalizeUserRole(requiredRole)
 
   if (!normalizedRequiredRole) {
-    return Boolean(normalizedRole)
+    return Boolean(normalizeUserRole(role))
   }
 
-  if (normalizedRole === userRoles.admin) {
-    return true
-  }
-
-  return normalizedRole === normalizedRequiredRole
+  return getAccessibleRoleLevels(role).some(({ role: accessRole }) => (
+    accessRole === normalizedRequiredRole
+  ))
 }
 
 export function getRolePopupPath(role) {

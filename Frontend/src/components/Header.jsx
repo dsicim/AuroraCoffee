@@ -19,43 +19,12 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { getRoleLandingPath, normalizeUserRole, userRoles } from '../lib/roles'
 import { useTheme } from '../lib/theme-context'
 
 const navItems = [
   { label: 'Home', to: '/' },
   { label: 'Products', to: '/products' },
 ]
-
-function getManagerWorkspaceItem(role) {
-  const normalizedRole = normalizeUserRole(role)
-
-  if (normalizedRole === userRoles.salesManager) {
-    return {
-      label: 'Sales manager',
-      menuLabel: 'Sales manager workspace',
-      to: getRoleLandingPath(normalizedRole),
-    }
-  }
-
-  if (normalizedRole === userRoles.productManager) {
-    return {
-      label: 'Product manager',
-      menuLabel: 'Product manager workspace',
-      to: getRoleLandingPath(normalizedRole),
-    }
-  }
-
-  return null
-}
-
-function isRouteActive(pathname, item) {
-  if (item.to === '/') {
-    return pathname === '/'
-  }
-
-  return pathname === item.to || pathname.startsWith(`${item.to}/`)
-}
 
 function getProductSearchFromLocation(location) {
   if (location.pathname !== '/products') {
@@ -92,11 +61,6 @@ export default function Header() {
     ? currentUserState.user
     : null
   const displayName = user?.displayname || 'Coffee Lover'
-  const managerWorkspaceItem = getManagerWorkspaceItem(user?.role)
-  const headerNavItems = managerWorkspaceItem
-    ? [...navItems, managerWorkspaceItem]
-    : navItems
-  const showCustomerAccountLinks = !managerWorkspaceItem
   const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
   const themeStatusCopy = themePreference === 'system'
     ? `Following system: ${currentThemeLabel}`
@@ -414,8 +378,8 @@ export default function Header() {
 
             <nav className="hidden min-w-0 justify-center md:flex">
               <div className="aurora-desktop-nav-shell inline-flex items-center gap-2 rounded-[1.6rem] px-2 py-2">
-                {headerNavItems.map((item) => {
-                  const isActive = isRouteActive(location.pathname, item)
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.to
 
                   return (
                     <LiquidGlassButton
@@ -583,48 +547,30 @@ export default function Header() {
                   >
                     Cart
                   </LiquidGlassButton>
-                  {managerWorkspaceItem ? (
-                    <LiquidGlassButton
-                      as={Link}
-                      to={managerWorkspaceItem.to}
-                      onClick={() => setMenuOpen(false)}
-                      role="menuitem"
-                      variant="secondary"
-                      size="compact"
-                      className="w-full"
-                      contentClassName="w-full justify-start"
-                    >
-                      {managerWorkspaceItem.menuLabel}
-                    </LiquidGlassButton>
-                  ) : null}
-                  {showCustomerAccountLinks ? (
-                    <>
-                      <LiquidGlassButton
-                        as={Link}
-                        to="/account/orders"
-                        onClick={() => setMenuOpen(false)}
-                        role="menuitem"
-                        variant="quiet"
-                        size="compact"
-                        className="w-full"
-                        contentClassName="w-full justify-start"
-                      >
-                        Orders
-                      </LiquidGlassButton>
-                      <LiquidGlassButton
-                        as={Link}
-                        to="/account"
-                        onClick={() => setMenuOpen(false)}
-                        role="menuitem"
-                        variant="quiet"
-                        size="compact"
-                        className="w-full"
-                        contentClassName="w-full justify-start"
-                      >
-                        Account
-                      </LiquidGlassButton>
-                    </>
-                  ) : null}
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/account/orders"
+                    onClick={() => setMenuOpen(false)}
+                    role="menuitem"
+                    variant="quiet"
+                    size="compact"
+                    className="w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Orders
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    as={Link}
+                    to="/account"
+                    onClick={() => setMenuOpen(false)}
+                    role="menuitem"
+                    variant="quiet"
+                    size="compact"
+                    className="w-full"
+                    contentClassName="w-full justify-start"
+                  >
+                    Account
+                  </LiquidGlassButton>
                 </div>
 
                 {hasSession ? (
@@ -674,8 +620,8 @@ export default function Header() {
               contentClassName="p-2"
             >
               <nav className="aurora-mobile-nav-stack flex flex-col gap-2" aria-label="Mobile navigation">
-                {headerNavItems.map((item) => {
-                  const isActive = isRouteActive(location.pathname, item)
+                {navItems.map((item) => {
+                  const isActive = location.pathname === item.to
 
                   return (
                     <LiquidGlassButton
