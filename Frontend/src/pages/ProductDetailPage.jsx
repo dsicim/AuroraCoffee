@@ -580,6 +580,7 @@ function ProductReviewPanel({ product }) {
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
   const editorMode = Boolean(selfComment && selfCommentEditing)
   const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
+  const showReviewPrivacyControls = canComment && !isCurrentUserLoading && hasDisplayName
   const selfCommentStatus = String(selfComment?.status || '').trim().toLowerCase()
   const hasPendingSelfComment = ['pending', 'pending_edit'].includes(selfCommentStatus)
   const hasRejectedSelfComment = ['rejected', 'edit_rejected'].includes(selfCommentStatus)
@@ -994,33 +995,35 @@ function ProductReviewPanel({ product }) {
                 </p>
               </div>
 
-              <div className="mt-6">
-                <span className="aurora-review-label">Name visibility</span>
-                <ReviewPrivacyMatrix
-                  displayName={currentUser?.displayname}
-                  selection={reviewPrivacySelection}
-                  open={privacyMenuOpen}
-                  disabled={reviewFormDisabled}
-                  onToggle={setPrivacyMenuOpen}
-                  onToggleAll={(mode) => {
-                    setReviewPrivacySelection(
-                      buildReviewPrivacySelection(currentUser?.displayname, mode),
-                    )
-                    setReviewError('')
-                  }}
-                  onChange={(wordIndex, mode) => {
-                    setReviewPrivacySelection((currentSelection) => {
-                      const nextSelection = resolveReviewPrivacySelection(
-                        currentSelection,
-                        currentUser?.displayname,
+              {showReviewPrivacyControls ? (
+                <div className="mt-6">
+                  <span className="aurora-review-label">Name visibility</span>
+                  <ReviewPrivacyMatrix
+                    displayName={currentUser?.displayname}
+                    selection={reviewPrivacySelection}
+                    open={privacyMenuOpen}
+                    disabled={reviewFormDisabled}
+                    onToggle={setPrivacyMenuOpen}
+                    onToggleAll={(mode) => {
+                      setReviewPrivacySelection(
+                        buildReviewPrivacySelection(currentUser?.displayname, mode),
                       )
-                      nextSelection[wordIndex] = normalizeReviewPrivacyMode(mode)
-                      return nextSelection
-                    })
-                    setReviewError('')
-                  }}
-                />
-              </div>
+                      setReviewError('')
+                    }}
+                    onChange={(wordIndex, mode) => {
+                      setReviewPrivacySelection((currentSelection) => {
+                        const nextSelection = resolveReviewPrivacySelection(
+                          currentSelection,
+                          currentUser?.displayname,
+                        )
+                        nextSelection[wordIndex] = normalizeReviewPrivacyMode(mode)
+                        return nextSelection
+                      })
+                      setReviewError('')
+                    }}
+                  />
+                </div>
+              ) : null}
 
               <textarea
                 id="product-review-comment"
