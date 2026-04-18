@@ -1246,13 +1246,14 @@ function PreviewDropdown({
       const optionElements = Array.from(menu.querySelectorAll('.aurora-preview-option'))
 
       if (optionElements.length > 0 && menu.scrollHeight > availableHeight + 1) {
-        const minimumHeight = optionElements[0].offsetTop + optionElements[0].offsetHeight
+        const menuRect = menu.getBoundingClientRect()
+        const minimumHeight = optionElements[0].getBoundingClientRect().bottom - menuRect.top
         const fittedHeight = optionElements.reduce((bestHeight, optionElement) => {
-          const optionBottom = optionElement.offsetTop + optionElement.offsetHeight
+          const optionBottom = optionElement.getBoundingClientRect().bottom - menuRect.top
           return optionBottom <= availableHeight ? optionBottom : bestHeight
         }, minimumHeight)
 
-        menu.style.maxHeight = `${Math.max(1, Math.floor(fittedHeight))}px`
+        menu.style.maxHeight = `${Math.max(1, Math.ceil(fittedHeight))}px`
       }
     }
 
