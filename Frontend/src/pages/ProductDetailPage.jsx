@@ -1187,6 +1187,27 @@ function PreviewDropdown({
   }, [onToggle, open])
 
   useLayoutEffect(() => {
+    if (!open) {
+      return undefined
+    }
+
+    const menu = menuRef.current
+
+    if (!menu) {
+      return undefined
+    }
+
+    menu.scrollTop = 0
+    const frameId = window.requestAnimationFrame(() => {
+      menu.scrollTop = 0
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [open])
+
+  useLayoutEffect(() => {
     if (!open || !usesViewportLayout) {
       return undefined
     }

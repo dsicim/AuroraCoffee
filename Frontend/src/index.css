@@ -1836,6 +1836,7 @@ img {
     margin-top: 0.7rem;
     max-height: min(18rem, 42vh);
     overflow-y: auto;
+    scroll-snap-type: none;
     scrollbar-gutter: stable;
   }
 
@@ -1843,6 +1844,7 @@ img {
     gap: 0.85rem;
     padding: 0.72rem 0.85rem;
     border-radius: 1rem;
+    scroll-snap-align: none;
   }
 
   .aurora-preview-menu.is-flow .aurora-preview-option-meta {
