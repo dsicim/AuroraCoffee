@@ -921,7 +921,7 @@ export default function ProductManagerPage() {
                         />
                       </div>
 
-                      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[rgba(208,193,178,0.32)] pt-4">
+                      <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-4">
                         <LiquidGlassButton
                           variant="secondary"
                           size="compact"

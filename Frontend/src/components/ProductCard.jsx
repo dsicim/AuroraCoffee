@@ -88,7 +88,7 @@ export default function ProductCard({ product, compact = false }) {
                   {notes.map((note) => (
                     <span
                       key={note}
-                      className="aurora-product-card-note rounded-full border border-[rgba(95,102,78,0.18)] bg-[rgba(230,230,219,0.44)] px-3 py-1 text-xs font-medium text-[var(--aurora-olive-deep)]"
+                      className="aurora-product-card-note rounded-full border px-3 py-1 text-xs font-medium"
                     >
                       {note}
                     </span>

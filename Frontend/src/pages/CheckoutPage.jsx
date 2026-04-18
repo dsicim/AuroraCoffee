@@ -1110,11 +1110,7 @@ export default function CheckoutPage() {
                 <div
                   key={step.key}
                   className={`aurora-step-card px-4 py-3 text-sm font-semibold ${
-                    isActive
-                      ? 'border-[var(--aurora-sky)] bg-[var(--aurora-sky)] text-[var(--aurora-cream)]'
-                      : isComplete
-                        ? 'border-[rgba(138,144,119,0.26)] bg-[rgba(230,232,222,0.45)] text-[var(--aurora-olive-deep)]'
-                        : 'text-[var(--aurora-text)]'
+                    isActive ? 'is-active' : isComplete ? 'is-complete' : 'is-pending'
                   }`}
                 >
                   <span className="block text-[10px] uppercase tracking-[0.22em] opacity-80">
