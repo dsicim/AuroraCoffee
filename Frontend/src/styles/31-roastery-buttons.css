@@ -1,0 +1,284 @@
+.button-wrap.button-variant-primary {
+  --button-fill-start: color-mix(in srgb, var(--aurora-accent) 26%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-accent) 12%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 10%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-accent) 46%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 26%, rgba(255, 255, 255, 0.18));
+  --button-shadow-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aurora-accent) 18%, transparent),
+    color-mix(in srgb, var(--aurora-blue) 10%, transparent)
+  );
+}
+
+.button-wrap.button-variant-secondary,
+.button-wrap.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 18%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 11%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 9%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh-deep) 48%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-fresh) 16%, rgba(255, 255, 255, 0.56));
+  --button-shadow-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aurora-fresh) 16%, transparent),
+    color-mix(in srgb, var(--aurora-fresh-deep) 8%, transparent)
+  );
+}
+
+[data-theme='dark'] .button-wrap.button-variant-secondary,
+[data-theme='dark'] .button-wrap.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 22%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh-soft) 78%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 12%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh) 46%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 18%, rgba(255, 255, 255, 0.12));
+}
+
+.button-wrap.button-variant-quiet,
+.button-wrap.button-variant-chip,
+.button-wrap.button-variant-icon {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 14%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 7%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-plum) 7%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: var(--aurora-border);
+  --button-outline-light: rgba(255, 255, 255, 0.26);
+  --button-shadow-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aurora-blue) 8%, transparent),
+    color-mix(in srgb, var(--aurora-surface-soft) 12%, transparent)
+  );
+}
+
+.aurora-desktop-nav-shell .button-wrap.button-variant-chip.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 34%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 18%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 18%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh-deep) 56%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-fresh) 30%, rgba(255, 255, 255, 0.36));
+  --button-shadow-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aurora-fresh) 28%, transparent),
+    color-mix(in srgb, var(--aurora-blue) 14%, transparent)
+  );
+}
+
+.button-wrap.button-variant-soft,
+.button-wrap.button-variant-stepper {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 18%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-blue) 10%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-plum) 8%, transparent);
+  --button-text: var(--aurora-blue-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue-deep) 42%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-plum) 18%, rgba(255, 255, 255, 0.16));
+}
+
+.button-wrap > .liquid-glass-control {
+  background:
+    radial-gradient(ellipse at 34% 0%, rgba(255, 255, 255, 0.66), rgba(255, 255, 255, 0.22) 34%, transparent 64%),
+    radial-gradient(ellipse at 78% 100%, color-mix(in srgb, var(--aurora-blue) 16%, transparent), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.03) 42%, transparent 76%),
+    linear-gradient(
+      -75deg,
+      rgba(255, 255, 255, 0.02),
+      rgba(255, 255, 255, 0.14),
+      rgba(255, 255, 255, 0.02)
+    ),
+    linear-gradient(180deg, var(--button-fill-start), var(--button-fill-mid), var(--button-fill-end));
+  box-shadow:
+    inset 0 0.09em 0.06em rgba(255, 255, 255, 0.62),
+    inset 0 -0.18em 0.22em color-mix(in srgb, var(--aurora-fresh-deep) 10%, transparent),
+    inset 0 0 0 0.05em rgba(255, 255, 255, 0.1),
+    0 0.38em 0.55em -0.28em color-mix(in srgb, var(--aurora-blue) 20%, transparent),
+    0 0.9em 1.5em -0.9em color-mix(in srgb, var(--aurora-fresh) 26%, transparent);
+  backdrop-filter: blur(18px) saturate(170%) contrast(1.04);
+  -webkit-backdrop-filter: blur(18px) saturate(170%) contrast(1.04);
+}
+
+.button-wrap > .liquid-glass-control::before {
+  content: '';
+  position: absolute;
+  inset: 1px;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.08) 34%, transparent 58%),
+    radial-gradient(circle at 80% 84%, rgba(255, 255, 255, 0.24), transparent 30%),
+    linear-gradient(180deg, transparent 46%, rgba(255, 255, 255, 0.12));
+  opacity: 0.8;
+  mix-blend-mode: screen;
+}
+
+.button-wrap > .liquid-glass-control:hover {
+  box-shadow:
+    inset 0 0.1em 0.08em rgba(255, 255, 255, 0.7),
+    inset 0 -0.18em 0.24em color-mix(in srgb, var(--aurora-fresh-deep) 12%, transparent),
+    inset 0 0 0 0.05em rgba(255, 255, 255, 0.16),
+    0 0.42em 0.62em -0.3em color-mix(in srgb, var(--aurora-blue) 26%, transparent),
+    0 1em 1.55em -0.86em color-mix(in srgb, var(--aurora-fresh) 34%, transparent);
+}
+
+.aurora-home-hero .button-wrap.button-variant-primary {
+  --button-text: var(--aurora-hero-text);
+}
+
+[data-theme='dark'] .button-wrap.button-variant-primary {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 26%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 10%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-fresh) 14%, transparent);
+  --button-text: var(--aurora-hero-text);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue) 42%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-plum) 22%, rgba(255, 255, 255, 0.12));
+  --button-shadow-gradient: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--aurora-blue) 14%, transparent),
+    color-mix(in srgb, var(--aurora-plum) 8%, transparent)
+  );
+}
+
+[data-theme='dark'] .button-wrap.button-variant-quiet,
+[data-theme='dark'] .button-wrap.button-variant-chip,
+[data-theme='dark'] .button-wrap.button-variant-icon {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 14%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 6%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 6%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue) 24%, var(--aurora-border));
+  --button-outline-light: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .button-wrap.button-variant-soft,
+[data-theme='dark'] .button-wrap.button-variant-stepper {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 22%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-blue) 10%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-fresh) 10%, transparent);
+  --button-text: var(--aurora-blue-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue) 34%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-fresh) 16%, rgba(255, 255, 255, 0.12));
+}
+
+[data-theme='dark'] .aurora-desktop-nav-shell .button-wrap.button-variant-chip.is-selected,
+[data-theme='dark'] .aurora-desktop-nav-shell .button-wrap.button-variant-chip[aria-pressed='true'],
+[data-theme='dark'] .aurora-product-filter-row .button-wrap.button-variant-chip.is-selected,
+[data-theme='dark'] .aurora-product-filter-row .button-wrap.button-variant-chip[aria-pressed='true'] {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 16%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh-soft) 64%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 10%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh) 36%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 12%, rgba(255, 255, 255, 0.1));
+}
+
+[data-theme='dark'] .button-wrap > .liquid-glass-control {
+  box-shadow:
+    inset 0 0.1em 0.08em rgba(255, 255, 255, 0.22),
+    inset 0 -0.16em 0.2em rgba(0, 0, 0, 0.16),
+    inset 0 0 0 0.05em rgba(255, 255, 255, 0.08),
+    0 0.32em 0.48em -0.2em rgba(0, 0, 0, 0.2),
+    0 0.9em 1.55em -0.9em rgba(0, 0, 0, 0.26);
+}
+
+.button-wrap.button-variant-danger,
+.aurora-logout-button.button-wrap.button-variant-danger {
+  --button-fill-start: color-mix(in srgb, #d84a5b 18%, transparent);
+  --button-fill-mid: color-mix(in srgb, #d84a5b 12%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, #8f1b32 10%, transparent);
+  --button-text: #8f1b32;
+  --button-outline-dark: color-mix(in srgb, #8f1b32 48%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, #d84a5b 18%, rgba(255, 255, 255, 0.16));
+}
+
+.aurora-account-trigger.button-wrap.button-variant-quiet,
+.aurora-account-trigger.button-wrap.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 36%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 18%, var(--aurora-blue));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 22%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh) 34%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 14%, rgba(255, 255, 255, 0.16));
+}
+
+.aurora-account-sidebar .button-wrap.button-variant-quiet,
+.aurora-account-menu .button-wrap.button-variant-quiet {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 30%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 14%, transparent);
+  --button-fill-end: color-mix(in srgb, var(--aurora-plum) 18%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue) 20%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-fresh) 12%, rgba(255, 255, 255, 0.14));
+}
+
+.aurora-account-sidebar .button-wrap.button-variant-secondary,
+.aurora-account-sidebar .button-wrap.is-selected,
+.aurora-account-menu .button-wrap.button-variant-secondary,
+.aurora-account-menu .button-wrap.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 44%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 20%, var(--aurora-blue));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 22%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh-deep) 42%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 14%, rgba(255, 255, 255, 0.16));
+}
+
+[data-theme='dark'] .button-wrap.button-variant-danger,
+[data-theme='dark'] .aurora-logout-button.button-wrap.button-variant-danger {
+  --button-fill-start: color-mix(in srgb, #ff6f84 16%, transparent);
+  --button-fill-mid: color-mix(in srgb, #ff6f84 10%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, #c8304a 10%, transparent);
+  --button-text: #ffd6db;
+  --button-outline-dark: color-mix(in srgb, #ff6f84 34%, var(--aurora-border));
+  --button-outline-light: rgba(255, 214, 219, 0.14);
+}
+
+[data-theme='dark'] .aurora-account-trigger.button-wrap.button-variant-quiet,
+[data-theme='dark'] .aurora-account-trigger.button-wrap.is-selected,
+[data-theme='dark'] .aurora-account-sidebar .button-wrap.button-variant-quiet,
+[data-theme='dark'] .aurora-account-menu .button-wrap.button-variant-quiet {
+  --button-fill-start: color-mix(in srgb, var(--aurora-blue) 24%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh) 12%, var(--aurora-glass-strong));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 10%, transparent);
+  --button-text: var(--aurora-text-strong);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-blue) 24%, var(--aurora-border));
+  --button-outline-light: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .aurora-account-sidebar .button-wrap.button-variant-secondary,
+[data-theme='dark'] .aurora-account-sidebar .button-wrap.is-selected,
+[data-theme='dark'] .aurora-account-menu .button-wrap.button-variant-secondary,
+[data-theme='dark'] .aurora-account-menu .button-wrap.is-selected {
+  --button-fill-start: color-mix(in srgb, var(--aurora-fresh) 20%, transparent);
+  --button-fill-mid: color-mix(in srgb, var(--aurora-fresh-soft) 78%, var(--aurora-glass));
+  --button-fill-end: color-mix(in srgb, var(--aurora-blue) 12%, transparent);
+  --button-text: var(--aurora-fresh-deep);
+  --button-outline-dark: color-mix(in srgb, var(--aurora-fresh) 42%, var(--aurora-border));
+  --button-outline-light: color-mix(in srgb, var(--aurora-blue) 14%, rgba(255, 255, 255, 0.12));
+}
+
+.aurora-widget-icon {
+  color: var(--aurora-blue-deep);
+  border-color: color-mix(in srgb, var(--aurora-blue) 28%, var(--aurora-border));
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--aurora-fresh-soft) 45%, var(--aurora-surface-strong)), color-mix(in srgb, var(--aurora-plum-soft) 58%, var(--aurora-surface)));
+}
+
+.button-wrap > .liquid-glass-control:hover {
+  transform: none;
+}
+
+.button-wrap:has(> .liquid-glass-control:hover) {
+  transform: translateY(-1px);
+}
+
+.button-label {
+  letter-spacing: 0;
+  text-shadow: none;
+}
+
+.button-label::after {
+  opacity: 0.68;
+}

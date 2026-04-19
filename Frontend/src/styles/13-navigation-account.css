@@ -1,0 +1,338 @@
+@layer components {
+  .aurora-disabled-option {
+    --button-rest-translate-y: 0;
+    --button-hover-translate-y: 0;
+  }
+
+  .aurora-surface-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-metric-number {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 3vw, 3rem);
+    line-height: 1;
+    color: var(--aurora-text-strong);
+  }
+
+  .aurora-watermark {
+    pointer-events: none;
+    position: absolute;
+    inset: auto;
+    opacity: 0.08;
+    filter: saturate(0.7);
+  }
+
+  .aurora-showroom-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-glass-dock {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    --glass-overlay-color: rgba(255, 249, 244, 0.14);
+    border: 1px solid rgba(255, 248, 241, 0.3);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)),
+      rgba(255, 249, 244, 0.16);
+    box-shadow: 0 14px 28px rgba(47, 29, 19, 0.08);
+    backdrop-filter: blur(6px) saturate(116%);
+    -webkit-backdrop-filter: blur(6px) saturate(116%);
+  }
+
+  .aurora-glass-dock::before {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    border-radius: inherit;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.16), transparent 40%),
+      radial-gradient(circle at 28% 24%, rgba(255,255,255,0.12), transparent 18%);
+    opacity: 0.7;
+  }
+
+  .aurora-glass-dock::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: -12%;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 30% 35%, rgba(255, 255, 255, 0.2), transparent 18%),
+      radial-gradient(circle at 75% 30%, rgba(144, 182, 151, 0.12), transparent 22%),
+      radial-gradient(circle at 50% 75%, rgba(235, 207, 159, 0.12), transparent 24%);
+    opacity: 0.55;
+  }
+
+  .aurora-glass-dock > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .aurora-desktop-nav-shell {
+    border: 1px solid rgba(255, 248, 241, 0.16);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03)),
+      rgba(255, 249, 244, 0.08);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.18),
+      0 10px 24px rgba(33, 20, 13, 0.05);
+    backdrop-filter: blur(10px) saturate(118%);
+    -webkit-backdrop-filter: blur(10px) saturate(118%);
+  }
+
+  .aurora-account-sidebar,
+  .aurora-account-context,
+  .aurora-account-menu {
+    --aurora-liquid-tint: rgba(247, 244, 240, 0.98);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.98);
+    --aurora-liquid-fill-bottom: rgba(244, 239, 234, 0.92);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.84);
+    --aurora-liquid-shadow: 0 18px 34px rgba(33, 20, 13, 0.08);
+    --aurora-liquid-blur: 14px;
+    backdrop-filter: blur(14px) saturate(104%);
+    -webkit-backdrop-filter: blur(14px) saturate(104%);
+  }
+
+  .aurora-account-sidebar {
+    --aurora-liquid-tint: rgb(236, 239, 243);
+    --aurora-liquid-fill-top: rgb(247, 248, 249);
+    --aurora-liquid-fill-bottom: rgb(236, 231, 226);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.92);
+    --aurora-liquid-shadow: 0 16px 30px rgba(33, 20, 13, 0.06);
+    --aurora-liquid-blur: 0px;
+    background:
+      radial-gradient(circle at 84% 14%, rgba(201, 224, 203, 0.34), transparent 24%),
+      radial-gradient(circle at 20% 88%, rgba(235, 220, 203, 0.26), transparent 30%),
+      linear-gradient(180deg, rgb(247, 248, 249) 0%, rgb(236, 240, 244) 48%, rgb(238, 232, 227) 100%),
+      rgb(236, 239, 243);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .aurora-account-sidebar::before {
+    opacity: 0.44;
+  }
+
+  .aurora-account-sidebar::after,
+  .aurora-account-context::after,
+  .aurora-account-menu::after {
+    opacity: 0.12;
+  }
+
+  .aurora-account-sidebar::after {
+    opacity: 0.14;
+  }
+
+  .aurora-account-menu {
+    --aurora-liquid-tint: rgba(244, 241, 237, 0.86);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.84);
+    --aurora-liquid-fill-bottom: rgba(244, 239, 234, 0.76);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.78);
+    --aurora-liquid-shadow: 0 18px 32px rgba(33, 20, 13, 0.08);
+    --aurora-liquid-blur: 12px;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, rgba(245, 240, 235, 0.72) 100%),
+      rgba(244, 241, 237, 0.78);
+    backdrop-filter: blur(12px) saturate(105%);
+    -webkit-backdrop-filter: blur(12px) saturate(105%);
+  }
+
+  .aurora-account-menu::before {
+    opacity: 0.42;
+  }
+
+  .aurora-account-menu::after {
+    opacity: 0.08;
+  }
+
+  .aurora-account-menu-profile {
+    --aurora-liquid-tint: rgb(249, 246, 242);
+    --aurora-liquid-fill-top: rgb(255, 255, 255);
+    --aurora-liquid-fill-bottom: rgb(247, 243, 239);
+    --aurora-liquid-border: rgba(249, 245, 241, 0.84);
+    --aurora-liquid-blur: 0px;
+    background:
+      linear-gradient(180deg, rgb(255, 255, 255) 0%, rgb(248, 244, 240) 100%),
+      rgb(249, 246, 242);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .aurora-account-trigger.button-wrap.button-variant-quiet,
+  .aurora-account-trigger.button-wrap.is-selected {
+    --button-fill-start: rgba(252, 251, 249, 0.56);
+    --button-fill-mid: rgba(188, 211, 192, 0.8);
+    --button-fill-end: rgba(124, 154, 130, 0.94);
+    --button-text: #f8fbfd;
+    --button-outline-dark: rgba(74, 96, 79, 0.52);
+    --button-outline-light: rgba(247, 250, 252, 0.5);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(89, 111, 93, 0.34), rgba(89, 111, 93, 0.16));
+  }
+
+  .aurora-account-trigger.button-wrap > .liquid-glass-control:hover,
+  .aurora-account-trigger.button-wrap:has(> .liquid-glass-control:hover) > .liquid-glass-control {
+    background: linear-gradient(
+      -75deg,
+      var(--button-fill-start),
+      var(--button-fill-mid),
+      var(--button-fill-end)
+    );
+  }
+
+  .aurora-access-dropdown {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .aurora-access-trigger .button-label {
+    align-items: center;
+  }
+
+  .aurora-access-chevron {
+    flex: 0 0 auto;
+    opacity: 0.82;
+    transition: transform 160ms ease, opacity 160ms ease;
+  }
+
+  .aurora-access-dropdown.is-open .aurora-access-chevron {
+    transform: rotate(180deg);
+    opacity: 1;
+  }
+
+  .aurora-access-menu {
+    display: grid;
+    gap: 0.35rem;
+    border-radius: 1.35rem;
+    border: 1px solid rgba(255, 252, 249, 0.72);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.74), rgba(244, 239, 234, 0.62)),
+      rgba(248, 246, 243, 0.76);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.62),
+      0 16px 32px rgba(52, 39, 31, 0.08);
+    padding: 0.45rem;
+  }
+
+  .aurora-account-sidebar .button-wrap.button-variant-quiet,
+  .aurora-account-menu .button-wrap.button-variant-quiet {
+    --button-fill-start: rgba(255, 255, 255, 0.88);
+    --button-fill-mid: rgba(246, 242, 237, 0.92);
+    --button-fill-end: rgba(237, 231, 225, 0.9);
+    --button-text: var(--aurora-text-strong);
+    --button-outline-dark: rgba(116, 102, 90, 0.28);
+    --button-outline-light: rgba(255, 252, 249, 0.66);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(95, 80, 72, 0.14), rgba(95, 80, 72, 0.06));
+  }
+
+  .aurora-account-sidebar .button-wrap.button-variant-secondary,
+  .aurora-account-sidebar .button-wrap.is-selected,
+  .aurora-account-menu .button-wrap.button-variant-secondary,
+  .aurora-account-menu .button-wrap.is-selected {
+    --button-fill-start: rgba(245, 249, 251, 0.72);
+    --button-fill-mid: rgba(162, 190, 168, 0.9);
+    --button-fill-end: rgba(102, 134, 109, 0.96);
+    --button-text: #f8fbfd;
+    --button-outline-dark: rgba(70, 91, 75, 0.5);
+    --button-outline-light: rgba(243, 248, 251, 0.52);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(81, 104, 86, 0.32), rgba(81, 104, 86, 0.16));
+  }
+
+  .aurora-account-sidebar .button-label,
+  .aurora-account-menu .button-label {
+    text-shadow: none;
+  }
+
+  .aurora-account-sidebar .button-wrap > .liquid-glass-control:hover .button-label,
+  .aurora-account-menu .button-wrap > .liquid-glass-control:hover .button-label,
+  .aurora-account-sidebar .button-wrap:has(> .liquid-glass-control:active) .button-label,
+  .aurora-account-menu .button-wrap:has(> .liquid-glass-control:active) .button-label {
+    text-shadow: none;
+  }
+
+  @media (max-width: 639px) {
+    .aurora-product-hero-card .aurora-widget-header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      align-items: flex-start;
+      gap: 0.65rem;
+    }
+
+    .aurora-product-hero-card .aurora-widget-title {
+      font-size: 1.65rem;
+      line-height: 1.05;
+    }
+
+    .aurora-product-hero-card .aurora-widget-subtitle {
+      font-size: 0.88rem;
+      line-height: 1.4;
+    }
+
+    .aurora-product-hero-card .aurora-widget-heading {
+      gap: 0.2rem;
+    }
+
+    .aurora-product-category-chip {
+      align-self: flex-start;
+      max-width: 100%;
+      white-space: nowrap;
+    }
+
+    .aurora-crumbs {
+      gap: 0.35rem;
+      font-size: 0.8rem;
+    }
+
+    .aurora-mobile-nav-panel {
+      display: block;
+      width: min(100%, 24rem);
+      max-width: min(24rem, calc(100vw - 1rem));
+    }
+
+    .aurora-mobile-nav-panel .glass-content {
+      width: 100%;
+    }
+
+    .aurora-mobile-nav-panel .button-wrap {
+      width: 100%;
+    }
+
+    .aurora-mobile-nav-panel .button-wrap > .liquid-glass-control {
+      min-width: 0;
+      justify-content: flex-start;
+    }
+
+    .aurora-mobile-nav-theme {
+      border: 1px solid var(--aurora-border);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.04)),
+        var(--aurora-glass);
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.16),
+        0 10px 24px rgba(33, 20, 13, 0.04);
+      backdrop-filter: blur(10px) saturate(118%);
+      -webkit-backdrop-filter: blur(10px) saturate(118%);
+    }
+
+    [data-theme='dark'] .aurora-mobile-nav-theme {
+      border-color: rgba(206, 225, 244, 0.12);
+      background:
+        linear-gradient(180deg, rgba(241, 248, 255, 0.08), rgba(28, 39, 32, 0.24)),
+        rgba(18, 29, 42, 0.56);
+      box-shadow:
+        inset 0 1px 0 rgba(242, 249, 255, 0.1),
+        0 10px 24px rgba(0, 7, 18, 0.24);
+    }
+
+    .aurora-mobile-theme-toggle.switcher.is-panel {
+      --switcher-width: min(100%, 12.4rem);
+      flex-shrink: 1;
+    }
+  }
+ }

@@ -1,0 +1,602 @@
+@layer components {
+  .liquid-glass {
+    --glass-x: 26%;
+    --glass-y: 20%;
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .liquid-glass > .glass-filter,
+  .liquid-glass > .glass-overlay,
+  .liquid-glass > .glass-specular {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+
+  .liquid-glass > .glass-filter {
+    z-index: 0;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 46%),
+      radial-gradient(circle at 24% 20%, rgba(255,255,255,0.12), transparent 18%);
+    opacity: 0.7;
+  }
+
+  .glass-card {
+    border-radius: 1.9rem;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.1);
+  }
+
+  .glass-card > .glass-overlay {
+    background: var(--bg-color, rgba(255, 255, 255, 0.25));
+  }
+
+  .glass-distortion-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.06) 0%, transparent 80%),
+      radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.06) 0%, transparent 80%);
+    background-size: 220% 220%;
+    opacity: 0.5;
+  }
+
+  .liquid-glass > .glass-overlay {
+    z-index: 1;
+    background: var(--glass-overlay-color, var(--bg-color, rgba(255, 249, 244, 0.16)));
+  }
+
+  .liquid-glass > .glass-specular {
+    z-index: 2;
+    background:
+      radial-gradient(
+        circle at var(--glass-x) var(--glass-y),
+        rgba(255, 255, 255, 0.22) 0%,
+        rgba(255, 255, 255, 0.08) 20%,
+        rgba(255, 255, 255, 0) 56%
+      );
+    box-shadow:
+      inset 1px 1px 1px var(--highlight, rgba(255, 255, 255, 0.34)),
+      inset -1px -1px 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .liquid-glass > .glass-content {
+    position: relative;
+    z-index: 3;
+  }
+
+  .aurora-pill::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 22% 18%, rgba(255, 255, 255, 0.42), transparent 30%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.02));
+    mix-blend-mode: screen;
+  }
+
+  .aurora-pill > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .glass-button {
+    cursor: pointer;
+    outline: none;
+  }
+
+  .glass-button > .glass-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 100%;
+    color: var(--text);
+    font-size: inherit;
+    font-weight: 500;
+  }
+
+  .glass-button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 18px 38px rgba(155, 123, 72, 0.24);
+  }
+
+  .glass-button:active {
+    transform: scale(0.95);
+  }
+
+  .aurora-button-secondary {
+    --bg-color: rgba(91, 129, 97, 0.56);
+    --highlight: rgba(255, 255, 255, 0.6);
+    --text: var(--aurora-cream);
+    border-color: rgba(255, 248, 241, 0.34);
+    color: var(--aurora-cream);
+    box-shadow: 0 14px 34px rgba(91, 129, 97, 0.22);
+  }
+
+  .aurora-button-soft {
+    --bg-color: rgba(230, 230, 219, 0.72);
+    --highlight: rgba(255, 255, 255, 0.46);
+    --text: var(--aurora-olive-deep);
+    border-color: rgba(95, 102, 78, 0.22);
+    color: var(--aurora-olive-deep);
+    box-shadow: none;
+  }
+
+  .aurora-button-quiet {
+    --bg-color: rgba(255, 249, 244, 0.24);
+    --highlight: rgba(255, 255, 255, 0.62);
+    --text: var(--aurora-text-strong);
+    border-color: rgba(255, 248, 241, 0.22);
+    color: var(--aurora-text-strong);
+    box-shadow: var(--aurora-shadow-soft);
+  }
+
+  .aurora-button-danger {
+    --bg-color: rgba(252, 236, 233, 0.88);
+    --highlight: rgba(255, 255, 255, 0.48);
+    --text: #7d3939;
+    border-color: rgba(155, 72, 72, 0.28);
+    color: #7d3939;
+    box-shadow: none;
+  }
+
+  .aurora-button:disabled,
+  .aurora-button-secondary:disabled,
+  .aurora-button-soft:disabled,
+  .aurora-button-quiet:disabled,
+  .aurora-button-danger:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .button-wrap {
+    --button-radius: 999vw;
+    --button-border-width: clamp(1px, 0.0625em, 4px);
+    --button-fill-start: rgba(255, 255, 255, 0.08);
+    --button-fill-mid: rgba(255, 255, 255, 0.22);
+    --button-fill-end: rgba(255, 255, 255, 0.08);
+    --button-text: rgba(50, 50, 50, 1);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(0, 0, 0, 0.16), rgba(0, 0, 0, 0.08));
+    --button-shadow-opacity: 1;
+    --button-tilt: 25deg;
+    --button-label-inline: 1.5em;
+    --button-label-block: 0.875em;
+    --button-font-size: 0.94rem;
+    --button-font-weight: 600;
+    --button-highlight: rgba(255, 255, 255, 0.5);
+    --button-outline-dark: rgba(34, 20, 14, 0.42);
+    --button-outline-light: rgba(255, 255, 255, 0.52);
+    --button-rest-translate-y: -1px;
+    --button-hover-translate-y: -2px;
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    width: fit-content;
+    max-width: 100%;
+    border-radius: var(--button-radius);
+    background: transparent;
+    pointer-events: none;
+    transition: transform var(--anim--hover-time) var(--anim--hover-ease);
+  }
+
+  .button-shadow {
+    --shadow-cuttoff-fix: 2em;
+    position: absolute;
+    inset: auto;
+    width: calc(100% + var(--shadow-cuttoff-fix));
+    height: calc(100% + var(--shadow-cuttoff-fix));
+    top: calc(0% - var(--shadow-cuttoff-fix) / 2);
+    left: calc(0% - var(--shadow-cuttoff-fix) / 2);
+    overflow: visible;
+    pointer-events: none;
+    filter: blur(clamp(2px, 0.125em, 12px));
+    transition: filter var(--anim--hover-time) var(--anim--hover-ease);
+  }
+
+  .button-shadow::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: calc(100% - var(--shadow-cuttoff-fix) - 0.25em);
+    height: calc(100% - var(--shadow-cuttoff-fix) - 0.25em);
+    top: calc(var(--shadow-cuttoff-fix) - 0.34em);
+    left: calc(var(--shadow-cuttoff-fix) - 0.875em);
+    padding: 0.125em;
+    border-radius: var(--button-radius);
+    box-sizing: border-box;
+    background: var(--button-shadow-gradient);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    opacity: var(--button-shadow-opacity);
+    transition: all var(--anim--hover-time) var(--anim--hover-ease);
+  }
+
+  .button-wrap > .liquid-glass-control {
+    all: unset;
+    position: relative;
+    z-index: 3;
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--button-radius);
+    cursor: pointer;
+    pointer-events: auto;
+    box-sizing: border-box;
+    color: var(--button-text);
+    text-decoration: none;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+    background:
+      linear-gradient(
+        -75deg,
+        rgba(255, 255, 255, 0.05),
+        rgba(255, 255, 255, 0.2),
+        rgba(255, 255, 255, 0.05)
+      ),
+      linear-gradient(180deg, var(--button-fill-start), var(--button-fill-mid), var(--button-fill-end));
+    box-shadow:
+      inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+      inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+      0 0.32em 0.22em -0.12em rgba(52, 36, 28, 0.2),
+      0 0.7em 1.2em -0.85em rgba(52, 36, 28, 0.22),
+      0 0 0.1em 0.25em inset rgba(255, 255, 255, 0.18),
+      0 0 0 0 rgba(255, 255, 255, 1);
+    transition:
+      transform var(--anim--hover-time) var(--anim--hover-ease),
+      box-shadow var(--anim--hover-time) var(--anim--hover-ease);
+    transform: translateY(var(--button-rest-translate-y));
+  }
+
+  .button-wrap > .liquid-glass-control::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    width: calc(100% + var(--button-border-width));
+    height: calc(100% + var(--button-border-width));
+    top: calc(0% - var(--button-border-width) / 2);
+    left: calc(0% - var(--button-border-width) / 2);
+    padding: var(--button-border-width);
+    border-radius: var(--button-radius);
+    box-sizing: border-box;
+    background:
+      conic-gradient(
+        from var(--angle-1) at 50% 50%,
+        var(--button-outline-dark),
+        rgba(0, 0, 0, 0) 5% 40%,
+        var(--button-outline-dark) 50%,
+        rgba(0, 0, 0, 0) 60% 95%,
+        var(--button-outline-dark)
+      ),
+      linear-gradient(180deg, var(--button-outline-light), var(--button-outline-light));
+    box-shadow: inset 0 0 0 calc(var(--button-border-width) / 2) rgba(255, 255, 255, 0.5);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    transition:
+      all var(--anim--hover-time) var(--anim--hover-ease),
+      --angle-1 500ms ease;
+  }
+
+  .button-label {
+    position: relative;
+    z-index: 2;
+    display: inline-flex;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    gap: 0.55rem;
+    padding-inline: var(--button-label-inline);
+    padding-block: var(--button-label-block);
+    color: var(--button-text);
+    font-family: var(--font-sans);
+    font-size: var(--button-font-size);
+    font-weight: var(--button-font-weight);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    text-shadow: 0 0.25em 0.05em rgba(0, 0, 0, 0.1);
+    user-select: none;
+  }
+
+  .button-label::after {
+    content: '';
+    position: absolute;
+    inset: calc(0% + var(--button-border-width) / 2);
+    z-index: 3;
+    width: calc(100% - var(--button-border-width));
+    height: calc(100% - var(--button-border-width));
+    border-radius: var(--button-radius);
+    background:
+      linear-gradient(
+        var(--angle-2),
+        rgba(255, 255, 255, 0) 0%,
+        var(--button-highlight) 40% 50%,
+        rgba(255, 255, 255, 0) 55%
+      );
+    background-size: 200% 200%;
+    background-position: 0% 50%;
+    background-repeat: no-repeat;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    transition:
+      background-position calc(var(--anim--hover-time) * 1.25) var(--anim--hover-ease),
+      --angle-2 calc(var(--anim--hover-time) * 1.25) var(--anim--hover-ease);
+  }
+
+  .button-wrap > .liquid-glass-control:hover {
+    transform: translateY(var(--button-hover-translate-y)) scale(0.99);
+    box-shadow:
+      inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+      inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+      0 0.38em 0.26em -0.12em rgba(52, 36, 28, 0.24),
+      0 0.95em 1.45em -0.9em rgba(52, 36, 28, 0.24),
+      0 0 0.05em 0.1em inset rgba(255, 255, 255, 0.46),
+      0 0 0 0 rgba(255, 255, 255, 1);
+  }
+
+  .button-wrap > .liquid-glass-control:hover .button-label {
+    text-shadow: 0.025em 0.025em 0.025em rgba(0, 0, 0, 0.12);
+  }
+
+  .button-wrap > .liquid-glass-control:hover .button-label::after {
+    background-position: 25% 50%;
+  }
+
+  .button-wrap > .liquid-glass-control:active .button-label::after {
+    background-position: 50% 15%;
+    --angle-2: -15deg;
+  }
+
+  .button-wrap > .liquid-glass-control:hover::after {
+    --angle-1: -125deg;
+  }
+
+  .button-wrap:has(> .liquid-glass-control:hover) .button-shadow {
+    filter: blur(clamp(1px, 0.0625em, 4px));
+  }
+
+  .button-wrap:has(> .liquid-glass-control:hover) .button-shadow::after {
+    top: calc(var(--shadow-cuttoff-fix) - 0.74em);
+    opacity: 1;
+  }
+
+  .button-wrap:has(> .liquid-glass-control:active) {
+    transform: rotate3d(1, 0, 0, var(--button-tilt));
+  }
+
+  .button-wrap:has(> .liquid-glass-control:active) > .liquid-glass-control {
+    box-shadow:
+      inset 0 0.125em 0.125em rgba(0, 0, 0, 0.05),
+      inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.5),
+      0 0.125em 0.125em -0.125em rgba(0, 0, 0, 0.2),
+      0 0 0.1em 0.25em inset rgba(255, 255, 255, 0.2),
+      0 0.225em 0.05em 0 rgba(0, 0, 0, 0.05),
+      0 0.25em 0 0 rgba(255, 255, 255, 0.75),
+      inset 0 0.25em 0.05em 0 rgba(0, 0, 0, 0.15);
+  }
+
+  .button-wrap:has(> .liquid-glass-control:active) .button-shadow {
+    filter: blur(clamp(1px, 0.125em, 6px));
+  }
+
+  .button-wrap:has(> .liquid-glass-control:active) .button-shadow::after {
+    top: calc(var(--shadow-cuttoff-fix) - 0.5em);
+    opacity: 0.75;
+  }
+
+  .button-wrap:has(> .liquid-glass-control:active) .button-label {
+    text-shadow: 0.025em 0.25em 0.05em rgba(0, 0, 0, 0.12);
+  }
+
+  .button-wrap.is-disabled,
+  .button-wrap > .liquid-glass-control:disabled,
+  .button-wrap > .liquid-glass-control[aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+
+  .button-wrap.is-disabled > .liquid-glass-control,
+  .button-wrap > .liquid-glass-control:disabled,
+  .button-wrap > .liquid-glass-control[aria-disabled='true'] {
+    opacity: 0.58;
+    transform: translateY(0);
+    pointer-events: none;
+    box-shadow:
+      inset 0 0.125em 0.125em rgba(0, 0, 0, 0.04),
+      inset 0 -0.125em 0.125em rgba(255, 255, 255, 0.32),
+      0 0.15em 0.05em -0.1em rgba(0, 0, 0, 0.12);
+  }
+
+  .button-wrap.is-disabled .button-label::after,
+  .button-wrap > .liquid-glass-control:disabled .button-label::after,
+  .button-wrap > .liquid-glass-control[aria-disabled='true'] .button-label::after {
+    background-position: 0% 50%;
+  }
+
+  .button-wrap > .liquid-glass-control:focus-visible {
+    outline: none;
+  }
+
+  .button-wrap > .liquid-glass-control:focus-visible::after {
+    box-shadow:
+      inset 0 0 0 calc(var(--button-border-width) / 2) rgba(255, 255, 255, 0.7),
+      0 0 0 4px rgba(255, 248, 242, 0.9),
+      0 0 0 8px rgba(138, 179, 145, 0.35);
+  }
+
+  .button-wrap.button-size-hero {
+    --button-label-inline: 1.7rem;
+    --button-label-block: 1rem;
+    --button-font-size: 1rem;
+  }
+
+  .button-wrap.button-size-default {
+    --button-label-inline: 1.5rem;
+    --button-label-block: 0.875rem;
+    --button-font-size: 0.94rem;
+  }
+
+.button-wrap.button-size-compact {
+  --button-label-inline: 1.1rem;
+  --button-label-block: 0.68rem;
+  --button-font-size: 0.84rem;
+  --button-font-weight: 700;
+  --button-tilt: 18deg;
+}
+
+  .button-wrap.button-size-icon {
+    --button-label-inline: 0;
+    --button-label-block: 0;
+    --button-font-size: 1rem;
+    --button-tilt: 12deg;
+    --button-icon-size: 2.9rem;
+  }
+
+  .button-wrap.button-size-stepper {
+    --button-label-inline: 0;
+    --button-label-block: 0;
+    --button-font-size: 1rem;
+    --button-font-weight: 700;
+    --button-tilt: 10deg;
+    --button-icon-size: 2.5rem;
+  }
+
+  .button-wrap.is-icon-only {
+    width: var(--button-icon-size, 2.9rem);
+    min-width: var(--button-icon-size, 2.9rem);
+    max-width: var(--button-icon-size, 2.9rem);
+    flex: 0 0 var(--button-icon-size, 2.9rem);
+    aspect-ratio: 1 / 1;
+  }
+
+  .button-wrap.is-icon-only > .liquid-glass-control {
+    width: var(--button-icon-size, 2.9rem);
+    min-width: var(--button-icon-size, 2.9rem);
+    max-width: var(--button-icon-size, 2.9rem);
+    height: var(--button-icon-size, 2.9rem);
+    min-height: var(--button-icon-size, 2.9rem);
+    max-height: var(--button-icon-size, 2.9rem);
+    aspect-ratio: 1 / 1;
+    flex: 0 0 var(--button-icon-size, 2.9rem);
+  }
+
+  .button-wrap.is-icon-only .button-label {
+    gap: 0;
+    padding: 0;
+    width: 100%;
+    min-width: 100%;
+    max-width: 100%;
+    height: 100%;
+    min-height: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 1;
+    flex: 0 0 auto;
+  }
+
+  .button-wrap.button-size-compact:not(.is-icon-only) .button-label {
+    min-height: 2.55rem;
+  }
+
+  .button-wrap.button-size-default:not(.is-icon-only) .button-label,
+  .button-wrap.button-size-hero:not(.is-icon-only) .button-label {
+    min-height: 3.1rem;
+  }
+
+  .button-wrap.button-variant-primary {
+    --button-fill-start: rgba(241, 232, 224, 0.16);
+    --button-fill-mid: rgba(173, 119, 86, 0.74);
+    --button-fill-end: rgba(95, 63, 45, 0.9);
+    --button-text: #fbf6f1;
+    --button-outline-dark: rgba(66, 42, 29, 0.58);
+    --button-outline-light: rgba(245, 233, 223, 0.34);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(86, 57, 42, 0.36), rgba(86, 57, 42, 0.18));
+  }
+
+  .button-wrap.button-variant-secondary {
+    --button-fill-start: rgba(241, 245, 247, 0.16);
+    --button-fill-mid: rgba(149, 182, 154, 0.64);
+    --button-fill-end: rgba(91, 117, 95, 0.82);
+    --button-text: #f7fbfd;
+    --button-outline-dark: rgba(69, 88, 72, 0.5);
+    --button-outline-light: rgba(238, 244, 247, 0.34);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(84, 104, 87, 0.3), rgba(84, 104, 87, 0.14));
+  }
+
+  .button-wrap.button-variant-quiet {
+    --button-fill-start: rgba(250, 247, 243, 0.12);
+    --button-fill-mid: rgba(241, 232, 223, 0.28);
+    --button-fill-end: rgba(228, 218, 208, 0.2);
+    --button-text: var(--aurora-text-strong);
+    --button-outline-dark: rgba(111, 95, 84, 0.24);
+    --button-outline-light: rgba(250, 246, 241, 0.44);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(94, 79, 69, 0.14), rgba(94, 79, 69, 0.05));
+  }
+
+  .button-wrap.button-variant-soft,
+  .button-wrap.button-variant-stepper {
+    --button-fill-start: rgba(239, 244, 237, 0.16);
+    --button-fill-mid: rgba(158, 182, 146, 0.5);
+    --button-fill-end: rgba(91, 112, 85, 0.72);
+    --button-text: #f5faf3;
+    --button-outline-dark: rgba(70, 84, 66, 0.4);
+    --button-outline-light: rgba(240, 246, 238, 0.28);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(80, 95, 75, 0.24), rgba(80, 95, 75, 0.1));
+  }
+
+  .button-wrap.button-variant-danger {
+    --button-fill-start: rgba(255, 236, 236, 0.42);
+    --button-fill-mid: rgba(219, 77, 84, 0.9);
+    --button-fill-end: rgba(172, 24, 46, 0.98);
+    --button-text: #fff7f8;
+    --button-outline-dark: rgba(114, 16, 31, 0.7);
+    --button-outline-light: rgba(255, 232, 236, 0.54);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(135, 24, 40, 0.42), rgba(135, 24, 40, 0.22));
+  }
+
+  .button-wrap.button-variant-chip,
+  .button-wrap.button-variant-icon {
+    --button-fill-start: rgba(250, 247, 243, 0.12);
+    --button-fill-mid: rgba(236, 228, 219, 0.22);
+    --button-fill-end: rgba(225, 230, 234, 0.16);
+    --button-text: var(--aurora-text-strong);
+    --button-outline-dark: rgba(114, 104, 96, 0.2);
+    --button-outline-light: rgba(250, 246, 241, 0.36);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(95, 80, 72, 0.1), rgba(95, 80, 72, 0.03));
+  }
+
+  .button-wrap.is-selected {
+    --button-fill-start: rgba(239, 244, 247, 0.16);
+    --button-fill-mid: rgba(127, 161, 133, 0.7);
+    --button-fill-end: rgba(78, 102, 83, 0.86);
+    --button-text: #f8fbfd;
+    --button-outline-dark: rgba(62, 79, 66, 0.52);
+    --button-outline-light: rgba(238, 243, 246, 0.34);
+    --button-shadow-gradient: linear-gradient(180deg, rgba(76, 96, 80, 0.32), rgba(76, 96, 80, 0.16));
+  }
+
+  .button-wrap.button-size-stepper {
+    --button-radius: 1rem;
+  }
+
+  @media (hover: none) and (pointer: coarse) {
+    .button-wrap > .liquid-glass-control .button-label::after,
+    .button-wrap > .liquid-glass-control:active .button-label::after {
+      --angle-2: -45deg;
+    }
+
+    .button-wrap > .liquid-glass-control::after,
+    .button-wrap > .liquid-glass-control:hover::after,
+    .button-wrap > .liquid-glass-control:active::after {
+      --angle-1: -75deg;
+    }
+  }
+ }

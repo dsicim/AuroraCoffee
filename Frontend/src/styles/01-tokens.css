@@ -1,0 +1,185 @@
+@theme {
+  --font-sans: 'Manrope', sans-serif;
+  --font-display: 'Fraunces', serif;
+}
+
+@property --angle-1 {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: -75deg;
+}
+
+@property --angle-2 {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: -45deg;
+}
+
+:root {
+  color-scheme: light;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --aurora-primary: #8c6a57;
+  --aurora-primary-soft: #b49177;
+  --aurora-primary-pale: rgba(180, 145, 119, 0.18);
+  --aurora-cream: #f8f4f0;
+  --aurora-sand: #e6dacd;
+  --aurora-text: #504841;
+  --aurora-text-strong: #271913;
+  --aurora-text-muted: rgba(80, 72, 65, 0.72);
+  --aurora-border: rgba(248, 244, 240, 0.22);
+  --aurora-border-strong: rgba(248, 244, 240, 0.32);
+  --aurora-olive: #9db59a;
+  --aurora-olive-deep: #62745f;
+  --aurora-olive-soft: rgba(228, 239, 224, 0.64);
+  --aurora-sky: #a7c3ae;
+  --aurora-sky-deep: #7e9f87;
+  --aurora-brass: #d7ad8c;
+  --aurora-brass-soft: #efd3b8;
+  --aurora-panel: rgba(248, 244, 240, 0.12);
+  --aurora-panel-strong: rgba(248, 244, 240, 0.74);
+  --aurora-glass: rgba(248, 244, 240, 0.12);
+  --aurora-glass-strong: rgba(250, 246, 242, 0.16);
+  --aurora-shadow: 0 30px 80px rgba(26, 18, 14, 0.24);
+  --aurora-shadow-deep: 0 45px 120px rgba(18, 12, 9, 0.34);
+  --aurora-shadow-soft: 0 14px 34px rgba(26, 18, 14, 0.14);
+  --aurora-glow: radial-gradient(circle at top, rgba(223, 209, 196, 0.22), transparent 52%);
+  --aurora-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0.06));
+  --aurora-chrome: radial-gradient(circle at top right, rgba(192, 210, 223, 0.18), transparent 38%);
+  --aurora-selection-bg: rgba(138, 179, 145, 0.28);
+  --aurora-selection-text: var(--aurora-text-strong);
+  --aurora-focus-inner: rgba(254, 248, 242, 0.9);
+  --aurora-focus-outer: rgba(138, 179, 145, 0.4);
+  --aurora-body-background:
+    radial-gradient(circle at 12% 14%, rgba(239, 211, 184, 0.22), transparent 24%),
+    radial-gradient(circle at 86% 12%, rgba(201, 224, 203, 0.18), transparent 24%),
+    radial-gradient(circle at 18% 84%, rgba(235, 220, 203, 0.22), transparent 24%),
+    radial-gradient(circle at 74% 78%, rgba(228, 255, 225, 0.14), transparent 26%),
+    linear-gradient(180deg, #faf7f3 0%, #f3ece4 38%, #ece3da 72%, #e4ddd6 100%);
+  --aurora-page-background:
+    radial-gradient(circle at top center, rgba(255, 255, 255, 0.34), transparent 24%),
+    radial-gradient(circle at 16% 18%, rgba(239, 211, 184, 0.14), transparent 22%),
+    radial-gradient(circle at 84% 12%, rgba(201, 224, 203, 0.14), transparent 24%),
+    radial-gradient(circle at 72% 78%, rgba(228, 239, 224, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(250, 247, 243, 0.78) 0%, rgba(244, 236, 228, 0.68) 42%, rgba(234, 225, 216, 0.68) 100%);
+  --aurora-ambient-cocoa: radial-gradient(circle, rgba(180, 145, 119, 0.14) 0%, rgba(180, 145, 119, 0.06) 28%, transparent 72%);
+  --aurora-ambient-slate: radial-gradient(circle, rgba(167, 196, 173, 0.14) 0%, rgba(167, 196, 173, 0.06) 32%, transparent 74%);
+  --aurora-ambient-brass: radial-gradient(circle, rgba(157, 181, 154, 0.14) 0%, rgba(157, 181, 154, 0.05) 34%, transparent 76%);
+  --aurora-bubble-background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.4) 0%, rgba(240, 246, 251, 0.18) 34%, rgba(233, 225, 244, 0.06) 56%, transparent 100%);
+  --aurora-bubble-border: rgba(248, 244, 250, 0.18);
+  --aurora-bubble-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    inset -1px -2px 4px rgba(255, 255, 255, 0.12),
+    0 10px 18px rgba(62, 71, 82, 0.06);
+  --aurora-theme-toggle-track-bg:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04)),
+    radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.26), transparent 28%),
+    rgba(236, 229, 220, 0.44);
+  --aurora-theme-toggle-track-border: rgba(255, 255, 255, 0.26);
+  --aurora-theme-toggle-track-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 18px 30px rgba(29, 20, 15, 0.1),
+    0 8px 18px rgba(29, 20, 15, 0.06);
+  --aurora-theme-toggle-window-shadow:
+    0 14px 22px rgba(46, 34, 25, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    inset 0 -1px 0 rgba(102, 83, 68, 0.12);
+  --aurora-theme-toggle-window-fill:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.03));
+  --aurora-theme-toggle-window-highlight:
+    radial-gradient(circle at 72% 24%, rgba(255, 255, 255, 0.58), transparent 26%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.18), transparent 54%);
+  --aurora-theme-toggle-liquid-main:
+    linear-gradient(135deg, rgba(248, 244, 239, 0.98), rgba(227, 236, 224, 0.94) 58%, rgba(158, 183, 155, 0.96));
+  --aurora-theme-toggle-liquid-secondary:
+    linear-gradient(135deg, rgba(249, 241, 232, 0.92), rgba(186, 211, 188, 0.9) 52%, rgba(120, 152, 126, 0.94));
+  --aurora-theme-toggle-icon-light: rgba(181, 134, 96, 0.88);
+  --aurora-theme-toggle-icon-dark: rgba(90, 117, 94, 0.78);
+  --aurora-container-max: clamp(82rem, 92vw, 118rem);
+  --anim--hover-time: 220ms;
+  --anim--hover-ease: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --aurora-primary: #b89276;
+  --aurora-primary-soft: #d4b39a;
+  --aurora-primary-pale: rgba(184, 146, 118, 0.22);
+  --aurora-cream: #eef4fb;
+  --aurora-sand: #1d2a37;
+  --aurora-text: #c7d3d0;
+  --aurora-text-strong: #f2f5f1;
+  --aurora-text-muted: rgba(199, 211, 208, 0.7);
+  --aurora-border: rgba(205, 220, 217, 0.13);
+  --aurora-border-strong: rgba(221, 234, 230, 0.22);
+  --aurora-olive: #96aa97;
+  --aurora-olive-deep: #ccd8cf;
+  --aurora-olive-soft: rgba(122, 143, 127, 0.18);
+  --aurora-sky: #8ea696;
+  --aurora-sky-deep: #d9e7dc;
+  --aurora-brass: #bf9472;
+  --aurora-brass-soft: #6f5a49;
+  --aurora-panel: rgba(18, 28, 24, 0.64);
+  --aurora-panel-strong: rgba(24, 36, 31, 0.84);
+  --aurora-glass: rgba(17, 27, 24, 0.5);
+  --aurora-glass-strong: rgba(24, 37, 33, 0.72);
+  --aurora-shadow: 0 30px 80px rgba(2, 8, 18, 0.46);
+  --aurora-shadow-deep: 0 45px 120px rgba(0, 0, 0, 0.62);
+  --aurora-shadow-soft: 0 16px 38px rgba(0, 6, 16, 0.34);
+  --aurora-glow: radial-gradient(circle at top, rgba(114, 148, 127, 0.18), transparent 52%);
+  --aurora-highlight: linear-gradient(135deg, rgba(239, 245, 241, 0.16), rgba(255, 255, 255, 0.02));
+  --aurora-chrome: radial-gradient(circle at top right, rgba(104, 131, 113, 0.2), transparent 40%);
+  --aurora-selection-bg: rgba(126, 156, 134, 0.3);
+  --aurora-selection-text: #f6fbff;
+  --aurora-focus-inner: rgba(224, 235, 228, 0.52);
+  --aurora-focus-outer: rgba(118, 152, 126, 0.4);
+  --aurora-body-background:
+    radial-gradient(circle at 14% 16%, rgba(111, 141, 117, 0.14), transparent 24%),
+    radial-gradient(circle at 82% 12%, rgba(52, 72, 64, 0.18), transparent 28%),
+    radial-gradient(circle at 24% 84%, rgba(111, 82, 61, 0.1), transparent 24%),
+    radial-gradient(circle at 76% 78%, rgba(92, 122, 106, 0.12), transparent 28%),
+    linear-gradient(180deg, #121815 0%, #17201b 36%, #1d2621 68%, #232b26 100%);
+  --aurora-page-background:
+    radial-gradient(circle at top center, rgba(221, 233, 223, 0.06), transparent 26%),
+    radial-gradient(circle at 16% 18%, rgba(111, 142, 117, 0.1), transparent 24%),
+    radial-gradient(circle at 84% 12%, rgba(129, 154, 136, 0.08), transparent 24%),
+    radial-gradient(circle at 72% 78%, rgba(133, 100, 78, 0.06), transparent 24%),
+    linear-gradient(180deg, rgba(17, 24, 20, 0.92) 0%, rgba(21, 31, 25, 0.88) 42%, rgba(27, 37, 31, 0.9) 100%);
+  --aurora-ambient-cocoa: radial-gradient(circle, rgba(184, 146, 118, 0.14) 0%, rgba(184, 146, 118, 0.04) 30%, transparent 72%);
+  --aurora-ambient-slate: radial-gradient(circle, rgba(120, 152, 126, 0.14) 0%, rgba(120, 152, 126, 0.05) 34%, transparent 74%);
+  --aurora-ambient-brass: radial-gradient(circle, rgba(86, 115, 92, 0.12) 0%, rgba(86, 115, 92, 0.03) 34%, transparent 76%);
+  --aurora-bubble-background:
+    radial-gradient(circle at 32% 28%, rgba(240, 247, 255, 0.24) 0%, rgba(177, 203, 232, 0.14) 34%, rgba(125, 151, 188, 0.04) 58%, transparent 100%);
+  --aurora-bubble-border: rgba(209, 227, 247, 0.12);
+  --aurora-bubble-shadow:
+    inset 0 1px 0 rgba(240, 247, 255, 0.2),
+    inset -1px -2px 4px rgba(14, 21, 31, 0.16),
+    0 12px 24px rgba(2, 8, 18, 0.16);
+  --aurora-theme-toggle-track-bg:
+    linear-gradient(180deg, rgba(236, 247, 239, 0.08), rgba(255, 255, 255, 0.01)),
+    radial-gradient(circle at 24% 20%, rgba(236, 247, 239, 0.08), transparent 30%),
+    rgba(20, 33, 28, 0.6);
+  --aurora-theme-toggle-track-border: rgba(211, 227, 216, 0.14);
+  --aurora-theme-toggle-track-shadow:
+    inset 0 1px 0 rgba(238, 246, 240, 0.08),
+    0 18px 30px rgba(0, 7, 18, 0.26),
+    0 8px 18px rgba(0, 7, 18, 0.14);
+  --aurora-theme-toggle-window-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.34),
+    inset 0 1px 0 rgba(238, 246, 241, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.24);
+  --aurora-theme-toggle-window-fill:
+    linear-gradient(135deg, rgba(231, 243, 236, 0.14), rgba(255, 255, 255, 0.02));
+  --aurora-theme-toggle-window-highlight:
+    radial-gradient(circle at 70% 24%, rgba(236, 247, 239, 0.26), transparent 28%),
+    linear-gradient(135deg, rgba(236, 247, 239, 0.12), transparent 56%);
+  --aurora-theme-toggle-liquid-main:
+    linear-gradient(135deg, rgba(232, 242, 233, 0.18), rgba(118, 154, 126, 0.78) 55%, rgba(37, 61, 43, 0.96));
+  --aurora-theme-toggle-liquid-secondary:
+    linear-gradient(135deg, rgba(228, 240, 230, 0.14), rgba(143, 180, 150, 0.68) 48%, rgba(31, 52, 36, 0.92));
+  --aurora-theme-toggle-icon-light: rgba(221, 182, 148, 0.72);
+  --aurora-theme-toggle-icon-dark: rgba(230, 241, 234, 0.86);
+}

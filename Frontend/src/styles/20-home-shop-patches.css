@@ -1,0 +1,211 @@
+@media (min-width: 640px) {
+  .aurora-main {
+    padding-inline: 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .aurora-main {
+    padding-inline: 2.5rem;
+    padding-top: 7.25rem;
+  }
+}
+
+.aurora-page-intro-full {
+  width: min(100%, var(--aurora-container-max));
+  margin-inline: auto;
+  margin-top: 0;
+}
+
+.aurora-main--full-hero {
+  padding-top: clamp(0.75rem, 1.6vw, 1.35rem);
+}
+
+.aurora-home-hero {
+  position: relative;
+  min-height: clamp(29rem, calc(100svh - 18rem), 32rem);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-block: 1px solid var(--aurora-border);
+  background:
+    linear-gradient(115deg, rgba(23, 34, 29, 0.92), rgba(43, 59, 50, 0.78) 52%, rgba(124, 98, 78, 0.58)),
+    var(--aurora-page-background);
+}
+
+.aurora-home-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 32%),
+    linear-gradient(90deg, rgba(9, 18, 14, 0.58), transparent 64%);
+}
+
+.aurora-home-hero-inner {
+  position: relative;
+  z-index: 1;
+  width: min(100%, var(--aurora-container-max));
+  min-height: inherit;
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 0.62fr) minmax(16rem, 0.38fr);
+  align-items: center;
+  gap: clamp(2rem, 6vw, 6rem);
+  padding: clamp(2.5rem, 4vw, 4.5rem) clamp(1rem, 4vw, 4rem);
+}
+
+.aurora-home-copy {
+  max-width: 46rem;
+  display: grid;
+  gap: 1.35rem;
+}
+
+.aurora-home-title {
+  max-width: 11ch;
+  font-family: var(--font-display);
+  font-size: clamp(3.25rem, 6vw, 5.7rem);
+  line-height: 0.9;
+  color: var(--aurora-text-strong);
+}
+
+.aurora-home-visual {
+  position: relative;
+  justify-self: end;
+  width: min(28rem, 35vw);
+  min-width: 16rem;
+  opacity: 0.9;
+}
+
+.aurora-home-sketch {
+  width: 100%;
+  height: auto;
+  display: block;
+  filter: saturate(0.82) contrast(1.05);
+  mix-blend-mode: luminosity;
+  opacity: 0.28;
+  mask-image: radial-gradient(closest-side, #000 52%, transparent 100%);
+}
+
+.aurora-home-roast-note {
+  position: absolute;
+  right: 6%;
+  bottom: 8%;
+  display: grid;
+  gap: 0.15rem;
+  border: 1px solid var(--aurora-border-strong);
+  border-radius: 1.4rem;
+  padding: 0.85rem 1rem;
+  color: var(--aurora-text-strong);
+  background: rgba(255, 249, 244, 0.12);
+  box-shadow: var(--aurora-shadow-soft);
+  backdrop-filter: blur(6px) saturate(112%);
+  -webkit-backdrop-filter: blur(6px) saturate(112%);
+}
+
+.aurora-home-roast-note span {
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--aurora-olive-deep);
+}
+
+.aurora-home-roast-note strong {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.aurora-home-feature-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.aurora-shop-hero .aurora-solid-plate {
+  box-shadow: var(--aurora-shadow-soft);
+}
+
+.aurora-product-card-commerce {
+  display: grid;
+  gap: 1rem;
+}
+
+.aurora-product-card-description,
+.aurora-product-card-note {
+  max-width: 100%;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.aurora-product-card-notes {
+  min-width: 0;
+}
+
+.aurora-product-card-note {
+  min-width: 0;
+  border-color: rgba(95, 102, 78, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    rgba(230, 230, 219, 0.44);
+  color: var(--aurora-olive-deep);
+  white-space: normal;
+  line-height: 1.35;
+}
+
+[data-theme='dark'] .aurora-product-card-note {
+  border-color: rgba(211, 228, 246, 0.12);
+  background:
+    linear-gradient(180deg, rgba(238, 246, 255, 0.08), rgba(18, 29, 42, 0.2)),
+    rgba(19, 30, 44, 0.34);
+  color: var(--aurora-olive-deep);
+}
+
+.aurora-product-card-copy-surface,
+.aurora-product-card-commerce-surface {
+  min-width: 0;
+}
+
+.aurora-product-card-price,
+.aurora-product-card-price-label {
+  white-space: nowrap;
+}
+
+.aurora-product-card-price {
+  line-height: 1;
+}
+
+@media (min-width: 640px) {
+  .aurora-product-card-commerce {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .aurora-home-feature-grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(20rem, 1.1fr);
+    align-items: start;
+  }
+}
+
+@media (max-width: 900px) {
+  .aurora-home-hero {
+    min-height: auto;
+  }
+
+  .aurora-home-visual {
+    width: min(24rem, 88vw);
+    min-width: 0;
+    justify-self: start;
+  }
+
+  .aurora-home-hero-inner {
+    grid-template-columns: 1fr;
+    padding-block: 3rem 2rem;
+  }
+
+  .aurora-home-title {
+    max-width: 10ch;
+    font-size: clamp(3.4rem, 15vw, 5.5rem);
+  }
+}
