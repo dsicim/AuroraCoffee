@@ -49,7 +49,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "pdf") {
         if (method === "GET") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (!query || !query.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const specificorder = Boolean(query.id) ? query.id : null;
             if (!specificorder) return { s: 400, j: true, d: { e: "Order ID is required" } };
             return await sql.getUserOrders(currentUser.id, specificorder).then(async result => {
