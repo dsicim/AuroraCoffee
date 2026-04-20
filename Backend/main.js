@@ -67,8 +67,7 @@ const server = http.createServer(async function (req, res) {
         }
         const response = await api.handleAPI(req.method, directory, query, body, req.headers);
         res.writeHead(response.s, { "Content-Type": (response.j ? "application/json" : (response.h ? (response.h["Content-Type"] || "text/plain") : "text/plain")), ...response.h });
-        res.write(response.j ? JSON.stringify(response.d) : response.d);
-        res.end();
+        res.end(response.j ? JSON.stringify(response.d) : response.d);
     }
     else if (req.url.startsWith("/assets/")) {
         fs.readFile(fdir + "assets/" + req.url.substring(8), function (error, data) {
@@ -78,8 +77,7 @@ const server = http.createServer(async function (req, res) {
             }
             else {
                 res.writeHead(200, { "Content-Type": mimes[path.extname(req.url.substring(1)).substring(1)] || "application/octet-stream" });
-                res.write(data);
-                res.end();
+                res.end(data);
             }
         });
     }
@@ -91,8 +89,7 @@ const server = http.createServer(async function (req, res) {
             }
             else {
                 res.writeHead(200, { "Content-Type": "image/svg+xml" });
-                res.write(data);
-                res.end();
+                res.end(data);
             }
         });
     }
@@ -104,8 +101,7 @@ const server = http.createServer(async function (req, res) {
             }
             else {
                 res.writeHead(200, { "Content-Type": "text/html" });
-                res.write(data);
-                res.end();
+                res.end(data);
             }
         });
     }

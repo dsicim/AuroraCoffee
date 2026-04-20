@@ -39,7 +39,8 @@ async function generatePDF(orderData, print = false) {
         const customername = orderData.details.billingAddress.name + " " + orderData.details.billingAddress.surname;
         const currency = orderData.details.currency;
         const installment = orderData.details.installment.months;
-        const date = String(orderData.created_at).split("T")[0].split("-").reverse().join(".");
+        orderData.created_at = orderData.created_at instanceof Date ? orderData.created_at : new Date(orderData.created_at);
+        const date = orderData.created_at.toISOString().slice(0,10).split("-").reverse().join(".");
 
         function displayHeader(nextpages = false) {
             if (!nextpages) {
@@ -311,5 +312,4 @@ async function generatePDF(orderData, print = false) {
         return document;
     }
 }
-//generatePDF(orderData, true);
 module.exports = {generatePDF};
