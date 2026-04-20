@@ -66,7 +66,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                         ordr.details = order;
                         return await pdf.generatePDF(ordr).then(document => {
-                            return { s: 200, j: false, d: document };
+                            return { s: 200, j: false, d: document, h: {"Content-Type": "application/pdf"} };
                         }).catch(err => {
                             return { s: 500, j: true, d: { e: "Issue with PDF rendering: "+err.toString() } };
                         });
