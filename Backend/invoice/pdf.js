@@ -13,7 +13,7 @@ function currencyToDecimal(currency, price) {
         priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
         priceidx = priceidx - 3;
     }
-    return price.toFixed(2).replace(mille, "").replace(punctuation, ".");
+    return priceStr;
 }
 function currencyToSymbol(currency, price, negative = false) {
     const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
@@ -39,6 +39,7 @@ async function generatePDF(orderData) {
         const customername = orderData.details.billingAddress.name + " " + orderData.details.billingAddress.surname;
         const currency = orderData.details.currency;
         const installment = orderData.details.installment.months;
+        const date = orderData.created_at.split("T")[0].split("-").reverse().join(".");
 
         function displayHeader(nextpages = false) {
             if (!nextpages) {
@@ -51,9 +52,9 @@ async function generatePDF(orderData) {
                 doc.moveDown(0);
                 doc.font("InvoiceMedium").fontSize(16).text("Invoice", { align: "right" });
                 doc.font("InvoiceMedium").fontSize(12).text("Order ID: "+order, { align: "right"});
-                doc.font("InvoiceMedium").fontSize(12).text("Issue Date: 15.04.2026", { align: "right"});
-                doc.font("InvoiceMedium").fontSize(12).text("Due Date: 15.04.2026", { align: "right"});
-                doc.font("InvoiceBold").fontSize(14).text("Amount Due: ₺500.00", { align: "right"});
+                doc.font("InvoiceMedium").fontSize(12).text("Issue Date: "+date, { align: "right"});
+                doc.font("InvoiceMedium").fontSize(12).text("Due Date: "+date, { align: "right"});
+                doc.font("InvoiceBold").fontSize(14).text("Amount Due: "+currencyToSymbol(currency, orderData.details.price.paid), { align: "right"});
                 const rightHeight = doc.y;
                 doc.y = usedToBe;
                 doc.moveDown(0.5);
@@ -100,7 +101,8 @@ async function generatePDF(orderData) {
         }
 
         const array = orderData.details.products.map(p => {
-            return { n: p.name, o: p.optionstext, q: p.quantity, t: p.tax, a: Math.round(p.taxAmount*100)/100, u: Math.round(p.subtotal*100)/100, p: (Math.round(p.subtotal*100)/100)*p.quantity, ut: p.product_price, pt: p.product_price*p.quantity };
+
+            return { n: p.product_name, o: p.optionstext, q: p.quantity, t: p.tax, a: (Math.round(p.taxAmount*100)/100), u: Math.round(p.subtotal*100)/100, p: (Math.round(p.subtotal*100)/100)*p.quantity, ut: p.product_price, pt: p.product_price*p.quantity };
         })
 
         let pages = 0;
@@ -131,7 +133,7 @@ async function generatePDF(orderData) {
             curridx = curridx + c;
         }
         tableLayout(alltableXs[0]);
-        if (space <= (installment === 1 ? 167.19839999999996 : 213.09599999999998)) {
+        if (space <= (installment === 1 ? 170.47680000000014 : 209.8176000000003)) {
             pages++;
         }
         drawHeader(1, pages);
@@ -265,7 +267,7 @@ async function generatePDF(orderData) {
         doc.x = margin;
         const spaceLeft = (doc.page.height-margin) - doc.y;
         let newpage = false;
-        if (spaceLeft <= (installment === 1 ? 167.19839999999996 : 213.09599999999998)) {
+        if (spaceLeft <= (installment === 1 ? 170.47680000000014 : 209.8176000000003)) {
             doc.addPage();
             newpage = true;
             displayHeader(true);
@@ -279,23 +281,24 @@ async function generatePDF(orderData) {
         doc.font("InvoiceLight").fontSize(12).text("Bill Summary", { align: "left" });
         doc.lineWidth(2).moveTo(20, doc.y+5).lineTo((doc.page.width-margin), doc.y+5).stroke();
         doc.moveDown(0.5);
-        doc.font("InvoiceBold").fontSize(16);
-        const totalWidth = doc.widthOfString(currencyToSymbol(currency, 999999.99), { align: "left",lineBreak: false, ellipsis: false });
+        doc.font("InvoiceBold").fontSize(14);
+        const totalWidth = doc.widthOfString(currencyToSymbol(currency, orderData.details.price.paid), { align: "left",lineBreak: false, ellipsis: false });
         function insertSummaryLine(key, value, bold = false) {
-            doc.font(bold ? "InvoiceMedium" : "InvoiceRegular").fontSize(bold?16:14).text(`${key}: `, margin, doc.y, { align: "right", width: (doc.page.width - margin) - totalWidth - margin - 10 });
+            doc.font(bold ? "InvoiceMedium" : "InvoiceRegular").fontSize(bold?14:12).text(`${key}: `, margin, doc.y, { align: "right", width: (doc.page.width - margin) - totalWidth - margin - 10 });
             doc.moveUp(1);
-            doc.font(bold ? "InvoiceBold" : "InvoiceMedium").fontSize(bold?16:14).text(value, (doc.page.width - margin)-totalWidth, doc.y, { align: "left" });
+            doc.font(bold ? "InvoiceBold" : "InvoiceMedium").fontSize(bold?14:12).text(value, (doc.page.width - margin)-totalWidth, doc.y, { align: "left" });
             doc.moveDown(0.2);
         }
-        insertSummaryLine("Subtotal", currencyToSymbol(currency, 999999.99));
-        insertSummaryLine("Tax", currencyToSymbol(currency, 999999.99));
-        insertSummaryLine("Discount", currencyToSymbol(currency, 999999.99, true));
-        insertSummaryLine("Subtotal with taxes", currencyToSymbol(currency, 999999.99));
+        insertSummaryLine("Subtotal", currencyToSymbol(currency, orderData.details.price.subtotal));
+        insertSummaryLine("Tax", currencyToSymbol(currency, orderData.details.price.tax));
+        insertSummaryLine("Discount", currencyToSymbol(currency, 0, false));
+        insertSummaryLine("Shipping", currencyToSymbol(currency, orderData.details.price.shipping, true));
+        insertSummaryLine("Subtotal with taxes", currencyToSymbol(currency, orderData.details.price.subtotal + orderData.details.price.tax));
         if (installment > 1) {
-            insertSummaryLine("Installment Interest", currencyToSymbol(currency, 999999.99));
-            insertSummaryLine("Amount due per month for "+installment+" months", currencyToSymbol(currency, 999999.99));
+            insertSummaryLine("Installment Interest", currencyToSymbol(currency, orderData.details.price.installment));
+            insertSummaryLine("Amount due per month for "+installment+" months", currencyToSymbol(currency, orderData.details.installment.permonth));
         }
-        insertSummaryLine("Amount Due", currencyToSymbol(currency, 999999.99), true);
+        insertSummaryLine("Amount Due", currencyToSymbol(currency, orderData.details.price.paid), true);
         doc.end();
     });
     fs.writeFile("test.pdf", document, err => {
@@ -303,5 +306,5 @@ async function generatePDF(orderData) {
         else console.log("PDF file written successfully");
     });
 }
-//generatePDF({});
+generatePDF();
 module.exports = {generatePDF};
