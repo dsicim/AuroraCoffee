@@ -92,8 +92,21 @@ async function getCardToken(userId) {
 }
 function currencyToSymbol(currency, price) {
     const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": " kr", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["NOK", "CHF", "RUB"].includes(currency)) return price.toFixed(2) + symbol;
-    else return symbol + price.toFixed(2);
+    if (["NOK", "CHF", "RUB"].includes(currency)) return currencyToDecimal(currency, price) + symbol;
+    else return symbol + currencyToDecimal(currency, price);
+}
+function currencyToDecimal(currency, price) {
+    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "RUB": "", "CHF": "," }[currency] || ",");
+    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "RUB": ".", "CHF": "." }[currency] || ".");
+    // mille should be printed on every thousand, and punctuation should be printed on every decimal
+    let priceStr = price.toFixed(2).replace(".", punctuation);
+    let priceidx = priceStr.length - 3;
+    priceidx = priceidx - 3;
+    while (priceidx > 0) {
+        priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
+        priceidx = priceidx - 3;
+    }
+    return price.toFixed(2).replace(mille, "").replace(punctuation, ".");
 }
 function parseVariantOptions(variantCode) {
     const normalizedCode = checkTrim(variantCode);
