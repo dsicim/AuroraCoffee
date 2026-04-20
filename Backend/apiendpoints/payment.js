@@ -170,8 +170,8 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     let stotal = 0;
     cart.forEach(item => {
         item.product_price = parseFloat(item.product_price);
-        taxes += item.taxAmount;
-        stotal += item.subtotal;
+        taxes += item.taxAmount*item.quantity;
+        stotal += item.subtotal*item.quantity;
         delete item.general_stock;
         delete item.variant_stock;
     });

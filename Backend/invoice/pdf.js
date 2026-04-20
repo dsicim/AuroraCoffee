@@ -102,7 +102,6 @@ async function generatePDF(orderData, print = false) {
         }
 
         const array = orderData.details.products.map(p => {
-
             return { n: p.product_name, o: p.optionstext, q: p.quantity, t: p.tax, a: (Math.round(p.taxAmount*100)/100), u: Math.round(p.subtotal*100)/100, p: (Math.round(p.subtotal*100)/100)*p.quantity, ut: p.product_price, pt: p.product_price*p.quantity };
         })
 
