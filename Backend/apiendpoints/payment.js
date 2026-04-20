@@ -151,7 +151,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
     .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
     .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
-    await mailer.sendEmail(email, "Your order invoice of your recent purchase", template).then(res => {
+    await mailer.sendEmail(email, "Thank you for your recent purchase", template).then(res => {
         console.log("Email sent:", res);
     }).catch(err => {
         console.error("Email sending error:", err);
