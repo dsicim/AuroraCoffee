@@ -20,7 +20,7 @@ function currencyToSymbol(currency, price, negative = false) {
     if (["CHF", "RUB"].includes(currency)) return (negative?"-":"")+currencyToDecimal(currency, price) + symbol;
     else return symbol + (negative?"-":"")+currencyToDecimal(currency, price);
 }
-async function generatePDF() {
+async function generatePDF(orderData) {
     const document = await new Promise((resolve, reject) => {
         const margin = 20;
         const doc = new pdfkit({size: "A4", margin: margin, bufferPages: true});
@@ -29,16 +29,16 @@ async function generatePDF() {
         doc.on("end", () => resolve(Buffer.concat(chunks)));
         doc.on("error", reject);
 
-        doc.registerFont("InvoiceBold", path.join(__dirname, "invoice", "Manrope-Bold.ttf"));
-        doc.registerFont("InvoiceLight", path.join(__dirname, "invoice", "Manrope-Light.ttf"));
-        doc.registerFont("InvoiceMedium", path.join(__dirname, "invoice", "Manrope-Medium.ttf"));
-        doc.registerFont("InvoiceRegular", path.join(__dirname, "invoice", "Manrope-Regular.ttf"));
+        doc.registerFont("InvoiceBold", path.join(__dirname, "Manrope-Bold.ttf"));
+        doc.registerFont("InvoiceLight", path.join(__dirname, "Manrope-Light.ttf"));
+        doc.registerFont("InvoiceMedium", path.join(__dirname, "Manrope-Medium.ttf"));
+        doc.registerFont("InvoiceRegular", path.join(__dirname, "Manrope-Regular.ttf"));
 
         const companyname = "Company Name yes";
-        const order = "WWWWWWWWWWWWWWWWWWWW";
-        const customername = "Hüseyin Efe Çağlar";
-        const currency = "NOK";
-        const installment = 1;
+        const order = orderData.id;
+        const customername = orderData.details.billingAddress.name + " " + orderData.details.billingAddress.surname;
+        const currency = orderData.details.currency;
+        const installment = orderData.details.installment.months;
 
         function displayHeader(nextpages = false) {
             if (!nextpages) {
@@ -59,7 +59,8 @@ async function generatePDF() {
                 doc.moveDown(0.5);
                 doc.font("InvoiceRegular").fontSize(12).text("Billed to", { align: "left" });
                 doc.font("InvoiceMedium").fontSize(12).text(customername, { align: "left" });
-                doc.font("InvoiceLight").fontSize(12).text("Karaağaç Şarkonak Mh., 10301.Sk,\nKuğu Park Konutları, A-2, 1B,\n31290 Arsuz/Hatay, Türkiye\n+905457881099", { align: "left", width: 300 });
+                const addr = orderData.details.billingAddress;
+                doc.font("InvoiceLight").fontSize(12).text(addr.address+"\n"+(addr.address2?addr.address2+"\n":"")+addr.zip+" "+addr.city+"/"+addr.province+", "+addr.country+"\n"+addr.phone, { align: "left", width: 300 });
                 if (rightHeight > doc.y) doc.y = rightHeight;
             }
             else {
@@ -98,21 +99,9 @@ async function generatePDF() {
             doc.lineWidth(1).moveTo(20, doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
         }
 
-        const array = [
-            { n: "Espresso", o: "Realllyyyy long options yees oh come on!", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "New Product", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Something else", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Bla bla", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Yesyes", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 },
-            { n: "Alright", o: "Options", q: 1, t: 1, a: 9999.99, u: 990000.00, p: 999999.99 }
-        ];
+        const array = orderData.details.products.map(p => {
+            return { n: p.name, o: p.optionstext, q: p.quantity, t: p.tax, a: Math.round(p.taxAmount*100)/100, u: Math.round(p.subtotal*100)/100, p: (Math.round(p.subtotal*100)/100)*p.quantity, ut: p.product_price, pt: p.product_price*p.quantity };
+        })
 
         let pages = 0;
         let curridx = 0;
@@ -147,7 +136,7 @@ async function generatePDF() {
         }
         drawHeader(1, pages);
         const debuglines = false;
-        function drawProduct(name, opts, qty, tax, taxAmount, unitPrice, price, firstitem = false) {
+        function drawProduct(name, opts, qty, tax, taxAmount, unitPrice, price, unitPriceWT, priceWT, firstitem = false) {
             if (!firstitem) doc.lineWidth(1).moveTo(20, doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
             doc.moveDown(0.2);
             const startY = doc.y;
@@ -168,17 +157,17 @@ async function generatePDF() {
             doc.y = startY;
             if (debuglines) doc.lineWidth(1).moveTo(tableX[3], doc.y).lineTo(tableX[4] - 5, doc.y).stroke();
             doc.font("InvoiceRegular").fontSize(12).text(currencyToSymbol(currency, unitPrice), tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
-            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, price) + " with tax", tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
+            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, unitPriceWT) + " with tax", tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
             if (doc.y > endY) endY = doc.y;
             doc.y = startY;
             if (debuglines) doc.lineWidth(1).moveTo(tableX[4], doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
-            doc.font("InvoiceBold").fontSize(12).text(currencyToSymbol(currency, unitPrice*qty), tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
-            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, price*qty) + " with tax", tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
+            doc.font("InvoiceBold").fontSize(12).text(currencyToSymbol(currency, price), tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
+            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, priceWT) + " with tax", tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
             if (doc.y > endY) endY = doc.y;
             doc.y = endY;
             doc.moveDown(0.2);
         }
-        function measureRowHeight(name, opts, qty, tax, taxAmount, unitPrice, price) {
+        function measureRowHeight(name, opts, qty, tax, taxAmount, unitPrice, price, unitPriceWT, priceWT) {
             const heights = [];
             doc.font("InvoiceMedium").fontSize(12);
             const itemNameH = doc.heightOfString(name, { width: tableX[1] - tableX[0] - 5, align: "left" });
@@ -196,18 +185,18 @@ async function generatePDF() {
             doc.font("InvoiceRegular").fontSize(12);
             const itemUnitH = doc.heightOfString(currencyToSymbol(currency, unitPrice), { width: tableX[4] - tableX[3] - 5, align: "left" });
             doc.font("InvoiceLight").fontSize(12);
-            const itemUnitTH = doc.heightOfString(currencyToSymbol(currency, price) + " with tax", { width: tableX[4] - tableX[3] - 5, align: "left" });
+            const itemUnitTH = doc.heightOfString(currencyToSymbol(currency, unitPriceWT) + " with tax", { width: tableX[4] - tableX[3] - 5, align: "left" });
             heights.push(itemUnitH + itemUnitTH);
             doc.font("InvoiceBold").fontSize(12);
-            const itemH = doc.heightOfString(currencyToSymbol(currency, unitPrice*qty), { width: (doc.page.width-margin) - tableX[4], align: "left" });
+            const itemH = doc.heightOfString(currencyToSymbol(currency, price), { width: (doc.page.width-margin) - tableX[4], align: "left" });
             doc.font("InvoiceLight").fontSize(12);
-            const itemTH = doc.heightOfString(currencyToSymbol(currency, price*qty) + " with tax", { width: (doc.page.width-margin) - tableX[4], align: "left" });
+            const itemTH = doc.heightOfString(currencyToSymbol(currency, priceWT) + " with tax", { width: (doc.page.width-margin) - tableX[4], align: "left" });
             heights.push(itemH + itemTH);
             const spacer = doc.currentLineHeight() * 0.4;
             return Math.max(...heights) + spacer;
         }
         function measureRowWidth(idx, end) {
-            function measureRowColumns(name, opts, qty, tax, taxAmount, unitPrice, price) {
+            function measureRowColumns(name, opts, qty, tax, taxAmount, unitPrice, price, unitPriceWT, priceWT) {
                 const widths = [];
                 const spacer = 5;
                 doc.font("InvoiceRegular").fontSize(12);
@@ -221,18 +210,18 @@ async function generatePDF() {
                 doc.font("InvoiceRegular").fontSize(12);
                 const itemUnitW = doc.widthOfString(currencyToSymbol(currency, unitPrice), { align: "left",lineBreak: false, ellipsis: false });
                 doc.font("InvoiceLight").fontSize(12);
-                const itemUnitTW = doc.widthOfString(currencyToSymbol(currency, price) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
+                const itemUnitTW = doc.widthOfString(currencyToSymbol(currency, unitPriceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
                 widths.push(Math.max(itemUnitW,itemUnitTW,56.874) + spacer);
                 doc.font("InvoiceBold").fontSize(12);
-                const itemW = doc.widthOfString(currencyToSymbol(currency, unitPrice*qty), { align: "left",lineBreak: false, ellipsis: false });
+                const itemW = doc.widthOfString(currencyToSymbol(currency, price), { align: "left",lineBreak: false, ellipsis: false });
                 doc.font("InvoiceLight").fontSize(12);
-                const itemTW = doc.widthOfString(currencyToSymbol(currency, price*qty) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
+                const itemTW = doc.widthOfString(currencyToSymbol(currency, priceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
                 widths.push(Math.max(itemW,itemTW,29.766000000000005) + spacer);
                 return widths;
             }
             let max = [0,0,0,0];
             for (let i = idx; i < end; i++) {
-                const row = measureRowColumns(array[i].n, array[i].o, array[i].q, array[i].t, array[i].a, array[i].u, array[i].p);
+                const row = measureRowColumns(array[i].n, array[i].o, array[i].q, array[i].t, array[i].a, array[i].u, array[i].p, array[i].ut, array[i].pt);
                 for (let j = 0; j < max.length; j++) {
                     max[j] = Math.max(max[j], row[j]);
                 }
@@ -253,7 +242,7 @@ async function generatePDF() {
             let counter = 0;
             let spaceLeft = (doc.page.height-margin) - y;
             while (idx + counter < array.length) {
-                const rowHeight = measureRowHeight(array[idx+counter].n, array[idx+counter].o, array[idx+counter].q, array[idx+counter].t, array[idx+counter].a, array[idx+counter].u, array[idx+counter].p);
+                const rowHeight = measureRowHeight(array[idx+counter].n, array[idx+counter].o, array[idx+counter].q, array[idx+counter].t, array[idx+counter].a, array[idx+counter].u, array[idx+counter].p, array[idx+counter].ut, array[idx+counter].pt);
                 if (rowHeight > spaceLeft) break;
                 spaceLeft = spaceLeft - rowHeight;
                 counter++;
@@ -262,7 +251,7 @@ async function generatePDF() {
         }
         let pageCount = 1;
         array.forEach((x,i) => {
-            const rowHeight = measureRowHeight(x.n, x.o, x.q, x.t, x.a, x.u, x.p);
+            const rowHeight = measureRowHeight(x.n, x.o, x.q, x.t, x.a, x.u, x.p, x.ut, x.pt);
             if (doc.y + rowHeight > (doc.page.height - margin)) {
                 doc.addPage();
                 pageCount++;
@@ -271,7 +260,7 @@ async function generatePDF() {
                 drawHeader(pageCount, pages);
             }
             const bef = doc.y;
-            drawProduct(x.n, x.o, x.q, x.t, x.a, x.u, x.p);
+            drawProduct(x.n, x.o, x.q, x.t, x.a, x.u, x.p, x.ut, x.pt);
         });
         doc.x = margin;
         const spaceLeft = (doc.page.height-margin) - doc.y;
@@ -314,5 +303,5 @@ async function generatePDF() {
         else console.log("PDF file written successfully");
     });
 }
-generatePDF();
+//generatePDF({});
 module.exports = {generatePDF};

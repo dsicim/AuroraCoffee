@@ -133,17 +133,8 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     const itemstemplate = fs.readFileSync("./orderemailitems.html", "utf-8");
     let itemshtml = "";
     details.products.forEach(product => {
-        const optionEntries = {
-            ...(product.options && typeof product.options === "object" ? product.options : {}),
-            ...parseVariantOptions(product.variant_code)
-        };
-        let optionstext = "";
-        Object.keys(optionEntries).forEach(key => {
-            optionstext += textformat[product.product_id][key].name + ": " + textformat[product.product_id][key].values[optionEntries[key]] + ", ";
-        });
-        optionstext = optionstext.length > 2 ? optionstext.slice(0, -2) : "";
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
-        .replaceAll("{{ITEM_OPTIONS}}", optionstext)
+        .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
         .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
         .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
     });
@@ -181,6 +172,8 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         item.product_price = parseFloat(item.product_price);
         taxes += item.taxAmount;
         stotal += item.subtotal;
+        delete item.general_stock;
+        delete item.variant_stock;
     });
     const details = {
         products: cart,
@@ -567,8 +560,18 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
             if (variantnonexistent) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart have nonexistent variants", resolution: "Please confirm your cart contents and then try again." } } };
-
-
+            actualCart.forEach(product => {
+                const optionEntries = {
+                    ...(product.options && typeof product.options === "object" ? product.options : {}),
+                    ...parseVariantOptions(product.variant_code)
+                };
+                let optionstext = "";
+                Object.keys(optionEntries).forEach(key => {
+                    optionstext += textformatproduct[product.product_id][key].name + ": " + textformatproduct[product.product_id][key].values[optionEntries[key]] + ", ";
+                });
+                optionstext = optionstext.length > 2 ? optionstext.slice(0, -2) : "";
+                product.optionstext = optionstext;
+            });
 
 
             async function parseAddress(result, token) {
@@ -684,6 +687,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
             // All validations passed, create order and initiate payment
             const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
+            
             if (!payload.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Creation", why: "Failed to create order", resolution: "Please try again later or contact the developers" } } };
             const tvoyBank = cardDetails.bank || "your bank";
             let tryIn3DS = true;
