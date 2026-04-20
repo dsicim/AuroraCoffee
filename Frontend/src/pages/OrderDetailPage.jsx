@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
+import OrderPdfDownloadButton from '../components/OrderPdfDownloadButton'
 import { authChangeEvent } from '../lib/auth'
 import { buildRestoreMessage, restoreOrderItemsToCart } from '../lib/accountActions'
 import { formatCartOptionLabel, getCartOptionEntries } from '../lib/cart'
@@ -94,6 +95,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('success')
   const [restoringAction, setRestoringAction] = useState('')
 
   useEffect(() => {
@@ -177,12 +179,14 @@ export default function OrderDetailPage() {
 
     try {
       const result = await restoreOrderItemsToCart(order.items)
+      setFeedbackType('success')
       setFeedback(buildRestoreMessage(result, `Order ${order.id}`))
 
       if (redirectToCart && result.addedCount) {
         navigate('/cart')
       }
     } catch (restoreError) {
+      setFeedbackType('error')
       setFeedback(
         restoreError instanceof Error
           ? restoreError.message
@@ -204,8 +208,10 @@ export default function OrderDetailPage() {
 
     try {
       const result = await restoreOrderItemsToCart([item])
+      setFeedbackType('success')
       setFeedback(buildRestoreMessage(result, item.name || 'Item'))
     } catch (restoreError) {
+      setFeedbackType('error')
       setFeedback(
         restoreError instanceof Error
           ? restoreError.message
@@ -214,6 +220,16 @@ export default function OrderDetailPage() {
     } finally {
       setRestoringAction('')
     }
+  }
+
+  const showPdfSuccess = ({ orderId }) => {
+    setFeedbackType('success')
+    setFeedback(`PDF download started for order ${orderId}.`)
+  }
+
+  const showPdfError = (message, downloadOrderId) => {
+    setFeedbackType('error')
+    setFeedback(`PDF could not be downloaded for order ${downloadOrderId}. ${message}`)
   }
 
   const progressState = getOrderProgressState(order)
@@ -227,7 +243,11 @@ export default function OrderDetailPage() {
       description="Follow the backend delivery stages, review the package contents, and reorder any available items."
     >
       {feedback ? (
-        <div className="aurora-message aurora-message-success mb-6" role="status" aria-live="polite">
+        <div
+          className={`aurora-message aurora-message-${feedbackType} mb-6`}
+          role="status"
+          aria-live="polite"
+        >
           {feedback}
         </div>
       ) : null}
@@ -292,6 +312,13 @@ export default function OrderDetailPage() {
                 <LiquidGlassButton as={Link} to="/account/orders" variant="quiet" size="compact">
                   Back to orders
                 </LiquidGlassButton>
+                <OrderPdfDownloadButton
+                  orderId={order.id}
+                  variant="secondary"
+                  size="compact"
+                  onSuccess={showPdfSuccess}
+                  onError={showPdfError}
+                />
                 <LiquidGlassButton
                   type="button"
                   variant="secondary"

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../components/LiquidGlassButton'
+import OrderPdfDownloadButton from '../components/OrderPdfDownloadButton'
 import { authChangeEvent } from '../lib/auth'
 import {
   fetchOrders,
@@ -27,6 +28,7 @@ export default function OrdersPage() {
   const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
   const [loading, setLoading] = useState(() => !getOrdersSnapshot().loaded)
   const [error, setError] = useState('')
+  const [pdfFeedback, setPdfFeedback] = useState(null)
 
   useEffect(() => {
     let active = true
@@ -89,6 +91,34 @@ export default function OrdersPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!pdfFeedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPdfFeedback(null)
+    }, 3500)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pdfFeedback])
+
+  const showPdfSuccess = ({ orderId }) => {
+    setPdfFeedback({
+      type: 'success',
+      message: `PDF download started for order ${orderId}.`,
+    })
+  }
+
+  const showPdfError = (message, orderId) => {
+    setPdfFeedback({
+      type: 'error',
+      message: `PDF could not be downloaded for order ${orderId}. ${message}`,
+    })
+  }
+
   return (
     <AccountLayout
       eyebrow="Account orders"
@@ -98,6 +128,16 @@ export default function OrdersPage() {
       {error ? (
         <div className="aurora-message aurora-message-error mb-6">
           {error}
+        </div>
+      ) : null}
+
+      {pdfFeedback ? (
+        <div
+          className={`aurora-message aurora-message-${pdfFeedback.type} mb-6`}
+          role="status"
+          aria-live="polite"
+        >
+          {pdfFeedback.message}
         </div>
       ) : null}
 
@@ -132,14 +172,17 @@ export default function OrdersPage() {
         <div className="aurora-order-list">
           {orders.map((order) => {
             const status = getOrderStatusPresentation(order)
+            const orderPath = `/account/orders/${encodeURIComponent(order.id)}`
 
             return (
-              <Link
+              <article
                 key={order.id}
-                to={`/account/orders/${encodeURIComponent(order.id)}`}
                 className="aurora-order-row"
               >
-                <div className="min-w-0">
+                <Link
+                  to={orderPath}
+                  className="aurora-order-row-main min-w-0"
+                >
                   <p className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                     Order ID
                   </p>
@@ -149,17 +192,31 @@ export default function OrdersPage() {
                   <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
                     Submitted on {formatTimestamp(order.submittedAt)}
                   </p>
-                </div>
+                </Link>
 
-                <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+                <div className="aurora-order-row-actions">
                   <span className={`aurora-order-status-chip is-${status.key}`}>
                     {status.label}
                   </span>
-                  <span className="text-sm font-semibold text-[var(--aurora-sky-deep)]">
-                    Open order
-                  </span>
+                  <div className="aurora-order-row-controls">
+                    <LiquidGlassButton
+                      as={Link}
+                      to={orderPath}
+                      variant="quiet"
+                      size="compact"
+                    >
+                      Open order
+                    </LiquidGlassButton>
+                    <OrderPdfDownloadButton
+                      orderId={order.id}
+                      variant="secondary"
+                      size="compact"
+                      onSuccess={showPdfSuccess}
+                      onError={showPdfError}
+                    />
+                  </div>
                 </div>
-              </Link>
+              </article>
             )
           })}
         </div>
