@@ -306,5 +306,4 @@ async function generatePDF(orderData) {
         else console.log("PDF file written successfully");
     });
 }
-generatePDF();
 module.exports = {generatePDF};
