@@ -20,7 +20,7 @@ function currencyToSymbol(currency, price, negative = false) {
     if (["CHF", "RUB"].includes(currency)) return (negative?"-":"")+currencyToDecimal(currency, price) + symbol;
     else return symbol + (negative?"-":"")+currencyToDecimal(currency, price);
 }
-async function generatePDF(orderData) {
+async function generatePDF(orderData, print = false) {
     const document = await new Promise((resolve, reject) => {
         const margin = 20;
         const doc = new pdfkit({size: "A4", margin: margin, bufferPages: true});
@@ -292,7 +292,7 @@ async function generatePDF(orderData) {
         insertSummaryLine("Subtotal", currencyToSymbol(currency, orderData.details.price.subtotal));
         insertSummaryLine("Tax", currencyToSymbol(currency, orderData.details.price.tax));
         insertSummaryLine("Discount", currencyToSymbol(currency, 0, false));
-        insertSummaryLine("Shipping", currencyToSymbol(currency, orderData.details.price.shipping, true));
+        insertSummaryLine("Shipping", currencyToSymbol(currency, orderData.details.price.shipping));
         insertSummaryLine("Subtotal with taxes", currencyToSymbol(currency, orderData.details.price.subtotal + orderData.details.price.tax));
         if (installment > 1) {
             insertSummaryLine("Installment Interest", currencyToSymbol(currency, orderData.details.price.installment));
@@ -301,9 +301,15 @@ async function generatePDF(orderData) {
         insertSummaryLine("Amount Due", currencyToSymbol(currency, orderData.details.price.paid), true);
         doc.end();
     });
-    fs.writeFile("test.pdf", document, err => {
-        if (err) console.error("Error writing PDF file:", err);
-        else console.log("PDF file written successfully");
-    });
+    if (print) {
+        fs.writeFile("test.pdf", document, err => {
+            if (err) console.error("Error writing PDF file:", err);
+            else console.log("PDF file written successfully");
+        });
+    }
+    else {
+        return document;
+    }
 }
+//generatePDF(orderData, true);
 module.exports = {generatePDF};

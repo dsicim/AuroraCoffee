@@ -55,24 +55,24 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             return await sql.getUserOrders(currentUser.id, specificorder).then(async result => {
                 if (result.success) {
                     const errors = [];
-                    const orders = result.orders.map(ordr => {
-                        try {
-                            ordr.details = aes.pjs(ordr.details);
-                            if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
-                            const decrypted = aes.decrypt(ordr.details, currentUser.id);
-                            if (!decrypted.s) throw new Error("Decryption failed");
-                            const order = aes.pjs(decrypted.value);
-                            if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
-                            ordr.details = order;
-                            return { order: ordr };
-                        } catch (err) {
-                            console.error("Decrypt order error:", err);
-                            errors.push({ id: ordr.id, e: err.toString() });
-                            return { order: undefined, e: err.toString() };
-                        }
-                    }).filter(ordr => ordr !== undefined);
-                    if (orders.length === 0) return { s: 404, j: true, d: { e: "Order not found" } };
-                    return { s: 200, j: true, d: { order: orders[0] } };
+                    const ordr = result.orders.find(o => o.id === specificorder);
+                    if (!ordr) return { s: 404, j: true, d: { e: "Order not found" } };
+                    try {
+                        ordr.details = aes.pjs(ordr.details);
+                        if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                        const decrypted = aes.decrypt(ordr.details, currentUser.id);
+                        if (!decrypted.s) throw new Error("Decryption failed");
+                        const order = aes.pjs(decrypted.value);
+                        if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                        await pdf.generatePDF(order).then(document => {
+                            return { s: 200, j: false, d: document };
+                        }).catch(err => {
+                            return { s: 500, j: true, d: { e: "Issue with PDF rendering: "+err.toString() } };
+                        });
+                    } catch (err) {
+                        console.error("Generate PDF error:", err);
+                        return { s: 500, j:true, d: { e: err.toString() } };
+                    }
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
