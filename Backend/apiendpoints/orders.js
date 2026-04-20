@@ -64,7 +64,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (!decrypted.s) throw new Error("Decryption failed");
                         const order = aes.pjs(decrypted.value);
                         if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
-                        await pdf.generatePDF(order).then(document => {
+                        return await pdf.generatePDF(order).then(document => {
                             return { s: 200, j: false, d: document };
                         }).catch(err => {
                             return { s: 500, j: true, d: { e: "Issue with PDF rendering: "+err.toString() } };
