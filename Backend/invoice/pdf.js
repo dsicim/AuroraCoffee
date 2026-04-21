@@ -2,6 +2,10 @@ const pdfkit = require("pdfkit");
 const fs = require("fs");
 const path = require("path");
 
+const logo = fs.readFileSync(path.join(__dirname, "invoicelogo.png"));
+const logoHeight = 400;
+const logoWidth = 803;
+
 function currencyToDecimal(currency, price) {
     const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "RUB": "", "CHF": "," }[currency] || ",");
     const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "RUB": ".", "CHF": "." }[currency] || ".");
@@ -22,8 +26,8 @@ function currencyToSymbol(currency, price, negative = false) {
 }
 async function generatePDF(orderData, print = false) {
     const document = await new Promise((resolve, reject) => {
-        const margin = 20;
-        const doc = new pdfkit({size: "A4", margin: margin, bufferPages: true});
+        const margin = 28;
+        const doc = new pdfkit({size: "A4", margin: margin});
         const chunks = [];
         doc.on("data", (chunk) => chunks.push(chunk));
         doc.on("end", () => resolve(Buffer.concat(chunks)));
@@ -34,22 +38,30 @@ async function generatePDF(orderData, print = false) {
         doc.registerFont("InvoiceMedium", path.join(__dirname, "Manrope-Medium.ttf"));
         doc.registerFont("InvoiceRegular", path.join(__dirname, "Manrope-Regular.ttf"));
 
-        const companyname = "Company Name yes";
         const order = orderData.id;
         const customername = orderData.details.billingAddress.name + " " + orderData.details.billingAddress.surname;
         const currency = orderData.details.currency;
         const installment = orderData.details.installment.months;
         orderData.created_at = orderData.created_at instanceof Date ? orderData.created_at : new Date(orderData.created_at);
         const date = orderData.created_at.toISOString().slice(0,10).split("-").reverse().join(".");
-
+        function getLogoScale(prefHeight) {
+            const scale = prefHeight / logoHeight;
+            return [logoWidth * scale, logoHeight * scale];
+        }
         function displayHeader(nextpages = false) {
             if (!nextpages) {
-                doc.font("InvoiceBold").fontSize(20).text(companyname, { align: "left" });
-                doc.moveDown(1.5);
-                doc.font("InvoiceMedium").fontSize(12).text("Aurora Coffee Roastery CS308 Online Store", { align: "left" });
+                doc.font("InvoiceBold").fontSize(20);
+                doc.image(logo, margin, margin+8, {
+                    fit: getLogoScale(100),
+                    align: "left",
+                    valign: "top",
+                });
+                doc.moveDown(4);
+                const addressHeight = doc.y;
+                doc.font("InvoiceMedium").fontSize(12).text("Aurora Coffee Roastery\nCS308 Online Store", { align: "left" });
                 doc.font("InvoiceLight").fontSize(12).text("Sabancı University, Orta Mh, Üniversite Cd,\n34956 Tuzla/İstanbul, Türkiye", { align: "left", width: 300 });
                 const usedToBe = doc.y;
-                doc.y = margin;
+                doc.y = margin + 8;
                 doc.moveDown(0);
                 doc.font("InvoiceMedium").fontSize(16).text("Invoice", { align: "right" });
                 doc.font("InvoiceMedium").fontSize(12).text("Order ID: "+order, { align: "right"});
@@ -57,20 +69,28 @@ async function generatePDF(orderData, print = false) {
                 doc.font("InvoiceMedium").fontSize(12).text("Due Date: "+date, { align: "right"});
                 doc.font("InvoiceBold").fontSize(14).text("Amount Due: "+currencyToSymbol(currency, orderData.details.price.paid), { align: "right"});
                 const rightHeight = doc.y;
-                doc.y = usedToBe;
-                doc.moveDown(0.5);
+                doc.y = addressHeight;
+                doc.x = 280;
                 doc.font("InvoiceRegular").fontSize(12).text("Billed to", { align: "left" });
                 doc.font("InvoiceMedium").fontSize(12).text(customername, { align: "left" });
                 const addr = orderData.details.billingAddress;
                 doc.font("InvoiceLight").fontSize(12).text(addr.address+"\n"+(addr.address2?addr.address2+"\n":"")+addr.zip+" "+addr.city+"/"+addr.province+", "+addr.country+"\n"+addr.phone, { align: "left", width: 300 });
+                doc.x = margin;
                 if (rightHeight > doc.y) doc.y = rightHeight;
             }
             else {
+                doc.y = margin + 8;
                 doc.font("InvoiceMedium").fontSize(12).text("Order ID: "+order, { align: "right"});
                 doc.font("InvoiceMedium").fontSize(12).text("Billed to: " + customername, { align: "right"});
                 doc.y = margin;
-                doc.font("InvoiceBold").fontSize(20).text(companyname, { align: "left" });
-                doc.moveDown(0.8);
+                doc.font("InvoiceBold").fontSize(20);
+                doc.image(logo, margin, margin+8, {
+                    fit: getLogoScale(68),
+                    align: "left",
+                    valign: "top",
+                });
+                doc.moveDown(2.8);
+                console.log("next page header", doc.y);
             }
         }
         displayHeader();
@@ -111,17 +131,17 @@ async function generatePDF(orderData, print = false) {
         while (curridx < array.length) {
             pages++;
             tableLayout(measureRowWidth(curridx, curridx+1));
-            let c = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 115.07360000000006);
+            let c = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 143.07360000000006);
             space = c.s;
             c = c.c;
             tableLayout(measureRowWidth(curridx, curridx+c));
-            let cn = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 115.07360000000006);
+            let cn = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 143.07360000000006);
             space = cn.s;
             cn = cn.c;
             if (cn != c) {
                 c = cn;
                 tableLayout(measureRowWidth(curridx, curridx+c));
-                cn = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 115.07360000000006);
+                cn = amountOfRowsThatFit(array, curridx, pages == 1 ? doc.y+45.8976 : 143.07360000000006);
                 space = cn.s;
                 cn = cn.c;
                 if (cn != c) {
