@@ -332,10 +332,10 @@ function writeServerCartSnapshot(mode, scope, items) {
   storage.setItem(key, JSON.stringify(Object.fromEntries(entries)))
 }
 
-function mergeCartItems(baseItems, incomingItems) {
+function mergeCartItems(...itemGroups) {
   const merged = new Map()
 
-  for (const item of [...baseItems, ...incomingItems]) {
+  for (const item of itemGroups.flat()) {
     const key = getCartMergeKey(item)
 
     if (!key) {
@@ -357,6 +357,82 @@ function mergeCartItems(baseItems, incomingItems) {
   }
 
   return Array.from(merged.values())
+}
+
+class CartRequestError extends Error {
+  constructor(message, status) {
+    super(message)
+    this.name = 'CartRequestError'
+    this.status = status
+  }
+}
+
+function isExpiredAuthCartError(error) {
+  return error?.status === 401 && !getAuthSession()?.token
+}
+
+function persistGuestCartItems(items) {
+  const nextItems = items.map(normalizeStoredCartItem).filter(Boolean)
+  writeGuestCartItems(getCartStorageMode(), nextItems)
+  writeGuestCartItems('session', [])
+  clearServerCartCache()
+  dispatchCartChange()
+  return nextItems
+}
+
+function addGuestCartProduct(product, quantity) {
+  const normalizedOptions = normalizeCartOptions(product.options)
+  const normalizedOptionCodes = normalizeCartOptions(product.optionCodes)
+  const normalizedVariantCode = normalizeVariantCode(product.variantCode)
+  const storageMode = getCartStorageMode()
+  const existingItems = readGuestCartItems(storageMode)
+  const nextItemKey = buildCartVariantKey(
+    product.slug,
+    product.id,
+    normalizedVariantCode,
+    normalizedOptionCodes ?? normalizedOptions,
+  )
+  const existingItem = existingItems.find((item) => getCartMergeKey(item) === nextItemKey)
+
+  const nextItems = existingItem
+    ? existingItems.map((item) =>
+        getCartMergeKey(item) === nextItemKey
+          ? { ...item, quantity: item.quantity + quantity }
+          : item,
+      )
+    : [...existingItems, buildCartItem(product, quantity, normalizedOptions)]
+
+  writeGuestCartItems(storageMode, nextItems)
+  dispatchCartChange()
+  return nextItems
+}
+
+function updateGuestCartItemQuantity(productId, quantity, items = null) {
+  const currentItems = items || readGuestCartItems(getCartStorageMode())
+  const nextItems = currentItems
+    .map(normalizeStoredCartItem)
+    .filter(Boolean)
+    .map((item) => (isCartItemIdentity(item, productId) ? { ...item, quantity } : item))
+    .filter((item) => item.quantity > 0)
+
+  return persistGuestCartItems(nextItems)
+}
+
+function isCartItemIdentity(item, productId) {
+  return (
+    item?.id === productId ||
+    (item?.lineItemId && String(item.lineItemId) === String(productId))
+  )
+}
+
+function removeGuestCartItem(productId, items = null) {
+  const currentItems = items || readGuestCartItems(getCartStorageMode())
+  const nextItems = currentItems
+    .map(normalizeStoredCartItem)
+    .filter(Boolean)
+    .filter((item) => !isCartItemIdentity(item, productId))
+
+  return persistGuestCartItems(nextItems)
 }
 
 function buildCartItem(product, quantity = 1, options = null) {
@@ -513,7 +589,7 @@ async function requestCartJson(path, options = {}) {
   })
 
   if (!response.ok || data?.e || payload?.e) {
-    throw new Error(data?.e || payload?.e || 'Cart request failed')
+    throw new CartRequestError(data?.e || payload?.e || 'Cart request failed', response.status)
   }
 
   return data
@@ -706,44 +782,44 @@ export async function reconcileCartStorageWithAuth() {
   if (session?.token && authStorageMode) {
     ensureServerCartScope(getCurrentCartScope())
     const guestItems = mergeCartItems(localItems, sessionItems)
-
-    if (guestItems.length) {
-      try {
-        await mergeGuestCartIntoServer(guestItems)
-      } finally {
-        writeGuestCartItems('local', [])
-        writeGuestCartItems('session', [])
-      }
-
-      const serverItems = await fetchServerCart({ force: true })
-      dispatchCartChange()
-      return serverItems
-    }
-
-    if (cachedServerCartLoaded) {
-      return cachedServerCartItems
-    }
-
     const persistedItems = getPersistedServerCartItems()
 
-    if (persistedItems.length) {
-      cachedServerCartItems = persistedItems
-      cachedServerCartScope = getCurrentCartScope()
-    }
+    try {
+      if (guestItems.length) {
+        await mergeGuestCartIntoServer(guestItems)
+        writeGuestCartItems('local', [])
+        writeGuestCartItems('session', [])
 
-    const serverItems = await fetchServerCart()
-    dispatchCartChange()
-    return serverItems
+        const serverItems = await fetchServerCart({ force: true })
+        dispatchCartChange()
+        return serverItems
+      }
+
+      if (cachedServerCartLoaded) {
+        return cachedServerCartItems
+      }
+
+      if (persistedItems.length) {
+        cachedServerCartItems = persistedItems
+        cachedServerCartScope = getCurrentCartScope()
+      }
+
+      const serverItems = await fetchServerCart()
+      dispatchCartChange()
+      return serverItems
+    } catch (error) {
+      if (!isExpiredAuthCartError(error)) {
+        throw error
+      }
+
+      return persistGuestCartItems(mergeCartItems(localItems, sessionItems, persistedItems))
+    }
   }
 
   clearServerCartCache()
 
   if (sessionItems.length) {
-    const mergedItems = mergeCartItems(localItems, sessionItems)
-    writeGuestCartItems('local', mergedItems)
-    writeGuestCartItems('session', [])
-    dispatchCartChange()
-    return mergedItems
+    return persistGuestCartItems(mergeCartItems(localItems, sessionItems))
   }
 
   return localItems
@@ -901,36 +977,24 @@ export async function addCartProduct(product, quantity = 1) {
       payload.var = payloadVariantCode
     }
 
-    await requestCartJson('/cart', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
-    const serverItems = await fetchServerCart({ force: true })
-    dispatchCartChange()
-    return serverItems
+    try {
+      await requestCartJson('/cart', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      })
+      const serverItems = await fetchServerCart({ force: true })
+      dispatchCartChange()
+      return serverItems
+    } catch (error) {
+      if (!isExpiredAuthCartError(error)) {
+        throw error
+      }
+
+      return addGuestCartProduct(product, nextQuantity)
+    }
   }
 
-  const storageMode = getCartStorageMode()
-  const existingItems = readGuestCartItems(storageMode)
-  const nextItemKey = buildCartVariantKey(
-    product.slug,
-    product.id,
-    normalizedVariantCode,
-    normalizedOptionCodes ?? normalizedOptions,
-  )
-  const existingItem = existingItems.find((item) => getCartMergeKey(item) === nextItemKey)
-
-  const nextItems = existingItem
-    ? existingItems.map((item) =>
-        getCartMergeKey(item) === nextItemKey
-          ? { ...item, quantity: item.quantity + nextQuantity }
-          : item,
-      )
-    : [...existingItems, buildCartItem(product, nextQuantity, normalizedOptions)]
-
-  writeGuestCartItems(storageMode, nextItems)
-  dispatchCartChange()
-  return nextItems
+  return addGuestCartProduct(product, nextQuantity)
 }
 
 export async function addCartVariants(entries) {
@@ -962,7 +1026,7 @@ export async function updateCartItemQuantity(productId, nextQuantity) {
 
   if (session?.token) {
     const currentItems = getCartItems()
-    const targetItem = currentItems.find((item) => item.id === productId || String(item.lineItemId) === String(productId))
+    const targetItem = currentItems.find((item) => isCartItemIdentity(item, productId))
 
     if (!targetItem?.lineItemId) {
       return currentItems
@@ -972,32 +1036,30 @@ export async function updateCartItemQuantity(productId, nextQuantity) {
       return removeCartItem(productId)
     }
 
-    await requestCartJson('/cart', {
-      method: 'PATCH',
-      body: JSON.stringify({
-        id: targetItem.lineItemId,
-        qty: sanitizedQuantity,
-        ...(targetItem.optionCodes ? { opt: targetItem.optionCodes } : {}),
-        ...(targetItem.variantCode ? { var: targetItem.variantCode } : {}),
-      }),
-    })
+    try {
+      await requestCartJson('/cart', {
+        method: 'PATCH',
+        body: JSON.stringify({
+          id: targetItem.lineItemId,
+          qty: sanitizedQuantity,
+          ...(targetItem.optionCodes ? { opt: targetItem.optionCodes } : {}),
+          ...(targetItem.variantCode ? { var: targetItem.variantCode } : {}),
+        }),
+      })
 
-    const serverItems = await fetchServerCart({ force: true })
-    dispatchCartChange()
-    return serverItems
+      const serverItems = await fetchServerCart({ force: true })
+      dispatchCartChange()
+      return serverItems
+    } catch (error) {
+      if (!isExpiredAuthCartError(error)) {
+        throw error
+      }
+
+      return updateGuestCartItemQuantity(productId, sanitizedQuantity, currentItems)
+    }
   }
 
-  const storageMode = getCartStorageMode()
-  const existingItems = readGuestCartItems(storageMode)
-  const nextItems = existingItems
-    .map((item) =>
-      item.id === productId ? { ...item, quantity: sanitizedQuantity } : item,
-    )
-    .filter((item) => item.quantity > 0)
-
-  writeGuestCartItems(storageMode, nextItems)
-  dispatchCartChange()
-  return nextItems
+  return updateGuestCartItemQuantity(productId, sanitizedQuantity)
 }
 
 export async function removeCartItem(productId) {
@@ -1005,42 +1067,51 @@ export async function removeCartItem(productId) {
 
   if (session?.token) {
     const currentItems = getCartItems()
-    const targetItem = currentItems.find((item) => item.id === productId || String(item.lineItemId) === String(productId))
+    const targetItem = currentItems.find((item) => isCartItemIdentity(item, productId))
 
     if (!targetItem?.lineItemId) {
       return currentItems
     }
 
-    await requestCartJson(`/cart?id=${encodeURIComponent(targetItem.lineItemId)}`, {
-      method: 'DELETE',
-    })
+    try {
+      await requestCartJson(`/cart?id=${encodeURIComponent(targetItem.lineItemId)}`, {
+        method: 'DELETE',
+      })
 
-    const serverItems = await fetchServerCart({ force: true })
-    dispatchCartChange()
-    return serverItems
+      const serverItems = await fetchServerCart({ force: true })
+      dispatchCartChange()
+      return serverItems
+    } catch (error) {
+      if (!isExpiredAuthCartError(error)) {
+        throw error
+      }
+
+      return removeGuestCartItem(productId, currentItems)
+    }
   }
 
-  const storageMode = getCartStorageMode()
-  const nextItems = readGuestCartItems(storageMode).filter((item) => item.id !== productId)
-  writeGuestCartItems(storageMode, nextItems)
-  dispatchCartChange()
-  return nextItems
+  return removeGuestCartItem(productId)
 }
 
 export async function clearCart() {
   const session = getAuthSession()
 
   if (session?.token) {
-    await requestCartJson('/cart?clear=true', {
-      method: 'DELETE',
-    })
-    const nextItems = persistServerCartItems([])
-    dispatchCartChange()
-    return nextItems
+    try {
+      await requestCartJson('/cart?clear=true', {
+        method: 'DELETE',
+      })
+      const nextItems = persistServerCartItems([])
+      dispatchCartChange()
+      return nextItems
+    } catch (error) {
+      if (!isExpiredAuthCartError(error)) {
+        throw error
+      }
+
+      return persistGuestCartItems([])
+    }
   }
 
-  const storageMode = getCartStorageMode()
-  writeGuestCartItems(storageMode, [])
-  dispatchCartChange()
-  return []
+  return persistGuestCartItems([])
 }
