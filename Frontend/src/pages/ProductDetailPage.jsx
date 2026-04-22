@@ -28,6 +28,10 @@ import {
   useProductBySlug,
   useProductCatalog,
 } from '../lib/products'
+import {
+  getPreferredProductGalleryIndex,
+  getProductGalleryImages,
+} from '../lib/productImages'
 import { getTaxInclusionCopy, getUnitPriceBreakdown } from '../lib/tax'
 
 function formatDetailAttribute(value) {
@@ -1475,6 +1479,28 @@ export default function ProductDetailPage() {
     [product, products],
   )
 
+  const optionGroups = useMemo(() => {
+    if (!product) {
+      return []
+    }
+
+    return Array.isArray(product.options)
+      ? product.options.filter((group) => Array.isArray(group.values) && group.values.length)
+      : []
+  }, [product])
+  const rawSelectedOptions =
+    optionSelection.productSlug === product?.slug ? optionSelection.values : {}
+  const selectedOptionsByGroup = getResolvedOptionSelections(optionGroups, rawSelectedOptions)
+  const selectedOptionsSignature = optionGroups
+    .map((group) => `${getOptionGroupKey(group)}:${selectedOptionsByGroup[getOptionGroupKey(group)] || ''}`)
+    .join('|')
+  const productGalleryImages = getProductGalleryImages(product, selectedOptionsByGroup)
+  const preferredGalleryImageIndex = getPreferredProductGalleryIndex(
+    product,
+    selectedOptionsByGroup,
+    productGalleryImages,
+  )
+
   if (loading) {
     const hero = (
       <section className="aurora-showcase-band px-6 py-12 text-center sm:px-8 lg:px-10">
@@ -1512,12 +1538,6 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
-  const optionGroups = Array.isArray(product.options)
-    ? product.options.filter((group) => Array.isArray(group.values) && group.values.length)
-    : []
-  const rawSelectedOptions =
-    optionSelection.productSlug === product.slug ? optionSelection.values : {}
-  const selectedOptionsByGroup = getResolvedOptionSelections(optionGroups, rawSelectedOptions)
   const visibleOptionGroups = optionGroups.filter((group, index) => {
     if (index === 0) {
       return true
@@ -1612,7 +1632,10 @@ export default function ProductDetailPage() {
           className="aurora-summary-lead aurora-product-hero-card aurora-product-summary-panel mx-auto w-full p-5 sm:p-8"
         >
           <ProductMedia
+            key={`${product.slug}-${selectedOptionsSignature}`}
             product={product}
+            images={productGalleryImages}
+            defaultActiveIndex={preferredGalleryImageIndex}
             className="is-detail mb-6"
             loading="eager"
           />
