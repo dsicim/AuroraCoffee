@@ -13,6 +13,14 @@ import napoliBlendImage from '../assets/products/napoli-blend.png'
 import urbanThermosImage from '../assets/products/urban-thermos.png'
 import v60FilterPaperImage from '../assets/products/v60-filter-paper.png'
 
+const productAttributeImageModules = import.meta.glob(
+  '../assets/products/attribute-images/*.jpg',
+  {
+    eager: true,
+    import: 'default',
+  },
+)
+
 const productImageBySlug = Object.freeze({
   'brazil-santos': brazilSantosImage,
   'burr-grinder-pro': burrGrinderProImage,
@@ -42,6 +50,15 @@ const coffeeGallerySlugs = new Set([
 ])
 
 const coffeeGallerySizeKeys = ['250g', '500g', '1kg']
+
+const productAttributeImageByFilename = Object.freeze(
+  Object.fromEntries(
+    Object.entries(productAttributeImageModules).map(([path, src]) => [
+      path.split('/').pop(),
+      src,
+    ]),
+  ),
+)
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
@@ -77,6 +94,8 @@ function normalizeSizeKey(value) {
   }
 
   if (
+    normalizedValue.includes('1000g') ||
+    normalizedValue.includes('1000gram') ||
     normalizedValue.includes('1kg') ||
     normalizedValue.includes('1kilo') ||
     normalizedValue.includes('1kilogram')
@@ -195,22 +214,12 @@ function buildCoffeeGalleryImages(product, selectedOptionsByGroup) {
   }
 
   const selectedVariantKey = getSelectedGalleryVariantKey(product, selectedOptionsByGroup)
-  const primaryImage = normalizeGalleryEntry(
-    {
-      key: `${slug}-primary`,
-      src: productImageBySlug[slug] || '',
-      alt: product?.name ? `${product.name} product image` : 'Aurora Coffee product image',
-      label: 'Primary image',
-    },
-    0,
-  )
-
-  const sizeImages = coffeeGallerySizeKeys
+  const gallery = coffeeGallerySizeKeys
     .map((sizeKey, index) =>
       normalizeGalleryEntry(
         {
           key: `${slug}-${sizeKey}`,
-          src: `/src/assets/products/attribute-images/${slug}-${sizeKey}.jpg`,
+          src: productAttributeImageByFilename[`${slug}-${sizeKey}.jpg`] || '',
           alt: product?.name ? `${product.name} ${sizeKey}` : `${sizeKey} coffee product image`,
           label: sizeKey,
           variantKey: sizeKey,
@@ -219,12 +228,6 @@ function buildCoffeeGalleryImages(product, selectedOptionsByGroup) {
       ),
     )
     .filter(Boolean)
-
-  const gallery = [...sizeImages]
-
-  if (primaryImage?.src && !gallery.some((entry) => entry.src === primaryImage.src)) {
-    gallery.push(primaryImage)
-  }
 
   if (selectedVariantKey) {
     const preferredIndex = gallery.findIndex((entry) => entry.variantKey === selectedVariantKey)
