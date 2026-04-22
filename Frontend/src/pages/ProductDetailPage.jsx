@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Link, useLocation, useParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../components/LiquidGlassButton'
@@ -12,8 +12,7 @@ import {
   currentUserChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
-  getAuthSession,
-  getCurrentUserSnapshot,
+  getAuthStateSnapshot,
 } from '../lib/auth'
 import { addCartItem } from '../lib/cart'
 import { fetchApprovedProductComments, submitProductComment } from '../lib/comments'
@@ -551,9 +550,9 @@ function ReviewPrivacyMatrix({
 
 function ProductReviewPanel({ product }) {
   const location = useLocation()
+  const navigate = useNavigate()
   const reviewTextareaRef = useRef(null)
-  const [session, setSession] = useState(() => getAuthSession())
-  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [reviewRating, setReviewRating] = useState(0)
   const [hoverReviewRating, setHoverReviewRating] = useState(0)
   const [reviewComment, setReviewComment] = useState('')
@@ -567,7 +566,9 @@ function ProductReviewPanel({ product }) {
   const [reviewFeedback, setReviewFeedback] = useState('')
   const [reviewError, setReviewError] = useState('')
   const [submitBusy, setSubmitBusy] = useState(false)
-  const hasSession = Boolean(session?.token)
+  const session = authState.session
+  const currentUserState = authState.currentUserState
+  const hasSession = authState.hasUsableSession
   const currentUser =
     currentUserState.status === currentUserFetchStatus.ok
       ? currentUserState.user
@@ -586,6 +587,7 @@ function ProductReviewPanel({ product }) {
   const hasRejectedSelfComment = ['rejected', 'edit_rejected'].includes(selfCommentStatus)
   const selfCommentCardSnapshot = selfComment?.visibleSnapshot || selfComment?.pendingSnapshot || null
   let reviewInfoMessage = ''
+  const reviewLoginPath = `/login?next=${encodeURIComponent(location.pathname + location.search)}`
 
   if (hasSession) {
     if (!canComment) {
@@ -631,23 +633,30 @@ function ProductReviewPanel({ product }) {
   }, [editorMode, selfComment, selfCommentStatus])
 
   useEffect(() => {
-    const syncSession = () => {
-      setSession(getAuthSession())
-      setCurrentUserState(getCurrentUserSnapshot())
+    const clearSelfCommentState = () => {
+      setSelfComment(null)
+      setSelfCommentEditing(false)
+      setReviewRating(0)
+      setReviewComment('')
     }
 
-    const syncCurrentUser = () => {
-      setCurrentUserState(getCurrentUserSnapshot())
+    const syncAuthState = () => {
+      const nextAuthState = getAuthStateSnapshot()
+      setAuthState(nextAuthState)
+
+      if (nextAuthState.shouldRequestLogin) {
+        clearSelfCommentState()
+      }
     }
 
-    window.addEventListener('storage', syncSession)
-    window.addEventListener(authChangeEvent, syncSession)
-    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
+    window.addEventListener('storage', syncAuthState)
+    window.addEventListener(authChangeEvent, syncAuthState)
+    window.addEventListener(currentUserChangeEvent, syncAuthState)
 
     return () => {
-      window.removeEventListener('storage', syncSession)
-      window.removeEventListener(authChangeEvent, syncSession)
-      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
+      window.removeEventListener('storage', syncAuthState)
+      window.removeEventListener(authChangeEvent, syncAuthState)
+      window.removeEventListener(currentUserChangeEvent, syncAuthState)
     }
   }, [])
 
@@ -785,11 +794,48 @@ function ProductReviewPanel({ product }) {
           ? 'No other approved comments yet.'
         : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'
 
+  const clearSelfCommentState = () => {
+    setSelfComment(null)
+    setSelfCommentEditing(false)
+    setReviewRating(0)
+    setReviewComment('')
+  }
+
+  const confirmReviewSession = async () => {
+    const snapshot = getAuthStateSnapshot()
+    setAuthState(snapshot)
+
+    if (snapshot.shouldRequestLogin || !snapshot.hasUsableSession || !snapshot.token) {
+      clearSelfCommentState()
+      navigate(reviewLoginPath, { replace: true })
+      return false
+    }
+
+    const result = await fetchCurrentUserResult(snapshot.token, { force: true })
+    const nextSnapshot = getAuthStateSnapshot()
+    setAuthState(nextSnapshot)
+
+    if (
+      result.status === currentUserFetchStatus.unauthorized ||
+      nextSnapshot.shouldRequestLogin
+    ) {
+      clearSelfCommentState()
+      navigate(reviewLoginPath, { replace: true })
+      return false
+    }
+
+    if (result.status === currentUserFetchStatus.error) {
+      setReviewError('We could not confirm your session. Reload and try again.')
+      return false
+    }
+
+    return result.status === currentUserFetchStatus.ok
+  }
+
   const handleReviewSubmit = (event) => {
     event.preventDefault()
 
     const trimmedComment = reviewComment.trim()
-    const privacy = buildReviewPrivacyCode(reviewPrivacySelection, currentUser?.displayname)
 
     setReviewError('')
     setReviewFeedback('')
@@ -809,15 +855,30 @@ function ProductReviewPanel({ product }) {
       return
     }
 
-    if (!privacy) {
-      setReviewError('We could not determine your comment privacy settings.')
-      return
-    }
-
     void (async () => {
       setSubmitBusy(true)
 
       try {
+        const hasFreshReviewSession = await confirmReviewSession()
+
+        if (!hasFreshReviewSession) {
+          return
+        }
+
+        const latestAuthState = getAuthStateSnapshot()
+        const latestDisplayName = latestAuthState.user?.displayname
+        const privacy = buildReviewPrivacyCode(reviewPrivacySelection, latestDisplayName)
+
+        if (!latestDisplayName?.trim()) {
+          setReviewError('We could not load your profile name. Reload and try again.')
+          return
+        }
+
+        if (!privacy) {
+          setReviewError('We could not determine your comment privacy settings.')
+          return
+        }
+
         const result = await submitProductComment({
           productId: product.id,
           rating: reviewRating,

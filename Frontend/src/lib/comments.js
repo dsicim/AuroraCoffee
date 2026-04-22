@@ -1,4 +1,4 @@
-import { getAuthSession, getCurrentUserSnapshot } from './auth'
+import { getAuthStateSnapshot, getCurrentUserSnapshot } from './auth'
 import { fetchAuthJson } from './authRequest'
 
 export const commentsChangeEvent = 'aurora-comments-change'
@@ -444,7 +444,9 @@ async function requestCommentsJson(path, options = {}) {
 }
 
 function requireAuthSession() {
-  if (!getAuthSession()?.token) {
+  const authState = getAuthStateSnapshot()
+
+  if (authState.shouldRequestLogin || !authState.hasUsableSession || !authState.token) {
     throw new CommentRequestError('Unauthorized', 401)
   }
 }
@@ -456,28 +458,49 @@ export async function fetchApprovedProductComments(productId) {
     return { comments: [], selfComment: null }
   }
 
-  const approvedRequest = requestCommentsJson(
-    `/comments/approved?id=${normalizedProductId}`,
-  )
-  const session = getAuthSession()
+  const approvedPath = `/comments/approved?id=${normalizedProductId}`
+  const approvedRequest = requestCommentsJson(approvedPath)
+  const authState = getAuthStateSnapshot()
 
-  if (!session?.token) {
+  if (!authState.hasUsableSession) {
     const payload = await approvedRequest
     return collectApprovedCommentEntries(payload?.comments)
   }
 
-  const [approvedPayload, selfPayload] = await Promise.all([
-    approvedRequest,
-    requestCommentsJson(
-      `/comments/me?id=${normalizedProductId}&actAsUser=true`,
-    ),
-  ])
-  const publicComments = collectApprovedCommentEntries(approvedPayload?.comments)
-  const ownComments = collectApprovedCommentEntries(selfPayload?.comments)
+  let approvedPayload
 
-  return {
-    comments: publicComments.comments,
-    selfComment: ownComments.selfComment,
+  try {
+    approvedPayload = await approvedRequest
+  } catch (error) {
+    if (error?.status === 401 && getAuthStateSnapshot().shouldRequestLogin) {
+      const payload = await requestCommentsJson(approvedPath)
+      return collectApprovedCommentEntries(payload?.comments)
+    }
+
+    throw error
+  }
+
+  const publicComments = collectApprovedCommentEntries(approvedPayload?.comments)
+
+  try {
+    const selfPayload = await requestCommentsJson(
+      `/comments/me?id=${normalizedProductId}&actAsUser=true`,
+    )
+    const ownComments = collectApprovedCommentEntries(selfPayload?.comments)
+
+    return {
+      comments: publicComments.comments,
+      selfComment: ownComments.selfComment,
+    }
+  } catch (error) {
+    if (error?.status === 401 && getAuthStateSnapshot().shouldRequestLogin) {
+      return {
+        comments: publicComments.comments,
+        selfComment: null,
+      }
+    }
+
+    throw error
   }
 }
 
