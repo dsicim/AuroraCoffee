@@ -5,8 +5,7 @@ import {
   currentUserChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
-  getCurrentUserSnapshot,
-  getAuthSession,
+  getAuthStateSnapshot,
 } from '../lib/auth'
 import { canAccessRole, getRoleLandingPath, normalizeUserRole } from '../lib/roles'
 
@@ -17,27 +16,29 @@ function buildLoginPath(pathname, search) {
 export default function ProtectedRoleRoute({ requiredRole, children }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [session, setSession] = useState(() => getAuthSession())
-  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [status, setStatus] = useState('checking')
+  const session = authState.session
+  const currentUserState = authState.currentUserState
 
   useEffect(() => {
-    const syncSession = () => {
-      setSession(getAuthSession())
+    const syncAuthState = () => {
+      const nextAuthState = getAuthStateSnapshot()
+      setAuthState(nextAuthState)
+
+      if (nextAuthState.shouldRequestLogin) {
+        setStatus('checking')
+      }
     }
 
-    const syncCurrentUser = () => {
-      setCurrentUserState(getCurrentUserSnapshot())
-    }
-
-    window.addEventListener('storage', syncSession)
-    window.addEventListener(authChangeEvent, syncSession)
-    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
+    window.addEventListener('storage', syncAuthState)
+    window.addEventListener(authChangeEvent, syncAuthState)
+    window.addEventListener(currentUserChangeEvent, syncAuthState)
 
     return () => {
-      window.removeEventListener('storage', syncSession)
-      window.removeEventListener(authChangeEvent, syncSession)
-      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
+      window.removeEventListener('storage', syncAuthState)
+      window.removeEventListener(authChangeEvent, syncAuthState)
+      window.removeEventListener(currentUserChangeEvent, syncAuthState)
     }
   }, [])
 
@@ -71,7 +72,8 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
     }
 
     const guardRoute = async () => {
-      if (!session?.token) {
+      if (authState.shouldRequestLogin || !session?.token) {
+        setStatus('checking')
         navigate(buildLoginPath(location.pathname, location.search), { replace: true })
         return
       }
@@ -106,6 +108,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
     }
   }, [
     currentUserState,
+    authState.shouldRequestLogin,
     location.pathname,
     location.search,
     navigate,
@@ -113,7 +116,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
     session?.token,
   ])
 
-  if (status !== 'ready') {
+  if (authState.shouldRequestLogin || status !== 'ready') {
     return null
   }
 
