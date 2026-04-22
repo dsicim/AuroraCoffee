@@ -18,7 +18,13 @@ import {
   fetchSavedAddresses,
   getSavedAddresses,
 } from '../lib/addressBook'
-import { authChangeEvent, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthSession,
+  getAuthStateSnapshot,
+} from '../lib/auth'
 import {
   enrichCartItems,
   buildCheckoutCartPayload,
@@ -60,6 +66,8 @@ const checkoutSteps = [
   { key: 'review', label: 'Review' },
   { key: 'success', label: 'Success' },
 ]
+
+const checkoutLoginPath = '/login?next=%2Fcheckout'
 
 const initialDelivery = {
   firstName: '',
@@ -649,7 +657,7 @@ export default function CheckoutPage() {
       return
     }
 
-    navigate('/login?next=%2Fcheckout', { replace: true })
+    navigate(checkoutLoginPath, { replace: true })
   }, [isLoggedIn, items.length, navigate, submittedOrder])
 
   const handleDeliveryChange = (field, value) => {
@@ -830,12 +838,50 @@ export default function CheckoutPage() {
     setStepIndex((current) => Math.max(current - 1, 0))
   }
 
+  const confirmPaymentSession = async () => {
+    const snapshot = getAuthStateSnapshot()
+    setSession(snapshot.session)
+
+    if (snapshot.shouldRequestLogin || !snapshot.token) {
+      navigate(checkoutLoginPath, { replace: true })
+      return false
+    }
+
+    const result = await fetchCurrentUserResult(snapshot.token, { force: true })
+    const nextSnapshot = getAuthStateSnapshot()
+    setSession(nextSnapshot.session)
+
+    if (
+      result.status === currentUserFetchStatus.unauthorized ||
+      nextSnapshot.shouldRequestLogin
+    ) {
+      navigate(checkoutLoginPath, { replace: true })
+      return false
+    }
+
+    if (result.status === currentUserFetchStatus.error) {
+      setErrors((current) => ({
+        ...current,
+        payment: 'We could not confirm your session. Reload and try again.',
+      }))
+      return false
+    }
+
+    return result.status === currentUserFetchStatus.ok
+  }
+
   const handleSubmitOrder = () => {
     void (async () => {
       setPaymentBusy(true)
       setErrors((current) => ({ ...current, payment: '' }))
 
       try {
+        const hasFreshPaymentSession = await confirmPaymentSession()
+
+        if (!hasFreshPaymentSession) {
+          return
+        }
+
         if (!selectedSavedCardId && saveCardForLater) {
           await savePaymentMethod({
             alias: payment.cardholder || 'Saved card',
