@@ -47,12 +47,12 @@
 }
 
 .aurora-product-media.is-card {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 9;
   border-radius: 1.55rem;
 }
 
 .aurora-product-media.is-detail {
-  aspect-ratio: 16 / 10;
+  aspect-ratio: 16 / 9;
   border-radius: 1.85rem;
 }
 

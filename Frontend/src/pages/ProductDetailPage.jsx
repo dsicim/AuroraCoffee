@@ -31,6 +31,7 @@ import {
 import {
   getPreferredProductGalleryIndex,
   getProductGalleryImages,
+  getProductGalleryOptionGroups,
 } from '../lib/productImages'
 import { getTaxInclusionCopy, getUnitPriceBreakdown } from '../lib/tax'
 
@@ -1484,9 +1485,11 @@ export default function ProductDetailPage() {
       return []
     }
 
-    return Array.isArray(product.options)
+    const backendOptionGroups = Array.isArray(product.options)
       ? product.options.filter((group) => Array.isArray(group.values) && group.values.length)
       : []
+
+    return getProductGalleryOptionGroups(product, backendOptionGroups)
   }, [product])
   const rawSelectedOptions =
     optionSelection.productSlug === product?.slug ? optionSelection.values : {}
