@@ -1,4 +1,4 @@
-const rawApiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
+const rawApiBaseUrl = import.meta.env?.VITE_API_BASE_URL || '/api'
 
 export function buildApiUrl(path) {
   const normalizedBaseUrl = rawApiBaseUrl.endsWith('/')
