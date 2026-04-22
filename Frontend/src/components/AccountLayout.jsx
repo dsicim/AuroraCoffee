@@ -10,8 +10,7 @@ import {
   currentUserChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
-  getAuthSession,
-  getCurrentUserSnapshot,
+  getAuthStateSnapshot,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import { getAccessibleRoleLevels } from '../lib/roles'
@@ -160,31 +159,28 @@ export default function AccountLayout({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [session, setSession] = useState(() => getAuthSession())
-  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
-  const hasSession = Boolean(session?.token)
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
+  const session = authState.session
+  const currentUserState = authState.currentUserState
+  const canRenderAccountShell = authState.hasVerifiedUser || authState.isProfileError
   const user = currentUserState.status === currentUserFetchStatus.ok
     ? currentUserState.user
     : null
   const accessLevels = getAccessibleRoleLevels(user?.role)
 
   useEffect(() => {
-    const syncSession = () => {
-      setSession(getAuthSession())
+    const syncAuthState = () => {
+      setAuthState(getAuthStateSnapshot())
     }
 
-    const syncCurrentUser = () => {
-      setCurrentUserState(getCurrentUserSnapshot())
-    }
-
-    window.addEventListener('storage', syncSession)
-    window.addEventListener(authChangeEvent, syncSession)
-    window.addEventListener(currentUserChangeEvent, syncCurrentUser)
+    window.addEventListener('storage', syncAuthState)
+    window.addEventListener(authChangeEvent, syncAuthState)
+    window.addEventListener(currentUserChangeEvent, syncAuthState)
 
     return () => {
-      window.removeEventListener('storage', syncSession)
-      window.removeEventListener(authChangeEvent, syncSession)
-      window.removeEventListener(currentUserChangeEvent, syncCurrentUser)
+      window.removeEventListener('storage', syncAuthState)
+      window.removeEventListener(authChangeEvent, syncAuthState)
+      window.removeEventListener(currentUserChangeEvent, syncAuthState)
     }
   }, [])
 
@@ -198,7 +194,8 @@ export default function AccountLayout({
       (
         currentUserState.status === currentUserFetchStatus.ok ||
         currentUserState.status === currentUserFetchStatus.loading ||
-        currentUserState.status === currentUserFetchStatus.unauthorized
+        currentUserState.status === currentUserFetchStatus.unauthorized ||
+        currentUserState.status === currentUserFetchStatus.error
       )
     ) {
       return
@@ -208,7 +205,7 @@ export default function AccountLayout({
   }, [currentUserState.status, currentUserState.token, session?.token])
 
   useEffect(() => {
-    if (!hasSession) {
+    if (authState.shouldRequestLogin) {
       navigate(
         `/login?next=${encodeURIComponent(
           location.pathname + location.search,
@@ -218,10 +215,20 @@ export default function AccountLayout({
       return
     }
 
-    reconcileAccountStorageWithAuth()
-  }, [hasSession, location.pathname, location.search, navigate])
+    if (!canRenderAccountShell) {
+      return
+    }
 
-  if (!hasSession) {
+    reconcileAccountStorageWithAuth()
+  }, [
+    authState.shouldRequestLogin,
+    canRenderAccountShell,
+    location.pathname,
+    location.search,
+    navigate,
+  ])
+
+  if (authState.shouldRequestLogin || !canRenderAccountShell) {
     return (
       <div className="aurora-page">
         <LiquidGlassDefs />
@@ -232,13 +239,17 @@ export default function AccountLayout({
           <div className="aurora-container">
             <div className="aurora-showcase-band mx-auto max-w-4xl p-10 text-center">
               <p className="aurora-kicker">
-                Redirecting
+                {authState.shouldRequestLogin ? 'Redirecting' : 'Checking account'}
               </p>
               <h1 className="aurora-heading mt-4 text-5xl">
-                Sending you to login
+                {authState.shouldRequestLogin
+                  ? 'Sending you to login'
+                  : 'Confirming your session'}
               </h1>
               <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-[var(--aurora-text)]">
-                Sign in to reach your saved account tools.
+                {authState.shouldRequestLogin
+                  ? 'Sign in to reach your saved account tools.'
+                  : 'Your account tools will appear after the current session is verified.'}
               </p>
             </div>
           </div>
