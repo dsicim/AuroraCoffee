@@ -10,8 +10,7 @@ import {
   currentUserChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
-  getCurrentUserSnapshot,
-  getAuthSession,
+  getAuthStateSnapshot,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
 import {
@@ -47,8 +46,7 @@ export default function Header() {
   const cartButtonRef = useRef(null)
   const mobileNavButtonRef = useRef(null)
   const { themePreference, resolvedTheme, setThemePreference } = useTheme()
-  const [session, setSession] = useState(getAuthSession())
-  const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
   const [menuOpen, setMenuOpen] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
@@ -56,11 +54,17 @@ export default function Header() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [headerSearch, setHeaderSearch] = useState('')
   const headerInteractionOpen = menuOpen || mobileNavOpen || searchOpen
-  const hasSession = Boolean(session?.token)
-  const user = currentUserState.status === currentUserFetchStatus.ok
-    ? currentUserState.user
-    : null
-  const displayName = user?.displayname || 'Coffee Lover'
+  const session = authState.session
+  const currentUserState = authState.currentUserState
+  const hasAccountSession = authState.hasUsableSession
+  const displayName =
+    authState.user?.displayname ||
+    session?.email ||
+    (authState.isChecking
+      ? 'Checking account'
+      : authState.isProfileError
+        ? 'Account session'
+        : 'Coffee Lover')
   const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
   const themeStatusCopy = themePreference === 'system'
     ? `Following system: ${currentThemeLabel}`
@@ -69,20 +73,20 @@ export default function Header() {
   useEffect(() => {
     const syncSessionState = () => {
       void (async () => {
-        setSession(getAuthSession())
-        setCurrentUserState(getCurrentUserSnapshot())
+        setAuthState(getAuthStateSnapshot())
         reconcileAccountStorageWithAuth()
         try {
           await reconcileCartStorageWithAuth()
         } catch {
           // Ignore stale auth/cart sync failures during session changes.
         }
+        setAuthState(getAuthStateSnapshot())
         setCartCount(getCartCount())
       })()
     }
 
     const syncCurrentUserState = () => {
-      setCurrentUserState(getCurrentUserSnapshot())
+      setAuthState(getAuthStateSnapshot())
     }
 
     const syncCartState = () => {
@@ -114,7 +118,8 @@ export default function Header() {
       (
         currentUserState.status === currentUserFetchStatus.ok ||
         currentUserState.status === currentUserFetchStatus.loading ||
-        currentUserState.status === currentUserFetchStatus.unauthorized
+        currentUserState.status === currentUserFetchStatus.unauthorized ||
+        currentUserState.status === currentUserFetchStatus.error
       )
     ) {
       return
@@ -275,8 +280,7 @@ export default function Header() {
       } catch {
         // Ignore stale server cart cleanup failures after logout.
       }
-      setSession(getAuthSession())
-      setCurrentUserState(getCurrentUserSnapshot())
+      setAuthState(getAuthStateSnapshot())
       setCartCount(getCartCount())
       navigate('/', { replace: true })
     })()
@@ -527,7 +531,7 @@ export default function Header() {
               <div className="aurora-showcase-band aurora-account-menu aurora-cart-menu p-3">
                 <div className="aurora-cart-menu-summary rounded-[1.35rem] px-4">
                   <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                    {hasSession ? displayName : 'Guest shopper'}
+                    {hasAccountSession ? displayName : 'Guest shopper'}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-[var(--aurora-text)]">
                     {cartCount} item{cartCount === 1 ? '' : 's'} in cart
@@ -547,33 +551,37 @@ export default function Header() {
                   >
                     Cart
                   </LiquidGlassButton>
-                  <LiquidGlassButton
-                    as={Link}
-                    to="/account/orders"
-                    onClick={() => setMenuOpen(false)}
-                    role="menuitem"
-                    variant="quiet"
-                    size="compact"
-                    className="w-full"
-                    contentClassName="w-full justify-start"
-                  >
-                    Orders
-                  </LiquidGlassButton>
-                  <LiquidGlassButton
-                    as={Link}
-                    to="/account"
-                    onClick={() => setMenuOpen(false)}
-                    role="menuitem"
-                    variant="quiet"
-                    size="compact"
-                    className="w-full"
-                    contentClassName="w-full justify-start"
-                  >
-                    Account
-                  </LiquidGlassButton>
+                  {hasAccountSession ? (
+                    <>
+                      <LiquidGlassButton
+                        as={Link}
+                        to="/account/orders"
+                        onClick={() => setMenuOpen(false)}
+                        role="menuitem"
+                        variant="quiet"
+                        size="compact"
+                        className="w-full"
+                        contentClassName="w-full justify-start"
+                      >
+                        Orders
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
+                        as={Link}
+                        to="/account"
+                        onClick={() => setMenuOpen(false)}
+                        role="menuitem"
+                        variant="quiet"
+                        size="compact"
+                        className="w-full"
+                        contentClassName="w-full justify-start"
+                      >
+                        Account
+                      </LiquidGlassButton>
+                    </>
+                  ) : null}
                 </div>
 
-                {hasSession ? (
+                {hasAccountSession ? (
                   <LiquidGlassButton
                     type="button"
                     onClick={handleLogout}
