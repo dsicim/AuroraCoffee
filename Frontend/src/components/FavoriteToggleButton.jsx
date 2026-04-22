@@ -6,7 +6,11 @@ import {
   reconcileAccountStorageWithAuth,
   toggleFavoriteProduct,
 } from '../lib/accountData'
-import { authChangeEvent, getAuthSession } from '../lib/auth'
+import {
+  authChangeEvent,
+  currentUserChangeEvent,
+  getAuthStateSnapshot,
+} from '../lib/auth'
 import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
 
 export default function FavoriteToggleButton({
@@ -16,31 +20,39 @@ export default function FavoriteToggleButton({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [session, setSession] = useState(() => getAuthSession())
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [isFavorite, setIsFavorite] = useState(() => isFavoriteProduct(productId))
-  const hasSession = Boolean(session?.token)
+  const canToggleFavorite = authState.hasUsableSession
+  const displayIsFavorite = canToggleFavorite && isFavorite
 
   useEffect(() => {
-    const syncFromStorage = () => {
-      setSession(getAuthSession())
-      reconcileAccountStorageWithAuth()
-      setIsFavorite(isFavoriteProduct(productId))
+    const syncFavoriteState = (shouldReconcile = false) => {
+      const nextAuthState = getAuthStateSnapshot()
+      setAuthState(nextAuthState)
+
+      if (shouldReconcile && nextAuthState.hasUsableSession) {
+        reconcileAccountStorageWithAuth()
+      }
+
+      setIsFavorite(
+        nextAuthState.hasUsableSession ? isFavoriteProduct(productId) : false,
+      )
     }
 
-    const syncFavoriteState = () => {
-      setSession(getAuthSession())
-      setIsFavorite(isFavoriteProduct(productId))
-    }
+    const syncReconciledFavoriteState = () => syncFavoriteState(true)
+    const syncLocalFavoriteState = () => syncFavoriteState(false)
 
-    window.addEventListener('storage', syncFromStorage)
-    window.addEventListener(authChangeEvent, syncFavoriteState)
-    window.addEventListener(accountDataChangeEvent, syncFavoriteState)
-    const initialSyncId = window.setTimeout(syncFromStorage, 0)
+    window.addEventListener('storage', syncReconciledFavoriteState)
+    window.addEventListener(authChangeEvent, syncReconciledFavoriteState)
+    window.addEventListener(currentUserChangeEvent, syncLocalFavoriteState)
+    window.addEventListener(accountDataChangeEvent, syncLocalFavoriteState)
+    const initialSyncId = window.setTimeout(syncReconciledFavoriteState, 0)
 
     return () => {
-      window.removeEventListener('storage', syncFromStorage)
-      window.removeEventListener(authChangeEvent, syncFavoriteState)
-      window.removeEventListener(accountDataChangeEvent, syncFavoriteState)
+      window.removeEventListener('storage', syncReconciledFavoriteState)
+      window.removeEventListener(authChangeEvent, syncReconciledFavoriteState)
+      window.removeEventListener(currentUserChangeEvent, syncLocalFavoriteState)
+      window.removeEventListener(accountDataChangeEvent, syncLocalFavoriteState)
       window.clearTimeout(initialSyncId)
     }
   }, [productId])
@@ -49,7 +61,11 @@ export default function FavoriteToggleButton({
     event.preventDefault()
     event.stopPropagation()
 
-    if (!hasSession) {
+    const nextAuthState = getAuthStateSnapshot()
+    setAuthState(nextAuthState)
+
+    if (nextAuthState.shouldRequestLogin || !nextAuthState.hasUsableSession) {
+      setIsFavorite(false)
       navigate(
         `/login?next=${encodeURIComponent(location.pathname + location.search)}`,
       )
@@ -60,7 +76,7 @@ export default function FavoriteToggleButton({
     setIsFavorite(nextFavorites.includes(productId))
   }
 
-  const label = isFavorite
+  const label = displayIsFavorite
     ? `Remove ${productName} from favorites`
     : `Save ${productName} to favorites`
 
@@ -69,7 +85,7 @@ export default function FavoriteToggleButton({
       aria-hidden="true"
       viewBox="0 0 24 24"
       className={compact ? 'h-5.5 w-5.5' : 'h-5 w-5'}
-      fill={isFavorite ? 'currentColor' : 'none'}
+      fill={displayIsFavorite ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth="1.9"
       strokeLinecap="round"
@@ -84,9 +100,9 @@ export default function FavoriteToggleButton({
       <LiquidGlassIconButton
         type="button"
         onClick={handleClick}
-        aria-pressed={isFavorite}
+        aria-pressed={displayIsFavorite}
         aria-label={label}
-        selected={isFavorite}
+        selected={displayIsFavorite}
       >
         {icon}
       </LiquidGlassIconButton>
@@ -99,12 +115,12 @@ export default function FavoriteToggleButton({
       variant="quiet"
       size="compact"
       onClick={handleClick}
-      aria-pressed={isFavorite}
+      aria-pressed={displayIsFavorite}
       aria-label={label}
-      selected={isFavorite}
+      selected={displayIsFavorite}
     >
       {icon}
-      <span>{isFavorite ? 'Saved' : 'Favorite'}</span>
+      <span>{displayIsFavorite ? 'Saved' : 'Favorite'}</span>
     </LiquidGlassButton>
   )
 }
