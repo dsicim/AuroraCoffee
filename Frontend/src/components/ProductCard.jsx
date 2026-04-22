@@ -9,6 +9,7 @@ import {
   isCoffeeProduct,
 } from '../lib/products'
 import { getTaxInclusionCopy } from '../lib/tax'
+import { getProductGalleryImages } from '../lib/productImages'
 import FavoriteToggleButton from './FavoriteToggleButton'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
@@ -27,6 +28,7 @@ export default function ProductCard({ product, compact = false }) {
   const typeLabel = getProductTypeLabel(product)
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
+  const cardImages = getProductGalleryImages(product).slice(0, 1)
 
   return (
     <LiquidGlassFrame
@@ -41,7 +43,13 @@ export default function ProductCard({ product, compact = false }) {
         className="aurora-product-card-media-link"
         aria-label={`View ${product.name}`}
       >
-        <ProductMedia product={product} className="is-card" />
+        <ProductMedia
+          product={product}
+          images={cardImages}
+          showControls={false}
+          showDots={false}
+          className="is-card"
+        />
       </Link>
 
       <Link to={detailRoute} className="block flex-1">
