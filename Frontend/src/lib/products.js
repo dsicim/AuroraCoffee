@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
-import { buildApiUrl } from './api'
+import { fetchAuthJson } from './authRequest'
 import { getGeneratedProductImageUrl } from './productImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
@@ -56,11 +56,6 @@ function ensureProductCatalogScope(scope) {
 
   clearProductsCache()
   catalogScope = scope
-}
-
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-  return session?.token ? { authorization: session.token } : {}
 }
 
 function getScopedCatalogSnapshot() {
@@ -350,15 +345,7 @@ function hydrateWithKnownSlugs(rawProducts) {
 }
 
 async function requestJson(path, options = {}) {
-  const response = await fetch(buildApiUrl(path), {
-    ...options,
-    headers: {
-      ...getAuthorizationHeaders(),
-      ...(options.headers || {}),
-    },
-  })
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
+  const { response, payload, data } = await fetchAuthJson(path, options)
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Request failed')

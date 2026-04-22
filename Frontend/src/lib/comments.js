@@ -1,15 +1,10 @@
-import { buildApiUrl } from './api'
 import { getAuthSession, getCurrentUserSnapshot } from './auth'
+import { fetchAuthJson } from './authRequest'
 
 export const commentsChangeEvent = 'aurora-comments-change'
 
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
-}
-
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-  return session?.token ? { authorization: session.token } : {}
 }
 
 function dispatchCommentsChange(type = 'sync') {
@@ -429,16 +424,13 @@ export class CommentRequestError extends Error {
 
 async function requestCommentsJson(path, options = {}) {
   const { headers, ...fetchOptions } = options
-  const response = await fetch(buildApiUrl(path), {
+  const { response, payload, data } = await fetchAuthJson(path, {
     ...fetchOptions,
+    json: Boolean(fetchOptions.body),
     headers: {
-      ...(fetchOptions.body ? { 'Content-Type': 'application/json' } : {}),
-      ...getAuthorizationHeaders(),
       ...(headers || {}),
     },
   })
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
 
   if (!response.ok || data?.e || payload?.e) {
     throw new CommentRequestError(

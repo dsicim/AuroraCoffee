@@ -1,5 +1,5 @@
-import { buildApiUrl } from './api'
 import { getAuthSession } from './auth'
+import { fetchAuthJson } from './authRequest'
 
 export const addressBookChangeEvent = 'aurora-address-book-change'
 
@@ -136,23 +136,11 @@ function sortAddresses(addresses) {
   })
 }
 
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-  return session?.token ? { authorization: session.token } : {}
-}
-
 async function requestAddressJson(path = '', options = {}) {
-  const response = await fetch(buildApiUrl(`/address${path}`), {
+  const { response, payload, data } = await fetchAuthJson(`/address${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthorizationHeaders(),
-      ...(options.headers || {}),
-    },
+    json: true,
   })
-
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Address request failed')

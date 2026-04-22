@@ -1,5 +1,5 @@
-import { buildApiUrl } from './api'
 import { getAuthSession } from './auth'
+import { fetchAuthJson, fetchAuthResponse } from './authRequest'
 import {
   fetchProductsByIds,
   getProductCategoryLabel,
@@ -88,11 +88,6 @@ function dispatchOrdersChange(type, orderId = '') {
       },
     }),
   )
-}
-
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-  return session?.token ? { authorization: session.token } : {}
 }
 
 function sanitizeDownloadFilename(value, fallback = 'aurora-order.pdf') {
@@ -199,17 +194,10 @@ function ensureOrdersScope(scope) {
 }
 
 async function requestOrdersJson(path = '', options = {}) {
-  const response = await fetch(buildApiUrl(`/orders${path}`), {
+  const { response, payload, data } = await fetchAuthJson(`/orders${path}`, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthorizationHeaders(),
-      ...(options.headers || {}),
-    },
+    json: true,
   })
-
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Order request failed')
@@ -784,12 +772,11 @@ export async function downloadOrderPdf(orderId) {
     throw new Error('Sign in again to download this order PDF.')
   }
 
-  const response = await fetch(buildApiUrl(`/orders/pdf?id=${encodeURIComponent(normalizedOrderId)}`), {
+  const response = await fetchAuthResponse(`/orders/pdf?id=${encodeURIComponent(normalizedOrderId)}`, {
     method: 'GET',
     cache: 'no-store',
     headers: {
       accept: 'application/pdf, application/json;q=0.8',
-      ...getAuthorizationHeaders(),
     },
   })
   const contentType = (response.headers.get('content-type') || '').toLowerCase()

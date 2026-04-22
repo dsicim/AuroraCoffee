@@ -1,5 +1,5 @@
-import { buildApiUrl } from './api'
 import { getAuthSession, getAuthStorageMode } from './auth'
+import { fetchAuthJson } from './authRequest'
 import {
   fetchProductsByIds,
   getProductCategoryLabel,
@@ -506,28 +506,11 @@ function dispatchCartChange() {
   window.dispatchEvent(new Event(cartChangeEvent))
 }
 
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-
-  return session?.token
-    ? {
-        authorization: session.token,
-      }
-    : {}
-}
-
 async function requestCartJson(path, options = {}) {
-  const response = await fetch(buildApiUrl(path), {
+  const { response, payload, data } = await fetchAuthJson(path, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthorizationHeaders(),
-      ...(options.headers || {}),
-    },
+    json: true,
   })
-
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Cart request failed')

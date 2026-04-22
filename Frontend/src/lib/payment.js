@@ -1,5 +1,5 @@
-import { buildApiUrl } from './api'
 import { getAuthSession } from './auth'
+import { fetchAuthJson } from './authRequest'
 
 export const paymentMethodsChangeEvent = 'aurora-payment-methods-change'
 
@@ -123,11 +123,6 @@ function persistPaymentMethods(cards) {
   return cachedPaymentMethods
 }
 
-function getAuthorizationHeaders() {
-  const session = getAuthSession()
-  return session?.token ? { authorization: session.token } : {}
-}
-
 function buildPaymentErrorMessage(details, fallback = 'Payment request failed') {
   if (!details) {
     return fallback
@@ -151,17 +146,10 @@ function buildPaymentErrorMessage(details, fallback = 'Payment request failed') 
 }
 
 async function requestPaymentJson(path, options = {}) {
-  const response = await fetch(buildApiUrl(path), {
+  const { response, payload, data } = await fetchAuthJson(path, {
     ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...getAuthorizationHeaders(),
-      ...(options.headers || {}),
-    },
+    json: true,
   })
-
-  const payload = await response.json().catch(() => ({}))
-  const data = payload?.d ?? payload
   const errorDetails = data?.e || payload?.e || null
   const isExplicitSuccess = data?.success === true || payload?.success === true
 
