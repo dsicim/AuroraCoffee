@@ -10,6 +10,13 @@ export const currentUserFetchStatus = {
   unauthorized: 'unauthorized',
   error: 'error',
 }
+export const authStateStatus = {
+  guest: 'guest',
+  checking: 'checking',
+  authenticated: 'authenticated',
+  unauthorized: 'unauthorized',
+  error: 'error',
+}
 
 let cachedCurrentUser = null
 let cachedCurrentUserStatus = currentUserFetchStatus.idle
@@ -235,9 +242,7 @@ export function clearAuthSession() {
   invalidateStoredAuthSession()
 }
 
-export function getCurrentUserSnapshot() {
-  const session = readStoredSession()
-
+function getCurrentUserSnapshotForSession(session) {
   if (!session?.token) {
     return {
       user: null,
@@ -258,6 +263,55 @@ export function getCurrentUserSnapshot() {
     user: cachedCurrentUser,
     status: cachedCurrentUserStatus,
     token: cachedCurrentUserToken,
+  }
+}
+
+function getAuthStateStatus(session, currentUserState) {
+  if (!session?.token) {
+    return authStateStatus.guest
+  }
+
+  if (currentUserState.status === currentUserFetchStatus.unauthorized) {
+    return authStateStatus.unauthorized
+  }
+
+  if (currentUserState.status === currentUserFetchStatus.ok) {
+    return authStateStatus.authenticated
+  }
+
+  if (currentUserState.status === currentUserFetchStatus.error) {
+    return authStateStatus.error
+  }
+
+  return authStateStatus.checking
+}
+
+export function getCurrentUserSnapshot() {
+  return getCurrentUserSnapshotForSession(readStoredSession())
+}
+
+export function getAuthStateSnapshot() {
+  const session = readStoredSession()
+  const currentUserState = getCurrentUserSnapshotForSession(session)
+  const status = getAuthStateStatus(session, currentUserState)
+  const user = currentUserState.status === currentUserFetchStatus.ok
+    ? currentUserState.user
+    : null
+
+  return {
+    session,
+    token: session?.token || null,
+    user,
+    currentUserState,
+    status,
+    hasStoredSession: Boolean(session?.token),
+    hasUsableSession: Boolean(session?.token) && status !== authStateStatus.unauthorized,
+    hasVerifiedUser: Boolean(user),
+    shouldRequestLogin:
+      status === authStateStatus.guest ||
+      status === authStateStatus.unauthorized,
+    isChecking: status === authStateStatus.checking,
+    isProfileError: status === authStateStatus.error,
   }
 }
 
