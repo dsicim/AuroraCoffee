@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.jpeg'
+import auroraLogo from '../assets/aurora-logo.svg'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
@@ -126,7 +126,7 @@ export default function DashboardPage() {
             <img
               src={auroraLogo}
               alt="Aurora Coffee Roastery logo"
-              className="h-20 w-20 rounded-full object-cover shadow-[0_10px_28px_rgba(95,58,43,0.12)]"
+              className="h-20 w-20 rounded-[1.35rem] bg-white object-contain p-2 shadow-[0_10px_28px_rgba(95,58,43,0.12)]"
             />
             <div>
               <p className="font-display text-2xl text-[var(--aurora-text-strong)]">

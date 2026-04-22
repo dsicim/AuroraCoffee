@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.jpeg'
+import auroraLogo from '../assets/aurora-logo.svg'
 import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
 import LiquidThemeToggle from './LiquidThemeToggle'
@@ -370,7 +370,7 @@ export default function Header() {
                 <img
                   src={auroraLogo}
                   alt="Aurora Coffee Roastery logo"
-                  className="h-11 w-11 rounded-[1.1rem] border border-white/26 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.5rem]"
+                  className="h-11 w-11 rounded-[0.9rem] border border-white/26 bg-white object-contain p-1 shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.15rem] sm:p-1.5"
                 />
                 <div className="hidden min-w-0 sm:block">
                   <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">

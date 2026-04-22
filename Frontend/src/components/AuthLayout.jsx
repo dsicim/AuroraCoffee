@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.jpeg'
+import auroraLogo from '../assets/aurora-logo.svg'
 import AuroraAtmosphere from './AuroraAtmosphere'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
@@ -41,7 +41,7 @@ export default function AuthLayout({
             <img
               src={auroraLogo}
               alt="Aurora Coffee Roastery logo"
-              className="h-14 w-14 rounded-[1.4rem] border border-white/20 object-cover shadow-[0_18px_40px_rgba(31,19,13,0.14)] sm:h-20 sm:w-20 sm:rounded-[1.8rem]"
+              className="h-14 w-14 rounded-[1rem] border border-white/20 bg-white object-contain p-1.5 shadow-[0_18px_40px_rgba(31,19,13,0.14)] sm:h-20 sm:w-20 sm:rounded-[1.35rem] sm:p-2"
             />
             <div className="min-w-0">
               <p className="font-display text-[1.15rem] leading-tight text-[var(--aurora-text-strong)] sm:text-2xl">
