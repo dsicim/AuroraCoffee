@@ -28,6 +28,8 @@ CREATE TABLE IF NOT EXISTS comments (
     product_id BIGINT UNSIGNED,
     comment_text TEXT NOT NULL,
     edited_text TEXT DEFAULT NULL,
+    CHECK (CHAR_LENGTH(TRIM(comment_text)) > 0),
+    CHECK (edited_text IS NULL OR CHAR_LENGTH(TRIM(edited_text)) > 0),
     rating INT CHECK (rating BETWEEN 1 AND 5),
     edited_rating INT DEFAULT NULL CHECK (edited_rating IS NULL OR edited_rating BETWEEN 1 AND 5),
     status ENUM('pending', 'pending_edit', 'approved', 'rejected', 'edit_rejected') DEFAULT 'pending',
