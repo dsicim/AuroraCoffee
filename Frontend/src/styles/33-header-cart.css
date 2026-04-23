@@ -11,16 +11,18 @@
 
 .aurora-header-search {
   --aurora-header-search-width: clamp(13rem, 22vw, 20rem);
+  --aurora-header-search-height: 3.2rem;
   --aurora-header-search-button-size: 2.35rem;
   --aurora-header-search-button-offset: 0.38rem;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  width: 3.2rem;
-  min-width: 3.2rem;
-  min-height: 3.2rem;
-  flex: 0 0 3.2rem;
+  width: var(--aurora-header-search-height);
+  min-width: var(--aurora-header-search-height);
+  height: var(--aurora-header-search-height);
+  min-height: var(--aurora-header-search-height);
+  flex: 0 0 var(--aurora-header-search-height);
   z-index: 44;
 }
 
@@ -44,6 +46,19 @@
     visibility 0s linear 120ms;
 }
 
+.aurora-header-search-trigger.button-wrap:has(> .liquid-glass-control:hover),
+.aurora-header-search-trigger.button-wrap:has(> .liquid-glass-control:active) {
+  transform: translateY(-50%);
+}
+
+.aurora-header-search-trigger.button-wrap > .liquid-glass-control {
+  transform: translateY(0);
+}
+
+.aurora-header-search-trigger.button-wrap > .liquid-glass-control:hover {
+  transform: scale(0.99);
+}
+
 .aurora-header-shell {
   position: relative;
   isolation: isolate;
@@ -62,16 +77,18 @@
 
 .aurora-header-search-form {
   position: absolute;
-  top: 0;
+  top: 50%;
   right: 0;
-  bottom: 0;
+  bottom: auto;
   left: auto;
   z-index: 2;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 0;
-  width: 3.2rem;
-  min-height: 3.2rem;
+  width: var(--aurora-header-search-height);
+  height: var(--aurora-header-search-height);
+  min-height: 0;
   padding: 0.35rem calc(var(--aurora-header-search-button-size) + (var(--aurora-header-search-button-offset) * 2) + 0.38rem) 0.35rem 1rem;
   border: 1px solid color-mix(in srgb, var(--aurora-blue) 30%, var(--aurora-border));
   border-radius: 999px;
@@ -88,6 +105,7 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
+  transform: translate3d(0, -50%, 0);
   transition:
     width 260ms cubic-bezier(0.2, 0.82, 0.18, 1),
     opacity 150ms ease,
@@ -167,6 +185,19 @@
   right: var(--aurora-header-search-button-offset);
   z-index: 1;
   transform: translateY(-50%);
+}
+
+.aurora-header-search-submit.button-wrap.button-size-icon:has(> .liquid-glass-control:hover),
+.aurora-header-search-submit.button-wrap.button-size-icon:has(> .liquid-glass-control:active) {
+  transform: translateY(-50%);
+}
+
+.aurora-header-search-submit.button-wrap.button-size-icon > .liquid-glass-control {
+  transform: translateY(0);
+}
+
+.aurora-header-search-submit.button-wrap.button-size-icon > .liquid-glass-control:hover {
+  transform: scale(0.99);
 }
 
 .aurora-cart-menu {
