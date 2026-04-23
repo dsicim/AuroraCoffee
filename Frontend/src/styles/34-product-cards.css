@@ -441,10 +441,13 @@
     -webkit-backdrop-filter: blur(8px) saturate(118%);
   }
 
+  .aurora-header-search.is-open {
+    width: 3.2rem;
+  }
+
   .aurora-header-search-form {
     position: fixed;
-    left: 1rem;
-    right: 1rem;
+    inset: auto 1rem auto 1rem;
     top: calc(env(safe-area-inset-top, 0px) + 5.1rem);
     z-index: 45;
     width: auto;
@@ -456,6 +459,11 @@
       linear-gradient(180deg, rgb(255, 252, 248), rgb(248, 242, 235) 58%, rgb(241, 234, 226)),
       rgb(241, 234, 226);
     transform-origin: top right;
+    transform: translate3d(0, -0.55rem, 0) scale(0.985);
+  }
+
+  .aurora-header-search.is-open .aurora-header-search-form {
+    transform: translate3d(0, 0, 0) scale(1);
   }
 
   [data-theme='dark'] .aurora-header-search-form {

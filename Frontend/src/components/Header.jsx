@@ -405,57 +405,38 @@ export default function Header() {
             <div
               className="aurora-header-actions relative flex items-center justify-end gap-2 justify-self-end sm:gap-3"
             >
-              <div className="aurora-header-search">
-                {searchOpen ? (
-                  <form
-                    className="aurora-header-search-form"
-                    role="search"
-                    aria-label="Product search"
-                    onSubmit={handleHeaderSearchSubmit}
-                  >
-                    <input
-                      ref={searchInputRef}
-                      type="search"
-                      value={headerSearch}
-                      onChange={(event) => setHeaderSearch(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Escape') {
-                          closeHeaderInteractions(true)
-                        }
-                      }}
-                      placeholder="Search products"
-                      aria-label="Search products"
-                      name="header-search"
-                      autoComplete="off"
-                      spellCheck={false}
-                      className="aurora-header-search-input"
-                    />
-                    <LiquidGlassIconButton
-                      type="submit"
-                      aria-label="Search products"
-                      className="aurora-header-search-submit"
-                    >
-                      <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        className="h-5 w-5"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.9"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <circle cx="11" cy="11" r="7" />
-                        <path d="m20 20-3.5-3.5" />
-                      </svg>
-                    </LiquidGlassIconButton>
-                  </form>
-                ) : (
+              <div className={`aurora-header-search ${searchOpen ? 'is-open' : ''}`.trim()}>
+                <form
+                  className="aurora-header-search-form"
+                  role="search"
+                  aria-label="Product search"
+                  aria-hidden={searchOpen ? undefined : 'true'}
+                  onSubmit={handleHeaderSearchSubmit}
+                >
+                  <input
+                    ref={searchInputRef}
+                    type="search"
+                    value={headerSearch}
+                    onChange={(event) => setHeaderSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        closeHeaderInteractions(true)
+                      }
+                    }}
+                    placeholder="Search products"
+                    aria-label="Search products"
+                    name="header-search"
+                    autoComplete="off"
+                    spellCheck={false}
+                    tabIndex={searchOpen ? 0 : -1}
+                    className="aurora-header-search-input"
+                  />
                   <LiquidGlassIconButton
-                    type="button"
-                    ref={searchButtonRef}
-                    aria-label="Open product search"
-                    onClick={openHeaderSearch}
+                    type="submit"
+                    aria-label="Search products"
+                    className="aurora-header-search-submit"
+                    tabIndex={searchOpen ? 0 : -1}
+                    disabled={!searchOpen}
                   >
                     <svg
                       aria-hidden="true"
@@ -471,7 +452,31 @@ export default function Header() {
                       <path d="m20 20-3.5-3.5" />
                     </svg>
                   </LiquidGlassIconButton>
-                )}
+                </form>
+
+                <LiquidGlassIconButton
+                  type="button"
+                  ref={searchButtonRef}
+                  aria-label="Open product search"
+                  aria-hidden={searchOpen ? 'true' : undefined}
+                  onClick={openHeaderSearch}
+                  className="aurora-header-search-trigger"
+                  tabIndex={searchOpen ? -1 : 0}
+                >
+                  <svg
+                    aria-hidden="true"
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.9"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                </LiquidGlassIconButton>
               </div>
 
               <div className="relative">

@@ -10,9 +10,41 @@
 }
 
 .aurora-header-search {
+  --aurora-header-search-width: clamp(13rem, 22vw, 20rem);
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: flex-end;
+  width: 3.2rem;
+  min-width: 3.2rem;
+  min-height: 3.2rem;
+  flex: 0 0 auto;
+  transition: width 260ms cubic-bezier(0.2, 0.82, 0.18, 1);
+}
+
+.aurora-header-search.is-open {
+  width: var(--aurora-header-search-width);
+}
+
+.aurora-header-search-trigger {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  transition:
+    opacity 150ms ease,
+    transform 260ms cubic-bezier(0.2, 0.82, 0.18, 1),
+    visibility 0s linear 0s;
+}
+
+.aurora-header-search.is-open .aurora-header-search-trigger {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(-0.45rem, 0, 0) scale(0.94);
+  transition:
+    opacity 140ms ease,
+    transform 220ms cubic-bezier(0.2, 0.82, 0.18, 1),
+    visibility 0s linear 220ms;
 }
 
 .aurora-header-shell {
@@ -32,10 +64,13 @@
 }
 
 .aurora-header-search-form {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 0.45rem;
-  width: clamp(13rem, 22vw, 20rem);
+  width: 100%;
   min-height: 3.2rem;
   padding: 0.35rem 0.38rem 0.35rem 1rem;
   border: 1px solid color-mix(in srgb, var(--aurora-blue) 30%, var(--aurora-border));
@@ -49,7 +84,30 @@
     0 14px 30px color-mix(in srgb, var(--aurora-blue) 12%, transparent);
   backdrop-filter: blur(18px) saturate(150%);
   -webkit-backdrop-filter: blur(18px) saturate(150%);
-  animation: auroraHeaderSearchIn 180ms cubic-bezier(0.2, 0.82, 0.18, 1);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: translate3d(0.85rem, 0, 0) scale(0.985);
+  transform-origin: right center;
+  transition:
+    opacity 170ms ease,
+    transform 260ms cubic-bezier(0.2, 0.82, 0.18, 1),
+    visibility 0s linear 260ms,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.aurora-header-search.is-open .aurora-header-search-form {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translate3d(0, 0, 0) scale(1);
+  transition:
+    opacity 180ms ease 40ms,
+    transform 260ms cubic-bezier(0.2, 0.82, 0.18, 1),
+    visibility 0s linear 0s,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
 }
 
 .aurora-header-search-input {
@@ -66,16 +124,24 @@
 }
 
 .aurora-header-search-form:focus-within {
-  border-color: color-mix(in srgb, var(--aurora-fresh) 54%, var(--aurora-border));
+  border-color: color-mix(in srgb, var(--aurora-blue) 40%, var(--aurora-border));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.26),
-    0 0 0 3px color-mix(in srgb, var(--aurora-fresh) 26%, transparent),
     0 14px 30px color-mix(in srgb, var(--aurora-blue) 12%, transparent);
 }
 
 .aurora-header-search-input:focus,
 .aurora-header-search-input:focus-visible {
   box-shadow: none;
+}
+
+.aurora-header-search-form:has(.aurora-header-search-input:focus-visible),
+.aurora-header-search-form:has(.aurora-header-search-submit > .liquid-glass-control:focus-visible) {
+  border-color: color-mix(in srgb, var(--aurora-blue) 44%, var(--aurora-border));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 0 0 2px color-mix(in srgb, var(--aurora-blue) 16%, transparent),
+    0 14px 30px color-mix(in srgb, var(--aurora-blue) 12%, transparent);
 }
 
 .aurora-header-search-input::placeholder {
