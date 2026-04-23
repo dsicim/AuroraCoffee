@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 
 function normalizeMediaEntry(entry, index) {
@@ -74,6 +75,7 @@ export default function ProductMedia({
   className = '',
   imageClassName = '',
   loading = 'lazy',
+  enableLightbox = false,
 }) {
   const normalizedImages = useMemo(() => {
     const galleryEntries = Array.isArray(images) ? images : []
@@ -93,6 +95,7 @@ export default function ProductMedia({
   const shouldShowDots = showDots ?? supportsCarousel
   const isControlled = Number.isInteger(activeIndex)
   const [internalActiveIndex, setInternalActiveIndex] = useState(defaultActiveIndex)
+  const [isLightboxOpen, setIsLightboxOpen] = useState(false)
 
   const resolvedActiveIndex = wrapIndex(
     isControlled ? activeIndex : internalActiveIndex,
@@ -120,21 +123,136 @@ export default function ProductMedia({
     }
   }
 
+  const handleLightboxKeyDown = useEffectEvent((event) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setIsLightboxOpen(false)
+      return
+    }
+
+    if (!supportsCarousel) {
+      return
+    }
+
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault()
+      updateActiveIndex(resolvedActiveIndex - 1)
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault()
+      updateActiveIndex(resolvedActiveIndex + 1)
+    }
+  })
+
+  useEffect(() => {
+    if (!enableLightbox || !isLightboxOpen || typeof document === 'undefined') {
+      return undefined
+    }
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event) => handleLightboxKeyDown(event)
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [enableLightbox, isLightboxOpen])
+
+  const imageElement = (
+    <img
+      src={activeImage.src}
+      alt={alt}
+      width="800"
+      height="800"
+      loading={loading}
+      decoding="async"
+      className={`aurora-product-media-image ${imageClassName}`.trim()}
+      onError={handleImageError}
+    />
+  )
+
+  const lightbox = enableLightbox && isLightboxOpen && typeof document !== 'undefined'
+    ? createPortal(
+        <div
+          className="aurora-product-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${product?.name || 'Product'} image viewer`}
+          onClick={() => setIsLightboxOpen(false)}
+        >
+          <div
+            className="aurora-product-lightbox-frame"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="aurora-product-media-control aurora-product-lightbox-close"
+              aria-label="Close enlarged image"
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+
+            {supportsCarousel ? (
+              <button
+                type="button"
+                className="aurora-product-media-control aurora-product-lightbox-nav is-prev"
+                aria-label="Previous enlarged image"
+                onClick={() => updateActiveIndex(resolvedActiveIndex - 1)}
+              >
+                <span aria-hidden="true">‹</span>
+              </button>
+            ) : null}
+
+            <figure className="aurora-product-lightbox-figure">
+              <img
+                src={activeImage.src}
+                alt={alt}
+                className="aurora-product-lightbox-image"
+              />
+              {activeImage.label ? (
+                <figcaption className="aurora-product-lightbox-caption">
+                  {activeImage.label}
+                </figcaption>
+              ) : null}
+            </figure>
+
+            {supportsCarousel ? (
+              <button
+                type="button"
+                className="aurora-product-media-control aurora-product-lightbox-nav is-next"
+                aria-label="Next enlarged image"
+                onClick={() => updateActiveIndex(resolvedActiveIndex + 1)}
+              >
+                <span aria-hidden="true">›</span>
+              </button>
+            ) : null}
+          </div>
+        </div>,
+        document.body,
+      )
+    : null
+
   return (
-    <div
-      className={`aurora-product-media ${supportsCarousel ? 'is-gallery' : ''} ${className}`.trim()}
-      data-carousel={supportsCarousel ? 'true' : 'false'}
-    >
-      <img
-        src={activeImage.src}
-        alt={alt}
-        width="800"
-        height="800"
-        loading={loading}
-        decoding="async"
-        className={`aurora-product-media-image ${imageClassName}`.trim()}
-        onError={handleImageError}
-      />
+    <>
+      <div
+        className={`aurora-product-media ${supportsCarousel ? 'is-gallery' : ''} ${enableLightbox ? 'is-lightbox-enabled' : ''} ${className}`.trim()}
+        data-carousel={supportsCarousel ? 'true' : 'false'}
+      >
+        {enableLightbox ? (
+          <button
+            type="button"
+            className="aurora-product-media-launch"
+            aria-label={`Open enlarged view for ${alt}`}
+            onClick={() => setIsLightboxOpen(true)}
+          >
+            {imageElement}
+            <span className="aurora-product-media-zoom-hint">Click to enlarge</span>
+          </button>
+        ) : imageElement}
       {shouldShowControls && supportsCarousel ? (
         <div className="aurora-product-media-controls" aria-label="Product image navigation">
           <button
@@ -174,6 +292,8 @@ export default function ProductMedia({
           })}
         </div>
       ) : null}
-    </div>
+      </div>
+      {lightbox}
+    </>
   )
 }

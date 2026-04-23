@@ -1641,6 +1641,7 @@ export default function ProductDetailPage() {
             defaultActiveIndex={preferredGalleryImageIndex}
             className="is-detail mb-6"
             loading="eager"
+            enableLightbox
           />
 
           <AuroraInset className="mb-6">
