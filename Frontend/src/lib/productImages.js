@@ -10,6 +10,8 @@ import kenyanAaFilterImage from '../assets/products/kenyan-aa-filter.png'
 import matteBlackMugImage from '../assets/products/matte-black-mug.png'
 import morningBlendImage from '../assets/products/morning-blend.png'
 import napoliBlendImage from '../assets/products/napoli-blend.png'
+import urbanThermosBlackImage from '../assets/products/urban-thermos-black.png'
+import urbanThermosRedImage from '../assets/products/urban-thermos-red.png'
 import urbanThermosImage from '../assets/products/urban-thermos.png'
 import v60FilterPaperImage from '../assets/products/v60-filter-paper.png'
 
@@ -130,6 +132,28 @@ function normalizeSizeKey(value) {
   return ''
 }
 
+function normalizeColorKey(value) {
+  const normalizedValue = slugify(value)
+
+  if (!normalizedValue) {
+    return ''
+  }
+
+  if (normalizedValue.includes('black')) {
+    return 'black'
+  }
+
+  if (normalizedValue.includes('red')) {
+    return 'red'
+  }
+
+  return ''
+}
+
+function normalizeGalleryVariantKey(value) {
+  return normalizeSizeKey(value) || normalizeColorKey(value)
+}
+
 function getSelectedSizeKeyFromSelection(selectedOptionsByGroup) {
   if (!selectedOptionsByGroup || typeof selectedOptionsByGroup !== 'object') {
     return ''
@@ -201,7 +225,9 @@ function normalizeGalleryEntry(entry, index = 0) {
   }
 
   const label = normalizeText(entry.label || entry.title || entry.alt)
-  const variantKey = normalizeSizeKey(entry.variantKey || entry.size || entry.sizeCode || label)
+  const variantKey = normalizeGalleryVariantKey(
+    entry.variantKey || entry.size || entry.sizeCode || entry.color || label,
+  )
 
   return {
     key: normalizeCode(entry.key || entry.id || entry.name || `${src}-${index}`) || `image-${index}`,
@@ -238,6 +264,15 @@ function normalizeSelectedOptionCode(product, selectedOptionsByGroup, group) {
     ]
       .filter(Boolean)
       .join(' '),
+  ) || normalizeColorKey(
+    [
+      group?.name,
+      selectedValue?.label,
+      selectedCode,
+      product?.name,
+    ]
+      .filter(Boolean)
+      .join(' '),
   )
 }
 
@@ -246,6 +281,16 @@ function getSelectedGalleryVariantKey(product, selectedOptionsByGroup) {
 
   if (selectedSizeKey) {
     return selectedSizeKey
+  }
+
+  for (const [groupKey, selectedCode] of Object.entries(selectedOptionsByGroup || {})) {
+    const selectedColorKey = normalizeColorKey(
+      [groupKey, selectedCode].filter(Boolean).join(' '),
+    )
+
+    if (selectedColorKey) {
+      return selectedColorKey
+    }
   }
 
   const optionGroups = Array.isArray(product?.options) ? product.options : []
@@ -309,6 +354,51 @@ function buildCoffeeGalleryImages(product, selectedOptionsByGroup) {
   return gallery
 }
 
+function buildUrbanThermosGalleryImages(product, selectedOptionsByGroup) {
+  const slug = normalizeCode(product?.slug)
+
+  if (slug !== 'urban-thermos') {
+    return []
+  }
+
+  const selectedVariantKey = getSelectedGalleryVariantKey(product, selectedOptionsByGroup)
+  const gallery = [
+    normalizeGalleryEntry(
+      {
+        key: `${slug}-black`,
+        src: urbanThermosBlackImage,
+        alt: product?.name ? `${product.name} black` : 'Black thermos product image',
+        label: 'Black',
+        variantKey: 'black',
+        optionValueCodes: { color: 'black' },
+      },
+      0,
+    ),
+    normalizeGalleryEntry(
+      {
+        key: `${slug}-red`,
+        src: urbanThermosRedImage,
+        alt: product?.name ? `${product.name} red` : 'Red thermos product image',
+        label: 'Red',
+        variantKey: 'red',
+        optionValueCodes: { color: 'red' },
+      },
+      1,
+    ),
+  ].filter(Boolean)
+
+  if (selectedVariantKey) {
+    const preferredIndex = gallery.findIndex((entry) => entry.variantKey === selectedVariantKey)
+
+    if (preferredIndex > 0) {
+      const [preferredImage] = gallery.splice(preferredIndex, 1)
+      gallery.unshift(preferredImage)
+    }
+  }
+
+  return gallery
+}
+
 export function getProductGalleryImages(product, selectedOptionsByGroup = {}) {
   const providedGallery = getProvidedGalleryImages(product)
 
@@ -320,6 +410,12 @@ export function getProductGalleryImages(product, selectedOptionsByGroup = {}) {
 
   if (coffeeGallery.length) {
     return coffeeGallery
+  }
+
+  const urbanThermosGallery = buildUrbanThermosGalleryImages(product, selectedOptionsByGroup)
+
+  if (urbanThermosGallery.length) {
+    return urbanThermosGallery
   }
 
   const generatedImage = getGeneratedProductImageUrl(product)
