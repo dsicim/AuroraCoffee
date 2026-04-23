@@ -54,6 +54,8 @@
 .aurora-product-media.is-detail {
   aspect-ratio: 3 / 2;
   border-radius: 1.85rem;
+  isolation: isolate;
+  contain: paint;
 }
 
 .aurora-product-media.is-gallery {
@@ -68,6 +70,23 @@
   filter: saturate(0.96) contrast(1.04);
   transform: none;
   transition: transform 260ms var(--anim--hover-ease), filter 260ms ease;
+}
+
+.aurora-product-hero-card {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+.aurora-product-hero-card .aurora-product-media-image {
+  filter: none;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+.aurora-product-hero-card .aurora-product-media::after {
+  opacity: 0.24;
 }
 
 .aurora-product-card:hover .aurora-product-media-image {
