@@ -85,16 +85,19 @@
   }
 
   .aurora-home-visual {
-    right: clamp(0.75rem, 4vw, 2rem);
-    bottom: 0.75rem;
-    width: min(28rem, 62vw);
+    position: relative;
+    right: auto;
+    bottom: auto;
+    justify-self: start;
+    width: min(28rem, 82vw);
     height: min(18rem, 42vw);
+    margin-top: 0.25rem;
   }
 
   .aurora-home-roast-note {
     position: absolute;
-    right: 4%;
-    bottom: 35%;
+    right: clamp(0.75rem, 6vw, 1.5rem);
+    bottom: clamp(0.75rem, 7vw, 1.75rem);
     margin-top: 0;
   }
 }
