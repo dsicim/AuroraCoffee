@@ -367,7 +367,7 @@ export default function Header() {
                 <img
                   src={brandLogo}
                   alt="Aurora Coffee Roastery logo"
-                  className="aurora-brand-mark aurora-header-brand-mark h-12 w-12 rounded-[1rem] object-contain p-1 sm:h-16 sm:w-16 sm:rounded-[1.15rem] sm:p-1.5"
+                  className="aurora-brand-mark aurora-header-brand-mark h-12 w-12 rounded-[1rem] object-contain p-0 sm:h-16 sm:w-16 sm:rounded-[1.15rem]"
                 />
                 <div className="hidden min-w-0 sm:block">
                   <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">

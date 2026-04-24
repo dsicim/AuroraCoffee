@@ -46,7 +46,7 @@ export default function AuthLayout({
             <img
               src={brandLogo}
               alt="Aurora Coffee Roastery logo"
-              className="aurora-brand-mark h-14 w-14 rounded-[1rem] object-contain p-1.5 sm:h-20 sm:w-20 sm:rounded-[1.35rem] sm:p-2"
+              className="aurora-brand-mark h-14 w-14 rounded-[1rem] object-contain p-0 sm:h-20 sm:w-20 sm:rounded-[1.35rem]"
             />
             <div className="min-w-0">
               <p className="font-display text-[1.15rem] leading-tight text-[var(--aurora-text-strong)] sm:text-2xl">

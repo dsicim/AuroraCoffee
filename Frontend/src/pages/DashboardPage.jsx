@@ -130,7 +130,7 @@ export default function DashboardPage() {
             <img
               src={brandLogo}
               alt="Aurora Coffee Roastery logo"
-              className="aurora-brand-mark h-20 w-20 rounded-[1.35rem] object-contain p-2"
+              className="aurora-brand-mark h-20 w-20 rounded-[1.35rem] object-contain p-0"
             />
             <div>
               <p className="font-display text-2xl text-[var(--aurora-text-strong)]">
