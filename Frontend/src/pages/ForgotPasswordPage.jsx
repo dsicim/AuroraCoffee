@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import AuthLayout from '../components/AuthLayout'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import { buildApiUrl } from '../lib/api'
+import { buildApiUrl } from '../shared/api/api'
 import { validateEmail } from '../lib/validation'
 
 function getMessage(payload, fallbackMessage) {

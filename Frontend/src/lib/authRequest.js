@@ -1,4 +1,4 @@
-import { buildApiUrl } from './api'
+import { buildApiUrl } from '../shared/api/api'
 import { clearAuthSession, getAuthSession } from './auth'
 
 export function getAuthorizationHeaders() {
