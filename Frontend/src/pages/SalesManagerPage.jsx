@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { getOrderHistory } from '../lib/accountData'
 import { getOrderStatus } from '../lib/accountActions'

@@ -11,8 +11,8 @@ import {
 import { getTaxInclusionCopy } from '../lib/tax'
 import { getProductGalleryImages } from '../lib/productImages'
 import FavoriteToggleButton from './FavoriteToggleButton'
-import LiquidGlassButton from './LiquidGlassButton'
-import LiquidGlassFrame from './LiquidGlassFrame'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import ProductMedia from './ProductMedia'
 
 function keepHyphenatedWordsTogether(value) {

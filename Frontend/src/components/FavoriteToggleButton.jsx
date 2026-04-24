@@ -11,7 +11,7 @@ import {
   currentUserChangeEvent,
   getAuthStateSnapshot,
 } from '../lib/auth'
-import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
+import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/ui/LiquidGlassButton'
 
 export default function FavoriteToggleButton({
   productId,

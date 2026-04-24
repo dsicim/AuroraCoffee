@@ -1,9 +1,9 @@
 import { Link } from 'react-router-dom'
-import AuroraAtmosphere from './AuroraAtmosphere'
-import Footer from './Footer'
+import AuroraAtmosphere from '../shared/components/common/AuroraAtmosphere'
+import Footer from '../shared/components/layout/Footer'
 import Header from './Header'
-import LiquidGlassButton from './LiquidGlassButton'
-import LiquidGlassDefs from './LiquidGlassDefs'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import LiquidGlassDefs from '../shared/components/ui/LiquidGlassDefs'
 
 export default function RoleOverviewLayout({
   eyebrow,

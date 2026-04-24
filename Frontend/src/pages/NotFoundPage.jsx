@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import LiquidGlassButton from '../components/LiquidGlassButton'
-import StorefrontLayout from '../components/StorefrontLayout'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 
 export default function NotFoundPage() {
   const hero = (

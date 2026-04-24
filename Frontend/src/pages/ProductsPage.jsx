@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import AuroraWidget from '../components/AuroraWidget'
-import LiquidGlassButton from '../components/LiquidGlassButton'
-import LiquidGlassFrame from '../components/LiquidGlassFrame'
+import AuroraWidget from '../shared/components/ui/AuroraWidget'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import ProductCard from '../components/ProductCard'
-import StorefrontLayout from '../components/StorefrontLayout'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
   getProductCategories,
   getProductCategoryName,

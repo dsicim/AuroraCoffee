@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments, moderateProductComment } from '../lib/comments'
 import { themePreferences } from '../lib/theme'

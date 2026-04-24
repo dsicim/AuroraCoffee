@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import auroraLogoDark from '../assets/aurora-logo-dark.png'
 import auroraLogoLight from '../assets/aurora-logo-light.png'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import {
   authChangeEvent,
   clearAuthSession,

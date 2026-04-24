@@ -1,10 +1,10 @@
 import { Link } from 'react-router-dom'
 import auroraLogoDark from '../assets/aurora-logo-dark.png'
 import auroraLogoLight from '../assets/aurora-logo-light.png'
-import AuroraAtmosphere from './AuroraAtmosphere'
-import LiquidGlassButton from './LiquidGlassButton'
-import LiquidGlassFrame from './LiquidGlassFrame'
-import LiquidGlassDefs from './LiquidGlassDefs'
+import AuroraAtmosphere from '../shared/components/common/AuroraAtmosphere'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
+import LiquidGlassDefs from '../shared/components/ui/LiquidGlassDefs'
 import { useTheme } from '../lib/theme-context'
 
 const toneClasses = {

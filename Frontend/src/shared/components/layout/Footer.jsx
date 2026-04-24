@@ -1,5 +1,5 @@
-import LiquidThemeToggle from './LiquidThemeToggle'
-import { useTheme } from '../lib/theme-context'
+import LiquidThemeToggle from '../../../components/LiquidThemeToggle'
+import { useTheme } from '../../../lib/theme-context'
 
 export default function Footer() {
   const { themePreference, resolvedTheme, setThemePreference } = useTheme()

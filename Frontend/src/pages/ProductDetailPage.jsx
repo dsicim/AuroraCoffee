@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
-import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
+import AuroraWidget, { AuroraInset } from '../shared/components/ui/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
 import ProductMedia from '../components/ProductMedia'
-import StorefrontLayout from '../components/StorefrontLayout'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
   authChangeEvent,
   currentUserChangeEvent,

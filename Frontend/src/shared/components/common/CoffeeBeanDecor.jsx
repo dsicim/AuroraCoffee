@@ -1,4 +1,4 @@
-import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import coffeeSketch from '../../../assets/coffee-sketch.jpeg'
 
 const beans = [
   {

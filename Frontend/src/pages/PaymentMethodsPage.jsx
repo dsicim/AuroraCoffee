@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import AccountLayout from '../components/AccountLayout'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import {
   deletePaymentMethod,
   fetchPaymentMethods,

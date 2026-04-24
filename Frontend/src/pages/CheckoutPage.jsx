@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import LiquidGlassButton from '../components/LiquidGlassButton'
-import StorefrontLayout from '../components/StorefrontLayout'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import { formatCurrency } from '../lib/currency'
 import {
   getCityOptions,

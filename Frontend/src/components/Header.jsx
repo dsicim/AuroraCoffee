@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import auroraLogoDark from '../assets/aurora-logo-dark.png'
 import auroraLogoLight from '../assets/aurora-logo-light.png'
-import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
-import LiquidGlassFrame from './LiquidGlassFrame'
+import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/ui/LiquidGlassButton'
+import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import {
   authChangeEvent,
   clearAuthSession,

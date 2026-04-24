@@ -1,7 +1,7 @@
+import Header from '../../../components/Header'
 import Footer from './Footer'
-import Header from './Header'
-import AuroraAtmosphere from './AuroraAtmosphere'
-import LiquidGlassDefs from './LiquidGlassDefs'
+import AuroraAtmosphere from '../common/AuroraAtmosphere'
+import LiquidGlassDefs from '../ui/LiquidGlassDefs'
 
 export default function StorefrontLayout({
   hero = null,

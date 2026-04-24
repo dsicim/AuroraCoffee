@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import AuroraWidget, { AuroraInset } from '../components/AuroraWidget'
-import LiquidGlassButton, { LiquidGlassStepperButton } from '../components/LiquidGlassButton'
-import StorefrontLayout from '../components/StorefrontLayout'
+import AuroraWidget, { AuroraInset } from '../shared/components/ui/AuroraWidget'
+import LiquidGlassButton, { LiquidGlassStepperButton } from '../shared/components/ui/LiquidGlassButton'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import { getAuthSession } from '../lib/auth'
 import { formatCurrency } from '../lib/currency'
 import {

@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
-import AuroraWidget from '../components/AuroraWidget'
-import LiquidGlassButton from '../components/LiquidGlassButton'
+import AuroraWidget from '../shared/components/ui/AuroraWidget'
+import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import ProductCard from '../components/ProductCard'
-import StorefrontLayout from '../components/StorefrontLayout'
+import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import { useProductCatalog } from '../lib/products'
 

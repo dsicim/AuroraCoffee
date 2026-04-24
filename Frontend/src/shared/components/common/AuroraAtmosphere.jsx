@@ -1,4 +1,4 @@
-import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import coffeeSketch from '../../../assets/coffee-sketch.jpeg'
 
 const bubbles = [
   'left-[7%] top-[72%] h-10 w-10',
