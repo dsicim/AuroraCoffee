@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.svg'
+import auroraLogoDark from '../assets/aurora-logo-dark.png'
+import auroraLogoLight from '../assets/aurora-logo-light.png'
 import LiquidGlassButton, { LiquidGlassIconButton } from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
-import LiquidThemeToggle from './LiquidThemeToggle'
 import {
   authChangeEvent,
   clearAuthSession,
@@ -45,7 +45,7 @@ export default function Header() {
   const searchButtonRef = useRef(null)
   const cartButtonRef = useRef(null)
   const mobileNavButtonRef = useRef(null)
-  const { themePreference, resolvedTheme, setThemePreference } = useTheme()
+  const { resolvedTheme } = useTheme()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -65,10 +65,7 @@ export default function Header() {
       : authState.isProfileError
         ? 'Account session'
         : 'Coffee Lover')
-  const currentThemeLabel = resolvedTheme === 'dark' ? 'Dark' : 'Light'
-  const themeStatusCopy = themePreference === 'system'
-    ? `Following system: ${currentThemeLabel}`
-    : `Manual theme: ${currentThemeLabel}`
+  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
 
   useEffect(() => {
     const syncSessionState = () => {
@@ -368,9 +365,9 @@ export default function Header() {
 
               <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <img
-                  src={auroraLogo}
+                  src={brandLogo}
                   alt="Aurora Coffee Roastery logo"
-                  className="h-11 w-11 rounded-[0.9rem] border border-white/26 bg-white object-contain p-1 shadow-[0_18px_40px_rgba(31,19,13,0.16)] sm:h-16 sm:w-16 sm:rounded-[1.15rem] sm:p-1.5"
+                  className="aurora-brand-mark aurora-header-brand-mark h-12 w-12 rounded-[1rem] object-contain p-1 sm:h-16 sm:w-16 sm:rounded-[1.15rem] sm:p-1.5"
                 />
                 <div className="hidden min-w-0 sm:block">
                   <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">
@@ -651,24 +648,6 @@ export default function Header() {
                     </LiquidGlassButton>
                   )
                 })}
-
-                <div className="aurora-mobile-nav-theme mt-1 rounded-[1.2rem] px-3 py-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="aurora-kicker">Theme</p>
-                      <p className="mt-2 text-sm leading-6 text-[var(--aurora-text)]">
-                        {themeStatusCopy}
-                      </p>
-                    </div>
-                    <LiquidThemeToggle
-                      value={themePreference}
-                      onValueChange={setThemePreference}
-                      size="panel"
-                      ariaLabel="Choose theme"
-                      className="aurora-mobile-theme-toggle"
-                    />
-                  </div>
-                </div>
               </nav>
             </LiquidGlassFrame>
           </div>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.svg'
+import auroraLogoDark from '../assets/aurora-logo-dark.png'
+import auroraLogoLight from '../assets/aurora-logo-light.png'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import LiquidGlassButton from '../components/LiquidGlassButton'
 import {
@@ -12,9 +13,11 @@ import {
   getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
+import { useTheme } from '../lib/theme-context'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
+  const { resolvedTheme } = useTheme()
   const [session, setSession] = useState(() => getAuthSession())
   const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const sessionToken = session?.token
@@ -112,6 +115,7 @@ export default function DashboardPage() {
 
   const displayName = user?.displayname || 'Coffee Lover'
   const displayEmail = user?.username || sessionEmail
+  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#f5e1d1_0%,#ebc3a6_42%,#d89a78_100%)] px-6 py-8 lg:px-10">
@@ -124,9 +128,9 @@ export default function DashboardPage() {
         <header className="flex items-center justify-between gap-6">
           <Link to="/" className="flex items-center gap-4">
             <img
-              src={auroraLogo}
+              src={brandLogo}
               alt="Aurora Coffee Roastery logo"
-              className="h-20 w-20 rounded-[1.35rem] bg-white object-contain p-2 shadow-[0_10px_28px_rgba(95,58,43,0.12)]"
+              className="aurora-brand-mark h-20 w-20 rounded-[1.35rem] object-contain p-2"
             />
             <div>
               <p className="font-display text-2xl text-[var(--aurora-text-strong)]">

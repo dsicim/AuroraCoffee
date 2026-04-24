@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
-import auroraLogo from '../assets/aurora-logo.svg'
+import auroraLogoDark from '../assets/aurora-logo-dark.png'
+import auroraLogoLight from '../assets/aurora-logo-light.png'
 import AuroraAtmosphere from './AuroraAtmosphere'
 import LiquidGlassButton from './LiquidGlassButton'
 import LiquidGlassFrame from './LiquidGlassFrame'
 import LiquidGlassDefs from './LiquidGlassDefs'
+import { useTheme } from '../lib/theme-context'
 
 const toneClasses = {
   error: 'aurora-message aurora-message-error',
@@ -30,6 +32,9 @@ export default function AuthLayout({
   footer = null,
   children,
 }) {
+  const { resolvedTheme } = useTheme()
+  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
+
   return (
     <div className="aurora-page px-3 py-4 sm:px-6 lg:px-10 lg:py-8">
       <LiquidGlassDefs />
@@ -39,9 +44,9 @@ export default function AuthLayout({
         <header className="flex items-start justify-between gap-3 sm:items-center sm:gap-4">
           <Link to="/" className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
-              src={auroraLogo}
+              src={brandLogo}
               alt="Aurora Coffee Roastery logo"
-              className="h-14 w-14 rounded-[1rem] border border-white/20 bg-white object-contain p-1.5 shadow-[0_18px_40px_rgba(31,19,13,0.14)] sm:h-20 sm:w-20 sm:rounded-[1.35rem] sm:p-2"
+              className="aurora-brand-mark h-14 w-14 rounded-[1rem] object-contain p-1.5 sm:h-20 sm:w-20 sm:rounded-[1.35rem] sm:p-2"
             />
             <div className="min-w-0">
               <p className="font-display text-[1.15rem] leading-tight text-[var(--aurora-text-strong)] sm:text-2xl">

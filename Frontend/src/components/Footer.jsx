@@ -24,7 +24,7 @@ export default function Footer() {
             </p>
           </div>
 
-          <div className="hidden sm:block">
+          <div className="hidden lg:block">
             <p className="aurora-kicker">Theme</p>
             <p className="mt-3 text-sm leading-6 text-[var(--aurora-text)]">
               {themeStatusCopy}
