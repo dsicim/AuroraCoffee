@@ -244,10 +244,8 @@
 }
 
 .aurora-cart-menu {
-  max-height: min(32rem, calc(100vh - 5.5rem));
-  overflow-x: hidden;
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  max-height: none;
+  overflow: hidden;
   border-color: transparent;
   border-top-left-radius: 0;
   border-top-right-radius: 0;
@@ -265,14 +263,6 @@
     0 14px 32px color-mix(in srgb, var(--aurora-blue) 9%, transparent);
   backdrop-filter: blur(16px) saturate(136%);
   -webkit-backdrop-filter: blur(16px) saturate(136%);
-  scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--aurora-text-muted) 46%, transparent) transparent;
-}
-
-@supports (height: 100svh) {
-  .aurora-cart-menu {
-    max-height: min(32rem, calc(100svh - 5.5rem));
-  }
 }
 
 .aurora-cart-menu-summary {
