@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import AccountLayout from '../components/AccountLayout'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import OrderPdfDownloadButton from '../components/OrderPdfDownloadButton'
-import { authChangeEvent } from '../lib/auth'
-import { buildRestoreMessage, restoreOrderItemsToCart } from '../lib/accountActions'
-import { formatCartOptionLabel, getCartOptionEntries } from '../lib/cart'
-import { formatCurrency } from '../lib/currency'
+import AccountLayout from '../../../components/AccountLayout'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
+import OrderDeliverySummary from '../../delivery/presentation/OrderDeliverySummary'
+import { authChangeEvent } from '../../auth/application/auth'
+import { buildRestoreMessage, restoreOrderItemsToCart } from '../../../lib/accountActions'
+import { formatCartOptionLabel, getCartOptionEntries } from '../../../lib/cart'
+import { formatCurrency } from '../../../lib/currency'
 import {
   fetchOrderById,
   getCachedOrderById,
@@ -14,8 +15,8 @@ import {
   getOrderStatusPresentation,
   orderProgressSteps,
   ordersChangeEvent,
-} from '../lib/orders'
-import { getLinePriceBreakdown } from '../lib/tax'
+} from '../application/orders'
+import { getLinePriceBreakdown } from '../../../lib/tax'
 
 function formatTimestamp(value) {
   const timestamp = Date.parse(value || '')
@@ -27,14 +28,6 @@ function formatTimestamp(value) {
   return new Date(timestamp).toLocaleString('en-GB', {
     hour12: false,
   })
-}
-
-function getAddressLines(address) {
-  if (!address) {
-    return []
-  }
-
-  return [address.addressLine1, address.addressLine2].filter(Boolean)
 }
 
 function renderOrderItemOptions(item) {
@@ -429,31 +422,7 @@ export default function OrderDetailPage() {
             </div>
 
             <div className="space-y-4">
-              <div className="aurora-solid-plate rounded-[1.75rem] p-5">
-                <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                  Delivery summary
-                </p>
-                {order.delivery ? (
-                  <div className="mt-4 text-sm leading-8 text-[var(--aurora-text)]">
-                    {order.delivery.fullName ? (
-                      <p className="font-semibold text-[var(--aurora-text-strong)]">
-                        {order.delivery.fullName}
-                      </p>
-                    ) : null}
-                    {getAddressLines(order.delivery).map((line) => (
-                      <p key={line}>{line}</p>
-                    ))}
-                    <p>
-                      {order.delivery.district}, {order.delivery.province} {order.delivery.postalCode}
-                    </p>
-                    {order.delivery.phone ? <p>{order.delivery.phone}</p> : null}
-                  </div>
-                ) : (
-                  <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                    Delivery details are not available for this order.
-                  </p>
-                )}
-              </div>
+              <OrderDeliverySummary delivery={order.delivery} />
 
               <div className="aurora-ops-card p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">

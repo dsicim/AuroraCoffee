@@ -7,8 +7,8 @@ import {
   fetchCurrentUserResult,
   getCurrentUserSnapshot,
   getAuthSession,
-} from '../lib/auth'
-import { getRoleLandingPath } from '../lib/roles'
+} from '../application/auth'
+import { getRoleLandingPath } from '../domain/roles'
 
 export default function RoleLandingRedirect() {
   const navigate = useNavigate()

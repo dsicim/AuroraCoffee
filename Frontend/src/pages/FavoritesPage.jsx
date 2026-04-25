@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import ProductCard from '../components/ProductCard'
+import ProductCard from '../features/products/presentation/ProductCard'
 import { addDefaultProductToCart } from '../lib/accountActions'
 import {
   accountDataChangeEvent,

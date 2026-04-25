@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import coffeeSketch from '../assets/coffee-sketch.jpeg'
+import coffeeSketch from '../../../assets/coffee-sketch.jpeg'
 
 function normalizeMediaEntry(entry, index) {
   if (!entry) {

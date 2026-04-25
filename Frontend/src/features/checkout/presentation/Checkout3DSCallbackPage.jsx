@@ -1,21 +1,21 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import AuroraAtmosphere from '../shared/components/common/AuroraAtmosphere'
-import Footer from '../shared/components/layout/Footer'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import LiquidGlassDefs from '../shared/components/ui/LiquidGlassDefs'
-import { getAuthSession } from '../lib/auth'
-import { clearCart, reconcileCartStorageWithAuth } from '../lib/cart'
-import { formatCurrency } from '../lib/currency'
-import { fetchOrderById, fetchOrders } from '../lib/orders'
-import { formatPaymentError } from '../lib/payment'
-import { getItemsPriceBreakdown } from '../lib/tax'
+import AuroraAtmosphere from '../../../shared/components/common/AuroraAtmosphere'
+import Footer from '../../../shared/components/layout/Footer'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import LiquidGlassDefs from '../../../shared/components/ui/LiquidGlassDefs'
+import { getAuthSession } from '../../../lib/auth'
+import { clearCart, reconcileCartStorageWithAuth } from '../../../lib/cart'
+import { formatCurrency } from '../../../lib/currency'
+import { fetchOrderById, fetchOrders } from '../../../lib/orders'
+import { formatPaymentError } from '../application/payment'
+import { getItemsPriceBreakdown } from '../../../lib/tax'
 import {
   buildSubmittedOrderSnapshotFromPending,
   consumePending3DSCheckoutSnapshot,
   parse3DSCallbackResult,
   saveCheckout3DSReturnState,
-} from '../lib/payment3ds'
+} from '../application/payment3ds'
 
 function Checkout3DSCallbackLayout({ hero, children }) {
   return (

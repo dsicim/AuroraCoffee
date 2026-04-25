@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import AccountLayout from '../components/AccountLayout'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import OrderPdfDownloadButton from '../components/OrderPdfDownloadButton'
-import { authChangeEvent } from '../lib/auth'
+import AccountLayout from '../../../components/AccountLayout'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
+import { authChangeEvent } from '../../auth/application/auth'
 import {
   fetchOrders,
   getOrdersSnapshot,
   getOrderStatusPresentation,
   ordersChangeEvent,
-} from '../lib/orders'
+} from '../application/orders'
 
 function formatTimestamp(value) {
   const timestamp = Date.parse(value || '')

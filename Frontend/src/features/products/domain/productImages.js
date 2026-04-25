@@ -1,22 +1,22 @@
-import brazilSantosImage from '../assets/products/brazil-santos.png'
-import burrGrinderProImage from '../assets/products/burr-grinder-pro.png'
-import classicFrenchPressImage from '../assets/products/classic-french-press.png'
-import colombiaHuilaImage from '../assets/products/colombia-huila.png'
-import darkEspressoRoastImage from '../assets/products/dark-espresso-roast.png'
-import ethiopiaYirgacheffeImage from '../assets/products/ethiopia-yirgacheffe.png'
-import glassDripServerImage from '../assets/products/glass-drip-server.png'
-import guatemalaGreenValleyImage from '../assets/products/guatemala-green-valley.png'
-import kenyanAaFilterImage from '../assets/products/kenyan-aa-filter.png'
-import matteBlackMugImage from '../assets/products/matte-black-mug.png'
-import morningBlendImage from '../assets/products/morning-blend.png'
-import napoliBlendImage from '../assets/products/napoli-blend.png'
-import urbanThermosBlackImage from '../assets/products/urban-thermos-black.png'
-import urbanThermosRedImage from '../assets/products/urban-thermos-red.png'
-import urbanThermosImage from '../assets/products/urban-thermos.png'
-import v60FilterPaperImage from '../assets/products/v60-filter-paper.png'
+import brazilSantosImage from '../../../assets/products/brazil-santos.png'
+import burrGrinderProImage from '../../../assets/products/burr-grinder-pro.png'
+import classicFrenchPressImage from '../../../assets/products/classic-french-press.png'
+import colombiaHuilaImage from '../../../assets/products/colombia-huila.png'
+import darkEspressoRoastImage from '../../../assets/products/dark-espresso-roast.png'
+import ethiopiaYirgacheffeImage from '../../../assets/products/ethiopia-yirgacheffe.png'
+import glassDripServerImage from '../../../assets/products/glass-drip-server.png'
+import guatemalaGreenValleyImage from '../../../assets/products/guatemala-green-valley.png'
+import kenyanAaFilterImage from '../../../assets/products/kenyan-aa-filter.png'
+import matteBlackMugImage from '../../../assets/products/matte-black-mug.png'
+import morningBlendImage from '../../../assets/products/morning-blend.png'
+import napoliBlendImage from '../../../assets/products/napoli-blend.png'
+import urbanThermosBlackImage from '../../../assets/products/urban-thermos-black.png'
+import urbanThermosRedImage from '../../../assets/products/urban-thermos-red.png'
+import urbanThermosImage from '../../../assets/products/urban-thermos.png'
+import v60FilterPaperImage from '../../../assets/products/v60-filter-paper.png'
 
 const productAttributeImageModules = import.meta.glob(
-  '../assets/products/attribute-images/*.jpg',
+  '../../../assets/products/attribute-images/*.jpg',
   {
     eager: true,
     import: 'default',

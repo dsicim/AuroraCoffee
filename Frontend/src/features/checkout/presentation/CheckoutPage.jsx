@@ -1,30 +1,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
-import { formatCurrency } from '../lib/currency'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import StorefrontLayout from '../../../shared/components/layout/StorefrontLayout'
+import { formatCurrency } from '../../../lib/currency'
 import {
   getCityOptions,
   getCityOptionValue,
   sanitizePostalCode,
-} from '../lib/address'
+} from '../../../lib/address'
 import {
   accountDataChangeEvent,
   reconcileAccountStorageWithAuth,
-} from '../lib/accountData'
+} from '../../../lib/accountData'
 import {
   addressBookChangeEvent,
   fetchSavedAddressById,
   fetchSavedAddresses,
   getSavedAddresses,
-} from '../lib/addressBook'
+} from '../../../lib/addressBook'
 import {
   authChangeEvent,
   currentUserFetchStatus,
   fetchCurrentUserResult,
   getAuthSession,
   getAuthStateSnapshot,
-} from '../lib/auth'
+} from '../../../lib/auth'
 import {
   enrichCartItems,
   buildCheckoutCartPayload,
@@ -33,7 +33,7 @@ import {
   getCartItems,
   getCartItemOptionEntries,
   reconcileCartStorageWithAuth,
-} from '../lib/cart'
+} from '../../../lib/cart'
 import {
   deletePaymentMethod,
   fetchInstallmentInfo,
@@ -44,21 +44,21 @@ import {
   maskSavedCard,
   paymentMethodsChangeEvent,
   savePaymentMethod,
-} from '../lib/payment'
+} from '../application/payment'
 import {
   buildPaymentSummary,
   consumeCheckout3DSReturnState,
   createPending3DSCheckoutSnapshot,
   open3DSTargetSameTab,
   savePending3DSCheckoutSnapshot,
-} from '../lib/payment3ds'
-import { getItemsPriceBreakdown, getLinePriceBreakdown } from '../lib/tax'
+} from '../application/payment3ds'
+import { getItemsPriceBreakdown, getLinePriceBreakdown } from '../../../lib/tax'
 import {
   validateCityPostalCode,
   validateCardExpiry,
   validateEmail,
   validateTurkishCity,
-} from '../lib/validation'
+} from '../../../lib/validation'
 
 const checkoutSteps = [
   { key: 'delivery', label: 'Delivery' },

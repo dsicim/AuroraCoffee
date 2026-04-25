@@ -77,7 +77,7 @@ if (!globalThis.CustomEvent) {
 }
 
 const auth = await import('./auth.js')
-const comments = await import('./comments.js')
+const comments = await import('../../../lib/comments.js')
 
 function writeStoredSession(session, storage = window.localStorage) {
   storage.setItem(auth.authStorageKey, JSON.stringify(session))

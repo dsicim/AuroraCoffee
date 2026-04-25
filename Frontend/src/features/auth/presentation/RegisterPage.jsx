@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import AuthLayout from '../components/AuthLayout'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import PasswordField from '../shared/components/ui/PasswordField'
-import { buildApiUrl } from '../shared/api/api'
-import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { saveAuthSession } from '../lib/auth'
-import { reconcileCartStorageWithAuth } from '../lib/cart'
-import { validateEmail, validatePassword } from '../lib/validation'
+import AuthLayout from '../../../components/AuthLayout'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import PasswordField from '../../../shared/components/ui/PasswordField'
+import { buildApiUrl } from '../../../shared/api/api'
+import { reconcileAccountStorageWithAuth } from '../../../lib/accountData'
+import { saveAuthSession } from '../application/auth'
+import { reconcileCartStorageWithAuth } from '../../../lib/cart'
+import { validateEmail, validatePassword } from '../../../lib/validation'
 
 function getMessage(payload, fallbackMessage) {
   if (!payload || typeof payload !== 'object') {

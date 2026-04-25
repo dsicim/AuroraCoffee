@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { fetchAuthJson } from './authRequest'
-import { getGeneratedProductImageUrl } from './productImages'
+import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 

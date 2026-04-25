@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import { downloadOrderPdf } from '../lib/orders'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import { downloadOrderPdf } from '../application/orderPdf'
 
 function DownloadIcon() {
   return (

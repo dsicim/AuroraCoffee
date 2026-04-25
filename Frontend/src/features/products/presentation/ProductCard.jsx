@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { formatCurrency } from '../lib/currency'
+import { formatCurrency } from '../../../lib/currency'
 import {
   getProductAvailability,
   getProductCategoryLabel,
@@ -7,12 +7,12 @@ import {
   getProductMetaLine,
   getProductTypeLabel,
   isCoffeeProduct,
-} from '../lib/products'
-import { getTaxInclusionCopy } from '../lib/tax'
-import { getProductGalleryImages } from '../lib/productImages'
-import FavoriteToggleButton from './FavoriteToggleButton'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
+} from '../../../lib/products'
+import { getTaxInclusionCopy } from '../../../lib/tax'
+import { getProductGalleryImages } from '../domain/productImages'
+import FavoriteToggleButton from '../../../components/FavoriteToggleButton'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import LiquidGlassFrame from '../../../shared/components/ui/LiquidGlassFrame'
 import ProductMedia from './ProductMedia'
 
 function keepHyphenatedWordsTogether(value) {

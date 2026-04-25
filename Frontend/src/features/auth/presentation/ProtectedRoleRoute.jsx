@@ -6,8 +6,8 @@ import {
   currentUserFetchStatus,
   fetchCurrentUserResult,
   getAuthStateSnapshot,
-} from '../lib/auth'
-import { canAccessRole, getRoleLandingPath, normalizeUserRole } from '../lib/roles'
+} from '../application/auth'
+import { canAccessRole, getRoleLandingPath, normalizeUserRole } from '../domain/roles'
 
 function buildLoginPath(pathname, search) {
   return `/login?next=${encodeURIComponent(pathname + search)}`

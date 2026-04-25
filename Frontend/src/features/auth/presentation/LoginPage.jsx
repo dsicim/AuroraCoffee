@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import AuthLayout from '../components/AuthLayout'
-import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import PasswordField from '../shared/components/ui/PasswordField'
-import { buildApiUrl } from '../shared/api/api'
-import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { saveAuthSession } from '../lib/auth'
-import { reconcileCartStorageWithAuth } from '../lib/cart'
-import { validateEmail } from '../lib/validation'
+import AuthLayout from '../../../components/AuthLayout'
+import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
+import PasswordField from '../../../shared/components/ui/PasswordField'
+import { buildApiUrl } from '../../../shared/api/api'
+import { reconcileAccountStorageWithAuth } from '../../../lib/accountData'
+import { saveAuthSession } from '../application/auth'
+import { reconcileCartStorageWithAuth } from '../../../lib/cart'
+import { validateEmail } from '../../../lib/validation'
 
 const roleHints = ['Customer account', 'Saved orders', 'Manager access']
 

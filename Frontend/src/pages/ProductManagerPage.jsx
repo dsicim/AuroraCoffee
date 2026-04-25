@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
-import { fetchManagerProductComments, moderateProductComment } from '../lib/comments'
+import { fetchManagerProductComments, moderateProductComment } from '../features/comments/infrastructure/commentsApi'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import AuroraWidget from '../shared/components/ui/AuroraWidget'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
-import ProductCard from '../components/ProductCard'
+import ProductCard from '../features/products/presentation/ProductCard'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
   getProductCategories,

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import AuroraWidget, { AuroraInset } from '../shared/components/ui/AuroraWidget'
-import LiquidGlassButton, { LiquidGlassStepperButton } from '../shared/components/ui/LiquidGlassButton'
-import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
-import { getAuthSession } from '../lib/auth'
-import { formatCurrency } from '../lib/currency'
+import AuroraWidget, { AuroraInset } from '../../../shared/components/ui/AuroraWidget'
+import LiquidGlassButton, { LiquidGlassStepperButton } from '../../../shared/components/ui/LiquidGlassButton'
+import StorefrontLayout from '../../../shared/components/layout/StorefrontLayout'
+import { getAuthSession } from '../../../lib/auth'
+import { formatCurrency } from '../../../lib/currency'
 import {
   cartChangeEvent,
   enrichCartItems,
@@ -14,8 +14,8 @@ import {
   reconcileCartStorageWithAuth,
   removeCartItem,
   updateCartItemQuantity,
-} from '../lib/cart'
-import { getItemsPriceBreakdown, getLinePriceBreakdown, getTaxInclusionCopy } from '../lib/tax'
+} from '../application/cart'
+import { getItemsPriceBreakdown, getLinePriceBreakdown, getTaxInclusionCopy } from '../../../lib/tax'
 
 function renderCartItemOptions(item) {
   const optionEntries = getCartItemOptionEntries(item)

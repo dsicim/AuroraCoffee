@@ -1,29 +1,29 @@
 import { lazy } from 'react'
 import { Route, Routes } from 'react-router-dom'
-import ProtectedRoleRoute from '../components/ProtectedRoleRoute'
-import RoleLandingRedirect from '../components/RoleLandingRedirect'
-import { userRoles } from '../lib/roles'
+import ProtectedRoleRoute from '../features/auth/presentation/ProtectedRoleRoute'
+import RoleLandingRedirect from '../features/auth/presentation/RoleLandingRedirect'
+import { userRoles } from '../features/auth/domain/roles'
 
 const AccountPage = lazy(() => import('../pages/AccountPage'))
 const AddressesPage = lazy(() => import('../pages/AddressesPage'))
 const AdminPage = lazy(() => import('../pages/AdminPage'))
-const CartPage = lazy(() => import('../pages/CartPage'))
-const CheckoutPage = lazy(() => import('../pages/CheckoutPage'))
-const Checkout3DSCallbackPage = lazy(() => import('../pages/Checkout3DSCallbackPage'))
+const CartPage = lazy(() => import('../features/cart/presentation/CartPage'))
+const CheckoutPage = lazy(() => import('../features/checkout/presentation/CheckoutPage'))
+const Checkout3DSCallbackPage = lazy(() => import('../features/checkout/presentation/Checkout3DSCallbackPage'))
 const CustomerPage = lazy(() => import('../pages/CustomerPage'))
 const FavoritesPage = lazy(() => import('../pages/FavoritesPage'))
-const ForgotPasswordPage = lazy(() => import('../pages/ForgotPasswordPage'))
+const ForgotPasswordPage = lazy(() => import('../features/auth/presentation/ForgotPasswordPage'))
 const HomePage = lazy(() => import('../pages/HomePage'))
-const LoginPage = lazy(() => import('../pages/LoginPage'))
+const LoginPage = lazy(() => import('../features/auth/presentation/LoginPage'))
 const NotFoundPage = lazy(() => import('../pages/NotFoundPage'))
-const OrderDetailPage = lazy(() => import('../pages/OrderDetailPage'))
-const OrdersPage = lazy(() => import('../pages/OrdersPage'))
+const OrderDetailPage = lazy(() => import('../features/orders/presentation/OrderDetailPage'))
+const OrdersPage = lazy(() => import('../features/orders/presentation/OrdersPage'))
 const PaymentMethodsPage = lazy(() => import('../pages/PaymentMethodsPage'))
 const ProductDetailPage = lazy(() => import('../pages/ProductDetailPage'))
 const ProductManagerPage = lazy(() => import('../pages/ProductManagerPage'))
 const ProductsPage = lazy(() => import('../pages/ProductsPage'))
-const RegisterPage = lazy(() => import('../pages/RegisterPage'))
-const ResetPasswordPage = lazy(() => import('../pages/ResetPasswordPage'))
+const RegisterPage = lazy(() => import('../features/auth/presentation/RegisterPage'))
+const ResetPasswordPage = lazy(() => import('../features/auth/presentation/ResetPasswordPage'))
 const SalesManagerPage = lazy(() => import('../pages/SalesManagerPage'))
 
 export default function AppRoutes() {

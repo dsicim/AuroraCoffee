@@ -4,8 +4,8 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../shared/components/ui/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import ProductCard from '../components/ProductCard'
-import ProductMedia from '../components/ProductMedia'
+import ProductCard from '../features/products/presentation/ProductCard'
+import ProductMedia from '../features/products/presentation/ProductMedia'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
   authChangeEvent,
@@ -15,7 +15,7 @@ import {
   getAuthStateSnapshot,
 } from '../lib/auth'
 import { addCartItem } from '../lib/cart'
-import { fetchApprovedProductComments, submitProductComment } from '../lib/comments'
+import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
 import {
   getProductAvailability,
@@ -32,7 +32,7 @@ import {
   getPreferredProductGalleryIndex,
   getProductGalleryImages,
   getProductGalleryOptionGroups,
-} from '../lib/productImages'
+} from '../features/products/domain/productImages'
 import { getTaxInclusionCopy, getUnitPriceBreakdown } from '../lib/tax'
 
 function formatDetailAttribute(value) {
