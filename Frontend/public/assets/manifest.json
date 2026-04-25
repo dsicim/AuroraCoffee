@@ -1,0 +1,18 @@
+{
+  "name": "Aurora Coffee Roastery",
+  "short_name": "Aurora Coffee",
+  "description": "Fresh-roasted coffees, brewing gear, and seasonal picks from Aurora Coffee Roastery.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#142421",
+  "theme_color": "#142421",
+  "icons": [
+    {
+      "src": "/assets/aurora-logo-light.png",
+      "sizes": "640x640",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
