@@ -4,9 +4,9 @@ const crypto = require('crypto');
 const tokens = new Map();
 const emailtokens = new Map();
 const emailids = new Map();
-const config = JSON.parse(fs.readFileSync("../config.json", "utf-8"));
+const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
-const emailsrv = require("./components/email.js");
+const emailsrv = require("./email.js");
 const APIEndpoints = {
     version: require("../apiendpoints/version.js"),
     restart: require("../apiendpoints/restart.js"),
