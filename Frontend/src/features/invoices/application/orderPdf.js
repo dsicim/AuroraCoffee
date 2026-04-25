@@ -42,11 +42,11 @@ async function getPdfErrorMessage(response) {
   if (contentType.includes('application/json')) {
     const payload = await response.json().catch(() => ({}))
     const data = payload?.d ?? payload
-    return data?.e || payload?.e || data?.message || payload?.message || 'PDF download failed'
+    return data?.e || payload?.e || data?.message || payload?.message || 'Invoice download failed'
   }
 
   const message = await response.text().catch(() => '')
-  return message.trim() || 'PDF download failed'
+  return message.trim() || 'Invoice download failed'
 }
 
 export async function downloadOrderPdf(orderId) {
@@ -54,11 +54,11 @@ export async function downloadOrderPdf(orderId) {
   const session = getAuthSession()
 
   if (!normalizedOrderId) {
-    throw new Error('Order ID is required before downloading a PDF.')
+    throw new Error('Order ID is required before downloading an invoice.')
   }
 
   if (!session?.token) {
-    throw new Error('Sign in again to download this order PDF.')
+    throw new Error('Sign in again to download this order invoice.')
   }
 
   const response = await fetchAuthResponse(`/orders/pdf?id=${encodeURIComponent(normalizedOrderId)}`, {
@@ -77,7 +77,7 @@ export async function downloadOrderPdf(orderId) {
   const rawBlob = await response.blob()
 
   if (!rawBlob.size) {
-    throw new Error('The PDF response was empty.')
+    throw new Error('The invoice response was empty.')
   }
 
   const filename =

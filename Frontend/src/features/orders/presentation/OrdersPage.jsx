@@ -108,14 +108,14 @@ export default function OrdersPage() {
   const showPdfSuccess = ({ orderId }) => {
     setPdfFeedback({
       type: 'success',
-      message: `PDF download started for order ${orderId}.`,
+      message: `Invoice download started for order ${orderId}.`,
     })
   }
 
   const showPdfError = (message, orderId) => {
     setPdfFeedback({
       type: 'error',
-      message: `PDF could not be downloaded for order ${orderId}. ${message}`,
+      message: `Invoice could not be downloaded for order ${orderId}. ${message}`,
     })
   }
 

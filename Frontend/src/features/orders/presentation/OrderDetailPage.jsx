@@ -217,12 +217,12 @@ export default function OrderDetailPage() {
 
   const showPdfSuccess = ({ orderId }) => {
     setFeedbackType('success')
-    setFeedback(`PDF download started for order ${orderId}.`)
+    setFeedback(`Invoice download started for order ${orderId}.`)
   }
 
   const showPdfError = (message, downloadOrderId) => {
     setFeedbackType('error')
-    setFeedback(`PDF could not be downloaded for order ${downloadOrderId}. ${message}`)
+    setFeedback(`Invoice could not be downloaded for order ${downloadOrderId}. ${message}`)
   }
 
   const progressState = getOrderProgressState(order)

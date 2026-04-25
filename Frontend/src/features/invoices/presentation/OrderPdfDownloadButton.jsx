@@ -23,8 +23,8 @@ function DownloadIcon() {
 
 export default function OrderPdfDownloadButton({
   orderId,
-  label = 'Download PDF',
-  downloadingLabel = 'Preparing PDF',
+  label = 'Download Invoice',
+  downloadingLabel = 'Preparing invoice',
   variant = 'secondary',
   size = 'compact',
   className = '',
@@ -50,7 +50,7 @@ export default function OrderPdfDownloadButton({
     } catch (downloadError) {
       const message = downloadError instanceof Error
         ? downloadError.message
-        : 'PDF download failed'
+        : 'Invoice download failed'
 
       if (onError) {
         onError(message, orderId)
