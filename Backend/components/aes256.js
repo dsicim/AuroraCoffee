@@ -1,4 +1,4 @@
-const config = require("./config.json");
+const config = require("../config.json");
 const crypto = require("crypto");
 function pjs(text) {
     try {
