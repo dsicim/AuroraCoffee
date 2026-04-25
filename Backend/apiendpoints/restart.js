@@ -5,14 +5,14 @@ const path = require("path");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (currentUser && !currentUser.e && currentUser.role === "Admin") {
         if (method === "GET") {
-            if (endpoint[0] === "getpanel") return { s: 200, j: false, d: fs.readFileSync("./innerrestart.html", "utf-8"), h: { "Content-Type": "text/html" } };
-            else return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8").replaceAll("{inner}",fs.readFileSync("./innerrestart.html", "utf-8")), h: { "Content-Type": "text/html" } };
+            if (endpoint[0] === "getpanel") return { s: 200, j: false, d: fs.readFileSync("./restartpages/innerrestart.html", "utf-8"), h: { "Content-Type": "text/html" } };
+            else return { s: 200, j: false, d: fs.readFileSync("./restartpages/restart.html", "utf-8").replaceAll("{inner}",fs.readFileSync("./restartpages/innerrestart.html", "utf-8")), h: { "Content-Type": "text/html" } };
         }
         else if (method === "POST") {
             if (body && body.exists && body.json && !body.err && body.data.action) {
                 if (body.data.action === "restart" || body.data.action === "update" || body.data.action === "reset") {
                     return await new Promise((resolve) => {
-                        const child = spawn("node", ["version.js", "--action", body.data.action, "--nologs"], {
+                        const child = spawn("node", ["updater.js", "--action", body.data.action, "--nologs"], {
                             cwd: path.join(__dirname, ".."),
                             detached: true,
                             stdio: ["ignore", "pipe", "ignore"],
@@ -68,6 +68,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: false, d: "Method Not Allowed" };
     }
-    else return { s: 200, j: false, d: fs.readFileSync("./restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
+    else return { s: 200, j: false, d: fs.readFileSync("./restartpages/restart.html", "utf-8"), h: { "Content-Type": "text/html" } };
 }
 module.exports = { handleAPI };

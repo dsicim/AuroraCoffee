@@ -1,7 +1,7 @@
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
 const fetch = require("node-fetch");
-const aes = require("../aes256.js");
+const aes = require("../components/aes256.js");
 const pdf = require("../invoice/pdf.js");
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {

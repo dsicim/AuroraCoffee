@@ -1,6 +1,6 @@
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
-const aes = require("../aes256.js");
+const aes = require("../components/aes256.js");
 function checkTrim(x) {
     if (x === undefined || x === null) return undefined;
     if (typeof x !== "string") return undefined;

@@ -1,4 +1,4 @@
-const sql = require("../Database/server.js");
+const sql = require("../../Database/server.js");
 const fs = require("fs");
 const crypto = require('crypto');
 const tokens = new Map();
@@ -8,15 +8,15 @@ const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
 const emailsrv = require("./email.js");
 const APIEndpoints = {
-    version: require("./apiendpoints/version.js"),
-    restart: require("./apiendpoints/restart.js"),
-    users: require("./apiendpoints/users.js"),
-    products: require("./apiendpoints/products.js"),
-    cart: require("./apiendpoints/cart.js"),
-    payment: require("./apiendpoints/payment.js"),
-    address: require("./apiendpoints/address.js"),
-    orders: require("./apiendpoints/orders.js"),
-    comments: require("./apiendpoints/comments.js"),
+    version: require("../apiendpoints/version.js"),
+    restart: require("../apiendpoints/restart.js"),
+    users: require("../apiendpoints/users.js"),
+    products: require("../apiendpoints/products.js"),
+    cart: require("../apiendpoints/cart.js"),
+    payment: require("../apiendpoints/payment.js"),
+    address: require("../apiendpoints/address.js"),
+    orders: require("../apiendpoints/orders.js"),
+    comments: require("../apiendpoints/comments.js"),
 };
 async function generateToken(email = false) {
     let token = crypto.randomBytes(email ? 256 : 128).toString('base64').substring(0, email ? 128 : 64);
@@ -116,7 +116,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 if (!emailvalid) {
                                     const emailToken = await generateToken(true);
                                     const emailExpires = new Date().getTime() + 14400000;
-                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                    return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./emails/verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                         console.log("Email sent:", res);
                                         emailids.set(result.userId + "-register", emailToken);
                                         emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -158,7 +158,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (config.verifyemail) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Complete your registration", fs.readFileSync("./emails/verifyemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=register&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-register", emailToken);
                                     emailtokens.set(emailToken, { id: result.userId, expires: emailExpires, for: "register" });
@@ -210,7 +210,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             if (!emailvalid) {
                                 const emailToken = await generateToken(true);
                                 const emailExpires = new Date().getTime() + 14400000;
-                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./passwordemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
+                                return await emailsrv.sendEmail(email, "Password Reset", fs.readFileSync("./emails/passwordemail.html", "utf-8").replaceAll("{token}", "https://" + config.domain + "/api/verify?purpose=password&token=" + emailToken)).then(res => {
                                     console.log("Email sent:", res);
                                     emailids.set(result.userId + "-password", emailToken);
                                     emailtokens.set(emailToken, { id: result.user.id, expires: emailExpires, for: "password", user: result.user });

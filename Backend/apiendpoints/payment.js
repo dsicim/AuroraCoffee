@@ -1,9 +1,9 @@
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
 const fetch = require("node-fetch");
-const aes = require("../aes256.js");
+const aes = require("../components/aes256.js");
 const fs = require("fs");
-const mailer = require("../email.js");
+const mailer = require("../components/email.js");
 async function IyzipayAPI(config, method, url, headers, body) {
     // console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
@@ -119,7 +119,7 @@ function parseVariantOptions(variantCode) {
     }
 }
 async function emailInvoice(config, email, orderNumber, details, textformat) {
-    let instemplate = fs.readFileSync("./"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
+    let instemplate = fs.readFileSync("./emails/"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
     if (details.installment.months > 1) {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
         .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
@@ -130,7 +130,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     else {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.paid));
     }
-    const itemstemplate = fs.readFileSync("./orderemailitems.html", "utf-8");
+    const itemstemplate = fs.readFileSync("./emails/orderemailitems.html", "utf-8");
     let itemshtml = "";
     details.products.forEach(product => {
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
@@ -138,7 +138,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
         .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
         .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
     });
-    const template = fs.readFileSync("./orderemail.html", "utf-8")
+    const template = fs.readFileSync("./emails/orderemail.html", "utf-8")
     .replaceAll("{{ORDER_ID}}", orderNumber)
     .replaceAll("{{ORDER_URL}}","https://" + config.domain + "/account/orders/"+orderNumber)
     .replaceAll("{{CUSTOMER_NAME}}", details.shippingAddress.name + " " + details.shippingAddress.surname)
