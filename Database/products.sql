@@ -128,7 +128,7 @@ INSERT INTO categories (name, parent_id) VALUES ('Brewing Equipment', @acc_id);
 
 -- Sample Coffee Products
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Ethiopia Yirgacheffe', 'Flowery and citrusy notes with a light body.', 520.00, 50, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
+SELECT 'Ethiopia Yirgacheffe', 'Flowery and citrusy notes with a light body.', 520.00, 65, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
 INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
@@ -194,7 +194,8 @@ SET @eth_weight_group_id = LAST_INSERT_ID();
 
 INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES 
 (@eth_weight_group_id, '250g', '250g', 0),
-(@eth_weight_group_id, '500g', '500g', 350.00);
+(@eth_weight_group_id, '500g', '500g', 350.00),
+(@eth_weight_group_id, '1kg', '1000g', 650.00);
 
 -- 6. Creating variants for Urban Thermos (Color variants)
 UPDATE products SET has_variants = TRUE WHERE name = 'Urban Thermos';
@@ -207,10 +208,65 @@ INSERT INTO product_option_values (product_option_group_id, label, value_code, p
 (@thermos_color_group_id, 'Red', 'red', 0),
 (@thermos_color_group_id, 'Black', 'black', 0);
 
+-- Insert weight variant combinations for all coffee products
+INSERT INTO product_option_groups (product_id, name, cumulative_stock, group_code) VALUES
+(2, 'Weight', TRUE, 'weight'),
+(3, 'Weight', TRUE, 'weight'),
+(4, 'Weight', TRUE, 'weight'),
+(5, 'Weight', TRUE, 'weight'),
+(6, 'Weight', TRUE, 'weight'),
+(7, 'Weight', TRUE, 'weight'),
+(8, 'Weight', TRUE, 'weight');
+
+INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES
+(3, '250g', '250g', 0),
+(3, '500g', '500g', 350.00),
+(3, '1kg', '1000g', 650.00),
+(4, '250g', '250g', 0),
+(4, '500g', '500g', 350.00),
+(4, '1kg', '1000g', 650.00),
+(5, '250g', '250g', 0),
+(5, '500g', '500g', 350.00),
+(5, '1kg', '1000g', 650.00),
+(6, '250g', '250g', 0),
+(6, '500g', '500g', 350.00),
+(6, '1kg', '1000g', 650.00),
+(7, '250g', '250g', 0),
+(7, '500g', '500g', 350.00),
+(7, '1kg', '1000g', 650.00),
+(8, '250g', '250g', 0),
+(8, '500g', '500g', 350.00),
+(8, '1kg', '1000g', 650.00),
+(9, '250g', '250g', 0),
+(9, '500g', '500g', 350.00),
+(9, '1kg', '1000g', 650.00);
+
 -- Insert actual variant combinations
 INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, stock) VALUES
 (@eth_weight_group_id, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 20),
 (@eth_weight_group_id, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(2, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 50),
+(2, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(2, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 20),
+(3, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 50),
+(3, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(3, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 20),
+(4, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 100),
+(4, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 60),
+(4, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 40),
+(5, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 100),
+(5, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 60),
+(5, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 40),
+(6, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 50),
+(6, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(6, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 20),
+(7, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 30),
+(7, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(7, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(8, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 15),
+(8, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 10),
+(8, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 5),
 (@thermos_id, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
 (@thermos_id, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
 
