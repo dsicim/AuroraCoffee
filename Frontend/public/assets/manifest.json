@@ -9,12 +9,6 @@
   "theme_color": "#142421",
   "icons": [
     {
-      "src": "/assets/aurora-logo-light.png",
-      "sizes": "640x640",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
       "src": "/assets/pwa32.png",
       "sizes": "32x32",
       "type": "image/png",
@@ -41,6 +35,12 @@
     {
       "src": "/assets/pwa512.png",
       "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/assets/aurora-logo-light.png",
+      "sizes": "640x640",
       "type": "image/png",
       "purpose": "any maskable"
     }
