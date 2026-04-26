@@ -37,12 +37,6 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
-    },
-    {
-      "src": "/assets/aurora-logo-light.png",
-      "sizes": "640x640",
-      "type": "image/png",
-      "purpose": "any maskable"
     }
   ]
 }
