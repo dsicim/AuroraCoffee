@@ -1,4 +1,4 @@
-import { addCartItem } from './cart'
+import { addCartItem, getCartErrorMessage } from './cart'
 import { findProductByReference, getProductAvailability } from './products'
 
 function normalizeCode(value) {
@@ -17,6 +17,10 @@ function normalizeOptionCodes(value) {
     .filter(([key, optionValue]) => Boolean(key && optionValue))
 
   return entries.length ? Object.fromEntries(entries) : null
+}
+
+function getOrderLineName(item) {
+  return item?.name || item?.product?.name || 'Unknown item'
 }
 
 function findOrderLineVariant(product, item) {
@@ -101,9 +105,9 @@ export async function restoreOrderItemsToCart(items) {
     if (normalizedItem) {
       validEntries.push(normalizedItem)
     } else if (item?.name) {
-      skippedItems.push(item.name)
+      skippedItems.push(`${item.name} is no longer available`)
     } else {
-      skippedItems.push('Unknown item')
+      skippedItems.push('Unknown item is no longer available')
     }
   }
 
@@ -121,8 +125,8 @@ export async function restoreOrderItemsToCart(items) {
           entry.quantity,
         )
         addedCount += entry.quantity
-      } catch {
-        skippedItems.push(entry.name || entry.product.name || 'Unknown item')
+      } catch (error) {
+        skippedItems.push(`${getOrderLineName(entry)}: ${getCartErrorMessage(error)}`)
       }
     }
   }
@@ -182,11 +186,11 @@ export function getOrderStatus(order) {
 
 export function buildRestoreMessage(result, label) {
   if (!result.addedCount && result.skippedItems.length) {
-    return `Could not restore ${label}. ${result.skippedItems.join(', ')} is no longer available.`
+    return `Could not restore ${label}. ${result.skippedItems.join(', ')}.`
   }
 
   if (result.skippedItems.length) {
-    return `${label} added to cart. Skipped ${result.skippedItems.join(', ')} because it is no longer available.`
+    return `${label} added to cart. Skipped ${result.skippedItems.join(', ')}.`
   }
 
   return `${label} added to cart.`

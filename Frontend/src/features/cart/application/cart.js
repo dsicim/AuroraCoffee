@@ -367,6 +367,11 @@ class CartRequestError extends Error {
   }
 }
 
+export function getCartErrorMessage(error, fallback = 'Could not add this item to cart.') {
+  const message = error instanceof Error ? error.message : ''
+  return message.trim() || fallback
+}
+
 function isExpiredAuthCartError(error) {
   return error?.status === 401 && !getAuthSession()?.token
 }

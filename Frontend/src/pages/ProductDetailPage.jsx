@@ -14,7 +14,7 @@ import {
   fetchCurrentUserResult,
   getAuthStateSnapshot,
 } from '../lib/auth'
-import { addCartItem } from '../lib/cart'
+import { addCartItem, getCartErrorMessage } from '../lib/cart'
 import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
 import {
@@ -1452,6 +1452,7 @@ export default function ProductDetailPage() {
   const { product, loading, error } = useProductBySlug(slug)
   const { products } = useProductCatalog()
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('success')
   const [optionSelection, setOptionSelection] = useState({
     productSlug: '',
     values: {},
@@ -1468,6 +1469,7 @@ export default function ProductDetailPage() {
 
     const timeoutId = window.setTimeout(() => {
       setFeedback('')
+      setFeedbackType('success')
     }, 2400)
 
     return () => {
@@ -1596,25 +1598,33 @@ export default function ProductDetailPage() {
     }
 
     if (!hasRequiredOptions) {
+      setFeedbackType('error')
       setFeedback(`Select ${missingOptionLabels.join(' and ')} before adding this item to cart.`)
       return
     }
 
     if (hasUnavailableVariantCombination) {
+      setFeedbackType('error')
       setFeedback('This option combination is currently unavailable.')
       return
     }
 
-    await addCartItem({
-      ...product,
-      price: displayPrice,
-      stock: displayAvailability.totalStock,
-      variantId: matchingVariant?.id || null,
-      variantCode: matchingVariant?.variantCode || '',
-      options: selectedOptionsSnapshot,
-      optionCodes: selectedOptionCodes,
-    })
-    setFeedback(`${product.name} was added to cart.`)
+    try {
+      await addCartItem({
+        ...product,
+        price: displayPrice,
+        stock: displayAvailability.totalStock,
+        variantId: matchingVariant?.id || null,
+        variantCode: matchingVariant?.variantCode || '',
+        options: selectedOptionsSnapshot,
+        optionCodes: selectedOptionCodes,
+      })
+      setFeedbackType('success')
+      setFeedback(`${product.name} was added to cart.`)
+    } catch (error) {
+      setFeedbackType('error')
+      setFeedback(getCartErrorMessage(error))
+    }
   }
 
   const hero = (
@@ -1790,7 +1800,11 @@ export default function ProductDetailPage() {
             </LiquidGlassButton>
 
             {feedback ? (
-              <p className="aurora-message aurora-message-success mt-4" role="status" aria-live="polite">
+              <p
+                className={`aurora-message aurora-message-${feedbackType} mt-4`}
+                role={feedbackType === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+              >
                 {feedback}
               </p>
             ) : null}

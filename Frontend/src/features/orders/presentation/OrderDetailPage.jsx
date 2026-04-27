@@ -238,7 +238,7 @@ export default function OrderDetailPage() {
       {feedback ? (
         <div
           className={`aurora-message aurora-message-${feedbackType} mb-6`}
-          role="status"
+          role={feedbackType === 'error' ? 'alert' : 'status'}
           aria-live="polite"
         >
           {feedback}

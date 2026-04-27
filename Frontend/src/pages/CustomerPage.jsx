@@ -16,6 +16,7 @@ import {
 import { authChangeEvent } from '../lib/auth'
 import {
   cartChangeEvent,
+  getCartErrorMessage,
   getCartCount,
   getCartSubtotal,
   reconcileCartStorageWithAuth,
@@ -91,6 +92,7 @@ export default function CustomerPage() {
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('success')
   const [activityTab, setActivityTab] = useState('favorites')
   const [customerComments, setCustomerComments] = useState([])
   const [customerCommentsLoading, setCustomerCommentsLoading] = useState(false)
@@ -189,6 +191,7 @@ export default function CustomerPage() {
 
     const timeoutId = window.setTimeout(() => {
       setFeedback('')
+      setFeedbackType('success')
     }, 3000)
 
     return () => {
@@ -262,18 +265,29 @@ export default function CustomerPage() {
   )
 
   const handleQuickAddFavorite = async (productSlug) => {
-    const result = await addDefaultProductToCart(productSlug)
+    let result
+
+    try {
+      result = await addDefaultProductToCart(productSlug)
+    } catch (error) {
+      setFeedbackType('error')
+      setFeedback(getCartErrorMessage(error))
+      return
+    }
 
     if (result.status === 'added') {
+      setFeedbackType('success')
       setFeedback(`Added ${result.product.name} to cart.`)
       return
     }
 
     if (result.status === 'sold-out') {
+      setFeedbackType('error')
       setFeedback(`${result.product.name} is sold out right now.`)
       return
     }
 
+    setFeedbackType('error')
     setFeedback('That coffee is no longer available.')
   }
 
@@ -284,7 +298,11 @@ export default function CustomerPage() {
       description="Pick up your latest order, jump back into the cart, and get to the coffees you save most often."
     >
       {feedback ? (
-        <div className="aurora-message aurora-message-success mb-6">
+        <div
+          className={`aurora-message aurora-message-${feedbackType} mb-6`}
+          role={feedbackType === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {feedback}
         </div>
       ) : null}

@@ -4,6 +4,7 @@ import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import ProductCard from '../features/products/presentation/ProductCard'
 import { addDefaultProductToCart } from '../lib/accountActions'
+import { getCartErrorMessage } from '../lib/cart'
 import {
   accountDataChangeEvent,
   getFavoriteProductIds,
@@ -14,6 +15,7 @@ export default function FavoritesPage() {
   const { products, loading } = useProductCatalog()
   const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('success')
 
   useEffect(() => {
     const syncFavorites = () => {
@@ -38,6 +40,7 @@ export default function FavoritesPage() {
 
     const timeoutId = window.setTimeout(() => {
       setFeedback('')
+      setFeedbackType('success')
     }, 2600)
 
     return () => {
@@ -50,18 +53,29 @@ export default function FavoritesPage() {
   )
 
   const handleQuickAdd = async (productSlug) => {
-    const result = await addDefaultProductToCart(productSlug)
+    let result
+
+    try {
+      result = await addDefaultProductToCart(productSlug)
+    } catch (error) {
+      setFeedbackType('error')
+      setFeedback(getCartErrorMessage(error))
+      return
+    }
 
     if (result.status === 'added') {
+      setFeedbackType('success')
       setFeedback(`Added ${result.product.name} to cart.`)
       return
     }
 
     if (result.status === 'sold-out') {
+      setFeedbackType('error')
       setFeedback(`${result.product.name} is sold out right now.`)
       return
     }
 
+    setFeedbackType('error')
     setFeedback('That coffee is no longer available.')
   }
 
@@ -72,7 +86,11 @@ export default function FavoritesPage() {
       description="Come back to saved coffees, jump into product details, or send the default package straight into the cart."
     >
       {feedback ? (
-        <div className="aurora-message aurora-message-success mb-6">
+        <div
+          className={`aurora-message aurora-message-${feedbackType} mb-6`}
+          role={feedbackType === 'error' ? 'alert' : 'status'}
+          aria-live="polite"
+        >
           {feedback}
         </div>
       ) : null}
