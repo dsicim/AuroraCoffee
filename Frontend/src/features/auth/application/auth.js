@@ -17,10 +17,12 @@ export const authStateStatus = {
   unauthorized: 'unauthorized',
   error: 'error',
 }
+export const currentUserCacheMaxAgeMs = 30_000
 
 let cachedCurrentUser = null
 let cachedCurrentUserStatus = currentUserFetchStatus.idle
 let cachedCurrentUserToken = null
+let cachedCurrentUserValidatedAt = 0
 let inFlightCurrentUserPromise = null
 let currentUserRequestId = 0
 let authExpiryTimerId = null
@@ -90,10 +92,26 @@ function scheduleAuthExpiry(session) {
   }, remainingMs)
 }
 
+function isCurrentUserCacheFresh() {
+  if (
+    cachedCurrentUserStatus !== currentUserFetchStatus.ok &&
+    cachedCurrentUserStatus !== currentUserFetchStatus.unauthorized
+  ) {
+    return true
+  }
+
+  return Date.now() - cachedCurrentUserValidatedAt <= currentUserCacheMaxAgeMs
+}
+
 function setCurrentUserCache({ user, status, token }) {
   cachedCurrentUser = user
   cachedCurrentUserStatus = status
   cachedCurrentUserToken = token
+  cachedCurrentUserValidatedAt =
+    status === currentUserFetchStatus.ok ||
+    status === currentUserFetchStatus.unauthorized
+      ? Date.now()
+      : 0
   dispatchCurrentUserChange()
 }
 
@@ -106,6 +124,7 @@ function clearCurrentUserCache() {
   cachedCurrentUser = null
   cachedCurrentUserStatus = currentUserFetchStatus.idle
   cachedCurrentUserToken = null
+  cachedCurrentUserValidatedAt = 0
   inFlightCurrentUserPromise = null
   currentUserRequestId += 1
 
@@ -150,6 +169,15 @@ function ensureAuthSessionMonitor() {
 
       if (parsedSession?.token && isSessionExpired(parsedSession)) {
         invalidateStoredAuthSession({ async: true })
+        return
+      }
+
+      if (
+        parsedSession?.token &&
+        cachedCurrentUserToken === parsedSession.token &&
+        !isCurrentUserCacheFresh()
+      ) {
+        void fetchCurrentUserResult(parsedSession.token, { force: true })
       }
     } catch {
       invalidateStoredAuthSession({ async: true })
@@ -252,6 +280,14 @@ function getCurrentUserSnapshotForSession(session) {
   }
 
   if (cachedCurrentUserToken && cachedCurrentUserToken !== session.token) {
+    return {
+      user: null,
+      status: currentUserFetchStatus.idle,
+      token: session.token,
+    }
+  }
+
+  if (cachedCurrentUserToken === session.token && !isCurrentUserCacheFresh()) {
     return {
       user: null,
       status: currentUserFetchStatus.idle,
@@ -417,7 +453,8 @@ export async function fetchCurrentUserResult(token, options = {}) {
     !force &&
     cachedCurrentUserToken === token &&
     cachedCurrentUserStatus === currentUserFetchStatus.ok &&
-    cachedCurrentUser
+    cachedCurrentUser &&
+    isCurrentUserCacheFresh()
   ) {
     return {
       status: currentUserFetchStatus.ok,
@@ -428,7 +465,8 @@ export async function fetchCurrentUserResult(token, options = {}) {
   if (
     !force &&
     cachedCurrentUserToken === token &&
-    cachedCurrentUserStatus === currentUserFetchStatus.unauthorized
+    cachedCurrentUserStatus === currentUserFetchStatus.unauthorized &&
+    isCurrentUserCacheFresh()
   ) {
     return {
       status: currentUserFetchStatus.unauthorized,

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   authChangeEvent,
@@ -18,6 +18,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
   const navigate = useNavigate()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [status, setStatus] = useState('checking')
+  const lastGuardValidationKeyRef = useRef(null)
   const session = authState.session
   const currentUserState = authState.currentUserState
 
@@ -79,12 +80,24 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
       }
 
       setStatus('checking')
+      const guardValidationKey = [
+        session.token,
+        location.pathname,
+        location.search,
+        requiredRole || '',
+      ].join('|')
+      const shouldValidateRouteEntry =
+        lastGuardValidationKeyRef.current !== guardValidationKey
 
       if (
+        shouldValidateRouteEntry ||
         currentUserState.token !== session.token ||
         currentUserState.status === currentUserFetchStatus.idle
       ) {
-        const result = await fetchCurrentUserResult(session.token)
+        lastGuardValidationKeyRef.current = guardValidationKey
+        const result = await fetchCurrentUserResult(session.token, {
+          force: shouldValidateRouteEntry,
+        })
 
         if (cancelled) {
           return

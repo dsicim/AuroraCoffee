@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { beforeEach, describe, it } from 'node:test'
+import { afterEach, beforeEach, describe, it } from 'node:test'
 
 class MemoryStorage {
   #values = new Map()
@@ -78,6 +78,7 @@ if (!globalThis.CustomEvent) {
 
 const auth = await import('./auth.js')
 const comments = await import('../../../lib/comments.js')
+const realDateNow = Date.now
 
 function writeStoredSession(session, storage = window.localStorage) {
   storage.setItem(auth.authStorageKey, JSON.stringify(session))
@@ -92,6 +93,7 @@ function createSession(overrides = {}) {
 }
 
 beforeEach(() => {
+  Date.now = realDateNow
   window.localStorage.clear()
   window.sessionStorage.clear()
   auth.clearAuthSession()
@@ -99,6 +101,10 @@ beforeEach(() => {
   globalThis.fetch = async () => {
     throw new Error('Unexpected fetch call')
   }
+})
+
+afterEach(() => {
+  Date.now = realDateNow
 })
 
 describe('expired frontend auth sessions', () => {
@@ -129,6 +135,54 @@ describe('expired frontend auth sessions', () => {
     assert.equal(result.status, auth.currentUserFetchStatus.unauthorized)
     assert.equal(snapshot.shouldRequestLogin, true)
     assert.equal(snapshot.hasUsableSession, false)
+    assert.equal(window.localStorage.getItem(auth.authStorageKey), null)
+  })
+
+  it('revalidates stale cached profile data before accepting the session', async () => {
+    let now = realDateNow()
+    let fetchCount = 0
+
+    Date.now = () => now
+    writeStoredSession(
+      createSession({
+        expires: new Date(now + 120_000).toISOString(),
+      }),
+    )
+    globalThis.fetch = async () => {
+      fetchCount += 1
+      return createJsonResponse(200, {
+        user: {
+          id: 7,
+          name: 'Ege',
+          role: 'customer',
+        },
+      })
+    }
+
+    const firstResult = await auth.fetchCurrentUserResult('Bearer fresh-token', { force: true })
+    const freshResult = await auth.fetchCurrentUserResult('Bearer fresh-token')
+
+    assert.equal(firstResult.status, auth.currentUserFetchStatus.ok)
+    assert.equal(freshResult.status, auth.currentUserFetchStatus.ok)
+    assert.equal(fetchCount, 1)
+
+    now += auth.currentUserCacheMaxAgeMs + 1
+    const staleSnapshot = auth.getAuthStateSnapshot()
+
+    assert.equal(staleSnapshot.status, auth.authStateStatus.checking)
+    assert.equal(staleSnapshot.hasVerifiedUser, false)
+
+    globalThis.fetch = async () => {
+      fetchCount += 1
+      return createJsonResponse(401, { e: 'Unauthorized' })
+    }
+
+    const staleResult = await auth.fetchCurrentUserResult('Bearer fresh-token')
+    const snapshot = auth.getAuthStateSnapshot()
+
+    assert.equal(staleResult.status, auth.currentUserFetchStatus.unauthorized)
+    assert.equal(fetchCount, 2)
+    assert.equal(snapshot.shouldRequestLogin, true)
     assert.equal(window.localStorage.getItem(auth.authStorageKey), null)
   })
 
