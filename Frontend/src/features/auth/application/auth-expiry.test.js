@@ -138,6 +138,21 @@ describe('expired frontend auth sessions', () => {
     assert.equal(window.localStorage.getItem(auth.authStorageKey), null)
   })
 
+  it('clears a newly saved session when profile hydration returns 401', async () => {
+    globalThis.fetch = async () => createJsonResponse(401, { e: 'Unauthorized' })
+
+    auth.saveAuthSession(createSession(), true)
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0)
+    })
+
+    const snapshot = auth.getAuthStateSnapshot()
+
+    assert.equal(snapshot.shouldRequestLogin, true)
+    assert.equal(snapshot.hasUsableSession, false)
+    assert.equal(window.localStorage.getItem(auth.authStorageKey), null)
+  })
+
   it('revalidates stale cached profile data before accepting the session', async () => {
     let now = realDateNow()
     let fetchCount = 0

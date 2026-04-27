@@ -9,6 +9,7 @@ import {
   cartChangeEvent,
   enrichCartItems,
   formatCartOptionLabel,
+  getCartErrorMessage,
   getCartItems,
   getCartItemOptionEntries,
   reconcileCartStorageWithAuth,
@@ -39,6 +40,8 @@ export default function CartPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => getAuthSession())
+  const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState('success')
 
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
   const totalItems = items.reduce((total, item) => total + item.quantity, 0)
@@ -72,6 +75,46 @@ export default function CartPage() {
     }
   }, [])
 
+  useEffect(() => {
+    if (!feedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setFeedback('')
+      setFeedbackType('success')
+    }, 3600)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [feedback])
+
+  const showCartError = (error, fallback) => {
+    setFeedbackType('error')
+    setFeedback(getCartErrorMessage(error, fallback))
+  }
+
+  const handleQuantityChange = async (item, nextQuantity) => {
+    try {
+      await updateCartItemQuantity(item.id, nextQuantity)
+      setFeedback('')
+      setFeedbackType('success')
+    } catch (error) {
+      showCartError(error, 'Could not update this cart item.')
+    }
+  }
+
+  const handleRemoveItem = async (item) => {
+    try {
+      await removeCartItem(item.id)
+      setFeedback('')
+      setFeedbackType('success')
+    } catch (error) {
+      showCartError(error, 'Could not remove this cart item.')
+    }
+  }
+
   const handleOrderNow = () => {
     if (!items.length) {
       return
@@ -100,6 +143,16 @@ export default function CartPage() {
               {totalItems} item{totalItems === 1 ? '' : 's'}
             </span>
           </div>
+
+          {feedback ? (
+            <div
+              className={`aurora-message aurora-message-${feedbackType} mt-6`}
+              role={feedbackType === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+            >
+              {feedback}
+            </div>
+          ) : null}
 
           {!items.length ? (
             <div className="aurora-showroom-subpanel mt-8 px-6 py-12 text-center">
@@ -168,7 +221,7 @@ export default function CartPage() {
 	                          disabled={item.quantity <= 1}
 	                          onClick={() => {
 	                            if (item.quantity > 1) {
-	                              void updateCartItemQuantity(item.id, item.quantity - 1)
+	                              void handleQuantityChange(item, item.quantity - 1)
 	                            }
 	                          }}
 	                        >
@@ -181,7 +234,7 @@ export default function CartPage() {
                           type="button"
                           aria-label={`Increase ${item.name} quantity`}
                           onClick={() => {
-                            void updateCartItemQuantity(item.id, item.quantity + 1)
+                            void handleQuantityChange(item, item.quantity + 1)
                           }}
                         >
                           +
@@ -195,7 +248,7 @@ export default function CartPage() {
                             return
                           }
 
-                          void removeCartItem(item.id)
+                          void handleRemoveItem(item)
                         }}
                         variant="quiet"
                         size="compact"

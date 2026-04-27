@@ -53,30 +53,6 @@ const coffeeGallerySlugs = new Set([
 
 const coffeeGallerySizeKeys = ['250g', '500g', '1kg']
 
-const coffeePackageSizeOptionGroup = Object.freeze({
-  code: 'packageSize',
-  name: 'Package size',
-  isRequired: false,
-  storeAsVariant: false,
-  values: Object.freeze([
-    {
-      valueCode: '250g',
-      label: '250g',
-      description: 'Compact bag for tasting and short-batch freshness.',
-    },
-    {
-      valueCode: '500g',
-      label: '500g',
-      description: 'Balanced everyday bag for regular home brewing.',
-    },
-    {
-      valueCode: '1kg',
-      label: '1kg',
-      description: 'Large format bag for frequent brewing and offices.',
-    },
-  ]),
-})
-
 const productAttributeImageByFilename = Object.freeze(
   Object.fromEntries(
     Object.entries(productAttributeImageModules).map(([path, src]) => [
@@ -168,28 +144,6 @@ function getSelectedSizeKeyFromSelection(selectedOptionsByGroup) {
   }
 
   return ''
-}
-
-function hasSizeOptionGroup(optionGroups) {
-  return (optionGroups || []).some((group) => {
-    const groupIdentity = normalizeSizeKey([group?.name, group?.code, group?.id].filter(Boolean).join(' '))
-
-    if (groupIdentity) {
-      return true
-    }
-
-    return (group?.values || []).some((optionValue) =>
-      normalizeSizeKey(
-        [
-          optionValue?.label,
-          optionValue?.valueCode,
-          optionValue?.id,
-        ]
-          .filter(Boolean)
-          .join(' '),
-      ),
-    )
-  })
 }
 
 function normalizeGalleryEntry(entry, index = 0) {
@@ -456,16 +410,9 @@ export function getPreferredProductGalleryIndex(product, selectedOptionsByGroup 
 }
 
 export function getProductGalleryOptionGroups(product, optionGroups = []) {
-  const normalizedOptionGroups = Array.isArray(optionGroups)
+  return Array.isArray(optionGroups)
     ? optionGroups.filter((group) => Array.isArray(group?.values) && group.values.length)
     : []
-  const slug = normalizeCode(product?.slug)
-
-  if (!coffeeGallerySlugs.has(slug) || hasSizeOptionGroup(normalizedOptionGroups)) {
-    return normalizedOptionGroups
-  }
-
-  return [coffeePackageSizeOptionGroup, ...normalizedOptionGroups]
 }
 
 export function getGeneratedProductImageUrl(product) {

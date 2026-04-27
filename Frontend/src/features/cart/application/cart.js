@@ -7,6 +7,7 @@ import {
   getProductMetaLine,
   getProductTypeLabel,
 } from '../../../lib/products'
+import { buildCartErrorMessage } from './cartErrors'
 
 export const cartStorageKeys = {
   local: 'auroraCartLocal',
@@ -360,16 +361,16 @@ function mergeCartItems(...itemGroups) {
 }
 
 class CartRequestError extends Error {
-  constructor(message, status) {
+  constructor(message, status, details = null) {
     super(message)
     this.name = 'CartRequestError'
     this.status = status
+    this.details = details
   }
 }
 
 export function getCartErrorMessage(error, fallback = 'Could not add this item to cart.') {
-  const message = error instanceof Error ? error.message : ''
-  return message.trim() || fallback
+  return buildCartErrorMessage(error?.details || error?.message || error, fallback)
 }
 
 function isExpiredAuthCartError(error) {
@@ -593,8 +594,14 @@ async function requestCartJson(path, options = {}) {
     json: true,
   })
 
-  if (!response.ok || data?.e || payload?.e) {
-    throw new CartRequestError(data?.e || payload?.e || 'Cart request failed', response.status)
+  const errorDetails = data?.e || payload?.e || null
+
+  if (!response.ok || errorDetails) {
+    throw new CartRequestError(
+      buildCartErrorMessage(errorDetails, 'Cart request failed'),
+      response.status,
+      errorDetails,
+    )
   }
 
   return data

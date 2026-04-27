@@ -195,3 +195,7 @@ export function buildRestoreMessage(result, label) {
 
   return `${label} added to cart.`
 }
+
+export function getRestoreFeedbackType(result) {
+  return !result?.addedCount && result?.skippedItems?.length ? 'error' : 'success'
+}

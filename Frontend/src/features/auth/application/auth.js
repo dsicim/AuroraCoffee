@@ -251,7 +251,6 @@ export function saveAuthSession(session, rememberMe) {
   if (session?.token) {
     void fetchCurrentUserResult(session.token, {
       force: true,
-      clearOnUnauthorized: false,
     })
   }
 }

@@ -5,7 +5,11 @@ import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
 import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
 import OrderDeliverySummary from '../../delivery/presentation/OrderDeliverySummary'
 import { authChangeEvent } from '../../auth/application/auth'
-import { buildRestoreMessage, restoreOrderItemsToCart } from '../../../lib/accountActions'
+import {
+  buildRestoreMessage,
+  getRestoreFeedbackType,
+  restoreOrderItemsToCart,
+} from '../../../lib/accountActions'
 import { formatCartOptionLabel, getCartOptionEntries } from '../../../lib/cart'
 import { formatCurrency } from '../../../lib/currency'
 import {
@@ -172,7 +176,7 @@ export default function OrderDetailPage() {
 
     try {
       const result = await restoreOrderItemsToCart(order.items)
-      setFeedbackType('success')
+      setFeedbackType(getRestoreFeedbackType(result))
       setFeedback(buildRestoreMessage(result, `Order ${order.id}`))
 
       if (redirectToCart && result.addedCount) {
@@ -201,7 +205,7 @@ export default function OrderDetailPage() {
 
     try {
       const result = await restoreOrderItemsToCart([item])
-      setFeedbackType('success')
+      setFeedbackType(getRestoreFeedbackType(result))
       setFeedback(buildRestoreMessage(result, item.name || 'Item'))
     } catch (restoreError) {
       setFeedbackType('error')
