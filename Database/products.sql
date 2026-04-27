@@ -209,6 +209,7 @@ INSERT INTO product_option_values (product_option_group_id, label, value_code, p
 (@thermos_color_group_id, 'Black', 'black', 0);
 
 -- Insert weight variant combinations for all coffee products
+UPDATE products SET has_variants = TRUE WHERE id IN (2,3,4,5,6,7,8);
 INSERT INTO product_option_groups (product_id, name, cumulative_stock, group_code) VALUES
 (2, 'Weight', TRUE, 'weight'),
 (3, 'Weight', TRUE, 'weight'),
