@@ -175,6 +175,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         }
+        else if (currentUser.e) {
+            return { s: 401, j: true, d: { e: "Unauthorized" } };
+        }
         else if (method === "GET") { // Guest trying to view cart using get (not allowed)
             return { s: 401, j: true, d: { e: "Unauthorized", msg: "Psst! Guest users can see their cart details. Just send the same request as a POST request and send the cart data stored in localStorage as the body to see the cart." } };
         }
