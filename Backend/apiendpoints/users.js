@@ -7,8 +7,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint[0] === "me") {
         if (method === "GET") return { s: 200, j: true, d: { user: currentUser } };
         else if (method === "PATCH") {
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.name || !body.data.nameprivacy) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            return await sql.editUser(currentUser.id, body.data.name, body.data.nameprivacy).then(res => {
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.name || !body.data.privacy) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (body.data.name.trim().split(" ").length < 2) return { s: 400, j: true, d: { e: "Please enter your name and surname" } };
+            return await sql.editUser(currentUser.id, body.data.name, body.data.privacy).then(res => {
                 if (res.success) {
                     return { s: 200, j: true, d: { e: "User updated successfully" } };
                 }
