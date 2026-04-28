@@ -39,7 +39,16 @@ export default function Footer() {
             </div>
           </div>
 
-          <div>
+          <div className="lg:hidden">
+            <LiquidThemeToggle
+              value={themePreference}
+              onValueChange={setThemePreference}
+              ariaLabel="Choose theme"
+              className="aurora-mobile-theme-toggle"
+            />
+          </div>
+
+          <div className="hidden lg:block">
             <p className="aurora-kicker">Store promise</p>
             <p className="mt-3 text-sm leading-6 text-[var(--aurora-text)]">
               Fresh roast detail, practical account tools, and faster repeat ordering.

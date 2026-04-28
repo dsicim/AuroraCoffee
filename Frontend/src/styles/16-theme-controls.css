@@ -113,6 +113,16 @@
     --switcher-pad-y: 0.34rem;
   }
 
+  .aurora-theme-toggle.switcher.aurora-mobile-theme-toggle {
+    --switcher-height: 2.65rem;
+    --switcher-width: 8.8rem;
+    --switcher-pad-x: 0.34rem;
+    --switcher-pad-y: 0.26rem;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.22),
+      0 8px 18px rgba(33, 20, 13, 0.06);
+  }
+
   .aurora-theme-toggle.switcher.is-disabled {
     cursor: not-allowed;
     opacity: 0.55;
