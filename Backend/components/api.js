@@ -269,7 +269,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                         else return { s: 400, j: true, d: { e: "Invalid token purpose" } };
                     }
                 }
-                else if (body && body.exists && body.json && !body.err && body.data.t && body.data.p && body.data.n) {
+                else if (body && body.exists && body.json && !body.err && !body.data.t && body.data.p && body.data.n) {
                     const token = headers.authorization;
                     const password = body.data.p;
                     const newpassword = body.data.n;
