@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { fetchAuthJson } from './authRequest'
 import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
@@ -80,6 +80,14 @@ function slugify(value) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
+}
+
+function getProductCode(rawProduct) {
+  return normalizeCode(rawProduct?.product_code ?? rawProduct?.productCode)
+}
+
+function getProductSlug(rawProduct) {
+  return getProductCode(rawProduct) || normalizeCode(rawProduct?.slug) || slugify(rawProduct?.name)
 }
 
 function toNumber(value) {
@@ -209,14 +217,16 @@ function buildSlugMap(rawProducts) {
   const baseSlugCounts = new Map()
 
   for (const product of rawProducts) {
-    const baseSlug = slugify(product.name) || 'product'
+    const productCode = getProductCode(product)
+    const baseSlug = productCode || slugify(product.name) || 'product'
     baseSlugCounts.set(baseSlug, (baseSlugCounts.get(baseSlug) || 0) + 1)
   }
 
   return rawProducts.map((product) => {
-    const baseSlug = slugify(product.name) || 'product'
+    const productCode = getProductCode(product)
+    const baseSlug = productCode || slugify(product.name) || 'product'
     const slug =
-      (baseSlugCounts.get(baseSlug) || 0) > 1
+      !productCode && (baseSlugCounts.get(baseSlug) || 0) > 1
         ? `${baseSlug}-${product.id}`
         : baseSlug
 
@@ -234,7 +244,7 @@ function normalizeProduct(rawProduct) {
 
   return {
     id: Number(rawProduct.id),
-    slug: rawProduct.slug,
+    slug: getProductSlug(rawProduct),
     name: normalizeText(rawProduct.name),
     description: normalizeText(rawProduct.description),
     price: toNumber(rawProduct.price),
@@ -339,9 +349,25 @@ function hydrateWithKnownSlugs(rawProducts) {
     const existing = productLookupById.get(Number(product.id))
     return {
       ...product,
-      slug: existing?.slug || slugify(product.name) || `product-${product.id}`,
+      slug: getProductCode(product) || existing?.slug || slugify(product.name) || `product-${product.id}`,
     }
   })
+}
+
+function getProductFromLookupBySlug(slug) {
+  const normalizedSlug = String(slug || '').trim()
+
+  if (!normalizedSlug || catalogScope !== getProductCatalogScope()) {
+    return null
+  }
+
+  for (const product of productLookupById.values()) {
+    if (product.slug === normalizedSlug) {
+      return product
+    }
+  }
+
+  return null
 }
 
 async function requestJson(path, options = {}) {
@@ -430,6 +456,45 @@ export async function fetchProductsByIds(ids) {
     .filter(Boolean)
 }
 
+export async function fetchProductsBySlugs(slugs) {
+  const scope = getProductCatalogScope()
+  ensureProductCatalogScope(scope)
+
+  const normalizedSlugs = Array.from(
+    new Set(
+      (slugs || [])
+        .map((slug) => String(slug || '').trim())
+        .filter(Boolean),
+    ),
+  )
+
+  if (!normalizedSlugs.length) {
+    return []
+  }
+
+  const cachedMatches = normalizedSlugs
+    .map((slug) => getProductFromLookupBySlug(slug))
+    .filter(Boolean)
+
+  if (cachedMatches.length === normalizedSlugs.length) {
+    return cachedMatches
+  }
+
+  const encodedSlugs = normalizedSlugs.map((slug) => encodeURIComponent(slug)).join(',')
+  const payload = await requestJson(`/products?urls=${encodedSlugs}`)
+  const hydratedProducts = hydrateWithKnownSlugs(payload?.products || [])
+
+  if (catalogScope !== scope) {
+    return []
+  }
+
+  updateProductLookup(hydratedProducts, scope)
+
+  return normalizedSlugs
+    .map((slug) => getProductFromLookupBySlug(slug))
+    .filter(Boolean)
+}
+
 export async function searchProducts(query, sortBy = 'newest') {
   const scope = getProductCatalogScope()
   ensureProductCatalogScope(scope)
@@ -475,8 +540,14 @@ export function invalidateProductCatalogCache() {
 }
 
 export async function findProductBySlug(slug) {
-  const products = await fetchAllProducts()
-  return products.find((product) => product.slug === slug) || null
+  const normalizedSlug = String(slug || '').trim()
+
+  if (!normalizedSlug) {
+    return null
+  }
+
+  const [product] = await fetchProductsBySlugs([normalizedSlug])
+  return product || null
 }
 
 export async function findProductByReference(reference) {
@@ -493,6 +564,12 @@ export async function findProductByReference(reference) {
     if (byId[0]) {
       return byId[0]
     }
+  }
+
+  const [productBySlug] = await fetchProductsBySlugs([normalizedReference]).catch(() => [])
+
+  if (productBySlug) {
+    return productBySlug
   }
 
   const products = await fetchAllProducts()
@@ -682,15 +759,74 @@ export function useProductCatalog() {
 }
 
 export function useProductBySlug(slug) {
-  const catalog = useProductCatalog()
+  const [product, setProduct] = useState(() => getProductFromLookupBySlug(slug))
+  const [loading, setLoading] = useState(() => !getProductFromLookupBySlug(slug))
+  const [error, setError] = useState('')
 
-  const product = useMemo(
-    () => catalog.products.find((item) => item.slug === slug) || null,
-    [catalog.products, slug],
-  )
+  useEffect(() => {
+    let active = true
 
-  return {
-    ...catalog,
-    product,
-  }
+    const loadProduct = async () => {
+      const normalizedSlug = String(slug || '').trim()
+
+      if (!normalizedSlug) {
+        if (active) {
+          setProduct(null)
+          setLoading(false)
+          setError('')
+        }
+        return
+      }
+
+      ensureProductCatalogScope(getProductCatalogScope())
+      const cachedProduct = getProductFromLookupBySlug(normalizedSlug)
+
+      if (cachedProduct) {
+        if (active) {
+          setProduct(cachedProduct)
+          setLoading(false)
+          setError('')
+        }
+        return
+      }
+
+      if (active) {
+        setLoading(true)
+        setError('')
+      }
+
+      try {
+        const nextProduct = await findProductBySlug(normalizedSlug)
+        if (!active) {
+          return
+        }
+        setProduct(nextProduct)
+      } catch (fetchError) {
+        if (!active) {
+          return
+        }
+
+        setProduct(null)
+        setError(getProductRequestErrorMessage(fetchError, 'The requested product route does not match the live catalog.'))
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+
+    const handleAuthChange = () => {
+      void loadProduct()
+    }
+
+    window.addEventListener(authChangeEvent, handleAuthChange)
+    void loadProduct()
+
+    return () => {
+      active = false
+      window.removeEventListener(authChangeEvent, handleAuthChange)
+    }
+  }, [slug])
+
+  return { product, loading, error }
 }
