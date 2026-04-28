@@ -601,7 +601,9 @@ async function requestCartJson(path, options = {}) {
     json: true,
   })
 
-  const errorDetails = data?.e || payload?.e || null
+  const errorDetails = data?.e || payload?.e || (Array.isArray(data?.failedItems) && data.failedItems.length
+    ? { e: data?.msg || 'Cart request failed', failedItems: data.failedItems }
+    : null)
 
   if (!response.ok || errorDetails) {
     throw new CartRequestError(
@@ -762,45 +764,14 @@ async function mergeGuestCartIntoServer(items) {
     return existingServerItems
   }
 
-  const productIds = Array.from(
-    new Set(
-      newGuestItems
-        .map((item) => Number(item?.productId))
-        .filter((id) => Number.isFinite(id) && id > 0),
-    ),
-  )
-  const products = productIds.length ? await fetchProductsByIds(productIds).catch(() => []) : []
-  const productsById = new Map(products.map((product) => [product.id, product]))
+  const cartPayload = await buildCartApiPayload([...existingServerItems, ...newGuestItems], {
+    includeBlankVariant: true,
+  })
 
-  for (const item of newGuestItems) {
-    const product = productsById.get(Number(item.productId))
-    const optionCodes = filterOptionCodesForPayload(
-      product,
-      normalizeCartOptions(item.optionCodes) || mapCartOptionsForPayload(product, item.options),
-    )
-    const variantCode =
-      normalizeVariantCode(item.variantCode) ||
-      product?.variants?.find((variant) => Number(variant.id) === Number(item.variantId))?.variantCode ||
-      ''
-
-    const payload = {
-      id: item.productId,
-      qty: item.quantity,
-    }
-
-    if (optionCodes) {
-      payload.opt = optionCodes
-    }
-
-    if (variantCode) {
-      payload.var = variantCode
-    }
-
-    await requestCartJson('/cart', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    })
-  }
+  await requestCartJson('/cart', {
+    method: 'PUT',
+    body: JSON.stringify({ cart: cartPayload }),
+  })
 
   return fetchServerCart({ force: true })
 }
@@ -939,7 +910,7 @@ export async function enrichCartItems(items) {
   }).filter(Boolean)
 }
 
-export async function buildCheckoutCartPayload(items) {
+async function buildCartApiPayload(items, { includeBlankVariant = false } = {}) {
   const normalizedItems = (items || []).filter(
     (item) => Number.isFinite(Number(item?.productId)) && Number(item.productId) > 0,
   )
@@ -968,12 +939,16 @@ export async function buildCheckoutCartPayload(items) {
       opt: payloadOptionCodes || {},
     }
 
-    if (payloadVariantCode) {
-      payload.var = payloadVariantCode
+    if (payloadVariantCode || includeBlankVariant) {
+      payload.var = payloadVariantCode || ''
     }
 
     return payload
   })
+}
+
+export async function buildCheckoutCartPayload(items) {
+  return buildCartApiPayload(items)
 }
 
 export async function addCartItem(product, quantity = 1) {
