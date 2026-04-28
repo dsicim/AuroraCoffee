@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     verified BOOLEAN DEFAULT FALSE,
     role VARCHAR(50) NOT NULL DEFAULT 'Customer',
+    nameprivacy VARCHAR(255) NOT NULL,
     cctoken JSON DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

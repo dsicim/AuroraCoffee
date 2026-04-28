@@ -62,7 +62,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
-    else if (endpoint[0] === "add") {
+    else if (endpoint[0] === "categories") {
+        if (method === "GET") {
+            
+        }
         return { s: 501, j: true, d: { e: "Not Implemented" } };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };

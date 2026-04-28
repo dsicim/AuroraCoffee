@@ -44,8 +44,8 @@ func.registerUser = async function (username, password, displayname) {
     try {
         const hashedPassword = await bcrypt.hash(password, 10);
         const [result] = await pool.execute(
-            'INSERT INTO users (displayname, username, password, verified, role) VALUES (?, ?, ?, ?, ?)',
-            [displayname, username, hashedPassword, !config.verifyemail, 'Customer']
+            'INSERT INTO users (displayname, username, password, verified, role, nameprivacy) VALUES (?, ?, ?, ?, ?, ?)',
+            [displayname, username, hashedPassword, !config.verifyemail, 'Customer', displayname.split(" ").map(n => "s").join(" ")]
         );
         return { success: true, message: 'User registered successfully', userId: result.insertId };
     } catch (error) {
