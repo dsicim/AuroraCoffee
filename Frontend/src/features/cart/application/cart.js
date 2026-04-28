@@ -130,9 +130,15 @@ function buildCartVariantKey(productSlug, fallbackId, variantCode, options) {
 }
 
 function getCartMergeKey(item) {
+  const productId = Number(item?.productId)
+  const baseIdentity =
+    Number.isFinite(productId) && productId > 0
+      ? productId
+      : item?.productSlug || item?.id
+
   return buildCartVariantKey(
-    item?.productSlug,
-    item?.productId || item?.id,
+    '',
+    baseIdentity,
     item?.variantCode,
     item?.optionCodes ?? item?.options,
   )
@@ -737,9 +743,28 @@ async function fetchServerCart({ force = false } = {}) {
 }
 
 async function mergeGuestCartIntoServer(items) {
+  const guestItems = (items || [])
+    .map(normalizeStoredCartItem)
+    .filter((item) => Number.isFinite(Number(item?.productId)) && Number(item.productId) > 0)
+
+  if (!guestItems.length) {
+    return []
+  }
+
+  const existingServerItems = await fetchServerCart({ force: true })
+  const existingServerKeys = new Set(existingServerItems.map(getCartMergeKey).filter(Boolean))
+  const newGuestItems = guestItems.filter((item) => {
+    const key = getCartMergeKey(item)
+    return key && !existingServerKeys.has(key)
+  })
+
+  if (!newGuestItems.length) {
+    return existingServerItems
+  }
+
   const productIds = Array.from(
     new Set(
-      (items || [])
+      newGuestItems
         .map((item) => Number(item?.productId))
         .filter((id) => Number.isFinite(id) && id > 0),
     ),
@@ -747,11 +772,7 @@ async function mergeGuestCartIntoServer(items) {
   const products = productIds.length ? await fetchProductsByIds(productIds).catch(() => []) : []
   const productsById = new Map(products.map((product) => [product.id, product]))
 
-  for (const item of items) {
-    if (!item?.productId) {
-      continue
-    }
-
+  for (const item of newGuestItems) {
     const product = productsById.get(Number(item.productId))
     const optionCodes = filterOptionCodesForPayload(
       product,
@@ -780,6 +801,8 @@ async function mergeGuestCartIntoServer(items) {
       body: JSON.stringify(payload),
     })
   }
+
+  return fetchServerCart({ force: true })
 }
 
 export function getCartStorageMode() {
@@ -799,11 +822,10 @@ async function reconcileCartStorageWithAuthOnce() {
 
     try {
       if (guestItems.length) {
-        await mergeGuestCartIntoServer(guestItems)
+        const serverItems = await mergeGuestCartIntoServer(guestItems)
         writeGuestCartItems('local', [])
         writeGuestCartItems('session', [])
 
-        const serverItems = await fetchServerCart({ force: true })
         dispatchCartChange()
         return serverItems
       }

@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../shared/components/ui/AuroraWidget'
 import FavoriteToggleButton from '../components/FavoriteToggleButton'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
-import ProductCard from '../features/products/presentation/ProductCard'
 import ProductMedia from '../features/products/presentation/ProductMedia'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
@@ -23,10 +22,8 @@ import {
   getProductFlavorNotes,
   getProductMetaLine,
   getProductTypeLabel,
-  getRelatedProducts,
   isCoffeeProduct,
   useProductBySlug,
-  useProductCatalog,
 } from '../lib/products'
 import {
   getPreferredProductGalleryIndex,
@@ -1450,7 +1447,6 @@ function PreviewDropdown({
 export default function ProductDetailPage() {
   const { slug } = useParams()
   const { product, loading, error } = useProductBySlug(slug)
-  const { products } = useProductCatalog()
   const [feedback, setFeedback] = useState('')
   const [feedbackType, setFeedbackType] = useState('success')
   const [optionSelection, setOptionSelection] = useState({
@@ -1476,11 +1472,6 @@ export default function ProductDetailPage() {
       window.clearTimeout(timeoutId)
     }
   }, [feedback])
-
-  const relatedProducts = useMemo(
-    () => (product ? getRelatedProducts(products, product) : []),
-    [product, products],
-  )
 
   const optionGroups = useMemo(() => {
     if (!product) {
@@ -1828,26 +1819,5 @@ export default function ProductDetailPage() {
     </section>
   )
 
-  return (
-    <StorefrontLayout hero={hero} contentClassName="aurora-stack-12">
-      {relatedProducts.length ? (
-        <section className="aurora-showroom-panel mx-auto w-full p-5 sm:p-8">
-          <p className="aurora-kicker">Related products</p>
-          <h2 className="mt-4 font-display text-4xl text-[var(--aurora-text-strong)]">
-            Keep browsing
-          </h2>
-
-          <div className="mt-8 grid gap-6 xl:grid-cols-2">
-            {relatedProducts.map((relatedProduct) => (
-              <ProductCard
-                key={relatedProduct.slug}
-                product={relatedProduct}
-                compact
-              />
-            ))}
-          </div>
-        </section>
-      ) : null}
-    </StorefrontLayout>
-  )
+  return <StorefrontLayout hero={hero} contentClassName="aurora-stack-12" />
 }
