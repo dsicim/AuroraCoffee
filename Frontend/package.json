@@ -7,7 +7,6 @@
     "dev": "vite --host 0.0.0.0",
     "build": "vite build",
     "lint": "eslint .",
-    "test:auth": "node --import ./scripts/register-node-vite-loader.mjs --test src/features/auth/application/auth-expiry.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

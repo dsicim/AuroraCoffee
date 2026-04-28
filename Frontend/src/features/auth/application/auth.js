@@ -61,8 +61,27 @@ function removeStoredAuthSession() {
   window.sessionStorage.removeItem(authStorageKey)
 }
 
+function getSessionExpiryTime(expires) {
+  if (typeof expires === 'number') {
+    return expires
+  }
+
+  if (typeof expires === 'string') {
+    const trimmedExpires = expires.trim()
+    const numericExpires = Number(trimmedExpires)
+
+    if (trimmedExpires && Number.isFinite(numericExpires)) {
+      return numericExpires
+    }
+
+    return Date.parse(trimmedExpires)
+  }
+
+  return Number.NaN
+}
+
 function isSessionExpired(session) {
-  const expiresAt = Date.parse(session?.expires || '')
+  const expiresAt = getSessionExpiryTime(session?.expires)
 
   if (!Number.isFinite(expiresAt)) {
     return false
@@ -74,7 +93,7 @@ function isSessionExpired(session) {
 function scheduleAuthExpiry(session) {
   clearAuthExpiryTimer()
 
-  const expiresAt = Date.parse(session?.expires || '')
+  const expiresAt = getSessionExpiryTime(session?.expires)
 
   if (!Number.isFinite(expiresAt)) {
     return
