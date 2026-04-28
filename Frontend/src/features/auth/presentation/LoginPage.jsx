@@ -27,6 +27,15 @@ function sanitizeNextPath(nextPath) {
   return nextPath
 }
 
+async function reconcilePostLoginStorage() {
+  try {
+    reconcileAccountStorageWithAuth()
+    await reconcileCartStorageWithAuth()
+  } catch {
+    // Login already succeeded; stale local cart/account data must not block entry.
+  }
+}
+
 export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -109,8 +118,7 @@ export default function LoginPage() {
       }
 
       saveAuthSession(nextSession, true)
-      reconcileAccountStorageWithAuth()
-      await reconcileCartStorageWithAuth()
+      await reconcilePostLoginStorage()
       navigate(nextPath || '/', { replace: true })
     } catch {
       setFeedback('The login request could not be completed. Please try again.')
