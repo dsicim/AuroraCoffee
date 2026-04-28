@@ -342,7 +342,7 @@ func.getProductsByIds = async function (userId,productId, isUrl = false) {
             throw new DBError(404, 'No products found');
         }
         rows = await func.enrichProductsWithOptions(userId, rows);
-        const foundIds = rows.map(r => r.id);
+        const foundIds = rows.map(r => r[""+(isUrl ? 'product_code' : 'id')]);
         const missingIds = productId.filter(id => !foundIds.includes(id));
         return { success: true, products: rows, idsnotfound: missingIds };
     } catch (error) {
