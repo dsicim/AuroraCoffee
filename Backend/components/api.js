@@ -279,7 +279,6 @@ async function handleAPI(method, endpoint, query, body, headers) {
                             return { s: 401, j: true, d: { e: "Unauthorized" } };
                         }
                         else {
-                            if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             const userId = tokens.get(token).id;
                             const email = await sql.findUser(userId, true).then(res => {
                                 return res.success ? res.user : null;
@@ -287,6 +286,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
                                 return null;
                             });
                             const pv = validatePassword(newpassword, [email.username.split("@")[0], email.displayname]);
+                            if (!pv.s) return { s: 400, j: true, d: { e: pv.e } };
                             if (!email) return { s: 401, j: true, d: { e: "Unauthorized. User not found." } };
                             const login = await sql.loginUser(email.username, password).then(res => {
                                 return res.userId === userId && res.success;
