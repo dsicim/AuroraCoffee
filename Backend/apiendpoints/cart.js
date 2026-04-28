@@ -23,7 +23,7 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
     if (invalid && (!ignoreRequired || opt)) return { s: false, e: "Invalid or missing required options" };
     if (expectedvar && (!variant || !variant.length) && !ignoreRequired) return { s: false, e: "Variant information is required for this product" };
     if (expectedvar) {
-        const variants = product.variants ? product.variants.map(v => {return {code:v.variant_code,id:v.id}}) : [];
+        const variants = product.variants ? product.variants.map(v => { return { code: v.variant_code, id: v.id } }) : [];
         const variantObj = variants.find(v => v.code === variant);
         if (!variantObj && (!ignoreRequired || variant)) return { s: false, e: "Invalid variant selected" };
         if (variantObj) {
@@ -36,9 +36,9 @@ function validateOptions(product, opt, variant, ignoreRequired = false) {
             const k = Object.keys(opt)[i];
             const option = validopt.find(v => v.code === k);
             if (option) {
-                if (!option.values.includes(String(opt[k]))) return { s: false, e: "Option \""+k+"\" doesn't have \""+opt[k]+"\" as a possible option for this product" };
+                if (!option.values.includes(String(opt[k]))) return { s: false, e: "Option \"" + k + "\" doesn't have \"" + opt[k] + "\" as a possible option for this product" };
             }
-            else return { s: false, e: "Option \""+k+"\" doesn't exist for this product" };
+            else return { s: false, e: "Option \"" + k + "\" doesn't exist for this product" };
         }
     }
     if (editvariant) return { s: true, variant: variant };
@@ -52,7 +52,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (method === "GET") { // Get all cart items
                 return await sql.getCart(currentUser.id).then(result => {
                     if (result.success) {
-                        return { s: 200, j: true, d: { cart: result.cart.map(item => {try {item.options = JSON.parse(item.options);} catch (e) {};return item;}) } };
+                        return { s: 200, j: true, d: { cart: result.cart.map(item => { try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) } };
                     }
                     else {
                         return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -65,7 +65,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                const product = await sql.getProductsByIds(null,[body.data.id]).then(async result => {
+                const product = await sql.getProductsByIds(null, [body.data.id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
                         result.products.forEach(p => {
@@ -89,7 +89,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (validation.variant) body.data.var = validation.variant;
                 const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.id === body.data.var).stock : product.product[body.data.id].stock;
                 const qty = body.data.qty;
-                if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };
+                if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
                 return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt ? body.data.opt : {}), body.data.var || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -99,14 +99,115 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 });
             }
             else if (method === "PUT") { // Replace entire cart
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.cart || !Array.isArray(body.data.cart)) return { s: 400, j: true, d: { e: "Invalid request body" } };
                 console.log("Replace cart body:", body);
-                return { s: 500, j: true, d: { e: "Not implemented yet" } };
+                const productsMentioned = [];
+                body.data.cart.forEach(providedItem => {
+                    if (!productsMentioned.includes(providedItem.id)) productsMentioned.push(providedItem.id);
+                });
+                let products = await sql.getProductsByIds(null, productsMentioned).then(result => {
+                    if (result.success) return { s: true, products: result.products, idsnotfound: result.idsnotfound };
+                    else {
+                        return { s: false, e: result };
+                    }
+                }).catch(err => {
+                    console.error("Get products by IDs error:", err);
+                    if (err instanceof sql.DBError) return { s: false, e: err.error || "Unknown error" };
+                    else return { s: false, e: "Unknown error" };
+                });
+                if (!products.s) return { s: 400, j: true, d: { e: products.e || "An unknown error occurred" } };
+                body.data.cart.forEach(item => {
+                    const product = products.products.find(p => p.id === item.id);
+                    if (!product) {
+                        item.valid = false;
+                        item.e = "Product ID not found";
+                    }
+                    else {
+                        const validation = validateOptions(product, item.opt, item.var);
+                        if (!validation.s) {
+                            item.valid = false;
+                            item.e = validation.e;
+                        }
+                        else {
+                            item.valid = true;
+                            if (validation.variant) item.var = validation.variant;
+                            if (item.qty > ((product.has_variants) ? product.variants.find(v => v.id === item.var).stock : product.stock)) {
+                                item.valid = false;
+                                item.e = "Requested quantity exceeds available stock. Available stock: " + ((product.has_variants) ? product.variants.find(v => v.id === item.var).stock : product.stock);
+                            }
+                        }
+                    }
+                });
+                const failedItems = body.data.cart.filter(item => !item.valid);
+                const passedItems = body.data.cart.filter(item => item.valid);
+                if (passedItems.length === 0) return { s: 400, j: true, d: { e: "All items in the cart are invalid", failedItems } };
+                const actualCart = await sql.getCart(currentUser.id).then(result => {
+                    if (result.success) {
+                        return { s: true, cart: result.cart.map(item => { item.delete = true; try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) };
+                    }
+                }).catch(err => {
+                    return { s: false, e: "Failed to fetch current cart" };
+                });
+                if (!actualCart.s) return { s: 400, j: true, d: { e: actualCart.e || "Failed to fetch current cart" } };
+                passedItems.forEach(item => {
+                    let checking = true;
+                    actualCart.cart.forEach(cartItem => {
+                        if (cartItem.product_id === item.id && checking) {
+                            cartItem.delete = false;
+                            checking = false;
+                            if (cartItem.qty !== item.qty) cartItem.newQty = item.qty;
+                            if (JSON.stringify(cartItem.options) !== JSON.stringify(item.opt)) cartItem.newOpt = JSON.stringify(item.opt);
+                            if (cartItem.variant_id !== item.var) cartItem.newVar = item.var;
+                            if (cartItem.newQty || cartItem.newOpt || cartItem.newVar) cartItem.update = true;
+                        }
+                    });
+                    if (checking) {
+                        actualCart.cart.push({
+                            product_id: item.id,
+                            qty: item.qty,
+                            options: JSON.stringify(item.opt ? item.opt : {}),
+                            variant_id: item.var || null,
+                            insert: true
+                        });
+                    }
+                });
+                actualCart.cart.forEach(cartItem => {
+                    if (cartItem.delete) {
+                        await sql.deleteCartItem(currentUser.id, query.id).then(result => {
+                            if (!result.success) cartItem.error = "Failed to remove item from cart";
+                        }).catch(err => {
+                            if (err instanceof sql.DBError) cartItem.error = err.error || "An unknown error occurred while removing item from cart";
+                            else cartItem.error = "An unknown error occurred while removing item from cart";
+                        });
+                    }
+                    else if (cartItem.update) {
+                        await sql.modifyCartItem(currentUser.id, cartItem.id, cartItem.newQty ? cartItem.newQty : cartItem.qty, cartItem.newOpt ? cartItem.newOpt : cartItem.opt, cartItem.newVar ? cartItem.newVar : cartItem.var).then(result => {
+                            if (!result.success) cartItem.error = "Failed to update item in cart";
+                        }).catch(err => {
+                            if (err instanceof sql.DBError) cartItem.error = err.error || "An unknown error occurred while updating cart item";
+                            else cartItem.error = "An unknown error occurred while updating cart item";
+                        });
+                    }
+                    else if (cartItem.insert) {
+                        await sql.addToCart(currentUser.id, cartItem.product_id, cartItem.qty, cartItem.options, cartItem.variant_id).then(result => {
+                            if (!result.success) cartItem.error = "Failed to add item to cart";
+                        }).catch(err => {
+                            if (err instanceof sql.DBError) cartItem.error = err.error || "An unknown error occurred while adding item to cart";
+                            else cartItem.error = "An unknown error occurred while adding item to cart";
+                        });
+                    }
+                    if (cartItem.error) {
+                        failedItems.push(cartItem);
+                    }
+                });
+                if (failedItems.length > 0) return { s: 207, j: true, d: { msg: "Cart updated with some errors", failedItems } };
+                return { s: 200, j: true, d: { msg: "Cart updated successfully without any errors" } };
             }
             else if (method === "PATCH") { // Update cart item (quantity or options)
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
                 const cart = await sql.getCart(currentUser.id).then(result => {
                     if (result.success) {
-                        return { s: true, cart: result.cart.map(item => {try {item.options = JSON.parse(item.options);} catch (e) {};return item;}) };
+                        return { s: true, cart: result.cart.map(item => { try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) };
                     }
                     else {
                         return { s: false, e: "Failed to fetch cart" };
@@ -141,10 +242,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[item.product_id], body.data.opt, body.data.var, true);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
-                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.id === body.data.var?body.data.var:item.variant_id).stock : product.product[item.product_id].stock;
+                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.id === body.data.var ? body.data.var : item.variant_id).stock : product.product[item.product_id].stock;
                 const qty = body.data.qty || item.qty;
-                if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: "+stock } };
-                return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt ? JSON.stringify(body.data.opt): undefined, body.data.var || null).then(result => {
+                if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
+                return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt ? JSON.stringify(body.data.opt) : undefined, body.data.var || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Cart item updated" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }).catch(err => {
@@ -189,17 +290,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (item.id && !productsMentioned.includes(item.id) && !isNaN(parseInt(item.id))) productsMentioned.push(parseInt(item.id));
             });
             const products = (productsMentioned.length > 0) ? await sql.getProductsByIds(null, productsMentioned).then(async result => {
-                    if (result.success) {
-                        return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
-                    }
-                    else {
-                        return { s: 400, j: true, d: { e: "An unknown error occurred" } };
-                    }
-                }).catch(err => {
-                    console.error("Get products by IDs error:", err);
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-            }) : { s: 200, j: true, d: {products: [], idsnotfound: [] } };
+                if (result.success) {
+                    return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get products by IDs error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            }) : { s: 200, j: true, d: { products: [], idsnotfound: [] } };
             if (products.s !== 200) return products;
             let productsMap = {};
             products.d.products.forEach(p => {
