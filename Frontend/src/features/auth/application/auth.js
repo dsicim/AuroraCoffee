@@ -379,6 +379,107 @@ export function getCachedCurrentUser() {
   return cachedCurrentUser
 }
 
+async function readAuthMutationResponse(response) {
+  const payload = await response.json().catch(() => ({}))
+  const errorPayload = payload?.e || payload?.d?.e
+
+  if (!response.ok || errorPayload) {
+    const message =
+      typeof errorPayload === 'string'
+        ? errorPayload
+        : payload?.message || payload?.error || payload?.d?.message || 'Account request failed'
+    throw new Error(message)
+  }
+
+  return payload
+}
+
+function requireAuthSession() {
+  const session = readStoredSession()
+
+  if (!session?.token) {
+    throw new Error('Sign in again before updating your account.')
+  }
+
+  return session
+}
+
+export async function updateCurrentUserProfile({ name, privacy }) {
+  const session = requireAuthSession()
+  const response = await fetch(buildApiUrl('/users/me'), {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      authorization: session.token,
+    },
+    body: JSON.stringify({
+      name,
+      privacy,
+    }),
+  })
+  const payload = await readAuthMutationResponse(response)
+  const nestedUser =
+    payload?.d &&
+    typeof payload.d === 'object' &&
+    !Array.isArray(payload.d) &&
+    (payload.d.id || payload.d.displayname || payload.d.name || payload.d.role)
+      ? payload.d
+      : null
+  const user = payload?.user || payload?.d?.user || nestedUser
+
+  if (user) {
+    setCurrentUserCache({
+      user,
+      status: currentUserFetchStatus.ok,
+      token: session.token,
+    })
+    return user
+  }
+
+  const result = await fetchCurrentUserResult(session.token, { force: true })
+
+  if (result.status !== currentUserFetchStatus.ok) {
+    throw new Error('Profile saved, but the updated account could not be refreshed.')
+  }
+
+  return result.user
+}
+
+export async function changeCurrentPassword({ currentPassword, nextPassword }) {
+  const session = requireAuthSession()
+  const response = await fetch(buildApiUrl('/auth/password'), {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      authorization: session.token,
+    },
+    body: JSON.stringify({
+      p: currentPassword,
+      n: nextPassword,
+    }),
+  })
+  const payload = await readAuthMutationResponse(response)
+  const nextToken = payload?.t || payload?.token || payload?.d?.t || ''
+
+  if (!nextToken) {
+    throw new Error('Password changed, but the backend did not return a new session token.')
+  }
+
+  saveAuthSession(
+    {
+      ...session,
+      token: nextToken,
+    },
+    getAuthStorageMode() === 'local',
+  )
+
+  return true
+}
+
 async function fetchCurrentUserResultNetwork(token, options = {}) {
   if (!token) {
     return {
