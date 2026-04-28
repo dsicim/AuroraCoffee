@@ -127,62 +127,62 @@ INSERT INTO categories (name, parent_id) VALUES ('Brewing Equipment', @acc_id);
 -- Following the pricing strategy: 250g specialty coffee ranges between 300 TL and 550 TL.
 
 -- Sample Coffee Products
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Ethiopia Yirgacheffe', 'Flowery and citrusy notes with a light body.', 520.00, 65, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Ethiopia Yirgacheffe', 'ethiopia-yirgacheffe', 'Flowery and citrusy notes with a light body.', 520.00, 65, id, 'Ethiopia', 'Light', 'High', 'Jasmine, Lemon, Peach'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Guatemala Green Valley', 'Balanced coffee with medium acidity and smooth body. Notes of chocolate and citrus make it
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Guatemala Green Valley', 'guatemala-green-valley', 'Balanced coffee with medium acidity and smooth body. Notes of chocolate and citrus make it
 suitable for both filter and espresso.', 420.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Colombia Huila', 'Well-balanced with chocolate and nutty sweetness.', 380.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Colombia Huila', 'colombia-huila', 'Well-balanced with chocolate and nutty sweetness.', 380.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Napoli Blend', 'Strong and intense coffee with low acidity. Perfect for espresso lovers.', 380.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Napoli Blend', 'napoli-blend', 'Strong and intense coffee with low acidity. Perfect for espresso lovers.', 380.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
 FROM categories WHERE name = 'Blend' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Morning Blend', 'A smooth blend of African and South American beans.', 320.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Morning Blend', 'morning-blend', 'A smooth blend of African and South American beans.', 320.00, 200, id, 'Multi-origin', 'Medium', 'Medium', 'Berry, Milk Chocolate'
 FROM categories WHERE name = 'Blend' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Brazil Santos', 'Low acidity coffee with nutty and chocolate flavors. Smooth and easy to drink.', 350.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Brazil Santos', 'brazil-santos', 'Low acidity coffee with nutty and chocolate flavors. Smooth and easy to drink.', 350.00, 100, id, 'Colombia', 'Medium', 'Medium', 'Caramel, Chocolate, Roasted Nuts'
 FROM categories WHERE name = 'Single Origin' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Dark Espresso Roast', 'Perfect for a rich and creamy espresso shot.', 400.00, 75, id, 'Brazil/India', 'Dark', 'Low', 'Dark Chocolate, Toffee'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Dark Espresso Roast', 'dark-espresso-roast', 'Perfect for a rich and creamy espresso shot.', 400.00, 75, id, 'Brazil/India', 'Dark', 'Low', 'Dark Chocolate, Toffee'
 FROM categories WHERE name = 'Espresso' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
-SELECT 'Kenyan AA Filter', 'Vibrant acidity and full-bodied fruitiness.', 520.00, 30, id, 'Kenya', 'Light-Medium', 'Very High', 'Blackcurrant, Grapefruit'
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Kenyan AA Filter', 'kenyan-aa-filter', 'Vibrant acidity and full-bodied fruitiness.', 520.00, 30, id, 'Kenya', 'Light-Medium', 'Very High', 'Blackcurrant, Grapefruit'
 FROM categories WHERE name = 'Filter Coffee' LIMIT 1;
 
 -- Sample Accessories Products
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Classic French Press', 'BPA-free glass French press with stainless steel mesh.', 800.00, 25, id, 'Glass/Stainless Steel', '800ml'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'Classic French Press', 'classic-french-press', 'BPA-free glass French press with stainless steel mesh.', 800.00, 25, id, 'Glass/Stainless Steel', '800ml'
 FROM categories WHERE name = 'French Press' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Matte Black Mug', 'Minimalist ceramic mug, perfect for espresso based drinks.', 600.00, 120, id, 'Ceramic', '350ml'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'Matte Black Mug', 'matte-black-mug', 'Minimalist ceramic mug, perfect for espresso based drinks.', 600.00, 120, id, 'Ceramic', '350ml'
 FROM categories WHERE name = 'Mug' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Urban Thermos', 'Stays hot for 12 hours, cold for 24 hours.', 500.00, 45, id, 'Stainless Steel', '500ml'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'Urban Thermos', 'urban-thermos', 'Stays hot for 12 hours, cold for 24 hours.', 500.00, 45, id, 'Stainless Steel', '500ml'
 FROM categories WHERE name = 'Thermos' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Burr Grinder Pro', 'High precision manual grinder with 20 settings.', 1450.00, 15, id, 'Aluminum/Steel', '40g'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'Burr Grinder Pro', 'burr-grinder-pro', 'High precision manual grinder with 20 settings.', 1450.00, 15, id, 'Aluminum/Steel', '40g'
 FROM categories WHERE name = 'Grinder' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'V60 Filter Paper', 'Ensures clean and smooth filter coffee brewing.', 200.00, 15, id, 'Aluminum/Steel', '40g'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'V60 Filter Paper', 'v60-filter-paper', 'Ensures clean and smooth filter coffee brewing.', 200.00, 15, id, 'Aluminum/Steel', '40g'
 FROM categories WHERE name = 'Filter Paper' LIMIT 1;
 
-INSERT INTO products (name, description, price, stock, category_id, material, capacity)
-SELECT 'Glass Drip Server', 'Heat resistant glass server for pour-over brewing.', 420.00, 60, id, 'Borosilicate Glass', '600ml'
+INSERT INTO products (name, product_code, description, price, stock, category_id, material, capacity)
+SELECT 'Glass Drip Server', 'glass-drip-server', 'Heat resistant glass server for pour-over brewing.', 420.00, 60, id, 'Borosilicate Glass', '600ml'
 FROM categories WHERE name = 'Brewing Equipment' LIMIT 1;
 
 -- 5. Creating variants for Ethiopia Yirgacheffe

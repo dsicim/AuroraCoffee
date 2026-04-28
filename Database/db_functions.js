@@ -325,7 +325,7 @@ func.getAllProducts = async function (userId) {
     }
 };
 
-func.getProductsByIds = async function (userId,productId) {
+func.getProductsByIds = async function (userId,productId, isUrl = false) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -336,7 +336,7 @@ func.getProductsByIds = async function (userId,productId) {
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
-            WHERE p.id IN (?)
+            WHERE p.${isUrl ? 'product_code' : 'id'} IN (?)
         `, [productId]);
         if (rows.length === 0) {
             throw new DBError(404, 'No products found');
