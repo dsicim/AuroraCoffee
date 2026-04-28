@@ -14,6 +14,7 @@ import {
   buildSubmittedOrderSnapshotFromPending,
   consumePending3DSCheckoutSnapshot,
   parse3DSCallbackResult,
+  remove3DSCallbackResultFromUrl,
   saveCheckout3DSReturnState,
 } from '../application/payment3ds'
 
@@ -41,24 +42,6 @@ function Checkout3DSCallbackLayout({ hero, children }) {
   )
 }
 
-function remove3DSCallbackResultFromUrl(searchParams) {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  const nextParams = new URLSearchParams(searchParams)
-  nextParams.delete('result')
-
-  const nextSearch = nextParams.toString()
-  const nextUrl = [
-    window.location.pathname,
-    nextSearch ? `?${nextSearch}` : '',
-    window.location.hash,
-  ].join('')
-
-  window.history.replaceState(window.history.state, '', nextUrl)
-}
-
 export default function Checkout3DSCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -81,6 +64,8 @@ export default function Checkout3DSCallbackPage() {
       const parsedResult = parse3DSCallbackResult(searchParams.get('result'))
 
       if (!parsedResult.success) {
+        remove3DSCallbackResultFromUrl(searchParams)
+
         if (!active) {
           return
         }
@@ -110,8 +95,6 @@ export default function Checkout3DSCallbackPage() {
         return
       }
 
-      remove3DSCallbackResultFromUrl(searchParams)
-
       const nextOrder = buildSubmittedOrderSnapshotFromPending(
         pendingSnapshot,
         callbackResult,
@@ -137,6 +120,8 @@ export default function Checkout3DSCallbackPage() {
           await fetchOrders({ force: true }).catch(() => null)
         }
       }
+
+      remove3DSCallbackResultFromUrl(searchParams)
 
       if (!active) {
         return

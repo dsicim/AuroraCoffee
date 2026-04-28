@@ -285,6 +285,24 @@ export function parse3DSCallbackResult(rawResult) {
   }
 }
 
+export function remove3DSCallbackResultFromUrl(searchParams) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const nextParams = new URLSearchParams(searchParams)
+  nextParams.delete('result')
+
+  const nextSearch = nextParams.toString()
+  const nextUrl = [
+    window.location.pathname,
+    nextSearch ? `?${nextSearch}` : '',
+    window.location.hash,
+  ].join('')
+
+  window.history.replaceState(window.history.state, '', nextUrl)
+}
+
 function decodeBase64Utf8(rawValue) {
   const normalized = String(rawValue || '')
     .trim()
