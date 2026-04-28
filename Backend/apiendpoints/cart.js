@@ -171,7 +171,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         });
                     }
                 });
-                actualCart.cart.forEach(cartItem => {
+                actualCart.cart.forEach(async cartItem => {
                     if (cartItem.delete) {
                         await sql.deleteCartItem(currentUser.id, query.id).then(result => {
                             if (!result.success) cartItem.error = "Failed to remove item from cart";
