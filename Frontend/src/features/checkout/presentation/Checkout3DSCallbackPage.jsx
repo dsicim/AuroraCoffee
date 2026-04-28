@@ -41,6 +41,24 @@ function Checkout3DSCallbackLayout({ hero, children }) {
   )
 }
 
+function remove3DSCallbackResultFromUrl(searchParams) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const nextParams = new URLSearchParams(searchParams)
+  nextParams.delete('result')
+
+  const nextSearch = nextParams.toString()
+  const nextUrl = [
+    window.location.pathname,
+    nextSearch ? `?${nextSearch}` : '',
+    window.location.hash,
+  ].join('')
+
+  window.history.replaceState(window.history.state, '', nextUrl)
+}
+
 export default function Checkout3DSCallbackPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -91,6 +109,8 @@ export default function Checkout3DSCallbackPage() {
 
         return
       }
+
+      remove3DSCallbackResultFromUrl(searchParams)
 
       const nextOrder = buildSubmittedOrderSnapshotFromPending(
         pendingSnapshot,
