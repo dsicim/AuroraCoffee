@@ -91,6 +91,26 @@ func.loginUser = async function (username, password) {
     }
 };
 
+func.editUser = async function (userId, newDisplayName, newNamePrivacy) {
+    if (!userId || !newDisplayName || !newNamePrivacy) {
+        throw new DBError(400, 'User ID, display name, and name privacy are required');
+    }
+    try {
+        const [result] = await pool.execute(
+            'UPDATE users SET displayname = ?, nameprivacy = ? WHERE id = ?',
+            [newDisplayName, newNamePrivacy, userId]
+        );
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'User not found');
+        }
+        return { success: true, message: 'User updated successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error; // Re-throw known DBErrors
+        console.error('User update error:', error);
+        throw new DBError(500, 'Internal server error');
+    }
+}
+
 func.verifyUser = async function (userId) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
