@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
-import { fetchAuthJson } from './authRequest'
+import { readJsonResponse } from './authRequest'
+import { buildApiUrl } from '../shared/api/api'
 import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
@@ -371,7 +372,8 @@ function getProductFromLookupBySlug(slug) {
 }
 
 async function requestJson(path, options = {}) {
-  const { response, payload, data } = await fetchAuthJson(path, options)
+  const response = await fetch(buildApiUrl(path), options)
+  const { payload, data } = await readJsonResponse(response)
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Request failed')
