@@ -292,6 +292,7 @@ export function remove3DSCallbackResultFromUrl(searchParams) {
 
   const nextParams = new URLSearchParams(searchParams)
   nextParams.delete('result')
+  nextParams.delete('code')
 
   const nextSearch = nextParams.toString()
   const nextUrl = [

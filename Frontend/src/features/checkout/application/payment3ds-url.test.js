@@ -20,8 +20,8 @@ beforeEach(() => {
 })
 
 describe('3DS callback URL cleanup', () => {
-  it('removes the 3DS result payload and keeps unrelated URL state', () => {
-    remove3DSCallbackResultFromUrl(new URLSearchParams('result=bank-payload&next=orders'))
+  it('removes the 3DS callback payload and keeps unrelated URL state', () => {
+    remove3DSCallbackResultFromUrl(new URLSearchParams('result=bank-payload&code=bank-code&next=orders'))
 
     assert.deepEqual(window.history.calls, [
       {

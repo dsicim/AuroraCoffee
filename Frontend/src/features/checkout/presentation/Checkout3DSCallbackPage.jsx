@@ -62,10 +62,9 @@ export default function Checkout3DSCallbackPage() {
     const finalize = async () => {
       const pendingSnapshot = consumePending3DSCheckoutSnapshot()
       const parsedResult = parse3DSCallbackResult(searchParams.get('result'))
+      remove3DSCallbackResultFromUrl(searchParams)
 
       if (!parsedResult.success) {
-        remove3DSCallbackResultFromUrl(searchParams)
-
         if (!active) {
           return
         }
@@ -120,8 +119,6 @@ export default function Checkout3DSCallbackPage() {
           await fetchOrders({ force: true }).catch(() => null)
         }
       }
-
-      remove3DSCallbackResultFromUrl(searchParams)
 
       if (!active) {
         return
