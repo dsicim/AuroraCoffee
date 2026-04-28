@@ -90,11 +90,6 @@ async function getCardToken(userId) {
         return { done: false, error: err.message };
     });
 }
-function currencyToSymbol(currency, price) {
-    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": " kr", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["NOK", "CHF", "RUB"].includes(currency)) return currencyToDecimal(currency, price) + symbol;
-    else return symbol + currencyToDecimal(currency, price);
-}
 function currencyToDecimal(currency, price) {
     const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "RUB": "", "CHF": "," }[currency] || ",");
     const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "RUB": ".", "CHF": "." }[currency] || ".");
@@ -106,7 +101,13 @@ function currencyToDecimal(currency, price) {
         priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
         priceidx = priceidx - 3;
     }
-    return price.toFixed(2).replace(mille, "").replace(punctuation, ".");
+    return priceStr;
+}
+function currencyToSymbol(currency, price, negative = false) {
+    price = parseFloat(price);
+    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
+    if (["CHF", "RUB"].includes(currency)) return (negative?"-":"")+currencyToDecimal(currency, price) + symbol;
+    else return symbol + (negative?"-":"")+currencyToDecimal(currency, price);
 }
 function parseVariantOptions(variantCode) {
     const normalizedCode = checkTrim(variantCode);
