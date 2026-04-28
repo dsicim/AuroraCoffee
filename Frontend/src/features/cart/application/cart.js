@@ -22,6 +22,7 @@ let cachedServerCartItems = []
 let cachedServerCartScope = null
 let cachedServerCartLoaded = false
 let serverCartPromise = null
+let cartReconcilePromise = null
 
 function getStorage(mode) {
   return mode === 'session' ? window.sessionStorage : window.localStorage
@@ -785,7 +786,7 @@ export function getCartStorageMode() {
   return getAuthStorageMode() || 'local'
 }
 
-export async function reconcileCartStorageWithAuth() {
+async function reconcileCartStorageWithAuthOnce() {
   const session = getAuthSession()
   const authStorageMode = getAuthStorageMode()
   const localItems = readGuestCartItems('local')
@@ -835,6 +836,19 @@ export async function reconcileCartStorageWithAuth() {
   }
 
   return localItems
+}
+
+export async function reconcileCartStorageWithAuth() {
+  if (cartReconcilePromise) {
+    return cartReconcilePromise
+  }
+
+  cartReconcilePromise = reconcileCartStorageWithAuthOnce()
+    .finally(() => {
+      cartReconcilePromise = null
+    })
+
+  return cartReconcilePromise
 }
 
 export function getCartItems() {

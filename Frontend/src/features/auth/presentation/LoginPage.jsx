@@ -28,12 +28,8 @@ function sanitizeNextPath(nextPath) {
 }
 
 async function reconcilePostLoginStorage() {
-  try {
-    reconcileAccountStorageWithAuth()
-    await reconcileCartStorageWithAuth()
-  } catch {
-    // Login already succeeded; stale local cart/account data must not block entry.
-  }
+  reconcileAccountStorageWithAuth()
+  await reconcileCartStorageWithAuth()
 }
 
 export default function LoginPage() {
@@ -118,7 +114,16 @@ export default function LoginPage() {
       }
 
       saveAuthSession(nextSession, true)
-      await reconcilePostLoginStorage()
+      try {
+        await reconcilePostLoginStorage()
+      } catch {
+        setFeedback(
+          'Signed in, but your guest cart could not be moved to your account. Please try signing in again.',
+        )
+        setFeedbackKind('error')
+        return
+      }
+
       navigate(nextPath || '/', { replace: true })
     } catch {
       setFeedback('The login request could not be completed. Please try again.')
