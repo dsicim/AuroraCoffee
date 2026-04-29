@@ -531,6 +531,44 @@ function getVariantSelectionCodes(product, variantCode) {
   )
 }
 
+function getProductVariantGroups(product) {
+  return (Array.isArray(product?.options) ? product.options : []).filter((group) => group?.storeAsVariant)
+}
+
+function getDefaultProductVariantCode(product) {
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  const inStockVariant = variants.find((variant) => Number(variant?.stock) > 0)
+  return normalizeVariantCode(inStockVariant?.variantCode || variants[0]?.variantCode)
+}
+
+function findVariantCodeForSelection(product, options) {
+  const variantGroups = getProductVariantGroups(product)
+  const normalizedOptions = normalizeCartOptions(options)
+
+  if (!variantGroups.length || !normalizedOptions) {
+    return ''
+  }
+
+  const variantGroupCodes = variantGroups
+    .map((group) => String(group?.code || group?.id || '').trim())
+    .filter(Boolean)
+
+  if (!variantGroupCodes.some((code) => normalizedOptions[code])) {
+    return ''
+  }
+
+  const matchingVariant = (product?.variants || []).find((variant) => {
+    const variantOptions = normalizeCartOptions(variant?.optionValueCodes)
+
+    return variantGroupCodes.every((code) => {
+      const selectedValue = normalizedOptions[code]
+      return !selectedValue || String(variantOptions?.[code] || '') === String(selectedValue)
+    })
+  })
+
+  return normalizeVariantCode(matchingVariant?.variantCode)
+}
+
 function mapCartOptionsForDisplay(product, options, variantCode = '') {
   const normalizedOptions = normalizeCartOptions(options)
   const variantOptions = getVariantSelectionCodes(product, variantCode)
@@ -928,9 +966,13 @@ async function buildCartApiPayload(items, { includeBlankVariant = false } = {}) 
       product,
       normalizedOptionCodes || mapCartOptionsForPayload(product, normalizedOptions),
     )
+    const payloadSelectionCodes =
+      normalizedOptionCodes || mapCartOptionsForPayload(product, normalizedOptions)
     const payloadVariantCode =
       normalizeVariantCode(item.variantCode) ||
       product?.variants?.find((variant) => Number(variant.id) === Number(item.variantId))?.variantCode ||
+      findVariantCodeForSelection(product, payloadSelectionCodes) ||
+      (getProductVariantGroups(product).length ? getDefaultProductVariantCode(product) : '') ||
       ''
 
     const payload = {
