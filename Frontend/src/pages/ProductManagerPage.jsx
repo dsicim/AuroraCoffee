@@ -878,7 +878,7 @@ export default function ProductManagerPage() {
                     normalizedStatus === 'edit_rejected'
                   const actionHint = recordHasEndpointId
                     ? 'Use approve or reject to update the current moderation state.'
-                    : 'This view does not expose comment IDs. Switch to Pending or All to moderate this record.'
+                    : 'Switch to Pending or All to moderate this record.'
                   const actionSuccess =
                     moderationActionState.recordId === record.id
                       ? moderationActionState.success
@@ -901,7 +901,6 @@ export default function ProductManagerPage() {
                         </div>
                         <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
                           <p>{moderationSelectionLabel || 'Selected product'}</p>
-                          {record.meta.id ? <p>Comment #{record.meta.id}</p> : null}
                         </div>
                       </div>
 
