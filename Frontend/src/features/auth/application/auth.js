@@ -404,6 +404,28 @@ function requireAuthSession() {
   return session
 }
 
+function parseAuthTokenPayload(value) {
+  if (typeof value === 'string') {
+    const token = value.trim()
+    return token ? { token } : null
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const token = typeof value.token === 'string' ? value.token.trim() : ''
+
+  if (!token) {
+    return null
+  }
+
+  return {
+    token,
+    ...(value.expires === undefined ? {} : { expires: value.expires }),
+  }
+}
+
 export async function updateCurrentUserProfile({ name, privacy }) {
   const session = requireAuthSession()
   const response = await fetch(buildApiUrl('/users/me'), {
@@ -463,16 +485,20 @@ export async function changeCurrentPassword({ currentPassword, nextPassword }) {
     }),
   })
   const payload = await readAuthMutationResponse(response)
-  const nextToken = payload?.t || payload?.token || payload?.d?.t || ''
+  const nextTokenPayload =
+    parseAuthTokenPayload(payload?.t) ||
+    parseAuthTokenPayload(payload?.token) ||
+    parseAuthTokenPayload(payload?.d?.t) ||
+    parseAuthTokenPayload(payload?.d?.token)
 
-  if (!nextToken) {
+  if (!nextTokenPayload) {
     throw new Error('Password changed, but the backend did not return a new session token.')
   }
 
   saveAuthSession(
     {
       ...session,
-      token: nextToken,
+      ...nextTokenPayload,
     },
     getAuthStorageMode() === 'local',
   )
