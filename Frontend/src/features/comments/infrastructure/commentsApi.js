@@ -252,6 +252,7 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
     backendRating: Number.isFinite(backendRating) ? backendRating : toBackendRating(rating),
     createdAt,
     editedAt,
+    visibilityFlag: snapshot?.visible === true ? true : snapshot?.visible === false ? false : null,
   }
 }
 
@@ -287,8 +288,21 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
   const existing = normalizeManagerCommentSnapshot(record?.c, index, 'existing')
   const upcoming = normalizeManagerCommentSnapshot(record?.e, index, 'upcoming')
   const status = normalizeText(record?.status) || (upcoming ? 'pending' : 'approved')
+  const normalizedStatus = status.toLowerCase()
+  const recordVisible =
+    record?.visible === true ||
+    record?.edit_visible === true ||
+    existing?.visibilityFlag === true ||
+    false
 
   if (scope === 'pending' && record.self === true && status === 'approved') {
+    return null
+  }
+
+  if (
+    scope === 'rejected' &&
+    (recordVisible || !['rejected', 'edit_rejected'].includes(normalizedStatus))
+  ) {
     return null
   }
 
@@ -650,6 +664,7 @@ export async function moderateProductComment(commentId, action) {
     body: JSON.stringify({
       id: normalizedCommentId,
       action: normalizedAction,
+      ...(normalizedAction === 'reject' ? { visible: false } : {}),
     }),
   })
 
