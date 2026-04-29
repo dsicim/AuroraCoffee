@@ -137,7 +137,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, role, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
+            'SELECT id, displayname, username, verified, role, nameprivacy, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {
@@ -406,6 +406,10 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
         console.error('Search products error:', error);
         throw new DBError(500, 'Failed to search products');
     }
+};
+
+func.getCategories = async function (parent) {
+    
 };
 
 func.decreaseStock = async function (productId, qty, variantId = null) {

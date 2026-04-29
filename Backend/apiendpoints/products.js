@@ -6,7 +6,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (query.ids || query.urls) {
                 const ids = query.ids ? query.ids.split(",").map(x => parseInt(x)).filter(x => !isNaN(x)) : query.urls.split(",").map(x => x.trim()).filter(x => x.length > 0);
                 if (ids.length > 0) {
-                    return await sql.getProductsByIds(userId,ids,Boolean(query.urls && !query.ids)).then(async result => {
+                    return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids)).then(async result => {
                         if (result.success) {
                             return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
                         }
@@ -22,6 +22,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 400, j: true, d: { e: "All IDs are invalid" } };
             }
             else return { s: 400, j: true, d: { e: "Missing ids query parameter" } };
+        }
+        else if (method === "PATCH") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.edits) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.updateProduct(body.data.id, body.data.edits).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get products by IDs error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
@@ -45,7 +62,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "search") {
         if (method === "GET") {
             if (query.q && query.q.trim().length > 0) {
-                return await sql.searchProducts(userId, query.q.trim(),query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
+                return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products } };
                     }
@@ -63,10 +80,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "categories") {
+        endpoint.shift();
+        const parent = endpoint.length > 0 ? endpoint[0] : null;
         if (method === "GET") {
-            
+            return await sql.getCategories(parent).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { categories: result.categories, products: result.products } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get categories error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
         }
-        return { s: 501, j: true, d: { e: "Not Implemented" } };
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
