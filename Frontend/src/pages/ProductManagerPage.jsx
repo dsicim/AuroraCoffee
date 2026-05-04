@@ -8,6 +8,7 @@ import { useTheme } from '../lib/theme-context'
 import {
   getProductAvailability,
   getProductCategories,
+  updateProductDetails,
   useProductCatalog,
 } from '../lib/products'
 
@@ -32,6 +33,22 @@ const moderationScopeOptions = [
     label: 'Rejected',
     description: 'Rejected comments and rejected edits that can still be reviewed or restored.',
   },
+]
+
+const productEditFields = [
+  { key: 'name', column: 'name', label: 'Name', type: 'text', required: true },
+  { key: 'productCode', column: 'product_code', label: 'Product code', type: 'text' },
+  { key: 'price', column: 'price', label: 'Price', type: 'number', min: 0, step: '0.01' },
+  { key: 'stock', column: 'stock', label: 'Stock', type: 'number', min: 0, step: '1' },
+  { key: 'discountRate', column: 'discount_rate', label: 'Discount %', type: 'number', min: 0, step: '0.01' },
+  { key: 'taxRate', column: 'tax', label: 'Tax %', type: 'number', min: 0, step: '1' },
+  { key: 'origin', column: 'origin', label: 'Origin', type: 'text' },
+  { key: 'roastLevel', column: 'roast_level', label: 'Roast level', type: 'text' },
+  { key: 'acidity', column: 'acidity', label: 'Acidity', type: 'text' },
+  { key: 'flavorNotes', column: 'flavor_notes', label: 'Flavor notes', type: 'textarea' },
+  { key: 'material', column: 'material', label: 'Material', type: 'text' },
+  { key: 'capacity', column: 'capacity', label: 'Capacity', type: 'text' },
+  { key: 'imageUrl', column: 'image_url', label: 'Image URL', type: 'text' },
 ]
 
 function formatCommentDate(value) {
@@ -412,6 +429,286 @@ function SectionEmptyState({ title, description }) {
   )
 }
 
+function getProductEditForm(product) {
+  return Object.fromEntries(
+    productEditFields.map((field) => {
+      const value = product?.[field.key]
+
+      return [
+        field.key,
+        value === null || value === undefined ? '' : String(value),
+      ]
+    }),
+  )
+}
+
+function normalizeEditValue(field, value) {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (field.type !== 'number') {
+    return normalizedValue || null
+  }
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  const numericValue = Number(normalizedValue)
+
+  if (!Number.isFinite(numericValue)) {
+    throw new Error(`${field.label} must be a valid number.`)
+  }
+
+  if (field.min !== undefined && numericValue < field.min) {
+    throw new Error(`${field.label} cannot be below ${field.min}.`)
+  }
+
+  return field.step === '1' ? Math.round(numericValue) : numericValue
+}
+
+function buildProductEdits(product, form) {
+  const edits = {}
+
+  for (const field of productEditFields) {
+    const nextValue = normalizeEditValue(field, form[field.key])
+    const currentValue = normalizeEditValue(field, product?.[field.key])
+
+    if (nextValue !== currentValue) {
+      edits[field.column] = nextValue
+    }
+  }
+
+  if ('name' in edits && !edits.name) {
+    throw new Error('Name is required.')
+  }
+
+  if ('price' in edits && edits.price === null) {
+    throw new Error('Price is required.')
+  }
+
+  return edits
+}
+
+function ProductEditField({ field, defaultValue }) {
+  const fieldId = `product-edit-${field.key}`
+  const inputClassName = field.type === 'textarea' ? 'aurora-textarea min-h-28' : 'aurora-input'
+
+  return (
+    <label className={field.type === 'textarea' ? 'block md:col-span-2' : 'block'}>
+      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+        {field.label}
+      </span>
+      {field.type === 'textarea' ? (
+        <textarea
+          id={fieldId}
+          name={field.key}
+          className={`${inputClassName} mt-3`}
+          defaultValue={defaultValue}
+        />
+      ) : (
+        <input
+          id={fieldId}
+          name={field.key}
+          className={`${inputClassName} mt-3`}
+          type={field.type}
+          min={field.min}
+          step={field.step}
+          defaultValue={defaultValue}
+          required={field.required}
+        />
+      )}
+    </label>
+  )
+}
+
+function ProductEditPanel({ products, loading }) {
+  const editableProducts = useMemo(
+    () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
+    [products],
+  )
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const selectedProduct = useMemo(
+    () => editableProducts.find((product) => String(product.id) === selectedProductId) || null,
+    [editableProducts, selectedProductId],
+  )
+  const [saveState, setSaveState] = useState({
+    saving: false,
+    error: '',
+    success: '',
+  })
+
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    if (!selectedProduct) {
+      setSaveState({
+        saving: false,
+        error: 'Select a product before saving.',
+        success: '',
+      })
+      return
+    }
+
+    let edits = null
+
+    try {
+      const formData = new FormData(event.currentTarget)
+      const form = Object.fromEntries(
+        productEditFields.map((field) => [field.key, formData.get(field.key) || '']),
+      )
+      edits = buildProductEdits(selectedProduct, form)
+    } catch (validationError) {
+      setSaveState({
+        saving: false,
+        error: validationError?.message || 'Review the product fields before saving.',
+        success: '',
+      })
+      return
+    }
+
+    if (!Object.keys(edits).length) {
+      setSaveState({
+        saving: false,
+        error: '',
+        success: 'No changes to save.',
+      })
+      return
+    }
+
+    setSaveState({
+      saving: true,
+      error: '',
+      success: '',
+    })
+
+    void updateProductDetails(selectedProduct.id, edits)
+      .then((result) => {
+        setSaveState({
+          saving: false,
+          error: '',
+          success: result?.msg || 'Product updated successfully.',
+        })
+      })
+      .catch((saveError) => {
+        setSaveState({
+          saving: false,
+          error: saveError?.message || 'Could not update product.',
+          success: '',
+        })
+      })
+  }
+
+  return (
+    <section id="product-editor" className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            Product editor
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Update catalog details
+          </h2>
+        </div>
+        {selectedProduct ? (
+          <Link
+            to={`/products/${selectedProduct.slug}`}
+            className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
+          >
+            View product
+          </Link>
+        ) : null}
+      </div>
+
+      <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+        Edit the core product record that powers the storefront. Variant structure, image uploads,
+        and category creation stay outside this panel until the backend exposes safer endpoints.
+      </p>
+
+      <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
+        <label className="block">
+          <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+            Product
+          </span>
+          <select
+            className="aurora-select mt-3"
+            value={selectedProductId}
+            onChange={(event) => {
+              setSelectedProductId(event.target.value)
+              setSaveState({
+                saving: false,
+                error: '',
+                success: '',
+              })
+            }}
+          >
+            <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
+            {editableProducts.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {selectedProduct ? (
+          <>
+            <div key={selectedProduct.id} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {productEditFields.map((field) => (
+                <ProductEditField
+                  key={field.key}
+                  field={field}
+                  defaultValue={getProductEditForm(selectedProduct)[field.key] || ''}
+                />
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-5">
+              <LiquidGlassButton
+                type="submit"
+                variant="secondary"
+                loading={saveState.saving}
+                disabled={saveState.saving}
+              >
+                Save product
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                variant="quiet"
+                disabled={saveState.saving}
+                onClick={(event) => {
+                  event.currentTarget.form?.reset()
+                  setSaveState({
+                    saving: false,
+                    error: '',
+                    success: '',
+                  })
+                }}
+              >
+                Reset fields
+              </LiquidGlassButton>
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                {selectedProduct.categoryName || selectedProduct.parentCategoryName || 'Catalog'}
+              </p>
+            </div>
+          </>
+        ) : (
+          <SectionEmptyState
+            title="Select a product"
+            description="Choose a catalog item to load editable details."
+          />
+        )}
+      </form>
+
+      {saveState.error ? (
+        <div className="aurora-message aurora-message-error mt-6">{saveState.error}</div>
+      ) : null}
+      {saveState.success ? (
+        <div className="aurora-message aurora-message-success mt-6">{saveState.success}</div>
+      ) : null}
+    </section>
+  )
+}
+
 function CommentSnapshotCard({
   title,
   snapshot,
@@ -703,6 +1000,8 @@ export default function ProductManagerPage() {
         </section>
 
         <p className="text-sm leading-7 text-[var(--aurora-text)]">{inventoryStatus}</p>
+
+        <ProductEditPanel products={products} loading={loading} />
 
         <div className="grid gap-8 xl:grid-cols-[0.82fr_1.18fr]">
           <section id="stock-watch" className="aurora-ops-panel p-8">

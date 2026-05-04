@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
-import { readJsonResponse } from './authRequest'
+import { fetchAuthJson, readJsonResponse } from './authRequest'
 import { buildApiUrl } from '../shared/api/api'
 import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
 
@@ -246,6 +246,7 @@ function normalizeProduct(rawProduct) {
   return {
     id: Number(rawProduct.id),
     slug: getProductSlug(rawProduct),
+    productCode: getProductCode(rawProduct),
     name: normalizeText(rawProduct.name),
     description: normalizeText(rawProduct.description),
     price: toNumber(rawProduct.price),
@@ -257,12 +258,14 @@ function normalizeProduct(rawProduct) {
     material: normalizeText(rawProduct.material),
     capacity: normalizeText(rawProduct.capacity),
     imageUrl: normalizeText(rawProduct.image_url) || getGeneratedProductImageUrl(rawProduct),
+    categoryId: Number(rawProduct.category_id) || null,
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
     hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
     canComment: toBoolean(rawProduct.can_comment ?? rawProduct.canComment),
     options: optionGroups,
     variants,
+    discountRate: toNullableNumber(rawProduct.discount_rate ?? rawProduct.discountRate) ?? 0,
     taxRate: toNullableNumber(rawProduct.tax_rate ?? rawProduct.taxRate ?? rawProduct.tax),
     taxClass: normalizeText(rawProduct.tax_class || rawProduct.taxClass),
     taxRateOverride: rawProduct.tax_rate_override ?? rawProduct.taxRateOverride ?? null,
@@ -283,6 +286,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     slug: incomingProduct.slug || existingProduct.slug,
     name: incomingProduct.name || existingProduct.name,
     description: incomingProduct.description || existingProduct.description,
+    productCode: incomingProduct.productCode || existingProduct.productCode,
     origin: incomingProduct.origin || existingProduct.origin,
     roastLevel: incomingProduct.roastLevel || existingProduct.roastLevel,
     acidity: incomingProduct.acidity || existingProduct.acidity,
@@ -290,6 +294,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     material: incomingProduct.material || existingProduct.material,
     capacity: incomingProduct.capacity || existingProduct.capacity,
     imageUrl: incomingProduct.imageUrl || existingProduct.imageUrl,
+    categoryId: incomingProduct.categoryId ?? existingProduct.categoryId,
     categoryName: incomingProduct.categoryName || existingProduct.categoryName,
     parentCategoryName:
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
@@ -297,6 +302,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     canComment: incomingProduct.canComment ?? existingProduct.canComment,
     options: incomingProduct.options?.length ? incomingProduct.options : existingProduct.options,
     variants: incomingProduct.variants?.length ? incomingProduct.variants : existingProduct.variants,
+    discountRate: incomingProduct.discountRate ?? existingProduct.discountRate,
     taxRate: incomingProduct.taxRate ?? existingProduct.taxRate,
     taxClass: incomingProduct.taxClass || existingProduct.taxClass,
     taxRateOverride: incomingProduct.taxRateOverride ?? existingProduct.taxRateOverride,
@@ -539,6 +545,36 @@ export function getProductCatalogSnapshot() {
 
 export function invalidateProductCatalogCache() {
   clearProductsCache()
+}
+
+export async function updateProductDetails(productId, edits) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before saving.')
+  }
+
+  const normalizedEdits = Object.fromEntries(
+    Object.entries(edits || {}).filter(([, value]) => value !== undefined),
+  )
+
+  if (!Object.keys(normalizedEdits).length) {
+    throw new Error('No product changes to save.')
+  }
+
+  const { data } = await fetchAuthJson('/products', {
+    method: 'PATCH',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedProductId,
+      edits: normalizedEdits,
+    }),
+  })
+
+  clearProductsCache()
+  await fetchAllProducts({ force: true })
+
+  return data
 }
 
 export async function findProductBySlug(slug) {
