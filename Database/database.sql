@@ -58,7 +58,7 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE TABLE IF NOT EXISTS refunds (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id VARCHAR(20),
-    product_id INT,
+    product_id BIGINT UNSIGNED,
     user_id BIGINT UNSIGNED,
     refund_amount DECIMAL(10, 2) UNSIGNED NOT NULL,
     status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
