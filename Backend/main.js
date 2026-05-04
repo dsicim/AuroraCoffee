@@ -26,7 +26,8 @@ const server = http.createServer(async function (req, res) {
         res.end("Bad Request");
     }
     else if (req.url.startsWith("/api/")) {
-        const body = await new Promise((resolve, reject) => {
+        const isMultipart = req.headers['content-type'] && req.headers['content-type'].includes('multipart/form-data');
+        const body = isMultipart ? { exists: true, multipart: true, data: null, err: null } : await new Promise((resolve, reject) => {
             let t = 0;
             let b = "";
             req.on("data", function (c) {
@@ -65,18 +66,21 @@ const server = http.createServer(async function (req, res) {
         else {
             query = query.length > 0 ? { [query.split("=")[0]]: query.split("=")[1] } : {};
         }
-        const response = await api.handleAPI(req.method, directory, query, body, req.headers);
+        const response = await api.handleAPI(req.method, directory, query, body, req.headers, req);
         res.writeHead(response.s, { "Content-Type": (response.j ? "application/json" : (response.h ? (response.h["Content-Type"] || "text/plain") : "text/plain")), ...response.h });
         res.end(response.j ? JSON.stringify(response.d) : response.d);
     }
-    else if (req.url.startsWith("/assets/")) {
-        fs.readFile(fdir + "assets/" + req.url.substring(8), function (error, data) {
+        });
+    }
+    else if (req.url.startsWith("/uploads/")) {
+        const filePath = path.join(__dirname, "uploads", req.url.substring(9));
+        fs.readFile(filePath, function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/plain" });
                 res.end("File not found");
             }
             else {
-                res.writeHead(200, { "Content-Type": mimes[path.extname(req.url.substring(1)).substring(1)] || "application/octet-stream" });
+                res.writeHead(200, { "Content-Type": mimes[path.extname(req.url).substring(1)] || "application/octet-stream" });
                 res.end(data);
             }
         });

@@ -1,5 +1,6 @@
 const sql = require("../../Database/server.js");
 const fs = require("fs");
+const path = require("path");
 const crypto = require('crypto');
 const tokens = new Map();
 const emailtokens = new Map();
@@ -7,6 +8,18 @@ const emailids = new Map();
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/; // RFC 5322 Official Standard email regex
 const emailsrv = require("./email.js");
+const multer = require('multer');
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/')
+    },
+    filename: function (req, file, cb) {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname))
+    }
+});
+const upload = multer({ storage: storage }).single('image');
+
 const APIEndpoints = {
     version: require("../apiendpoints/version.js"),
     restart: require("../apiendpoints/restart.js"),
@@ -60,7 +73,7 @@ async function invalidateAllTokens(userId) {
     }
     return;
 }
-async function handleAPI(method, endpoint, query, body, headers) {
+async function handleAPI(method, endpoint, query, body, headers, req) {
     // console.log("API " + method + " ");
     // console.log(endpoint);
     // console.log(query);
@@ -362,13 +375,35 @@ async function handleAPI(method, endpoint, query, body, headers) {
     }
     else if (endpoint[0] === "version") return await APIEndpoints.version.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
-    else if (endpoint[0] === "users") return await APIEndpoints.users.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "users") {
+        const res = await APIEndpoints.users.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+        if (endpoint[1] === "me" && method === "DELETE" && res.s === 200) {
+            await invalidateAllTokens(currentUser.id);
+        }
+        return res;
+    }
     else if (endpoint[0] === "products") return await APIEndpoints.products.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "cart") return await APIEndpoints.cart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "payment") return await APIEndpoints.payment.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "address") return await APIEndpoints.address.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "orders") return await APIEndpoints.orders.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
     else if (endpoint[0] === "comments") return await APIEndpoints.comments.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "upload") {
+        if (method === "POST") {
+            if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            return new Promise((resolve) => {
+                upload(req, {}, (err) => {
+                    if (err) {
+                        console.error("Upload error:", err);
+                        return resolve({ s: 500, j: true, d: { e: "Upload failed" } });
+                    }
+                    if (!req.file) return resolve({ s: 400, j: true, d: { e: "No file uploaded" } });
+                    resolve({ s: 200, j: true, d: { url: "/uploads/" + req.file.filename } });
+                });
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
     return { s: 400, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI, initDB: sql.initDB };

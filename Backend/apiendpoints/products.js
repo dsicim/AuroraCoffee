@@ -98,6 +98,59 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
+    else if (endpoint[0] === "discount") {
+        if (method === "PATCH") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.data || body.data.id === undefined || body.data.rate === undefined) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.applyDiscount(body.data.id, body.data.rate).then(result => {
+                return { s: 200, j: true, d: { msg: result.message } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                return { s: 500, j: true, d: { e: "Internal server error" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "variant-discount") {
+        if (method === "PATCH") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.data || body.data.id === undefined || body.data.rate === undefined) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.setVariantDiscount(body.data.id, body.data.rate).then(result => {
+                return { s: 200, j: true, d: { msg: result.message } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                return { s: 500, j: true, d: { e: "Internal server error" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "image") {
+        if (method === "POST") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.data || !body.data.productId || !body.data.url) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.addProductImage(body.data.productId, body.data.url, body.data.isPrimary || false, body.data.sortOrder || 0).then(result => {
+                return { s: 200, j: true, d: { msg: result.message, imageId: result.imageId } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                return { s: 500, j: true, d: { e: "Internal server error" } };
+            });
+        }
+        else if (method === "DELETE") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!query.id) return { s: 400, j: true, d: { e: "Image ID is required" } };
+            return await sql.removeProductImage(parseInt(query.id)).then(result => {
+                return { s: 200, j: true, d: { msg: result.message } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                return { s: 500, j: true, d: { e: "Internal server error" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
 module.exports = { handleAPI };

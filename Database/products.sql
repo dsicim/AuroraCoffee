@@ -45,8 +45,20 @@ CREATE TABLE IF NOT EXISTS products (
     material VARCHAR(100),
     capacity VARCHAR(50),
     image_url VARCHAR(255),
+    discount_rate DECIMAL(5, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+);
+
+-- Table for Product Images
+CREATE TABLE IF NOT EXISTS product_images (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id BIGINT UNSIGNED NOT NULL,
+    image_url VARCHAR(255) NOT NULL,
+    is_primary BOOLEAN DEFAULT FALSE,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
 
 -- Product Option Groups
@@ -87,6 +99,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     price_add DECIMAL(10, 2) UNSIGNED DEFAULT 0,
     price_mult DECIMAL(10, 4) UNSIGNED DEFAULT 1,
     stock INT DEFAULT 0,
+    discount_rate DECIMAL(5, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );

@@ -74,14 +74,20 @@ async function productsMenu() {
         console.log('3. View Product Details');
         console.log('4. Add Product (Admin/Manager)');
         console.log('5. View Brew Methods');
-        console.log('6. Back');
+        console.log('6. Manage Discounts (Admin/Manager)');
+        console.log('7. Manage Images (Admin/Manager)');
+        console.log('8. Back');
 
         const choice = await question('Select: ');
         if (choice === '1') {
             const res = await apiFetch('products/all');
             if (res.ok) {
                 res.data.products.forEach(p => {
-                    console.log(`[${p.id}] ${p.name} - ${p.price} TL (Stock: ${p.stock}) ${p.has_variants ? ' (Has Variants)' : ''}`);
+                    let priceStr = `${p.price} TL`;
+                    if (p.discount_rate > 0) {
+                        priceStr = `\x1b[90m\x1b[9m${p.price} TL\x1b[0m \x1b[32m${p.discounted_price.toFixed(2)} TL (-%${p.discount_rate})\x1b[0m`;
+                    }
+                    console.log(`[${p.id}] ${p.name} - ${priceStr} (Stock: ${p.stock}) ${p.has_variants ? ' (Has Variants)' : ''}`);
                 });
             } else {
                 console.log('Error fetching products:', res.data);
@@ -98,14 +104,46 @@ async function productsMenu() {
             const res = await apiFetch(`products?ids=${id}`);
             if (res.ok && res.data.products.length > 0) console.log(JSON.stringify(res.data.products[0], null, 2));
             else console.log('Product not found or error:', res.data);
-        } else if (choice === '4') {
-            console.log('Add Product not implemented fully.');
         } else if (choice === '5') {
             const res = await apiFetch('products/brew-methods');
             if (res.ok) {
                 res.data.brew_methods.forEach(b => console.log(`[${b.id}] ${b.name}: ${b.description}`));
             }
-        } else if (choice === '6') break;
+        } else if (choice === '6') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            console.log('\n--- Manage Discounts ---');
+            const id = await question('Product ID: ');
+            const rate = await question('Discount Rate (%): ');
+            const res = await apiFetch('products/discount', 'PATCH', { id: parseInt(id), rate: parseFloat(rate) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '7') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            console.log('\n--- Manage Images ---');
+            console.log('1. Add Image');
+            console.log('2. Remove Image');
+            const sub = await question('Select: ');
+            if (sub === '1') {
+                const productId = await question('Product ID: ');
+                const url = await question('Image URL: ');
+                const isPrimary = await question('Is Primary? (y/n): ') === 'y';
+                const sortOrder = await question('Sort Order: ');
+                const res = await apiFetch('products/image', 'POST', { productId: parseInt(productId), url, isPrimary, sortOrder: parseInt(sortOrder) });
+                if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+                else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+            } else if (sub === '2') {
+                const id = await question('Image ID to remove: ');
+                const res = await apiFetch(`products/image?id=${id}`, 'DELETE');
+                if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+                else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+            }
+        } else if (choice === '8') break;
     }
 }
 
@@ -345,6 +383,34 @@ async function addressMenu() {
     }
 }
 
+async function accountSettingsMenu() {
+    if (!sessionToken) { console.log('\x1b[31m%s\x1b[0m', 'Please login first.'); return; }
+    while (true) {
+        console.log('\n--- Account Settings ---');
+        console.log('1. View My Profile');
+        console.log('2. Delete My Account');
+        console.log('3. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            console.log(JSON.stringify(currentUser, null, 2));
+        } else if (choice === '2') {
+            const confirm = await question('ARE YOU SURE? This cannot be undone. Type "DELETE" to confirm: ');
+            if (confirm === 'DELETE') {
+                const res = await apiFetch('users/me', 'DELETE');
+                if (res.ok) {
+                    console.log('\x1b[32m%s\x1b[0m', 'Account deleted. Logging out...');
+                    sessionToken = null;
+                    currentUser = null;
+                    return;
+                } else {
+                    console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+                }
+            }
+        } else if (choice === '3') break;
+    }
+}
+
 async function mainMenu() {
     console.log('\n' + '='.repeat(30));
     console.log('   AURORA COFFEE TERMINAL   ');
@@ -362,8 +428,9 @@ async function mainMenu() {
     console.log('5. Comments');
     console.log('6. Cart');
     console.log('7. Address Management');
-    console.log('8. Administrative');
-    console.log('9. Exit');
+    console.log('8. Account Settings');
+    console.log('9. Administrative');
+    console.log('10. Exit');
 
     const choice = await question('\nSelect an option: ');
 
@@ -376,8 +443,9 @@ async function mainMenu() {
             case '5': await commentsMenu(); break;
             case '6': await cartMenu(); break;
             case '7': await addressMenu(); break;
-            case '8': await adminMenu(); break;
-            case '9':
+            case '8': await accountSettingsMenu(); break;
+            case '9': await adminMenu(); break;
+            case '10':
                 console.log('Goodbye!');
                 rl.close();
                 process.exit(0);
