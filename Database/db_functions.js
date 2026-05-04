@@ -341,6 +341,7 @@ func.enrichProductsWithOptions = async function(userId, products) {
             id: img.id,
             url: img.image_url,
             is_primary: !!img.is_primary,
+            variant_id: img.variant_id,
             sort_order: img.sort_order
         }));
 

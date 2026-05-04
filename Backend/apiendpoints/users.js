@@ -32,17 +32,20 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
         }
         else if (method === "DELETE") {
-            return await sql.deleteUser(currentUser.id).then(res => {
-                if (res.success) {
-                    return { s: 200, j: true, d: { msg: res.message } };
-                }
-                else {
-                    return { s: 500, j: true, d: { e: "Internal server error" } };
-                }
-            }).catch(err => {
-                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-                return { s: 500, j: true, d: { e: "Internal server error" } };
-            });
+            // DO NOT UNCOMMENT THIS CODE WITHOUT IMPLEMENTING PROPER SECURITY MEASURES. THIS IS INTENTIONALLY COMMENTED OUT TO PREVENT ACCIDENTAL USE.
+
+            // return await sql.deleteUser(currentUser.id).then(res => {
+            //     if (res.success) {
+            //         return { s: 200, j: true, d: { msg: res.message } };
+            //     }
+            //     else {
+            //         return { s: 500, j: true, d: { e: "Internal server error" } };
+            //     }
+            // }).catch(err => {
+            //     if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+            //     return { s: 500, j: true, d: { e: "Internal server error" } };
+            // });
+            return { s: 501, j: true, d: { e: "Not Implemented yet" } };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
