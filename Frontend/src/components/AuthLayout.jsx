@@ -1,17 +1,17 @@
 import { Link } from 'react-router-dom'
-import auroraLogoDark from '../assets/aurora-logo-dark.png'
-import auroraLogoLight from '../assets/aurora-logo-light.png'
 import AuroraAtmosphere from '../shared/components/common/AuroraAtmosphere'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import LiquidGlassDefs from '../shared/components/ui/LiquidGlassDefs'
-import { useTheme } from '../lib/theme-context'
 
 const toneClasses = {
   error: 'aurora-message aurora-message-error',
   success: 'aurora-message aurora-message-success',
   info: 'aurora-message aurora-message-info',
 }
+
+const brandLogo = '/assets/pwa512.png'
+const brandTextLogo = '/assets/logotext.svg'
 
 export default function AuthLayout({
   topLinkTo,
@@ -32,9 +32,6 @@ export default function AuthLayout({
   footer = null,
   children,
 }) {
-  const { resolvedTheme } = useTheme()
-  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
-
   return (
     <div className="aurora-page px-3 py-4 sm:px-6 lg:px-10 lg:py-8">
       <LiquidGlassDefs />
@@ -45,14 +42,17 @@ export default function AuthLayout({
           <Link to="/" className="flex min-w-0 items-center gap-3 sm:gap-4">
             <img
               src={brandLogo}
-              alt="Aurora Coffee Roastery logo"
+              alt=""
+              aria-hidden="true"
               className="aurora-brand-mark h-14 w-14 rounded-[1rem] object-contain p-0 sm:h-20 sm:w-20 sm:rounded-[1.35rem]"
             />
             <div className="min-w-0">
-              <p className="font-display text-[1.15rem] leading-tight text-[var(--aurora-text-strong)] sm:text-2xl">
-                Aurora Coffee
-              </p>
-              <p className="aurora-kicker mt-1">Account access</p>
+              <img
+                src={brandTextLogo}
+                alt="Aurora Coffee"
+                className="aurora-brand-wordmark h-10 w-auto max-w-[12rem] object-contain sm:h-14 sm:max-w-[17rem]"
+              />
+              <p className="aurora-kicker mt-1">Slow brewed. Pure moments.</p>
             </div>
           </Link>
 

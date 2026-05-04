@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import auroraLogoDark from '../assets/aurora-logo-dark.png'
-import auroraLogoLight from '../assets/aurora-logo-light.png'
 import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/ui/LiquidGlassButton'
 import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import {
@@ -18,12 +16,14 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { useTheme } from '../lib/theme-context'
 
 const navItems = [
   { label: 'Home', to: '/' },
   { label: 'Products', to: '/products' },
 ]
+
+const brandLogo = '/assets/pwa512.png'
+const brandTextLogo = '/assets/logotext.svg'
 
 function getProductSearchFromLocation(location) {
   if (location.pathname !== '/products') {
@@ -45,7 +45,6 @@ export default function Header() {
   const searchButtonRef = useRef(null)
   const cartButtonRef = useRef(null)
   const mobileNavButtonRef = useRef(null)
-  const { resolvedTheme } = useTheme()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [cartCount, setCartCount] = useState(getCartCount())
   const [menuOpen, setMenuOpen] = useState(false)
@@ -65,8 +64,6 @@ export default function Header() {
       : authState.isProfileError
         ? 'Account session'
         : 'Coffee Lover')
-  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
-
   useEffect(() => {
     const syncSessionState = () => {
       void (async () => {
@@ -366,13 +363,16 @@ export default function Header() {
               <Link to="/" className="flex min-w-0 items-center gap-2.5 sm:gap-3">
                 <img
                   src={brandLogo}
-                  alt="Aurora Coffee Roastery logo"
+                  alt=""
+                  aria-hidden="true"
                   className="aurora-brand-mark aurora-header-brand-mark h-12 w-12 rounded-[1rem] object-contain p-0 sm:h-16 sm:w-16 sm:rounded-[1.15rem]"
                 />
                 <div className="hidden min-w-0 sm:block">
-                  <p className="truncate font-display text-[1.55rem] leading-none text-[var(--aurora-text-strong)] sm:text-2xl">
-                    Aurora Coffee
-                  </p>
+                  <img
+                    src={brandTextLogo}
+                    alt="Aurora Coffee"
+                    className="aurora-brand-wordmark h-8 w-auto max-w-[11rem] object-contain sm:h-9 sm:max-w-[14rem] lg:h-10 lg:max-w-[18rem]"
+                  />
                 </div>
               </Link>
             </div>

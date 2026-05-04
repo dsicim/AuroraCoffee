@@ -92,6 +92,11 @@
   object-position: center 49%;
 }
 
+.aurora-brand-wordmark {
+  filter: none;
+  transition: filter 180ms ease;
+}
+
 [data-theme='dark'] .aurora-brand-mark {
   border-color: rgba(206, 228, 222, 0.18);
   background:
@@ -109,6 +114,10 @@
   box-shadow:
     inset 0 1px 0 rgba(241, 248, 255, 0.12),
     0 12px 28px rgba(0, 7, 18, 0.26);
+}
+
+[data-theme='dark'] .aurora-brand-wordmark {
+  filter: invert(1) brightness(1.12) contrast(0.92);
 }
 
 .aurora-search-backdrop {

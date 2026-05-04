@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import auroraLogoDark from '../assets/aurora-logo-dark.png'
-import auroraLogoLight from '../assets/aurora-logo-light.png'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import {
@@ -13,11 +11,12 @@ import {
   getCurrentUserSnapshot,
   getAuthSession,
 } from '../lib/auth'
-import { useTheme } from '../lib/theme-context'
+
+const brandLogo = '/assets/pwa512.png'
+const brandTextLogo = '/assets/logotext.svg'
 
 export default function DashboardPage() {
   const navigate = useNavigate()
-  const { resolvedTheme } = useTheme()
   const [session, setSession] = useState(() => getAuthSession())
   const [currentUserState, setCurrentUserState] = useState(() => getCurrentUserSnapshot())
   const sessionToken = session?.token
@@ -115,8 +114,6 @@ export default function DashboardPage() {
 
   const displayName = user?.displayname || 'Coffee Lover'
   const displayEmail = user?.username || sessionEmail
-  const brandLogo = resolvedTheme === 'dark' ? auroraLogoDark : auroraLogoLight
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[radial-gradient(circle_at_top,#f5e1d1_0%,#ebc3a6_42%,#d89a78_100%)] px-6 py-8 lg:px-10">
       <div className="pointer-events-none absolute inset-0">
@@ -129,13 +126,16 @@ export default function DashboardPage() {
           <Link to="/" className="flex items-center gap-4">
             <img
               src={brandLogo}
-              alt="Aurora Coffee Roastery logo"
+              alt=""
+              aria-hidden="true"
               className="aurora-brand-mark h-20 w-20 rounded-[1.35rem] object-contain p-0"
             />
             <div>
-              <p className="font-display text-2xl text-[var(--aurora-text-strong)]">
-                Aurora Coffee
-              </p>
+              <img
+                src={brandTextLogo}
+                alt="Aurora Coffee"
+                className="aurora-brand-wordmark h-12 w-auto max-w-[16rem] object-contain"
+              />
               <p className="text-xs uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
                 Dashboard
               </p>
