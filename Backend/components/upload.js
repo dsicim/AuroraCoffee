@@ -34,9 +34,15 @@ async function createUpload(user, prefName, restrictions, req, headers) {
         }
 
         let format = detected.ext;
+        let converting = null;
         if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) format = restrictions.convertTo.split("/")[1];
         if (["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(restrictions.convertTo)) {
-            
+            if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(detected.mime)) {
+                passthrough.resume();
+                reject({ s: 415, e: "Unsupported media type for conversion. Allowed types are: image/png, image/jpeg, image/jpg, image/gif, image/webp, image/tiff, image/avif" });
+                return;
+            }
+            converting = sharp().toFormat(restrictions.convertTo.split("/")[1].toLowerCase(), { quality: 100 });
         }
         let actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
         const uploadsDir = path.join(__dirname, "..", "..", "Database","uploads");
@@ -51,7 +57,10 @@ async function createUpload(user, prefName, restrictions, req, headers) {
         const fileurl = "/uploads/" + actualname + "." + format;
 
         const writeStream = fs.createWriteStream(filepath);
-        passthrough.pipe(writeStream);
+
+        if (converting) passthrough.pipe(converting).pipe(writeStream);
+        else passthrough.pipe(writeStream);
+
         passthrough.on("data", (chunk) => {
             bytesWritten += chunk.length;
             if (bytesWritten > restrictions.maxSize) {

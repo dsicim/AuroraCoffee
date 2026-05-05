@@ -155,9 +155,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!product.s) return { s: 400, j: true, d: { e: product.e } };
             if (opts.variantId && !product.has_variants) return { s: 400, j: true, d: { e: "Product does not have variants" } };
             if (opts.variantId && !product.variants.some(v => v.id === opts.variantId)) return { s: 400, j: true, d: { e: "Variant ID does not belong to this product" } };
+            
             const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "png" }, body.raw, headers);
+
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
             else return {s: 200, j: true, d: { msg: "Image uploaded successfully", url: upload.url, filetype: upload.filetype } };
+            
             // return await sql.addProductImage(body.data.id, body.data.url, body.data.isPrimary || false, body.data.sortOrder || 0).then(result => {
             //     return { s: 200, j: true, d: { msg: result.message, imageId: result.imageId } };
             // }).catch(err => {
