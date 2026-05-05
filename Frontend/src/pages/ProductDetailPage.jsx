@@ -16,6 +16,7 @@ import {
 import { addCartItem, getCartErrorMessage } from '../lib/cart'
 import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
+import { formatDiscountRate, getDiscountPricing } from '../lib/pricing'
 import {
   getProductAvailability,
   getProductCategoryLabel,
@@ -1578,7 +1579,12 @@ export default function ProductDetailPage() {
       }
     : availability
   const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
-  const priceBreakdown = getUnitPriceBreakdown({ ...product, price: displayPrice })
+  const discountPricing = getDiscountPricing({
+    price: displayPrice,
+    discountRate: product.discountRate,
+  })
+  const purchasePrice = discountPricing.currentPrice
+  const priceBreakdown = getUnitPriceBreakdown({ ...product, price: purchasePrice })
   const selectedOptionsSnapshot = buildSelectedOptionsSnapshot(selectedOptionRecords)
   const selectedOptionCodes = buildSelectedOptionCodes(selectedOptionRecords)
   const missingOptionLabels = missingRequiredOptionGroups.map((group) => group.name)
@@ -1603,7 +1609,7 @@ export default function ProductDetailPage() {
     try {
       await addCartItem({
         ...product,
-        price: displayPrice,
+        price: purchasePrice,
         stock: displayAvailability.totalStock,
         variantId: matchingVariant?.id || null,
         variantCode: matchingVariant?.variantCode || '',
@@ -1751,9 +1757,28 @@ export default function ProductDetailPage() {
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                   Ready to buy
                 </p>
-                <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {formatCurrency(displayPrice)}
-                </p>
+                {discountPricing.hasDiscount ? (
+                  <div
+                    className="aurora-product-detail-price-stack mt-3"
+                    aria-label={`Discounted price ${formatCurrency(discountPricing.currentPrice)}, original price ${formatCurrency(discountPricing.originalPrice)}`}
+                  >
+                    <div className="aurora-product-detail-sale-row">
+                      <p className="font-display text-4xl text-[var(--aurora-text-strong)]">
+                        {formatCurrency(discountPricing.currentPrice)}
+                      </p>
+                      <span className="aurora-product-card-discount-badge">
+                        -{formatDiscountRate(discountPricing.discountRate)}%
+                      </span>
+                    </div>
+                    <p className="aurora-product-detail-original-price">
+                      {formatCurrency(discountPricing.originalPrice)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                    {formatCurrency(purchasePrice)}
+                  </p>
+                )}
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
                   {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + VAT {formatCurrency(priceBreakdown.taxAmount)}
                 </p>
