@@ -172,15 +172,15 @@ export default function ProductCard({ product, compact = false }) {
             ) : null}
           </div>
 
-          <div className="aurora-widget-actions flex-col items-start sm:items-end">
-            <Link to={detailRoute} className="aurora-link text-sm">
+          <div className="aurora-widget-actions aurora-product-card-actions">
+            <Link to={detailRoute} className="aurora-link aurora-product-card-details-link text-sm">
               Details
             </Link>
             <LiquidGlassButton
               as={Link}
               to={detailRoute}
               size="compact"
-              className="w-full sm:w-auto"
+              className="aurora-product-card-choose-button w-full sm:w-auto"
             >
               Choose
             </LiquidGlassButton>

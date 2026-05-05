@@ -370,6 +370,28 @@
     0 8px 18px color-mix(in srgb, var(--aurora-brass) 18%, transparent);
 }
 
+.aurora-product-card-actions {
+  display: grid;
+  align-content: end;
+  justify-items: stretch;
+  gap: 0.55rem;
+  min-width: min(100%, 7.4rem);
+}
+
+.aurora-product-card-actions .aurora-product-card-details-link,
+.aurora-product-card-actions .button-wrap {
+  width: 100%;
+}
+
+.aurora-product-card-details-link {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+}
+
 @media (max-width: 639px) {
   .aurora-stack-10,
   .aurora-stack-12,
