@@ -324,6 +324,15 @@
     var(--aurora-shadow);
 }
 
+.aurora-product-card-commerce-surface {
+  container-type: inline-size;
+}
+
+.aurora-product-card-commerce {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
 .aurora-product-card-price-stack {
   display: grid;
   gap: 0.35rem;
@@ -375,8 +384,8 @@
   align-content: end;
   justify-items: stretch;
   gap: 0.55rem;
-  justify-self: end;
-  width: min(100%, 8.35rem);
+  justify-self: stretch;
+  width: 100%;
   max-width: 100%;
   padding-inline: 0.48rem;
   box-sizing: border-box;
@@ -401,6 +410,18 @@
   justify-content: center;
   text-align: center;
   line-height: 1.2;
+}
+
+@container (min-width: 24rem) {
+  .aurora-product-card-commerce {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .aurora-product-card-actions {
+    justify-self: end;
+    width: min(100%, 8.35rem);
+  }
 }
 
 @media (max-width: 639px) {
