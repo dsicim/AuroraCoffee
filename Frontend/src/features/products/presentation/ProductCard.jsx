@@ -19,6 +19,38 @@ function keepHyphenatedWordsTogether(value) {
   return String(value || '').replaceAll('-', '\u2011')
 }
 
+function getDiscountPricing(product) {
+  const originalPrice = Number(product?.price) || 0
+  const discountRate = Number(product?.discountRate) || 0
+
+  if (originalPrice <= 0 || discountRate <= 0) {
+    return {
+      hasDiscount: false,
+      originalPrice,
+      currentPrice: originalPrice,
+      discountRate: 0,
+    }
+  }
+
+  const boundedDiscountRate = Math.min(discountRate, 100)
+  const currentPrice = originalPrice * (1 - boundedDiscountRate / 100)
+
+  return {
+    hasDiscount: currentPrice < originalPrice,
+    originalPrice,
+    currentPrice,
+    discountRate: boundedDiscountRate,
+  }
+}
+
+function formatDiscountRate(value) {
+  const normalizedValue = Number(value) || 0
+
+  return Number.isInteger(normalizedValue)
+    ? normalizedValue.toString()
+    : normalizedValue.toFixed(1).replace(/\.0$/, '')
+}
+
 export default function ProductCard({ product, compact = false }) {
   const availability = getProductAvailability(product)
   const isOutOfStock = !availability.hasStock
@@ -29,6 +61,7 @@ export default function ProductCard({ product, compact = false }) {
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
   const cardImages = getProductGalleryImages(product).slice(0, 1)
+  const discountPricing = getDiscountPricing(product)
 
   return (
     <LiquidGlassFrame
@@ -129,9 +162,28 @@ export default function ProductCard({ product, compact = false }) {
             <p className="aurora-product-card-price-label text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
               Price
             </p>
-            <p className="aurora-product-card-price mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {formatCurrency(product.price)}
-            </p>
+            {discountPricing.hasDiscount ? (
+              <div
+                className="aurora-product-card-price-stack mt-2"
+                aria-label={`Discounted price ${formatCurrency(discountPricing.currentPrice)}, original price ${formatCurrency(discountPricing.originalPrice)}`}
+              >
+                <div className="aurora-product-card-sale-row">
+                  <p className="aurora-product-card-price font-display text-3xl text-[var(--aurora-text-strong)]">
+                    {formatCurrency(discountPricing.currentPrice)}
+                  </p>
+                  <span className="aurora-product-card-discount-badge">
+                    -{formatDiscountRate(discountPricing.discountRate)}%
+                  </span>
+                </div>
+                <p className="aurora-product-card-original-price">
+                  {formatCurrency(discountPricing.originalPrice)}
+                </p>
+              </div>
+            ) : (
+              <p className="aurora-product-card-price mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
+                {formatCurrency(discountPricing.currentPrice)}
+              </p>
+            )}
             <p className="text-sm text-[var(--aurora-text)]">
               {getTaxInclusionCopy(product)}
             </p>
