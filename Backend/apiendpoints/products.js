@@ -123,7 +123,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "POST") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-            if (!body || !body.raw || !body.exists || !body.data.upload) return { s: 500, j: true, d: { e: "Internal invalid request body" } };
+            if (!body || !body.raw || !body.exists || !body.upload) return { s: 500, j: true, d: { e: "Internal invalid request body" } };
             const opts = {
                 productId: headers["x-product"] ? parseInt(headers["x-product"]) : null,
                 isPrimary: headers["x-primary"] === "true",
@@ -160,7 +160,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
 
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
             else return {s: 200, j: true, d: { msg: "Image uploaded successfully", url: upload.url, filetype: upload.filetype } };
-            
+
             // return await sql.addProductImage(body.data.id, body.data.url, body.data.isPrimary || false, body.data.sortOrder || 0).then(result => {
             //     return { s: 200, j: true, d: { msg: result.message, imageId: result.imageId } };
             // }).catch(err => {
