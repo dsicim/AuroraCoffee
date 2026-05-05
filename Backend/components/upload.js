@@ -39,13 +39,15 @@ async function createUpload(user, prefName, restrictions, req, headers) {
             let format = detected.ext;
             let converting = null;
             if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) format = restrictions.convertTo.split("/")[1];
+            console.log("Detected file type:", detected.mime, "with extension:", detected.ext);
+            console.log("Updated format after conversion check:", format);
             if (["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(restrictions.convertTo)) {
                 if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(detected.mime)) {
                     passthrough.resume();
                     reject({ s: 415, e: "Unsupported media type for conversion. Allowed types are: image/png, image/jpeg, image/jpg, image/gif, image/webp, image/tiff, image/avif" });
                     return;
                 }
-                converting = sharp().toFormat(restrictions.convertTo.split("/")[1].toLowerCase(), { quality: 100 });
+                converting = sharp().toFormat(format, { quality: 100 });
             }
             let actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
             const uploadsDir = path.join(__dirname, "..", "..", "Database", "uploads");
