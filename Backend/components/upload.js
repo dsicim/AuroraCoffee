@@ -53,10 +53,8 @@ async function createUpload(user, prefName, restrictions, req, headers) {
             while (fs.existsSync(path.join(uploadsDir, actualname + "." + format))) {
                 actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
             }
-            const filepath = path.join(uploadsDir, actualname + "." + detected.ext);
-            const actualfilepath = path.join(uploadsDir, actualname + "." + format);
+            const filepath = path.join(uploadsDir, actualname + "." + format);
             fs.writeFileSync(filepath, ""); // Create an empty file to reserve the name and prevent race conditions
-            if (detected.ext !== format) fs.writeFileSync(actualfilepath, ""); // Create an empty file to reserve the name and prevent race conditions
             const fileurl = "/uploads/" + actualname + "." + format;
 
             const writeStream = fs.createWriteStream(filepath);
@@ -69,7 +67,6 @@ async function createUpload(user, prefName, restrictions, req, headers) {
                 if (bytesWritten > restrictions.maxSize) {
                     writeStream.destroy();
                     if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-                    if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
                     reject({ s: 413, e: "File size exceeds the maximum allowed size of " + (restrictions.maxSize / (1024 * 1024)) + " MB" });
                     return;
                 }
@@ -77,7 +74,6 @@ async function createUpload(user, prefName, restrictions, req, headers) {
             passthrough.on("error", (err) => {
                 writeStream.destroy();
                 if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-                if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
                 console.error("Error during file upload:", err);
                 reject({ s: 500, e: "Internal server error" });
                 return;
@@ -85,7 +81,6 @@ async function createUpload(user, prefName, restrictions, req, headers) {
             writeStream.on("error", () => {
                 writeStream.destroy();
                 if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-                if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
                 reject({ s: 500, e: "Internal server error" });
                 return;
             });
