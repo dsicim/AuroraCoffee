@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
-const loadEsm = require("load-esm")();
+const loadEsm = require("load-esm");
 const { filetype } = loadEsm("file-type");
 const sharp = require('sharp');
 
