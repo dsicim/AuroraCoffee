@@ -2,7 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
-const filetype = require('file-type');
+const loadEsm = require("load-esm")();
+const { filetype } = loadEsm("file-type");
 const sharp = require('sharp');
 
 async function createUpload(user, prefName, restrictions, req, headers) {
