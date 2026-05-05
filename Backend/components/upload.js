@@ -17,7 +17,7 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     if (prefName.length > 0) prefName = prefName + "-";
     
     let bytesWritten = 0;
-    const { fileTypeStream } = await loadEsm("file-type");
+    const { fileTypeFromStream } = await loadEsm("file-type");
     const ftResult = await fileTypeFromStream(req);
     const detected = ftResult.fileType;
     const passthrough = ftResult.stream;
