@@ -2,8 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const sql = require("../../Database/server.js");
 const crypto = require("crypto");
-const loadEsm = require("load-esm");
-const { filetype } = loadEsm("file-type");
+const { loadEsm } = require("load-esm");
 const sharp = require('sharp');
 
 async function createUpload(user, prefName, restrictions, req, headers) {
@@ -18,8 +17,8 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     if (prefName.length > 0) prefName = prefName + "-";
     
     let bytesWritten = 0;
-
-    const ftResult = await filetype.stream(req);
+    const { fileTypeStream } = await loadEsm("file-type");
+    const ftResult = await fileTypeFromStream(req);
     const detected = ftResult.fileType;
     const passthrough = ftResult.stream;
     const uploadprocess = await new Promise((resolve, reject) => {
