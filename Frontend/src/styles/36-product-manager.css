@@ -1,0 +1,335 @@
+@layer components {
+  .aurora-product-edit-panel {
+    padding: 0;
+  }
+
+  .aurora-product-edit-hero {
+    padding: clamp(1.35rem, 1rem + 1.3vw, 2rem);
+    border-bottom: 1px solid rgba(255, 248, 241, 0.26);
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 54%, transparent),
+      radial-gradient(circle at 96% 10%, rgba(167, 195, 174, 0.2), transparent 28%);
+  }
+
+  .aurora-product-edit-intro {
+    max-width: 56rem;
+    margin-top: 1.15rem;
+    color: var(--aurora-text);
+    font-size: 0.95rem;
+    line-height: 1.85;
+  }
+
+  .aurora-product-edit-live-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.7rem;
+    border: 1px solid rgba(126, 159, 135, 0.24);
+    border-radius: 999px;
+    padding: 0.65rem 1rem;
+    background: rgba(255, 252, 248, 0.32);
+    color: var(--aurora-sky-deep);
+    font-size: 0.875rem;
+    font-weight: 700;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.5),
+      0 12px 24px rgba(47, 29, 19, 0.08);
+    transition:
+      color 160ms ease,
+      border-color 160ms ease,
+      background 160ms ease,
+      transform 160ms ease;
+  }
+
+  .aurora-product-edit-live-link:hover,
+  .aurora-product-edit-live-link:focus-visible {
+    border-color: rgba(126, 159, 135, 0.42);
+    background: rgba(255, 252, 248, 0.5);
+    color: var(--aurora-text-strong);
+    transform: translateY(-1px);
+  }
+
+  .aurora-product-edit-form {
+    display: grid;
+    gap: 1.25rem;
+    padding: clamp(1.15rem, 0.9rem + 1vw, 1.65rem);
+  }
+
+  .aurora-product-edit-picker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+    border: 1px solid rgba(255, 248, 241, 0.24);
+    border-radius: 1.4rem;
+    padding: 1rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.07)),
+      rgba(255, 252, 248, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.34),
+      0 16px 30px rgba(29, 20, 15, 0.06);
+  }
+
+  .aurora-product-edit-picker-field {
+    display: block;
+    min-width: 0;
+  }
+
+  .aurora-product-edit-picker-copy {
+    align-self: end;
+    color: var(--aurora-text);
+    font-size: 0.88rem;
+    line-height: 1.7;
+  }
+
+  .aurora-product-edit-label {
+    display: block;
+    color: var(--aurora-olive-deep);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .aurora-product-edit-input {
+    border-color: rgba(126, 159, 135, 0.24);
+    background:
+      radial-gradient(circle at 15% 16%, rgba(255, 255, 255, 0.48), transparent 26%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.36), rgba(255, 249, 244, 0.16) 62%, rgba(255, 246, 240, 0.08)),
+      rgba(255, 252, 248, 0.24);
+  }
+
+  .aurora-product-edit-workspace {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  .aurora-product-edit-snapshot,
+  .aurora-product-edit-group,
+  .aurora-product-edit-action-bar {
+    border: 1px solid rgba(255, 248, 241, 0.26);
+    border-radius: 1.4rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07)),
+      rgba(255, 252, 248, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 16px 30px rgba(29, 20, 15, 0.07);
+  }
+
+  .aurora-product-edit-snapshot {
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+    padding: 1rem;
+  }
+
+  .aurora-product-edit-image-shell {
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border: 1px solid rgba(255, 248, 241, 0.32);
+    border-radius: 1.1rem;
+    background:
+      radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.42), transparent 28%),
+      linear-gradient(135deg, rgba(230, 218, 205, 0.6), rgba(167, 195, 174, 0.18));
+  }
+
+  .aurora-product-edit-image,
+  .aurora-product-edit-image-fallback {
+    width: 100%;
+    height: 100%;
+  }
+
+  .aurora-product-edit-image {
+    object-fit: cover;
+  }
+
+  .aurora-product-edit-image-fallback {
+    display: grid;
+    place-items: center;
+    color: rgba(39, 25, 19, 0.28);
+    font-family: var(--font-display);
+    font-size: 4rem;
+  }
+
+  .aurora-product-edit-snapshot-body {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .aurora-product-edit-kicker,
+  .aurora-product-edit-product-code {
+    color: var(--aurora-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  .aurora-product-edit-kicker {
+    color: var(--aurora-olive-deep);
+  }
+
+  .aurora-product-edit-product-name {
+    color: var(--aurora-text-strong);
+    font-family: var(--font-display);
+    font-size: clamp(1.45rem, 1.15rem + 1vw, 2rem);
+    line-height: 1.15;
+  }
+
+  .aurora-product-edit-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+  }
+
+  .aurora-product-edit-stats div {
+    min-width: 0;
+    border: 1px solid rgba(255, 248, 241, 0.22);
+    border-radius: 1rem;
+    padding: 0.75rem;
+    background: rgba(255, 252, 248, 0.22);
+  }
+
+  .aurora-product-edit-stats dt {
+    color: var(--aurora-text);
+    font-size: 0.72rem;
+    font-weight: 700;
+  }
+
+  .aurora-product-edit-stats dd {
+    margin-top: 0.18rem;
+    overflow-wrap: anywhere;
+    color: var(--aurora-text-strong);
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .aurora-product-edit-groups {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+  }
+
+  .aurora-product-edit-group {
+    min-width: 0;
+    padding: 1rem;
+  }
+
+  .aurora-product-edit-group legend {
+    display: grid;
+    gap: 0.25rem;
+    width: 100%;
+    margin-bottom: 1rem;
+    color: var(--aurora-text-strong);
+    font-weight: 800;
+  }
+
+  .aurora-product-edit-group legend span {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    line-height: 1.2;
+  }
+
+  .aurora-product-edit-group legend small {
+    color: var(--aurora-text);
+    font-size: 0.84rem;
+    font-weight: 600;
+    line-height: 1.6;
+  }
+
+  .aurora-product-edit-grid {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .aurora-product-edit-field {
+    min-width: 0;
+  }
+
+  .aurora-product-edit-action-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .aurora-product-edit-action-copy {
+    display: grid;
+    gap: 0.2rem;
+    min-width: min(100%, 18rem);
+  }
+
+  .aurora-product-edit-action-copy span {
+    color: var(--aurora-text-strong);
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .aurora-product-edit-action-copy p {
+    color: var(--aurora-text);
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+
+  .aurora-product-edit-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  [data-theme='dark'] .aurora-product-edit-hero,
+  [data-theme='dark'] .aurora-product-edit-picker,
+  [data-theme='dark'] .aurora-product-edit-snapshot,
+  [data-theme='dark'] .aurora-product-edit-group,
+  [data-theme='dark'] .aurora-product-edit-action-bar {
+    border-color: rgba(211, 227, 216, 0.13);
+    background:
+      linear-gradient(180deg, rgba(236, 247, 239, 0.06), rgba(255, 255, 255, 0.02)),
+      rgba(17, 27, 24, 0.36);
+    box-shadow:
+      inset 0 1px 0 rgba(238, 246, 240, 0.08),
+      0 18px 34px rgba(0, 7, 18, 0.24);
+  }
+
+  [data-theme='dark'] .aurora-product-edit-live-link,
+  [data-theme='dark'] .aurora-product-edit-stats div {
+    border-color: rgba(211, 227, 216, 0.13);
+    background: rgba(17, 27, 24, 0.46);
+  }
+
+  [data-theme='dark'] .aurora-product-edit-image-shell {
+    border-color: rgba(211, 227, 216, 0.14);
+    background:
+      radial-gradient(circle at 24% 20%, rgba(236, 247, 239, 0.12), transparent 28%),
+      linear-gradient(135deg, rgba(37, 61, 43, 0.74), rgba(111, 82, 61, 0.16));
+  }
+}
+
+@media (min-width: 768px) {
+  @layer components {
+    .aurora-product-edit-picker {
+      grid-template-columns: minmax(18rem, 0.9fr) minmax(16rem, 1.1fr);
+      align-items: end;
+    }
+
+    .aurora-product-edit-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+}
+
+@media (min-width: 1180px) {
+  @layer components {
+    .aurora-product-edit-workspace {
+      grid-template-columns: minmax(17rem, 0.36fr) minmax(0, 0.64fr);
+      align-items: start;
+    }
+
+    .aurora-product-edit-snapshot {
+      position: sticky;
+      top: 6rem;
+    }
+  }
+}

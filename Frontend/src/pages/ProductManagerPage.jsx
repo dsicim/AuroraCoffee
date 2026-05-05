@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments, moderateProductComment } from '../features/comments/infrastructure/commentsApi'
+import { formatCurrency } from '../lib/currency'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {
@@ -50,6 +51,29 @@ const productEditFields = [
   { key: 'capacity', column: 'capacity', label: 'Capacity', type: 'text' },
   { key: 'imageUrl', column: 'image_url', label: 'Image URL', type: 'text' },
 ]
+
+const productEditFieldGroups = [
+  {
+    title: 'Storefront identity',
+    description: 'Customer-facing names, codes, and product media.',
+    fieldKeys: ['name', 'productCode', 'imageUrl'],
+  },
+  {
+    title: 'Pricing and inventory',
+    description: 'Numbers that affect availability and checkout totals.',
+    fieldKeys: ['price', 'stock', 'discountRate', 'taxRate'],
+  },
+  {
+    title: 'Catalog attributes',
+    description: 'Product traits shown on catalog and detail pages.',
+    fieldKeys: ['origin', 'roastLevel', 'acidity', 'material', 'capacity', 'flavorNotes'],
+  },
+].map((group) => ({
+  ...group,
+  fields: group.fieldKeys
+    .map((fieldKey) => productEditFields.find((field) => field.key === fieldKey))
+    .filter(Boolean),
+}))
 
 function formatCommentDate(value) {
   try {
@@ -489,13 +513,36 @@ function buildProductEdits(product, form) {
   return edits
 }
 
+function getInventoryTone(stock) {
+  const normalizedStock = Number(stock) || 0
+
+  if (normalizedStock <= 0) {
+    return 'Sold out'
+  }
+
+  if (normalizedStock <= 3) {
+    return 'Low stock'
+  }
+
+  return 'In stock'
+}
+
 function ProductEditField({ field, defaultValue }) {
   const fieldId = `product-edit-${field.key}`
-  const inputClassName = field.type === 'textarea' ? 'aurora-textarea min-h-28' : 'aurora-input'
+  const inputClassName =
+    field.type === 'textarea'
+      ? 'aurora-textarea aurora-product-edit-input min-h-28'
+      : 'aurora-input aurora-product-edit-input'
 
   return (
-    <label className={field.type === 'textarea' ? 'block md:col-span-2' : 'block'}>
-      <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+    <label
+      className={
+        field.type === 'textarea'
+          ? 'aurora-product-edit-field block md:col-span-2'
+          : 'aurora-product-edit-field block'
+      }
+    >
+      <span className="aurora-product-edit-label">
         {field.label}
       </span>
       {field.type === 'textarea' ? (
@@ -518,6 +565,58 @@ function ProductEditField({ field, defaultValue }) {
         />
       )}
     </label>
+  )
+}
+
+function ProductEditSnapshot({ product }) {
+  const categoryLabel = product.categoryName || product.parentCategoryName || 'Catalog'
+  const inventoryTone = getInventoryTone(product.stock)
+  const productImage = product.imageUrl
+
+  return (
+    <aside className="aurora-product-edit-snapshot" aria-label="Selected product summary">
+      <div className="aurora-product-edit-image-shell">
+        {productImage ? (
+          <img
+            src={productImage}
+            alt=""
+            className="aurora-product-edit-image"
+            loading="lazy"
+          />
+        ) : (
+          <div className="aurora-product-edit-image-fallback" aria-hidden="true">
+            {product.name?.slice(0, 1) || 'A'}
+          </div>
+        )}
+      </div>
+
+      <div className="aurora-product-edit-snapshot-body">
+        <p className="aurora-product-edit-kicker">{categoryLabel}</p>
+        <h3 className="aurora-product-edit-product-name">{product.name}</h3>
+        <p className="aurora-product-edit-product-code">
+          {product.productCode || `Product ${product.id}`}
+        </p>
+      </div>
+
+      <dl className="aurora-product-edit-stats">
+        <div>
+          <dt>Price</dt>
+          <dd>{formatCurrency(product.price)}</dd>
+        </div>
+        <div>
+          <dt>Stock</dt>
+          <dd>{product.stock}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{inventoryTone}</dd>
+        </div>
+        <div>
+          <dt>Discount</dt>
+          <dd>{Number(product.discountRate || 0)}%</dd>
+        </div>
+      </dl>
+    </aside>
   )
 }
 
@@ -599,96 +698,121 @@ function ProductEditPanel({ products, loading }) {
   }
 
   return (
-    <section id="product-editor" className="aurora-ops-panel p-8">
-      <div className="aurora-widget-header">
-        <div className="aurora-widget-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-            Product editor
-          </p>
-          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-            Update catalog details
-          </h2>
+    <section id="product-editor" className="aurora-ops-panel aurora-product-edit-panel">
+      <div className="aurora-product-edit-hero">
+        <div className="aurora-widget-header">
+          <div className="aurora-widget-heading">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+              Product editor
+            </p>
+            <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+              Update catalog details
+            </h2>
+          </div>
+          {selectedProduct ? (
+            <Link
+              to={`/products/${selectedProduct.slug}`}
+              className="aurora-product-edit-live-link"
+            >
+              View product
+            </Link>
+          ) : null}
         </div>
-        {selectedProduct ? (
-          <Link
-            to={`/products/${selectedProduct.slug}`}
-            className="text-sm font-semibold text-[var(--aurora-sky-deep)] transition hover:text-[var(--aurora-text-strong)]"
-          >
-            View product
-          </Link>
-        ) : null}
+
+        <p className="aurora-product-edit-intro">
+          Edit the core product record that powers the storefront. Variant structure, image uploads,
+          and category creation stay outside this panel until the backend exposes safer endpoints.
+        </p>
       </div>
 
-      <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
-        Edit the core product record that powers the storefront. Variant structure, image uploads,
-        and category creation stay outside this panel until the backend exposes safer endpoints.
-      </p>
-
-      <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
-        <label className="block">
-          <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-            Product
-          </span>
-          <select
-            className="aurora-select mt-3"
-            value={selectedProductId}
-            onChange={(event) => {
-              setSelectedProductId(event.target.value)
-              setSaveState({
-                saving: false,
-                error: '',
-                success: '',
-              })
-            }}
-          >
-            <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
-            {editableProducts.map((product) => (
-              <option key={product.id} value={product.id}>
-                {product.name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <form className="aurora-product-edit-form" onSubmit={handleSubmit}>
+        <div className="aurora-product-edit-picker">
+          <label className="aurora-product-edit-picker-field">
+            <span className="aurora-product-edit-label">Product</span>
+            <select
+              className="aurora-select aurora-product-edit-input mt-3"
+              value={selectedProductId}
+              onChange={(event) => {
+                setSelectedProductId(event.target.value)
+                setSaveState({
+                  saving: false,
+                  error: '',
+                  success: '',
+                })
+              }}
+            >
+              <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
+              {editableProducts.map((product) => (
+                <option key={product.id} value={product.id}>
+                  {product.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="aurora-product-edit-picker-copy">
+            {selectedProduct
+              ? 'Changes save directly to the product record after review.'
+              : 'Choose an item to reveal the editable storefront fields.'}
+          </p>
+        </div>
 
         {selectedProduct ? (
           <>
-            <div key={selectedProduct.id} className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {productEditFields.map((field) => (
-                <ProductEditField
-                  key={field.key}
-                  field={field}
-                  defaultValue={getProductEditForm(selectedProduct)[field.key] || ''}
-                />
-              ))}
+            <div key={selectedProduct.id} className="aurora-product-edit-workspace">
+              <ProductEditSnapshot product={selectedProduct} />
+
+              <div className="aurora-product-edit-groups">
+                {productEditFieldGroups.map((group) => (
+                  <fieldset key={group.title} className="aurora-product-edit-group">
+                    <legend>
+                      <span>{group.title}</span>
+                      <small>{group.description}</small>
+                    </legend>
+
+                    <div className="aurora-product-edit-grid">
+                      {group.fields.map((field) => (
+                        <ProductEditField
+                          key={field.key}
+                          field={field}
+                          defaultValue={getProductEditForm(selectedProduct)[field.key] || ''}
+                        />
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-5">
-              <LiquidGlassButton
-                type="submit"
-                variant="secondary"
-                loading={saveState.saving}
-                disabled={saveState.saving}
-              >
-                Save product
-              </LiquidGlassButton>
-              <LiquidGlassButton
-                type="button"
-                variant="quiet"
-                disabled={saveState.saving}
-                onClick={(event) => {
-                  event.currentTarget.form?.reset()
-                  setSaveState({
-                    saving: false,
-                    error: '',
-                    success: '',
-                  })
-                }}
-              >
-                Reset fields
-              </LiquidGlassButton>
-              <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                {selectedProduct.categoryName || selectedProduct.parentCategoryName || 'Catalog'}
-              </p>
+            <div className="aurora-product-edit-action-bar">
+              <div className="aurora-product-edit-action-copy">
+                <span>{selectedProduct.categoryName || selectedProduct.parentCategoryName || 'Catalog'}</span>
+                <p>Save only after checking the live product details.</p>
+              </div>
+              <div className="aurora-product-edit-actions">
+                <LiquidGlassButton
+                  type="button"
+                  variant="quiet"
+                  disabled={saveState.saving}
+                  onClick={(event) => {
+                    event.currentTarget.form?.reset()
+                    setSaveState({
+                      saving: false,
+                      error: '',
+                      success: '',
+                    })
+                  }}
+                >
+                  Reset fields
+                </LiquidGlassButton>
+                <LiquidGlassButton
+                  type="submit"
+                  variant="secondary"
+                  loading={saveState.saving}
+                  disabled={saveState.saving}
+                >
+                  Save product
+                </LiquidGlassButton>
+              </div>
             </div>
           </>
         ) : (
