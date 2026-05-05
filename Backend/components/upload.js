@@ -21,83 +21,90 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     const ftResult = await fileTypeStream(webStream);
     const detected = ftResult.fileType;
     const passthrough = stream.Readable.fromWeb(ftResult);
-    const uploadprocess = await new Promise((resolve, reject) => {
-        if (!detected) {
-            passthrough.resume();
-            reject({ s: 415, e: "Could not detect file type" });
-            return;
-        }
-        if (!restrictions.allowedTypes.includes(detected.mime)) {
-            passthrough.resume();
-            reject({ s: 415, e: "Unsupported media type. Allowed types are: " + restrictions.allowedTypes.join(", ") });
-            return;
-        }
+    let uploadprocess
+    try {
 
-        let format = detected.ext;
-        let converting = null;
-        if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) format = restrictions.convertTo.split("/")[1];
-        if (["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(restrictions.convertTo)) {
-            if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(detected.mime)) {
+        uploadprocess = await new Promise((resolve, reject) => {
+            if (!detected) {
                 passthrough.resume();
-                reject({ s: 415, e: "Unsupported media type for conversion. Allowed types are: image/png, image/jpeg, image/jpg, image/gif, image/webp, image/tiff, image/avif" });
+                reject({ s: 415, e: "Could not detect file type" });
                 return;
             }
-            converting = sharp().toFormat(restrictions.convertTo.split("/")[1].toLowerCase(), { quality: 100 });
-        }
-        let actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
-        const uploadsDir = path.join(__dirname, "..", "..", "Database","uploads");
-        if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
-        while (fs.existsSync(path.join(uploadsDir, actualname + "." + format))) {
-            actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
-        }
-        const filepath = path.join(uploadsDir, actualname + "." + detected.ext);
-        const actualfilepath = path.join(uploadsDir, actualname + "." + format);
-        fs.writeFileSync(filepath, ""); // Create an empty file to reserve the name and prevent race conditions
-        if (detected.ext !== format) fs.writeFileSync(actualfilepath, ""); // Create an empty file to reserve the name and prevent race conditions
-        const fileurl = "/uploads/" + actualname + "." + format;
+            if (!restrictions.allowedTypes.includes(detected.mime)) {
+                passthrough.resume();
+                reject({ s: 415, e: "Unsupported media type. Allowed types are: " + restrictions.allowedTypes.join(", ") });
+                return;
+            }
 
-        const writeStream = fs.createWriteStream(filepath);
+            let format = detected.ext;
+            let converting = null;
+            if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) format = restrictions.convertTo.split("/")[1];
+            if (["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(restrictions.convertTo)) {
+                if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(detected.mime)) {
+                    passthrough.resume();
+                    reject({ s: 415, e: "Unsupported media type for conversion. Allowed types are: image/png, image/jpeg, image/jpg, image/gif, image/webp, image/tiff, image/avif" });
+                    return;
+                }
+                converting = sharp().toFormat(restrictions.convertTo.split("/")[1].toLowerCase(), { quality: 100 });
+            }
+            let actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
+            const uploadsDir = path.join(__dirname, "..", "..", "Database", "uploads");
+            if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+            while (fs.existsSync(path.join(uploadsDir, actualname + "." + format))) {
+                actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
+            }
+            const filepath = path.join(uploadsDir, actualname + "." + detected.ext);
+            const actualfilepath = path.join(uploadsDir, actualname + "." + format);
+            fs.writeFileSync(filepath, ""); // Create an empty file to reserve the name and prevent race conditions
+            if (detected.ext !== format) fs.writeFileSync(actualfilepath, ""); // Create an empty file to reserve the name and prevent race conditions
+            const fileurl = "/uploads/" + actualname + "." + format;
 
-        if (converting) passthrough.pipe(converting).pipe(writeStream);
-        else passthrough.pipe(writeStream);
+            const writeStream = fs.createWriteStream(filepath);
 
-        passthrough.on("data", (chunk) => {
-            bytesWritten += chunk.length;
-            if (bytesWritten > restrictions.maxSize) {
+            if (converting) passthrough.pipe(converting).pipe(writeStream);
+            else passthrough.pipe(writeStream);
+
+            passthrough.on("data", (chunk) => {
+                bytesWritten += chunk.length;
+                if (bytesWritten > restrictions.maxSize) {
+                    writeStream.destroy();
+                    if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+                    if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
+                    reject({ s: 413, e: "File size exceeds the maximum allowed size of " + (restrictions.maxSize / (1024 * 1024)) + " MB" });
+                    return;
+                }
+            });
+            passthrough.on("error", (err) => {
                 writeStream.destroy();
                 if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
                 if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
-                reject({ s: 413, e: "File size exceeds the maximum allowed size of " + (restrictions.maxSize / (1024 * 1024)) + " MB" });
+                console.error("Error during file upload:", err);
+                reject({ s: 500, e: "Internal server error" });
                 return;
-            }
+            });
+            writeStream.on("error", () => {
+                writeStream.destroy();
+                if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
+                if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
+                reject({ s: 500, e: "Internal server error" });
+                return;
+            });
+            writeStream.on("finish", () => {
+                resolve({ s: 200, url: fileurl, filetype: detected.mime, path: filepath });
+                return;
+            });
+            writeStream.on("error", (err) => {
+                console.error("Error writing file:", err);
+                reject({ s: 500, e: "Internal server error" });
+                return;
+            });
         });
-        passthrough.on("error", (err) => {
-            writeStream.destroy();
-            if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-            if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
-            console.error("Error during file upload:", err);
-            reject({ s: 500, e: "Internal server error" });
-            return;
-        });
-        writeStream.on("error", () => {
-            writeStream.destroy();
-            if (fs.existsSync(filepath)) fs.unlinkSync(filepath);
-            if (detected.ext !== format && fs.existsSync(actualfilepath)) fs.unlinkSync(actualfilepath);
-            reject({ s: 500, e: "Internal server error" });
-            return;
-        });
-        writeStream.on("finish", () => {
-            resolve({ s: 200, url: fileurl, filetype: detected.mime, path: filepath });
-            return;
-        });
-        writeStream.on("error", (err) => {
-            console.error("Error writing file:", err);
-            reject({ s: 500, e: "Internal server error" });
-            return;
-        });
-    });
+    }
+    catch (err) {
+        return err.s ? err : { s: 500, e: "Internal server error" };
+    }
     if (uploadprocess.s !== 200) return { s: uploadprocess.s, e: uploadprocess.e };
-    
+
     return uploadprocess;
 }
 module.exports = { createUpload };
