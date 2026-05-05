@@ -1,6 +1,11 @@
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../../../lib/currency'
-import { formatDiscountRate, getDiscountPricing } from '../../../lib/pricing'
+import {
+  formatDiscountRate,
+  getDiscountPricing,
+  getProductStartingPrice,
+  hasPriceChangingChoices,
+} from '../../../lib/pricing'
 import {
   getProductAvailability,
   getProductCategoryLabel,
@@ -30,7 +35,11 @@ export default function ProductCard({ product, compact = false }) {
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
   const cardImages = getProductGalleryImages(product).slice(0, 1)
-  const discountPricing = getDiscountPricing(product)
+  const hasStartingPrice = hasPriceChangingChoices(product)
+  const discountPricing = getDiscountPricing({
+    price: hasStartingPrice ? getProductStartingPrice(product) : product.price,
+    discountRate: product.discountRate,
+  })
 
   return (
     <LiquidGlassFrame
@@ -129,7 +138,7 @@ export default function ProductCard({ product, compact = false }) {
         <div className="aurora-product-card-commerce">
           <div>
             <p className="aurora-product-card-price-label text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-              Price
+              {hasStartingPrice ? 'Starting from' : 'Price'}
             </p>
             {discountPricing.hasDiscount ? (
               <div

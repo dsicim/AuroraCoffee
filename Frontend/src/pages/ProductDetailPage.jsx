@@ -16,7 +16,11 @@ import {
 import { addCartItem, getCartErrorMessage } from '../lib/cart'
 import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
-import { formatDiscountRate, getDiscountPricing } from '../lib/pricing'
+import {
+  formatDiscountRate,
+  getDiscountPricing,
+  getProductStartingPrice,
+} from '../lib/pricing'
 import {
   getProductAvailability,
   getProductCategoryLabel,
@@ -77,6 +81,38 @@ function getOptionValueCode(optionValue) {
 
 function isOptionGroupRequired(group) {
   return group?.isRequired !== false
+}
+
+function optionValueChangesPrice(value) {
+  const priceAdd = Number(value?.priceAdd) || 0
+  const priceMult = Number(value?.priceMult) || 1
+
+  return priceAdd !== 0 || priceMult !== 1
+}
+
+function optionGroupChangesPrice(product, group) {
+  if (group?.storeAsVariant) {
+    const variantPrices = Array.isArray(product?.variants)
+      ? product.variants
+          .map((variant) => Number(variant?.price))
+          .filter((price) => Number.isFinite(price))
+      : []
+    const uniqueVariantPrices = new Set(variantPrices.map((price) => Math.round(price * 100)))
+
+    return uniqueVariantPrices.size > 1
+  }
+
+  return (group?.values || []).some(optionValueChangesPrice)
+}
+
+function hasPendingPriceSelection(product, optionGroups, selectedValues) {
+  return (optionGroups || []).some((group) => {
+    if (!isOptionGroupRequired(group) || !optionGroupChangesPrice(product, group)) {
+      return false
+    }
+
+    return !selectedValues[getOptionGroupKey(group)]
+  })
 }
 
 function getResolvedOptionSelections(optionGroups, selectedValues) {
@@ -1579,8 +1615,12 @@ export default function ProductDetailPage() {
       }
     : availability
   const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
+  const showStartingPrice = hasPendingPriceSelection(product, optionGroups, selectedOptionsByGroup)
+  const priceBeforeDiscount = showStartingPrice
+    ? getProductStartingPrice(product)
+    : displayPrice
   const discountPricing = getDiscountPricing({
-    price: displayPrice,
+    price: priceBeforeDiscount,
     discountRate: product.discountRate,
   })
   const purchasePrice = discountPricing.currentPrice
@@ -1755,7 +1795,7 @@ export default function ProductDetailPage() {
             <div className="relative z-10 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                  Ready to buy
+                  {showStartingPrice ? 'Starting from' : 'Ready to buy'}
                 </p>
                 {discountPricing.hasDiscount ? (
                   <div
