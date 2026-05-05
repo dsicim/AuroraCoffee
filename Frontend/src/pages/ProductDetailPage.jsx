@@ -17,6 +17,11 @@ import { addCartItem, getCartErrorMessage } from '../lib/cart'
 import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
 import {
+  formatDiscountRate,
+  getDiscountPricing,
+  getProductStartingPrice,
+} from '../lib/pricing'
+import {
   getProductAvailability,
   getProductCategoryLabel,
   getProductFlavorNotes,
@@ -76,6 +81,38 @@ function getOptionValueCode(optionValue) {
 
 function isOptionGroupRequired(group) {
   return group?.isRequired !== false
+}
+
+function optionValueChangesPrice(value) {
+  const priceAdd = Number(value?.priceAdd) || 0
+  const priceMult = Number(value?.priceMult) || 1
+
+  return priceAdd !== 0 || priceMult !== 1
+}
+
+function optionGroupChangesPrice(product, group) {
+  if (group?.storeAsVariant) {
+    const variantPrices = Array.isArray(product?.variants)
+      ? product.variants
+          .map((variant) => Number(variant?.price))
+          .filter((price) => Number.isFinite(price))
+      : []
+    const uniqueVariantPrices = new Set(variantPrices.map((price) => Math.round(price * 100)))
+
+    return uniqueVariantPrices.size > 1
+  }
+
+  return (group?.values || []).some(optionValueChangesPrice)
+}
+
+function hasPendingPriceSelection(product, optionGroups, selectedValues) {
+  return (optionGroups || []).some((group) => {
+    if (!isOptionGroupRequired(group) || !optionGroupChangesPrice(product, group)) {
+      return false
+    }
+
+    return !selectedValues[getOptionGroupKey(group)]
+  })
 }
 
 function getResolvedOptionSelections(optionGroups, selectedValues) {
@@ -1578,7 +1615,16 @@ export default function ProductDetailPage() {
       }
     : availability
   const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
-  const priceBreakdown = getUnitPriceBreakdown({ ...product, price: displayPrice })
+  const showStartingPrice = hasPendingPriceSelection(product, optionGroups, selectedOptionsByGroup)
+  const priceBeforeDiscount = showStartingPrice
+    ? getProductStartingPrice(product)
+    : displayPrice
+  const discountPricing = getDiscountPricing({
+    price: priceBeforeDiscount,
+    discountRate: product.discountRate,
+  })
+  const purchasePrice = discountPricing.currentPrice
+  const priceBreakdown = getUnitPriceBreakdown({ ...product, price: purchasePrice })
   const selectedOptionsSnapshot = buildSelectedOptionsSnapshot(selectedOptionRecords)
   const selectedOptionCodes = buildSelectedOptionCodes(selectedOptionRecords)
   const missingOptionLabels = missingRequiredOptionGroups.map((group) => group.name)
@@ -1603,7 +1649,7 @@ export default function ProductDetailPage() {
     try {
       await addCartItem({
         ...product,
-        price: displayPrice,
+        price: purchasePrice,
         stock: displayAvailability.totalStock,
         variantId: matchingVariant?.id || null,
         variantCode: matchingVariant?.variantCode || '',
@@ -1749,11 +1795,30 @@ export default function ProductDetailPage() {
             <div className="relative z-10 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
               <div>
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                  Ready to buy
+                  {showStartingPrice ? 'Starting from' : 'Ready to buy'}
                 </p>
-                <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-                  {formatCurrency(displayPrice)}
-                </p>
+                {discountPricing.hasDiscount ? (
+                  <div
+                    className="aurora-product-detail-price-stack mt-3"
+                    aria-label={`Discounted price ${formatCurrency(discountPricing.currentPrice)}, original price ${formatCurrency(discountPricing.originalPrice)}`}
+                  >
+                    <div className="aurora-product-detail-sale-row">
+                      <p className="font-display text-4xl text-[var(--aurora-text-strong)]">
+                        {formatCurrency(discountPricing.currentPrice)}
+                      </p>
+                      <span className="aurora-product-card-discount-badge">
+                        -{formatDiscountRate(discountPricing.discountRate)}%
+                      </span>
+                    </div>
+                    <p className="aurora-product-detail-original-price">
+                      {formatCurrency(discountPricing.originalPrice)}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+                    {formatCurrency(purchasePrice)}
+                  </p>
+                )}
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
                   {getTaxInclusionCopy(product)} · Net {formatCurrency(priceBreakdown.priceNet)} + VAT {formatCurrency(priceBreakdown.taxAmount)}
                 </p>

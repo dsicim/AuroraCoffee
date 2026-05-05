@@ -1,6 +1,12 @@
 import { Link } from 'react-router-dom'
 import { formatCurrency } from '../../../lib/currency'
 import {
+  formatDiscountRate,
+  getDiscountPricing,
+  getProductStartingPrice,
+  hasPriceChangingChoices,
+} from '../../../lib/pricing'
+import {
   getProductAvailability,
   getProductCategoryLabel,
   getProductFlavorNotes,
@@ -29,6 +35,11 @@ export default function ProductCard({ product, compact = false }) {
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
   const cardImages = getProductGalleryImages(product).slice(0, 1)
+  const hasStartingPrice = hasPriceChangingChoices(product)
+  const discountPricing = getDiscountPricing({
+    price: hasStartingPrice ? getProductStartingPrice(product) : product.price,
+    discountRate: product.discountRate,
+  })
 
   return (
     <LiquidGlassFrame
@@ -127,11 +138,30 @@ export default function ProductCard({ product, compact = false }) {
         <div className="aurora-product-card-commerce">
           <div>
             <p className="aurora-product-card-price-label text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-              Price
+              {hasStartingPrice ? 'Starting from' : 'Price'}
             </p>
-            <p className="aurora-product-card-price mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
-              {formatCurrency(product.price)}
-            </p>
+            {discountPricing.hasDiscount ? (
+              <div
+                className="aurora-product-card-price-stack mt-2"
+                aria-label={`Discounted price ${formatCurrency(discountPricing.currentPrice)}, original price ${formatCurrency(discountPricing.originalPrice)}`}
+              >
+                <div className="aurora-product-card-sale-row">
+                  <p className="aurora-product-card-price font-display text-3xl text-[var(--aurora-text-strong)]">
+                    {formatCurrency(discountPricing.currentPrice)}
+                  </p>
+                  <span className="aurora-product-card-discount-badge">
+                    -{formatDiscountRate(discountPricing.discountRate)}%
+                  </span>
+                </div>
+                <p className="aurora-product-card-original-price">
+                  {formatCurrency(discountPricing.originalPrice)}
+                </p>
+              </div>
+            ) : (
+              <p className="aurora-product-card-price mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
+                {formatCurrency(discountPricing.currentPrice)}
+              </p>
+            )}
             <p className="text-sm text-[var(--aurora-text)]">
               {getTaxInclusionCopy(product)}
             </p>
@@ -142,15 +172,15 @@ export default function ProductCard({ product, compact = false }) {
             ) : null}
           </div>
 
-          <div className="aurora-widget-actions flex-col items-start sm:items-end">
-            <Link to={detailRoute} className="aurora-link text-sm">
+          <div className="aurora-widget-actions aurora-product-card-actions">
+            <Link to={detailRoute} className="aurora-link aurora-product-card-details-link text-sm">
               Details
             </Link>
             <LiquidGlassButton
               as={Link}
               to={detailRoute}
               size="compact"
-              className="w-full sm:w-auto"
+              className="aurora-product-card-choose-button"
             >
               Choose
             </LiquidGlassButton>

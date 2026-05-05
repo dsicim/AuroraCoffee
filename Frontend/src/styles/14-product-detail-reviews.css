@@ -69,6 +69,32 @@
     z-index: 40;
   }
 
+  .aurora-product-detail-price-stack {
+    display: grid;
+    gap: 0.45rem;
+    min-width: 0;
+  }
+
+  .aurora-product-detail-sale-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem;
+  }
+
+  .aurora-product-detail-original-price {
+    width: fit-content;
+    max-width: 100%;
+    color: var(--aurora-text-muted);
+    font-size: 1rem;
+    font-weight: 800;
+    line-height: 1.2;
+    text-decoration: line-through;
+    text-decoration-thickness: 0.12em;
+    text-decoration-color: color-mix(in srgb, var(--aurora-primary) 60%, var(--aurora-text-muted));
+    overflow-wrap: anywhere;
+  }
+
   .aurora-product-attribute-card {
     min-width: 0;
   }

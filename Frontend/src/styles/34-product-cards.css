@@ -324,6 +324,106 @@
     var(--aurora-shadow);
 }
 
+.aurora-product-card-commerce-surface {
+  container-type: inline-size;
+}
+
+.aurora-product-card-commerce {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
+}
+
+.aurora-product-card-price-stack {
+  display: grid;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.aurora-product-card-sale-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.aurora-product-card-original-price {
+  width: fit-content;
+  max-width: 100%;
+  color: var(--aurora-text-muted);
+  font-size: 0.95rem;
+  font-weight: 800;
+  line-height: 1.2;
+  text-decoration: line-through;
+  text-decoration-thickness: 0.12em;
+  text-decoration-color: color-mix(in srgb, var(--aurora-primary) 60%, var(--aurora-text-muted));
+  overflow-wrap: anywhere;
+}
+
+.aurora-product-card-discount-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.8rem;
+  border: 1px solid color-mix(in srgb, var(--aurora-brass) 44%, var(--aurora-border));
+  border-radius: 999px;
+  padding: 0.32rem 0.62rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.1)),
+    color-mix(in srgb, var(--aurora-brass-soft) 42%, transparent);
+  color: var(--aurora-text-strong);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.42),
+    0 8px 18px color-mix(in srgb, var(--aurora-brass) 18%, transparent);
+}
+
+.aurora-product-card-actions {
+  display: grid;
+  align-content: end;
+  justify-items: stretch;
+  gap: 0.55rem;
+  justify-self: stretch;
+  width: 100%;
+  max-width: 100%;
+  padding-inline: 0.48rem;
+  box-sizing: border-box;
+}
+
+.aurora-product-card-actions .aurora-product-card-details-link,
+.aurora-product-card-actions .button-wrap {
+  width: 100%;
+  min-width: 0;
+}
+
+.aurora-product-card-actions .aurora-product-card-choose-button > .liquid-glass-control,
+.aurora-product-card-actions .aurora-product-card-choose-button .button-label {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.aurora-product-card-details-link {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  line-height: 1.2;
+}
+
+@container (min-width: 30rem) {
+  .aurora-product-card-commerce {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+  }
+
+  .aurora-product-card-actions {
+    justify-self: end;
+    width: min(100%, 8.35rem);
+  }
+}
+
 @media (max-width: 639px) {
   .aurora-stack-10,
   .aurora-stack-12,
@@ -490,6 +590,8 @@
   .aurora-product-card-commerce .aurora-widget-actions {
     width: 100%;
     align-items: stretch;
+    justify-self: stretch;
+    padding-inline: 0.35rem;
   }
 
   .aurora-product-card-commerce .button-wrap,
@@ -501,6 +603,19 @@
     margin-top: 0.45rem;
     font-size: clamp(1.95rem, 10vw, 2.2rem);
     line-height: 0.95;
+  }
+
+  .aurora-product-card-price-stack .aurora-product-card-price {
+    margin-top: 0;
+  }
+
+  .aurora-product-card-sale-row {
+    gap: 0.45rem;
+  }
+
+  .aurora-product-card-discount-badge {
+    min-height: 1.65rem;
+    padding-inline: 0.54rem;
   }
 
   .aurora-product-card-price-label {
