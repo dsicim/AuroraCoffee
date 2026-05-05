@@ -95,12 +95,13 @@ const server = http.createServer(async function (req, res) {
         });
     }
     else if (req.url.startsWith("/uploads/")) {
-        if (req.url.includes("..") || req.url.includes(".") || req.url.substring(9).includes("/") || req.url.includes("\\") || req.url.substring(9).length === 0) {
+        const uploadedpath = req.url.substring(9);
+        if (uploadedpath.includes("..") || uploadedpath.substring(9).includes("/") || uploadedpath.includes("\\") || uploadedpath.length === 0) {
             res.writeHead(403, { "Content-Type": "text/plain" });
             res.end("Forbidden");
             return;
         }
-        fs.readFile(ddir + "uploads/" + req.url.substring(9), function (error, data) {
+        fs.readFile(ddir + "uploads/" + uploadedpath, function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/plain" });
                 res.end("File not found");
