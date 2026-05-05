@@ -412,7 +412,7 @@
   line-height: 1.2;
 }
 
-@container (min-width: 24rem) {
+@container (min-width: 30rem) {
   .aurora-product-card-commerce {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: end;
