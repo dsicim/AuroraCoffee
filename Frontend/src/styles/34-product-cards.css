@@ -375,12 +375,23 @@
   align-content: end;
   justify-items: stretch;
   gap: 0.55rem;
-  min-width: min(100%, 7.4rem);
+  justify-self: end;
+  width: min(100%, 8.35rem);
+  max-width: 100%;
+  padding-inline: 0.48rem;
+  box-sizing: border-box;
 }
 
 .aurora-product-card-actions .aurora-product-card-details-link,
 .aurora-product-card-actions .button-wrap {
   width: 100%;
+  min-width: 0;
+}
+
+.aurora-product-card-actions .aurora-product-card-choose-button > .liquid-glass-control,
+.aurora-product-card-actions .aurora-product-card-choose-button .button-label {
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .aurora-product-card-details-link {
@@ -558,6 +569,8 @@
   .aurora-product-card-commerce .aurora-widget-actions {
     width: 100%;
     align-items: stretch;
+    justify-self: stretch;
+    padding-inline: 0.35rem;
   }
 
   .aurora-product-card-commerce .button-wrap,

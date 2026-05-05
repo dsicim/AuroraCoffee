@@ -180,7 +180,7 @@ export default function ProductCard({ product, compact = false }) {
               as={Link}
               to={detailRoute}
               size="compact"
-              className="aurora-product-card-choose-button w-full sm:w-auto"
+              className="aurora-product-card-choose-button"
             >
               Choose
             </LiquidGlassButton>
