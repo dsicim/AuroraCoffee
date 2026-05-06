@@ -1,8 +1,3 @@
-CREATE INDEX idx_orders_user_id_created_at ON orders(user_id, created_at);
-CREATE INDEX idx_comments_product_status ON comments(product_id, status);
-CREATE INDEX idx_refunds_user_status ON refunds(user_id, status);
-CREATE INDEX idx_cart_user_id ON cart(user_id);
-CREATE INDEX idx_addresses_user_id ON addresses(user_id);
 -- Create database if it doesn't exist
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -120,3 +115,8 @@ CREATE TABLE IF NOT EXISTS wishlist (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
+CREATE INDEX idx_orders_user_id_created_at ON orders(user_id, created_at);
+CREATE INDEX idx_comments_product_status ON comments(product_id, status);
+CREATE INDEX idx_refunds_user_status ON refunds(user_id, status);
+CREATE INDEX idx_cart_user_id ON cart(user_id);
+CREATE INDEX idx_addresses_user_id ON addresses(user_id);
