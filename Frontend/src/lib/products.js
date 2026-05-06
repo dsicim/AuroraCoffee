@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
-import { fetchAuthJson, readJsonResponse } from './authRequest'
+import { fetchAuthJson, fetchAuthResponse, readJsonResponse } from './authRequest'
 import { buildApiUrl } from '../shared/api/api'
 import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
 
@@ -214,6 +214,62 @@ function normalizeProductVariant(rawVariant, optionGroups) {
   }
 }
 
+function normalizeProductImageUrl(value) {
+  const url = normalizeText(value)
+
+  if (!url) {
+    return ''
+  }
+
+  if (/^(?:https?:|data:|blob:|\/)/i.test(url)) {
+    return url
+  }
+
+  return `/uploads/${encodeURIComponent(url)}`
+}
+
+function normalizeProductImage(rawImage, index) {
+  if (!rawImage) {
+    return null
+  }
+
+  if (typeof rawImage === 'string') {
+    const url = normalizeText(rawImage)
+
+    if (!url) {
+      return null
+    }
+
+    return {
+      id: null,
+      url,
+      src: normalizeProductImageUrl(url),
+      isPrimary: index === 0,
+      variantId: null,
+      sortOrder: index,
+    }
+  }
+
+  if (typeof rawImage !== 'object') {
+    return null
+  }
+
+  const url = normalizeText(rawImage.url || rawImage.image_url || rawImage.imageUrl)
+
+  if (!url) {
+    return null
+  }
+
+  return {
+    id: Number(rawImage.id) || null,
+    url,
+    src: normalizeProductImageUrl(url),
+    isPrimary: toBoolean(rawImage.is_primary ?? rawImage.isPrimary),
+    variantId: Number(rawImage.variant_id ?? rawImage.variantId) || null,
+    sortOrder: Number(rawImage.sort_order ?? rawImage.sortOrder ?? index) || 0,
+  }
+}
+
 function buildSlugMap(rawProducts) {
   const baseSlugCounts = new Map()
 
@@ -242,6 +298,13 @@ function normalizeProduct(rawProduct) {
   const variants = Array.isArray(rawProduct?.variants)
     ? rawProduct.variants.map((variant) => normalizeProductVariant(variant, optionGroups))
     : []
+  const images = Array.isArray(rawProduct?.images)
+    ? rawProduct.images
+        .map((image, index) => normalizeProductImage(image, index))
+        .filter(Boolean)
+        .sort((left, right) => left.sortOrder - right.sortOrder || Number(left.id || 0) - Number(right.id || 0))
+    : []
+  const primaryImage = images.find((image) => image.isPrimary) || images[0] || null
 
   return {
     id: Number(rawProduct.id),
@@ -257,7 +320,11 @@ function normalizeProduct(rawProduct) {
     flavorNotes: normalizeText(rawProduct.flavor_notes),
     material: normalizeText(rawProduct.material),
     capacity: normalizeText(rawProduct.capacity),
-    imageUrl: normalizeText(rawProduct.image_url) || getGeneratedProductImageUrl(rawProduct),
+    imageUrl:
+      primaryImage?.src ||
+      normalizeProductImageUrl(rawProduct.image_url) ||
+      getGeneratedProductImageUrl(rawProduct),
+    images,
     categoryId: Number(rawProduct.category_id) || null,
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
@@ -294,6 +361,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
     material: incomingProduct.material || existingProduct.material,
     capacity: incomingProduct.capacity || existingProduct.capacity,
     imageUrl: incomingProduct.imageUrl || existingProduct.imageUrl,
+    images: incomingProduct.images?.length ? incomingProduct.images : existingProduct.images,
     categoryId: incomingProduct.categoryId ?? existingProduct.categoryId,
     categoryName: incomingProduct.categoryName || existingProduct.categoryName,
     parentCategoryName:
@@ -574,6 +642,104 @@ export async function updateProductDetails(productId, edits) {
   clearProductsCache()
   await fetchAllProducts({ force: true })
 
+  return data
+}
+
+async function refreshProductsAfterImageChange() {
+  clearProductsCache()
+  await fetchAllProducts({ force: true })
+}
+
+function readProductImageResponse(response, fallbackMessage) {
+  return readJsonResponse(response).then(({ payload, data }) => {
+    if (!response.ok || data?.e || payload?.e) {
+      throw new Error(data?.e || payload?.e || fallbackMessage)
+    }
+
+    return data
+  })
+}
+
+export async function uploadProductImage({
+  productId,
+  file,
+  sortOrder = 0,
+  variantId = '',
+  primary = false,
+}) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before uploading an image.')
+  }
+
+  if (typeof File === 'undefined' || !(file instanceof File)) {
+    throw new Error('Choose an image file to upload.')
+  }
+
+  const normalizedSortOrder = Number(sortOrder)
+
+  if (!Number.isFinite(normalizedSortOrder) || normalizedSortOrder < 0) {
+    throw new Error('Choose a valid image order.')
+  }
+
+  const normalizedVariantId = Number(variantId)
+  const headers = {
+    'content-type': file.type || 'application/octet-stream',
+    'x-product': String(normalizedProductId),
+    'x-sortorder': String(Math.floor(normalizedSortOrder)),
+    'x-primary': primary ? 'true' : 'false',
+  }
+
+  if (Number.isFinite(normalizedVariantId) && normalizedVariantId > 0) {
+    headers['x-variant'] = String(normalizedVariantId)
+  }
+
+  const response = await fetchAuthResponse('/products/image', {
+    method: 'POST',
+    headers,
+    body: file,
+  })
+  const data = await readProductImageResponse(response, 'Could not upload product image.')
+
+  await refreshProductsAfterImageChange()
+  return data
+}
+
+export async function updateProductImageSet(productId, payload) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before updating images.')
+  }
+
+  const { data } = await fetchAuthJson('/products/image', {
+    method: 'PATCH',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedProductId,
+      ...(payload || {}),
+    }),
+  })
+
+  await refreshProductsAfterImageChange()
+  return data
+}
+
+export async function deleteProductImage(url) {
+  const normalizedUrl = normalizeText(url)
+
+  if (!normalizedUrl) {
+    throw new Error('Choose an image before deleting.')
+  }
+
+  const response = await fetchAuthResponse(
+    `/products/image?url=${encodeURIComponent(normalizedUrl)}`,
+    { method: 'DELETE' },
+  )
+  const data = await readProductImageResponse(response, 'Could not delete product image.')
+
+  await refreshProductsAfterImageChange()
   return data
 }
 

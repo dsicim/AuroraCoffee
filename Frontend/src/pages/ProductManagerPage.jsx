@@ -9,7 +9,10 @@ import { useTheme } from '../lib/theme-context'
 import {
   getProductAvailability,
   getProductCategories,
+  deleteProductImage,
+  updateProductImageSet,
   updateProductDetails,
+  uploadProductImage,
   useProductCatalog,
 } from '../lib/products'
 
@@ -620,6 +623,307 @@ function ProductEditSnapshot({ product }) {
   )
 }
 
+function getProductImageVariantLabel(product, variantId) {
+  const normalizedVariantId = Number(variantId)
+  const variant = (product?.variants || []).find(
+    (entry) => Number(entry.id) === normalizedVariantId,
+  )
+
+  if (!variant) {
+    return 'Base product'
+  }
+
+  const optionLabels = Object.entries(variant.optionValueCodes || {})
+    .map(([groupCode, valueCode]) => {
+      const group = (product.options || []).find((optionGroup) => optionGroup.code === groupCode)
+      const value = (group?.values || []).find((optionValue) => optionValue.valueCode === valueCode)
+      return value?.label || valueCode
+    })
+    .filter(Boolean)
+
+  return optionLabels.length
+    ? optionLabels.join(' / ')
+    : variant.variantCode || `Variant ${normalizedVariantId}`
+}
+
+function getNextProductImageSortOrder(images) {
+  return Math.max(
+    -1,
+    ...(Array.isArray(images) ? images : []).map((image) => Number(image.sortOrder) || 0),
+  ) + 1
+}
+
+function moveProductImageUrl(images, fromIndex, direction) {
+  const nextIndex = fromIndex + direction
+
+  if (nextIndex < 0 || nextIndex >= images.length) {
+    return null
+  }
+
+  const nextImages = [...images]
+  const [image] = nextImages.splice(fromIndex, 1)
+  nextImages.splice(nextIndex, 0, image)
+  return nextImages.map((entry) => entry.url)
+}
+
+function ProductImageManager({ product }) {
+  const images = Array.isArray(product?.images) ? product.images : []
+  const variantOptions = (product?.variants || [])
+    .map((variant, index) => ({
+      key: variant.variantCode || `variant-${index}`,
+      id: Number(variant.id) || 0,
+      label: getProductImageVariantLabel(product, variant.id),
+    }))
+    .filter((variant) => variant.id > 0)
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [selectedVariantKey, setSelectedVariantKey] = useState('')
+  const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
+  const [imageState, setImageState] = useState({
+    busy: '',
+    error: '',
+    success: '',
+  })
+
+  const selectedVariant = variantOptions.find((variant) => variant.key === selectedVariantKey)
+
+  function setImageBusy(busy) {
+    setImageState({
+      busy,
+      error: '',
+      success: '',
+    })
+  }
+
+  function setImageSuccess(success) {
+    setImageState({
+      busy: '',
+      error: '',
+      success,
+    })
+  }
+
+  function setImageError(error) {
+    setImageState({
+      busy: '',
+      error: error?.message || 'Could not update product images.',
+      success: '',
+    })
+  }
+
+  function handleUpload() {
+    if (!selectedFile) {
+      setImageError(new Error('Choose an image file before uploading.'))
+      return
+    }
+
+    setImageBusy('upload')
+
+    void uploadProductImage({
+      productId: product.id,
+      file: selectedFile,
+      sortOrder: getNextProductImageSortOrder(images),
+      variantId: selectedVariant?.id || '',
+      primary: primaryUpload,
+    })
+      .then((result) => {
+        setSelectedFile(null)
+        setSelectedVariantKey('')
+        setPrimaryUpload(false)
+        setImageSuccess(result?.msg || 'Product image uploaded.')
+      })
+      .catch(setImageError)
+  }
+
+  function handleSetPrimary(image) {
+    setImageBusy(`primary:${image.url}`)
+
+    void updateProductImageSet(product.id, {
+      setAsPrimary: true,
+      url: image.url,
+    })
+      .then((result) => {
+        setImageSuccess(result?.setprimary || result?.msg || 'Primary image updated.')
+      })
+      .catch(setImageError)
+  }
+
+  function handleReorder(index, direction) {
+    const newOrder = moveProductImageUrl(images, index, direction)
+
+    if (!newOrder) {
+      return
+    }
+
+    setImageBusy(`order:${images[index].url}:${direction}`)
+
+    void updateProductImageSet(product.id, { newOrder })
+      .then((result) => {
+        setImageSuccess(result?.setorder || result?.msg || 'Image order updated.')
+      })
+      .catch(setImageError)
+  }
+
+  function handleDelete(image) {
+    if (!window.confirm('Delete this product image permanently?')) {
+      return
+    }
+
+    setImageBusy(`delete:${image.url}`)
+
+    void deleteProductImage(image.url)
+      .then((result) => {
+        setImageSuccess(result?.msg || 'Product image deleted.')
+      })
+      .catch(setImageError)
+  }
+
+  return (
+    <section className="aurora-product-edit-group aurora-product-image-manager">
+      <div className="aurora-product-image-manager-header">
+        <div>
+          <p className="aurora-product-edit-label">Product images</p>
+          <h3>Manage gallery and variants</h3>
+        </div>
+        <span>{images.length} {images.length === 1 ? 'image' : 'images'}</span>
+      </div>
+
+      <div className="aurora-product-image-upload">
+        <label className="aurora-product-edit-field">
+          <span className="aurora-product-edit-label">Upload image</span>
+          <input
+            className="aurora-input aurora-product-edit-input mt-3"
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => {
+              setSelectedFile(event.target.files?.[0] || null)
+              setImageState({ busy: '', error: '', success: '' })
+            }}
+          />
+        </label>
+
+        <label className="aurora-product-edit-field">
+          <span className="aurora-product-edit-label">Variant key</span>
+          <select
+            className="aurora-select aurora-product-edit-input mt-3"
+            value={selectedVariantKey}
+            onChange={(event) => {
+              setSelectedVariantKey(event.target.value)
+            }}
+          >
+            <option value="">Base product image</option>
+            {variantOptions.map((variant) => (
+              <option key={variant.key} value={variant.key}>
+                {variant.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="aurora-product-image-primary-toggle">
+          <input
+            type="checkbox"
+            checked={primaryUpload}
+            onChange={(event) => {
+              setPrimaryUpload(event.target.checked)
+            }}
+          />
+          <span>Set as primary</span>
+        </label>
+
+        <LiquidGlassButton
+          type="button"
+          variant="secondary"
+          loading={imageState.busy === 'upload'}
+          disabled={Boolean(imageState.busy)}
+          onClick={handleUpload}
+        >
+          Upload image
+        </LiquidGlassButton>
+      </div>
+
+      {imageState.error ? (
+        <p className="aurora-message aurora-message-error">{imageState.error}</p>
+      ) : null}
+      {imageState.success ? (
+        <p className="aurora-message aurora-message-success">{imageState.success}</p>
+      ) : null}
+
+      {images.length ? (
+        <div className="aurora-product-image-list">
+          {images.map((image, index) => (
+            <article key={image.url} className="aurora-product-image-row">
+              <img src={image.src} alt="" loading="lazy" />
+              <div className="aurora-product-image-row-body">
+                <div>
+                  <p className="aurora-product-image-name">{image.url}</p>
+                  <p className="aurora-product-image-meta">
+                    {image.isPrimary ? 'Primary' : 'Gallery'} · {getProductImageVariantLabel(product, image.variantId)} · Order {image.sortOrder}
+                  </p>
+                </div>
+                <div className="aurora-product-image-actions">
+                  <LiquidGlassButton
+                    type="button"
+                    size="compact"
+                    variant="quiet"
+                    disabled={Boolean(imageState.busy) || index === 0}
+                    loading={imageState.busy === `order:${image.url}:-1`}
+                    onClick={() => {
+                      handleReorder(index, -1)
+                    }}
+                  >
+                    Move up
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    type="button"
+                    size="compact"
+                    variant="quiet"
+                    disabled={Boolean(imageState.busy) || index === images.length - 1}
+                    loading={imageState.busy === `order:${image.url}:1`}
+                    onClick={() => {
+                      handleReorder(index, 1)
+                    }}
+                  >
+                    Move down
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    type="button"
+                    size="compact"
+                    variant="secondary"
+                    disabled={Boolean(imageState.busy) || image.isPrimary}
+                    loading={imageState.busy === `primary:${image.url}`}
+                    onClick={() => {
+                      handleSetPrimary(image)
+                    }}
+                  >
+                    Set primary
+                  </LiquidGlassButton>
+                  <LiquidGlassButton
+                    type="button"
+                    size="compact"
+                    variant="danger"
+                    disabled={Boolean(imageState.busy)}
+                    loading={imageState.busy === `delete:${image.url}`}
+                    onClick={() => {
+                      handleDelete(image)
+                    }}
+                  >
+                    Delete
+                  </LiquidGlassButton>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="aurora-product-image-empty">
+          <p>No uploaded images</p>
+          <span>Upload the first image to create the product gallery.</span>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function ProductEditPanel({ products, loading }) {
   const editableProducts = useMemo(
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
@@ -723,8 +1027,8 @@ function ProductEditPanel({ products, loading }) {
         </div>
 
         <p className="aurora-product-edit-intro">
-          Edit the core product record that powers the storefront. Variant structure, image uploads,
-          and category creation stay outside this panel until the backend exposes safer endpoints.
+          Edit the core product record, upload gallery images, connect variant-specific photos,
+          and choose the primary storefront image.
         </p>
       </div>
 
@@ -763,6 +1067,7 @@ function ProductEditPanel({ products, loading }) {
           <>
             <div key={selectedProduct.id} className="aurora-product-edit-workspace">
               <ProductEditSnapshot product={selectedProduct} />
+              <ProductImageManager product={selectedProduct} />
 
               <div className="aurora-product-edit-groups">
                 {productEditFieldGroups.map((group) => (
