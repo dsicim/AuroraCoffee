@@ -602,10 +602,19 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
         throw new DBError(400, 'Product ID and Image URL are required');
     }
     try {
-        const [result] = await pool.execute(
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        if (isPrimary) {
+            await connection.execute(
+                'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1',
+                [productId]
+            );
+        }
+        const [result] = await connection.execute(
             'INSERT INTO product_images (product_id, image_url, is_primary, sort_order, variant_id) VALUES (?, ?, ?, ?, ?)',
             [productId, imageUrl, isPrimary, sortOrder, variantId]
         );
+        await connection.commit();
         return { success: true, message: 'Image added successfully', imageId: result.insertId, url: imageUrl };
     } catch (error) {
         console.error('Add product image error:', error);
