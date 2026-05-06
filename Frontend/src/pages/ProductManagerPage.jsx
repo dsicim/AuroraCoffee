@@ -571,6 +571,10 @@ function ProductEditField({ field, defaultValue }) {
   )
 }
 
+function getProductManagerSelectKey(product) {
+  return product?.slug || product?.productCode || product?.name || ''
+}
+
 function ProductEditSnapshot({ product }) {
   const categoryLabel = product.categoryName || product.parentCategoryName || 'Catalog'
   const inventoryTone = getInventoryTone(product.stock)
@@ -930,13 +934,17 @@ function ProductEditPanel({ products, loading }) {
     [products],
   )
   const [selectedProductKey, setSelectedProductKey] = useState('')
+  const [selectedProductId, setSelectedProductId] = useState(null)
   const selectedProduct = useMemo(
     () =>
-      editableProducts.find(
-        (product) => (product.slug || product.productCode || product.name) === selectedProductKey,
-      ) || null,
-    [editableProducts, selectedProductKey],
+      editableProducts.find((product) => product.id === selectedProductId) ||
+      editableProducts.find((product) => getProductManagerSelectKey(product) === selectedProductKey) ||
+      null,
+    [editableProducts, selectedProductId, selectedProductKey],
   )
+  const selectedProductSelectKey = selectedProduct
+    ? getProductManagerSelectKey(selectedProduct)
+    : selectedProductKey
   const [saveState, setSaveState] = useState({
     saving: false,
     error: '',
@@ -1038,9 +1046,16 @@ function ProductEditPanel({ products, loading }) {
             <span className="aurora-product-edit-label">Product</span>
             <select
               className="aurora-select aurora-product-edit-input mt-3"
-              value={selectedProductKey}
+              value={selectedProductSelectKey}
               onChange={(event) => {
-                setSelectedProductKey(event.target.value)
+                const nextProductKey = event.target.value
+                const nextProduct =
+                  editableProducts.find(
+                    (product) => getProductManagerSelectKey(product) === nextProductKey,
+                  ) || null
+
+                setSelectedProductKey(nextProductKey)
+                setSelectedProductId(nextProduct?.id ?? null)
                 setSaveState({
                   saving: false,
                   error: '',
@@ -1050,7 +1065,7 @@ function ProductEditPanel({ products, loading }) {
             >
               <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
               {editableProducts.map((product) => (
-                <option key={product.id} value={product.slug || product.productCode || product.name}>
+                <option key={product.id} value={getProductManagerSelectKey(product)}>
                   {product.name}
                 </option>
               ))}

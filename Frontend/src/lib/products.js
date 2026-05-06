@@ -639,14 +639,12 @@ export async function updateProductDetails(productId, edits) {
     }),
   })
 
-  clearProductsCache()
   await fetchAllProducts({ force: true })
 
   return data
 }
 
 async function refreshProductsAfterImageChange() {
-  clearProductsCache()
   await fetchAllProducts({ force: true })
 }
 
