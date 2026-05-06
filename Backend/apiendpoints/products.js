@@ -156,7 +156,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (opts.variantId && !product.product.variants.some(v => v.id === opts.variantId)) return { s: 400, j: true, d: { e: "Variant ID does not belong to this product" } };
             if (product.product.images.length == 0) opts.isPrimary = true; // If there are no images, set this one as primary regardless of the header
             if (product.product.images.some(img => img.sort_order === opts.sortOrder)) return { s: 400, j: true, d: { e: "Another image already has the same sort order" } };
-            
             const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers);
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
             return await sql.addProductImage(opts.productId, upload.url, opts.isPrimary, opts.sortOrder, opts.variantId).then(result => {
@@ -172,6 +171,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             let primaryresult = { s: 204, j: true, d: { e: "No change" } };
             let sortresult = { s: 204, j: true, d: { e: "No change" } };
             if (body.data.setAsPrimary) {
+                if (!body.data.url) return { s: 400, j: true, d: { e: "Image URL is required to set primary image" } };
                 primaryresult = await sql.setPrimaryImage(body.data.id, body.data.url).then(result => {
                     return { s: 200, j: true, d: { e: result.message } };
                 }).catch(err => {
