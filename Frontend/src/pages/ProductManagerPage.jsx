@@ -625,10 +625,13 @@ function ProductEditPanel({ products, loading }) {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
-  const [selectedProductId, setSelectedProductId] = useState('')
+  const [selectedProductKey, setSelectedProductKey] = useState('')
   const selectedProduct = useMemo(
-    () => editableProducts.find((product) => String(product.id) === selectedProductId) || null,
-    [editableProducts, selectedProductId],
+    () =>
+      editableProducts.find(
+        (product) => (product.slug || product.productCode || product.name) === selectedProductKey,
+      ) || null,
+    [editableProducts, selectedProductKey],
   )
   const [saveState, setSaveState] = useState({
     saving: false,
@@ -731,9 +734,9 @@ function ProductEditPanel({ products, loading }) {
             <span className="aurora-product-edit-label">Product</span>
             <select
               className="aurora-select aurora-product-edit-input mt-3"
-              value={selectedProductId}
+              value={selectedProductKey}
               onChange={(event) => {
-                setSelectedProductId(event.target.value)
+                setSelectedProductKey(event.target.value)
                 setSaveState({
                   saving: false,
                   error: '',
@@ -743,7 +746,7 @@ function ProductEditPanel({ products, loading }) {
             >
               <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
               {editableProducts.map((product) => (
-                <option key={product.id} value={product.id}>
+                <option key={product.id} value={product.slug || product.productCode || product.name}>
                   {product.name}
                 </option>
               ))}
@@ -887,7 +890,7 @@ function CommentSnapshotCard({
             className="mt-2 text-xs uppercase tracking-[0.2em]"
             style={{ color: metaColor }}
           >
-            Backend {snapshot.backendRating || '—'}/10
+            Score {snapshot.backendRating || '—'}/10
           </p>
         </div>
       </div>
@@ -917,7 +920,7 @@ function CommentSnapshotCard({
 export default function ProductManagerPage() {
   const { resolvedTheme } = useTheme()
   const { products, loading, error } = useProductCatalog()
-  const [selectedProductId, setSelectedProductId] = useState('')
+  const [selectedModerationProductKey, setSelectedModerationProductKey] = useState('')
   const [moderationScope, setModerationScope] = useState('pending')
   const [moderationResult, setModerationResult] = useState({
     key: '',
@@ -950,17 +953,19 @@ export default function ProductManagerPage() {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
-  const allProductsSelected = selectedProductId === 'all'
+  const allProductsSelected = selectedModerationProductKey === 'all'
   const selectedProduct = useMemo(
     () =>
-      moderationProducts.find((product) => String(product.id) === selectedProductId) || null,
-    [moderationProducts, selectedProductId],
+      moderationProducts.find(
+        (product) => (product.slug || product.productCode || product.name) === selectedModerationProductKey,
+      ) || null,
+    [moderationProducts, selectedModerationProductKey],
   )
   const activeModerationProductId =
     allProductsSelected
       ? 'all'
       : selectedProduct
-        ? selectedProductId
+        ? selectedProduct.id
         : ''
   const activeModerationKey = activeModerationProductId
     ? `${activeModerationProductId}:${moderationScope}`
@@ -985,7 +990,7 @@ export default function ProductManagerPage() {
     : selectedProduct?.name || ''
 
   function handleModerationProductChange(event) {
-    setSelectedProductId(event.target.value)
+    setSelectedModerationProductKey(event.target.value)
   }
 
   function handleModerationScopeChange(nextScope) {
@@ -1211,7 +1216,10 @@ export default function ProductManagerPage() {
                   <option value="">Select a product</option>
                   <option value="all">All products</option>
                   {moderationProducts.map((product) => (
-                    <option key={product.id} value={product.id}>
+                    <option
+                      key={product.id}
+                      value={product.slug || product.productCode || product.name}
+                    >
                       {product.name}
                     </option>
                   ))}
