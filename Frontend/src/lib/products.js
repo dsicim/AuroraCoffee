@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { fetchAuthJson, fetchAuthResponse, readJsonResponse } from './authRequest'
 import { buildApiUrl } from '../shared/api/api'
-import { getGeneratedProductImageUrl } from '../features/products/domain/productImages'
+import { getGeneratedProductImageUrl } from '../features/products/domain/generatedProductImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 

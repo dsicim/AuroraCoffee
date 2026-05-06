@@ -15,7 +15,7 @@ import {
   isCoffeeProduct,
 } from '../../../lib/products'
 import { getTaxInclusionCopy } from '../../../lib/tax'
-import { getProductGalleryImages } from '../domain/productImages'
+import { getGeneratedProductImageUrl } from '../domain/generatedProductImages'
 import FavoriteToggleButton from '../../../components/FavoriteToggleButton'
 import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
 import LiquidGlassFrame from '../../../shared/components/ui/LiquidGlassFrame'
@@ -34,7 +34,16 @@ export default function ProductCard({ product, compact = false }) {
   const typeLabel = getProductTypeLabel(product)
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
-  const cardImages = getProductGalleryImages(product).slice(0, 1)
+  const generatedCardImage = getGeneratedProductImageUrl(product)
+  const cardImages = generatedCardImage
+    ? [
+        {
+          key: `${product.slug || product.id || 'product'}-card`,
+          src: generatedCardImage,
+          alt: product.name ? `${product.name} product image` : 'Aurora Coffee product image',
+        },
+      ]
+    : []
   const hasStartingPrice = hasPriceChangingChoices(product)
   const discountPricing = getDiscountPricing({
     price: hasStartingPrice ? getProductStartingPrice(product) : product.price,
