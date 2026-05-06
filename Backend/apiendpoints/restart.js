@@ -133,11 +133,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         else reject(new Error(mysqlErr || `mysql exited ${code}`));
                         });
                     });
-                    
+
                     return { s: 200, j: false, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
                 }
                 else if (body.data.action === "backup") {
-
+                    const backup = config.isBackup;
+                    const restoreSqlFromThisSite = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart", { headers: { authorization: config.password }, method: "POST", body: JSON.stringify({ action: "restore" }) });
+                    if (!restoreSqlFromThisSite.ok) {
+                        return { s: 500, j: false, d: "Failed to send SQL dump to " + (backup ? "main site" : "backup site") + ": " + restoreSqlFromThisSite.statusText };
+                    }
+                    return { s: 200, j: false, d: "Database backup successful to " + (backup ? "main site" : "backup site") };
                 }
                 else if (body.data.action === "resetdb") {
                     if (currentUser.internal) {
