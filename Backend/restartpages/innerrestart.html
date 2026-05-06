@@ -47,7 +47,7 @@
     async function fetchVersion() {
         if (document.getElementById("version").innerText.includes("{version}")) {
             document.getElementById("version").textContent = "Installed software version: Loading...";
-            const installedVersion = await fetch("https://auroracoffee.youcantdrop.com/api/version").then(res => res.text()).catch(err => null);
+            const installedVersion = await fetch("/api/version").then(res => res.text()).catch(err => null);
             document.getElementById("version").textContent = "Installed software version: " + (installedVersion || "Unable to fetch");
         }
         const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);

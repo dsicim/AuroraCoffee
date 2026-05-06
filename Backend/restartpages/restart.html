@@ -49,6 +49,7 @@
 
 <body>
     <h1>Service Admin</h1>
+    <h3 id="backup" style="display: none;">HEADS UP: THIS IS THE BACKUP SITE.</h3>
     <h3 id="currentUser">Current User: Loading...</h3>
     <div id="login" style="display: none;">
         <input type="text" id="usernameInput" placeholder="Enter your email" style="padding: 8px; font-size: 16px;">
@@ -58,6 +59,9 @@
     </div>
     <div id="panel" style="display: none;">{inner}</div>
     <script>
+        if (window.location.hostname === "backupauroracoffee.youcantdrop.com") {
+            document.getElementById("backup").style.display = "block";
+        }
         function pjs(text) {
             try {
                 return JSON.parse(text);
