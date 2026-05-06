@@ -27,9 +27,12 @@
             and there is a slight update to the database structure.</b></label>
 </div>
 <div class="optionbox">
-    <button id="rerunSQLCode">Re-run SQL Code</button>
-    <label><b>Warning: This will re-execute the pre-determined database.sql file. May affect database
-            structure.</b></label>
+    <button id="backupSQLCode">Send SQL To Backup</button>
+    <label id="backupSQLLabel"><b>Warning: This will overwrite the backup's database!</b></label>
+</div>
+<div class="optionbox">
+    <button id="restoreSQLCode">Restore SQL From Backup</button>
+    <label id="restoreSQLLabel"><b>Warning: This will overwrite the current database!</b></label>
 </div>
 <div class="optionbox">
     <button id="resetDatabaseButton">Reset Database</button>
@@ -43,6 +46,13 @@
             sessions and email verification links. Only one person can bring the server back up.</b></label>
 </div>
 <script id="newscript">
+    const backup = (window.location.hostname !== "auroracoffee.youcantdrop.com");
+    if (backup) {
+        document.getElementById("backupSQLLabel").innerText = "Warning: This will overwrite the main site's database!";
+        document.getElementById("restoreSQLLabel").innerText = "Warning: This will overwrite the backup's database!";
+        document.getElementById("backupSQLCode").innerText = "Send SQL To Main Site";
+        document.getElementById("restoreSQLCode").innerText = "Restore SQL From Main Site";
+    }
     const key = new URLSearchParams(window.location.search).get("key") || "";
     async function fetchVersion() {
         if (document.getElementById("version").innerText.includes("{version}")) {
@@ -111,11 +121,18 @@
             await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "sql", code: document.getElementById("sqlEdit").value }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
-        document.getElementById("rerunSQLCode").addEventListener("click", async () => {
-            if (!confirm("Are you sure you want to re-run SQL? THIS WILL EXECUTE THE SQL CODE AGAIN.")) return;
+        document.getElementById("backupSQLCode").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to transfer the database to the backup site? THIS WILL OVERWRITE THE BACKUP'S DATABASE.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
-            updateOutput("Re-executing SQL...");
-            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "sqlrerun" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            updateOutput("Transferring SQL...");
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "backup" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        });
+        document.getElementById("restoreSQLCode").addEventListener("click", async () => {
+            if (!confirm("Are you sure you want to restore the database from the backup? THIS WILL OVERWRITE THE CURRENT DATABASE.")) return;
+            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            updateOutput("Restoring SQL...");
+            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "restore" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("resetDatabaseButton").addEventListener("click", async () => {

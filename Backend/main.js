@@ -78,7 +78,8 @@ const server = http.createServer(async function (req, res) {
                 reject(err);
             });
         }).catch(err => ({ exists: false, json: false, data: null, err: err }));
-        const response = await api.handleAPI(req.method, directory, query, body, req.headers);
+        const response = await api.handleAPI(req.method, directory, query, body, req.headers, res);
+        if (response.resended) return;
         res.writeHead(response.s, { "Content-Type": (response.j ? "application/json" : (response.h ? (response.h["Content-Type"] || "text/plain") : "text/plain")), ...response.h });
         res.end(response.j ? JSON.stringify(response.d) : response.d);
     }

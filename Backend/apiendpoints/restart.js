@@ -2,7 +2,24 @@ const { spawn } = require("child_process");
 const sql = require("../../Database/server.js");
 const fs = require("fs");
 const path = require("path");
-async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
+function streamDump(res, { user, password, host="localhost", db }) {
+  const p = spawn("mysqldump", [
+    "-h", host, "-u", user, `-p${password}`,
+    "--single-transaction", "--routines", "--triggers", "--events",
+    db,
+  ]);
+
+  res.setHeader("Content-Type", "application/sql");
+
+  p.stdout.pipe(res);
+
+  let err = "";
+  p.stderr.on("data", (c) => (err += c.toString("utf8")));
+  p.on("close", (code) => {
+    if (code !== 0) console.error("mysqldump failed:", err);
+  });
+}
+async function handleAPI(config, method, endpoint, query, body, headers, currentUser, res) {
     if (currentUser && !currentUser.e && currentUser.role === "Admin") {
         if (method === "GET") {
             if (endpoint[0] === "getpanel") return { s: 200, j: false, d: fs.readFileSync("./restartpages/innerrestart.html", "utf-8"), h: { "Content-Type": "text/html" } };
@@ -44,6 +61,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else if (body.data.action === "stop") {
                     setTimeout(() => process.exit(0), 2000);
                     return { s: 200, j: false, d: "Server stop initiated. Server will be unresponsive immediately. Only one person can bring the server back up. Goodbye." };
+                }
+                else if (body.data.action === "dumpsql") {
+                    streamDump(res, {
+                        user: config.db.user,
+                        password: config.db.password,
+                        host: "localhost",
+                        db: config.db.name
+                    });
+                    return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
                     const code = (body.data.action === "sqlrerun" ? fs.readFileSync("../Database/database.sql", "utf-8").replaceAll("USE 308_db;", "").replaceAll("CREATE DATABASE IF NOT EXISTS 308_db;", "") : body.data.code);

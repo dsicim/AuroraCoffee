@@ -61,7 +61,7 @@ async function invalidateAllTokens(userId) {
     }
     return;
 }
-async function handleAPI(method, endpoint, query, body, headers) {
+async function handleAPI(method, endpoint, query, body, headers, res) {
     // console.log("API " + method + " ");
     // console.log(endpoint);
     // console.log(query);
@@ -362,7 +362,7 @@ async function handleAPI(method, endpoint, query, body, headers) {
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "version") return await APIEndpoints.version.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
-    else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
+    else if (endpoint[0] === "restart") return await APIEndpoints.restart.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser, res);
     else if (endpoint[0] === "users") {
         const res = await APIEndpoints.users.handleAPI(config, method, endpoint.slice(1), query, body, headers, currentUser);
         if (endpoint[1] === "me" && method === "DELETE" && res.s === 200) {
