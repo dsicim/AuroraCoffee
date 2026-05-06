@@ -134,7 +134,31 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         });
                     });
 
-                    return { s: 200, j: false, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
+
+                    return await sql.getAllImageURLs().then(async result => {
+                        if (result.success) {
+                            const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
+                            result.image_urls.forEach(async (url) => {
+                                await fetch(baseURL +url).then(res => {
+                                    if (!res.ok) {
+                                        throw new Error("Failed to fetch image URL " + url + ": " + res.statusText);
+                                    }
+                                    else {
+                                        const writeStream = fs.createWriteStream(path.join(__dirname, "..", "Database", "uploads", path.basename(url)));
+                                        res.body.pipe(writeStream);
+                                    }
+                                }).catch(err => console.error("Failed to fetch image URL " + url + ": " + err.toString()));
+                            });
+                            return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
+                        }
+                        else {
+                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                        }
+                    }).catch(err => {
+                        console.error("Get all image URLs error:", err);
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                    });
                 }
                 else if (body.data.action === "backup") {
                     const backup = config.isBackup;

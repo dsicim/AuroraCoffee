@@ -367,7 +367,18 @@ func.getAllProducts = async function (userId) {
         throw new DBError(500, 'Failed to fetch products: ' + error.message);
     }
 };
-
+func.getAllImageURLs = async function() {
+    try {
+        let [rows] = await pool.execute(`
+            SELECT image_url
+            FROM product_images
+        `);
+        return { success: true, image_urls: rows.map(r => r.image_url) };
+    } catch (error) {
+        console.error('Get all image URLs error:', error);
+        throw new DBError(500, 'Failed to fetch image URLs: ' + error.message);
+    }
+};
 func.getProductsByIds = async function (userId,productId, isUrl = false) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
