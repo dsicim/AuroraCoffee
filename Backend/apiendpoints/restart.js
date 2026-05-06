@@ -64,10 +64,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (body.data.action === "dumpsql") {
                     streamDump(res, {
-                        user: config.db.user,
-                        password: config.db.password,
+                        user: config.user,
+                        password: config.password,
                         host: "localhost",
-                        db: config.db.name
+                        db: config.database
                     });
                     return { s: 200, j: false, d: null, resended: true };
                 }
