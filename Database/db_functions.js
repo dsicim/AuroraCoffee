@@ -613,6 +613,55 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
     }
 };
 
+func.setImageOrder = async function (imageUrl, newSortOrder) {
+    if (!imageUrl || newSortOrder === undefined) {
+        throw new DBError(400, 'Image URL and new sort order are required');
+    }
+    if (!Array.isArray(newSortOrder)) {
+        throw new DBError(400, 'New sort order must be an array of image URLs in the desired order');
+    }
+    try {
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        for (let i = 0; i < newSortOrder.length; i++) {
+            const url = newSortOrder[i];
+            const [result] = await connection.execute('UPDATE product_images SET sort_order = ? WHERE image_url = ?', [i, url]);
+            if (result.affectedRows === 0) {
+                await connection.rollback();
+                throw new DBError(404, `Image with URL ${url} not found`);
+            }
+        }
+        await connection.commit();
+        return { success: true, message: 'Image order updated successfully' };
+    } catch (error) {
+        console.error('Set image order error:', error);
+        throw new DBError(500, 'Failed to set image order');
+    }
+}
+
+func.setPrimaryImage = async function (productId,imageUrl) {
+    if (!imageUrl) {
+        throw new DBError(400, 'Image URL is required');
+    }
+    try {
+        const [result] = await pool.execute(
+            'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1',
+            [productId]
+        );
+        const [result2] = await pool.execute(
+            'UPDATE product_images SET is_primary = 1 WHERE product_id = ? AND image_url = ?',
+            [productId, imageUrl]
+        );
+        if (result2.affectedRows === 0) {
+            throw new DBError(404, 'Image or product not found');
+        }
+        return { success: true, message: 'Primary image set successfully' };
+    } catch (error) {
+        console.error('Set primary image error:', error);
+        throw new DBError(500, 'Failed to set primary image');
+    }
+};
+
 func.removeProductImage = async function (imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');

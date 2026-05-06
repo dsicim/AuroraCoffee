@@ -120,9 +120,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "image") {
+        if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
         if (method === "POST") {
-            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.raw || !body.exists || !body.upload) return { s: 500, j: true, d: { e: "Internal invalid request body" } };
             const opts = {
                 productId: headers["x-product"] ? parseInt(headers["x-product"]) : null,
@@ -134,7 +134,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (isNaN(opts.productId)) return { s: 400, j: true, d: { e: "Product ID header must be a number" } };
             if (isNaN(opts.sortOrder)) return { s: 400, j: true, d: { e: "Sort order header must be a number" } };
             if (opts.variantId && isNaN(opts.variantId)) return { s: 400, j: true, d: { e: "Variant ID header must be a number" } };
-
             const product = await sql.getProductsByIds(null, [opts.productId]).then(async result => {
                 if (result.success) {
                     const productObj = {};
@@ -155,7 +154,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!product.s) return { s: 400, j: true, d: { e: product.e } };
             if (opts.variantId && !product.product.has_variants) return { s: 400, j: true, d: { e: "Product does not have variants" } };
             if (opts.variantId && !product.product.variants.some(v => v.id === opts.variantId)) return { s: 400, j: true, d: { e: "Variant ID does not belong to this product" } };
-            
+            if (product.product.images.length == 0) opts.isPrimary = true; // If there are no images, set this one as primary regardless of the header
             const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers);
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
             return await sql.addProductImage(opts.productId, upload.url, opts.isPrimary, opts.sortOrder, opts.variantId).then(result => {
@@ -165,9 +164,38 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { s: 500, j: true, d: { e: "Internal server error" } };
             });
         }
+        else if (method === "PATCH") {
+            if (!body || !body.data || !body.data.id || !body.exists || body.err || !body.json) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (isNaN(parseInt(body.data.id))) return { s: 400, j: true, d: { e: "Product ID must be a number" } };
+            let primaryresult = { s: 200, j: true, d: { msg: "No change" } };
+            let sortresult = { s: 200, j: true, d: { msg: "No change" } };
+            if (body.data.setAsPrimary) {
+                primaryresult = await sql.setPrimaryImage(body.data.id, body.data.url).then(result => {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                    return { s: 500, j: true, d: { e: "Internal server error" } };
+                });
+            }
+            if (body.data.newOrder !== undefined) {
+                primaryresult = await (() => {
+                    if (!Array.isArray(body.data.newOrder) || body.data.newOrder.some(x => typeof x !== "string")) return { s: 400, j: true, d: { e: "New order must be an array of image URLs" } }
+                    if (body.data.newOrder.length === 0) return { s: 400, j: true, d: { e: "New order cannot be empty" } }
+                    const idstoorder = {};
+                    for (let i = 0; i < body.data.newOrder.length; i++) {
+                        if (idstoorder[body.data.newOrder[i]]) return { s: 400, j: true, d: { e: "Duplicate image URLs found in new order" } }
+                        idstoorder[body.data.newOrder[i]] = i;
+                    }
+                    return sql.reorderProductImages(body.data.id, idstoorder).then(result => {
+                        return { s: 200, j: true, d: { msg: result.message } };
+                    }).catch(err => {
+                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                        return { s: 500, j: true, d: { e: "Internal server error" } };
+                    });
+                })();
+            }
+        }
         else if (method === "DELETE") {
-            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!query.url) return { s: 400, j: true, d: { e: "Image URL is required" } };
             query.url = query.url.trim();
             if (query.url.length === 0) return { s: 400, j: true, d: { e: "Image URL cannot be empty" } };
