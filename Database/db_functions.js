@@ -597,28 +597,28 @@ func.setVariantDiscount = async function (variantId, rate) {
     }
 };
 
-func.addProductImage = async function (productId, imageUrl, isPrimary = false, sortOrder = 0) {
+func.addProductImage = async function (productId, imageUrl, isPrimary = false, sortOrder = 0, variantId = null) {
     if (!productId || !imageUrl) {
         throw new DBError(400, 'Product ID and Image URL are required');
     }
     try {
         const [result] = await pool.execute(
-            'INSERT INTO product_images (product_id, image_url, is_primary, sort_order) VALUES (?, ?, ?, ?)',
-            [productId, imageUrl, isPrimary, sortOrder]
+            'INSERT INTO product_images (product_id, image_url, is_primary, sort_order, variant_id) VALUES (?, ?, ?, ?, ?)',
+            [productId, imageUrl, isPrimary, sortOrder, variantId]
         );
-        return { success: true, message: 'Image added successfully', imageId: result.insertId };
+        return { success: true, message: 'Image added successfully', imageId: result.insertId, url: imageUrl };
     } catch (error) {
         console.error('Add product image error:', error);
         throw new DBError(500, 'Failed to add product image');
     }
 };
 
-func.removeProductImage = async function (imageId) {
-    if (!imageId) {
-        throw new DBError(400, 'Image ID is required');
+func.removeProductImage = async function (imageUrl) {
+    if (!imageUrl) {
+        throw new DBError(400, 'Image URL is required');
     }
     try {
-        const [result] = await pool.execute('DELETE FROM product_images WHERE id = ?', [imageId]);
+        const [result] = await pool.execute('DELETE FROM product_images WHERE image_url = ?', [imageUrl]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Image not found');
         }

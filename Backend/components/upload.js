@@ -23,7 +23,6 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     const passthrough = stream.Readable.fromWeb(ftResult);
     let uploadprocess
     try {
-
         uploadprocess = await new Promise((resolve, reject) => {
             if (!detected) {
                 passthrough.resume();
@@ -55,7 +54,7 @@ async function createUpload(user, prefName, restrictions, req, headers) {
             }
             const filepath = path.join(uploadsDir, actualname + "." + format);
             fs.writeFileSync(filepath, ""); // Create an empty file to reserve the name and prevent race conditions
-            const fileurl = "/uploads/" + actualname + "." + format;
+            const fileurl = actualname + "." + format;
 
             const writeStream = fs.createWriteStream(filepath);
 
@@ -85,7 +84,7 @@ async function createUpload(user, prefName, restrictions, req, headers) {
                 return;
             });
             writeStream.on("finish", () => {
-                resolve({ s: 200, url: fileurl, filetype: detected.mime, path: filepath });
+                resolve({ s: 200, url: fileurl, filetype: format, path: filepath });
                 return;
             });
             writeStream.on("error", (err) => {
@@ -98,8 +97,6 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     catch (err) {
         return err.s ? err : { s: 500, e: "Internal server error" };
     }
-    if (uploadprocess.s !== 200) return { s: uploadprocess.s, e: uploadprocess.e };
-
     return uploadprocess;
 }
 module.exports = { createUpload };

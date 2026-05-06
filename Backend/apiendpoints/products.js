@@ -157,22 +157,19 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (opts.variantId && !product.variants.some(v => v.id === opts.variantId)) return { s: 400, j: true, d: { e: "Variant ID does not belong to this product" } };
             
             const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers);
-
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
-            else return {s: 200, j: true, d: { msg: "Image uploaded successfully", url: upload.url, filetype: upload.filetype } };
-
-            // return await sql.addProductImage(body.data.id, body.data.url, body.data.isPrimary || false, body.data.sortOrder || 0).then(result => {
-            //     return { s: 200, j: true, d: { msg: result.message, imageId: result.imageId } };
-            // }).catch(err => {
-            //     if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
-            //     return { s: 500, j: true, d: { e: "Internal server error" } };
-            // });
+            return await sql.addProductImage(opts.productId, upload.url, opts.sortOrder, opts.isPrimary, opts.variantId).then(result => {
+                return { s: 200, j: true, d: { msg: result.message, url: result.url } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
+                return { s: 500, j: true, d: { e: "Internal server error" } };
+            });
         }
         else if (method === "DELETE") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-            if (!query.id) return { s: 400, j: true, d: { e: "Image ID is required" } };
-            return await sql.removeProductImage(parseInt(query.id)).then(result => {
+            if (!query.url) return { s: 400, j: true, d: { e: "Image URL is required" } };
+            return await sql.removeProductImage(query.url).then(result => {
                 return { s: 200, j: true, d: { msg: result.message } };
             }).catch(err => {
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
