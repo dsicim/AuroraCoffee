@@ -167,11 +167,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "PATCH") {
             if (!body || !body.data || !body.data.id || !body.exists || body.err || !body.json) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if (isNaN(parseInt(body.data.id))) return { s: 400, j: true, d: { e: "Product ID must be a number" } };
-            let primaryresult = { s: 200, j: true, d: { msg: "No change" } };
-            let sortresult = { s: 200, j: true, d: { msg: "No change" } };
+            let primaryresult = { s: 204, j: true, d: { e: "No change" } };
+            let sortresult = { s: 204, j: true, d: { e: "No change" } };
             if (body.data.setAsPrimary) {
                 primaryresult = await sql.setPrimaryImage(body.data.id, body.data.url).then(result => {
-                    return { s: 200, j: true, d: { msg: result.message } };
+                    return { s: 200, j: true, d: { e: result.message } };
                 }).catch(err => {
                     if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
                     return { s: 500, j: true, d: { e: "Internal server error" } };
@@ -187,13 +187,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         idstoorder[body.data.newOrder[i]] = i;
                     }
                     return sql.reorderProductImages(body.data.id, idstoorder).then(result => {
-                        return { s: 200, j: true, d: { msg: result.message } };
+                        return { s: 200, j: true, d: { e: result.message } };
                     }).catch(err => {
                         if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
                         return { s: 500, j: true, d: { e: "Internal server error" } };
                     });
                 })();
             }
+            if (primaryresult.s === 204 && sortresult.s === 204) return { s: 200, j: true, d: { e: "No change" } };
+            else if (primaryresult.s >= 400 && sortresult.s >= 400) return { s: primaryresult.s > sortresult.s ? primaryresult.s : sortresult.s, j: true, d: { setprimary: primaryresult.d.e, setorder: sortresult.d.e } };
+            else if (primaryresult.s < 400 && sortresult.s < 400) return { s: 200, j: true, d: { setprimary: primaryresult.d.e, setorder: sortresult.d.e } };
+            else return { s: 207, j: true, d: { setprimary: primaryresult.d.e, setorder: sortresult.d.e } };
         }
         else if (method === "DELETE") {
             if (!query.url) return { s: 400, j: true, d: { e: "Image URL is required" } };
