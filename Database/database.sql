@@ -51,6 +51,7 @@ CREATE TABLE IF NOT EXISTS orders (
     user_id BIGINT UNSIGNED,
     status ENUM('initialized', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'initialized',
     details JSON NOT NULL,
+    total_amount DECIMAL(10, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
