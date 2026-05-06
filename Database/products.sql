@@ -45,6 +45,8 @@ CREATE TABLE IF NOT EXISTS products (
     material VARCHAR(100),
     capacity VARCHAR(50),
     discount_rate DECIMAL(5, 2) DEFAULT 0.00,
+    warranty_status VARCHAR(255) DEFAULT NULL,
+    distributor_information VARCHAR(255) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
