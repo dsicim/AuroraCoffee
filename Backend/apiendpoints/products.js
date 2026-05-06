@@ -158,7 +158,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             
             const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers);
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
-            return await sql.addProductImage(opts.productId, upload.url, opts.sortOrder, opts.isPrimary, opts.variantId).then(result => {
+            return await sql.addProductImage(opts.productId, upload.url, opts.isPrimary, opts.sortOrder, opts.variantId).then(result => {
                 return { s: 200, j: true, d: { msg: result.message, url: result.url } };
             }).catch(err => {
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
@@ -169,12 +169,19 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!query.url) return { s: 400, j: true, d: { e: "Image URL is required" } };
-            return await sql.removeProductImage(query.url).then(result => {
+            query.url = query.url.trim();
+            if (query.url.length === 0) return { s: 400, j: true, d: { e: "Image URL cannot be empty" } };
+            if (query.url.includes("/") || query.url.includes("\\") || query.url.includes("..")) return { s: 403, j: true, d: { e: "Invalid image URL" } };
+            const result = await sql.removeProductImage(query.url).then(result => {
                 return { s: 200, j: true, d: { msg: result.message } };
             }).catch(err => {
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
                 return { s: 500, j: true, d: { e: "Internal server error" } };
             });
+            if (result.s === 200 && fs.existsSync(path.join(__dirname, "..", "..", "Database", "uploads", query.url))) {
+                fs.unlinkSync(path.join(__dirname, "..", "..", "Database", "uploads", query.url));
+            }
+            return result;
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }

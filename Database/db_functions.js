@@ -597,7 +597,7 @@ func.setVariantDiscount = async function (variantId, rate) {
     }
 };
 
-func.addProductImage = async function (productId, imageUrl, isPrimary, sortOrder = 0, variantId = null) {
+func.addProductImage = async function (productId, imageUrl, isPrimary = false, sortOrder = 0, variantId = null) {
     if (!productId || !imageUrl) {
         throw new DBError(400, 'Product ID and Image URL are required');
     }
