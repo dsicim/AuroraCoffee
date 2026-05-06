@@ -619,8 +619,12 @@ function ProductReviewPanel({ product }) {
       currentUserState.status === currentUserFetchStatus.loading)
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
   const editorMode = Boolean(selfComment && selfCommentEditing)
-  const reviewFormDisabled = submitBusy || !canComment || isCurrentUserLoading || !hasDisplayName
-  const showReviewPrivacyControls = canComment && !isCurrentUserLoading && hasDisplayName
+  const canEditSelfComment = Boolean(selfComment && !isCurrentUserLoading && hasDisplayName)
+  const editCommentDisabled = submitBusy || !canEditSelfComment
+  const reviewFormDisabled =
+    submitBusy || isCurrentUserLoading || !hasDisplayName || (!canComment && !editorMode)
+  const showReviewPrivacyControls =
+    (canComment || editorMode) && !isCurrentUserLoading && hasDisplayName
   const selfCommentStatus = String(selfComment?.status || '').trim().toLowerCase()
   const hasPendingSelfComment = ['pending', 'pending_edit'].includes(selfCommentStatus)
   const hasRejectedSelfComment = ['rejected', 'edit_rejected'].includes(selfCommentStatus)
@@ -629,7 +633,7 @@ function ProductReviewPanel({ product }) {
   const reviewLoginPath = `/login?next=${encodeURIComponent(location.pathname + location.search)}`
 
   if (hasSession) {
-    if (!canComment) {
+    if (!canComment && !selfComment) {
       reviewInfoMessage =
         'Purchase and delivery are required before you can comment on this product.'
     } else if (isCurrentUserLoading) {
@@ -1014,7 +1018,7 @@ function ProductReviewPanel({ product }) {
                 type="button"
                 size="compact"
                 variant="secondary"
-                disabled={reviewFormDisabled}
+                disabled={editCommentDisabled}
                 onClick={() => {
                   setReviewError('')
                   setReviewFeedback('')
