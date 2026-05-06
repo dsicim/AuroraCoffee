@@ -294,6 +294,10 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
     record?.edit_visible === true ||
     existing?.visibilityFlag === true ||
     false
+  const recordHidden =
+    record?.visible === false ||
+    record?.edit_visible === false ||
+    upcoming?.visibilityFlag === false
 
   if (scope === 'pending' && record.self === true && status === 'approved') {
     return null
@@ -301,7 +305,7 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
 
   if (
     scope === 'rejected' &&
-    (recordVisible || !['rejected', 'edit_rejected'].includes(normalizedStatus))
+    (recordVisible || !recordHidden || !['rejected', 'edit_rejected'].includes(normalizedStatus))
   ) {
     return null
   }
