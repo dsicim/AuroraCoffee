@@ -174,8 +174,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "DELETE") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const commentId = body.data.id;
+            const commentId = query.id;
+            if (!Boolean(commentId)) return { s: 400, j: true, d: { e: "Missing id query parameter" } };
             return await sql.deleteComment(currentUser.id, commentId).then(result => {
                 if (result.success) return { s: 200, j: true, d: { msg: "Comment deleted successfully" } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
