@@ -571,6 +571,26 @@ function ProductEditField({ field, defaultValue }) {
   )
 }
 
+function shouldPreventProductEditEnterSubmit(event) {
+  if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing) {
+    return false
+  }
+
+  const target = event.target
+
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+
+  const tagName = target.tagName.toLowerCase()
+
+  if (tagName === 'textarea') {
+    return false
+  }
+
+  return tagName === 'input' || tagName === 'select'
+}
+
 function getProductManagerSelectKey(product) {
   return product?.slug || product?.productCode || product?.name || ''
 }
@@ -1040,7 +1060,15 @@ function ProductEditPanel({ products, loading }) {
         </p>
       </div>
 
-      <form className="aurora-product-edit-form" onSubmit={handleSubmit}>
+      <form
+        className="aurora-product-edit-form"
+        onSubmit={handleSubmit}
+        onKeyDown={(event) => {
+          if (shouldPreventProductEditEnterSubmit(event)) {
+            event.preventDefault()
+          }
+        }}
+      >
         <div className="aurora-product-edit-picker">
           <label className="aurora-product-edit-picker-field">
             <span className="aurora-product-edit-label">Product</span>
