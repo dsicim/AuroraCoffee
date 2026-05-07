@@ -65,6 +65,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "search") {
         if (method === "GET") {
             if (query.q && query.q.trim().length > 0) {
+                query.q = query.q.replaceAll("%20", " ").trim();
                 return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products } };
