@@ -391,6 +391,7 @@ export default function CheckoutPage() {
   const [selectedSavedCardId, setSelectedSavedCardId] = useState('')
   const [usingNewCard, setUsingNewCard] = useState(false)
   const [saveCardForLater, setSaveCardForLater] = useState(false)
+  const [avoid3DS, setAvoid3DS] = useState(true)
   const [installmentInfo, setInstallmentInfo] = useState(null)
   const [selectedInstallments, setSelectedInstallments] = useState('')
   const [paymentBusy, setPaymentBusy] = useState(false)
@@ -947,6 +948,7 @@ export default function CheckoutPage() {
           savedCardToken: selectedSavedCardId || '',
           cvc: payment.cvc,
           card: selectedSavedCardId ? null : payment,
+          avoid3DS,
         })
 
         if (paymentResponse?.redirect3DS && paymentResponse?.target) {
@@ -1781,6 +1783,28 @@ export default function CheckoutPage() {
                 </label>
               ) : null}
 
+              <label className="glass-toggle sm:col-span-2">
+                <input
+                  type="checkbox"
+                  checked={avoid3DS}
+                  onChange={(event) => setAvoid3DS(event.target.checked)}
+                  className="toggle-input"
+                />
+                <span className="toggle-track">
+                  <span className="glass-filter" />
+                  <span className="glass-overlay" />
+                  <span className="glass-specular" />
+                  <span className="toggle-thumb">
+                    <span className="glass-filter" />
+                    <span className="glass-overlay" />
+                    <span className="glass-specular" />
+                  </span>
+                </span>
+                <span className="toggle-label">
+                  Skip 3D Secure when the card allows it
+                </span>
+              </label>
+
               {installmentInfo?.card ? (
                 <div className="aurora-showroom-subpanel p-5 text-sm leading-7 text-[var(--aurora-text)] sm:col-span-2">
                   <div className="aurora-installment-header">
@@ -1930,6 +1954,10 @@ export default function CheckoutPage() {
                       </span>
                       <br />
                       {activePaymentSummary.maskedCardNumber}
+                      <br />
+                      {avoid3DS
+                        ? '3D Secure skipped when available'
+                        : '3D Secure requested'}
                       {!selectedSavedCardId && activePaymentSummary.expiry ? (
                         <>
                           <br />
