@@ -222,15 +222,7 @@ export default function Checkout3DSCallbackPage() {
 
             {submittedOrder ? (
               <>
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                <div className="aurora-ops-card p-4">
-                  <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
-                    Reference
-                  </p>
-                  <p className="mt-3 font-display text-2xl text-[var(--aurora-text-strong)]">
-                    {submittedOrder.reference}
-                  </p>
-                </div>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2">
                 <div className="aurora-ops-card p-4">
                   <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
                     Items
