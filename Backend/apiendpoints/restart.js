@@ -185,7 +185,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (result.success) {
                             const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
                             console.log("FOUND IMAGES TO DOWNLOAD.");
-                            result.image_urls.forEach(async (url) => {
+                            for (let i = 0; i < result.image_urls.length; i++) {
+                                const url = result.image_urls[i];
+                                console.log("Fetching "+i+"/"+result.image_urls.length)
                                 await fetch(baseURL +url).then(res => {
                                     if (!res.ok) {
                                         throw new Error("Failed to fetch image URL " + url + ": " + res.statusText);
@@ -195,7 +197,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                         Readable.fromWeb(res.body).pipe(writeStream);
                                     }
                                 }).catch(err => console.error("Failed to fetch image URL " + url + ": " + err.toString()));
-                            });
+                            }
                             console.log("RESTORE COMPLETE.");
                             return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
                         }
