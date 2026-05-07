@@ -354,10 +354,16 @@ func.enrichProductsWithOptions = async function (userId, products) {
 func.getAllProducts = async function (userId) {
     try {
         let [rows] = await pool.execute(`
-            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
+            LEFT JOIN (
+                SELECT product_id, ROUND(AVG(rating) / 2, 2) AS averageRating
+                FROM comments
+                WHERE rating IS NOT NULL
+                GROUP BY product_id
+            ) r ON r.product_id = p.id
         `);
         rows = await func.enrichProductsWithOptions(userId, rows);
         return { success: true, products: rows };
@@ -385,10 +391,16 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
     try {
         productId = Array.isArray(productId) ? productId : [productId];
         let [rows] = await pool.query(`
-            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
+            LEFT JOIN (
+                SELECT product_id, ROUND(AVG(rating) / 2, 2) AS averageRating
+                FROM comments
+                WHERE rating IS NOT NULL
+                GROUP BY product_id
+            ) r ON r.product_id = p.id
             WHERE p.${isUrl ? 'product_code' : 'id'} IN (?)
         `, [productId]);
         if (rows.length === 0) {
@@ -408,10 +420,16 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
 func.searchProducts = async function (userId, query, sortBy = 'newest') {
     try {
         let sql = `
-            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             LEFT JOIN categories pc ON c.parent_id = pc.id
+            LEFT JOIN (
+                SELECT product_id, ROUND(AVG(rating) / 2, 2) AS averageRating
+                FROM comments
+                WHERE rating IS NOT NULL
+                GROUP BY product_id
+            ) r ON r.product_id = p.id
             WHERE p.name LIKE ? OR p.description LIKE ?
         `;
         const params = [`%${query}%`, `%${query}%` || ''];
@@ -916,7 +934,7 @@ func.getAverageRating = async function (productId) {
         throw new DBError(400, 'Product ID is required');
     }
     try {
-        const [rows] = await pool.execute('SELECT AVG(rating) as averageRating FROM comments WHERE product_id = ? AND status = ?', [productId, 'approved']);
+        const [rows] = await pool.execute('SELECT AVG(rating) as averageRating FROM comments WHERE product_id = ? AND rating IS NOT NULL', [productId]);
         const average = rows[0].averageRating;
         if (average === null) {
             return { success: true, averageRating: 0 };
