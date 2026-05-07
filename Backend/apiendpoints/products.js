@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const sql = require("../../Database/server.js");
 const uploader = require("../components/upload.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
