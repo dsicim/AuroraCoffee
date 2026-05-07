@@ -240,11 +240,41 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (body.data.action === "backup") {
                     const backup = config.isBackup;
-                    const restoreSqlFromThisSite = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart", { headers: { authorization: config.password }, method: "POST", body: JSON.stringify({ action: "restore" }) });
-                    if (!restoreSqlFromThisSite.ok) {
-                        return { s: 500, j: false, d: "Failed to send SQL dump to " + (backup ? "main site" : "backup site") + ": " + restoreSqlFromThisSite.statusText };
+
+
+                    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+                    res.setHeader("Cache-Control", "no-cache");
+                    res.setHeader("X-Accel-Buffering", "no");
+
+                    const upstream = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart",
+                        {
+                            headers: { authorization: config.password, "content-type": "application/json" },
+                            method: "POST",
+                            body: JSON.stringify({ action: "restore" }),
+                        }
+                    );
+
+                    res.statusCode = upstream.status;
+                    res.flushHeaders();
+
+                    if (!upstream.body) {
+                        res.end("No response body from upstream restore.");
+                        return { s: upstream.status, j: false, d: null, resended: true };
                     }
-                    return { s: 200, j: false, d: "Database backup successful to " + (backup ? "main site" : "backup site") };
+                    
+                    const upstreamStream = Readable.fromWeb(upstream.body);
+                    upstreamStream.pipe(res, { end: false });
+
+                    upstreamStream.on("end", () => {
+                        res.write("Database backup successful to " + (backup ? "main site" : "backup site") + "\n");
+                        res.end();
+                    });
+
+                    upstreamStream.on("error", (err) => {
+                        res.write("ERROR: " + err.toString() + "\n");
+                        res.end();
+                    });
+                    return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "resetdb") {
                     if (currentUser.internal) {
