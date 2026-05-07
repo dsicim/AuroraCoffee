@@ -683,6 +683,23 @@ export async function moderateProductComment(commentId, action) {
   return result
 }
 
+export async function deleteProductComment(productId) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new CommentRequestError('Invalid product', 400)
+  }
+
+  requireAuthSession()
+
+  const result = await requestCommentsJson(`/comments?id=${encodeURIComponent(normalizedProductId)}`, {
+    method: 'DELETE',
+  })
+
+  dispatchCommentsChange('delete')
+  return result
+}
+
 export async function submitProductComment({
   productId,
   rating,

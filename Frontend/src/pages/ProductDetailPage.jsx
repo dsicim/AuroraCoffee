@@ -14,7 +14,11 @@ import {
   getAuthStateSnapshot,
 } from '../lib/auth'
 import { addCartItem, getCartErrorMessage } from '../lib/cart'
-import { fetchApprovedProductComments, submitProductComment } from '../features/comments/infrastructure/commentsApi'
+import {
+  deleteProductComment,
+  fetchApprovedProductComments,
+  submitProductComment,
+} from '../features/comments/infrastructure/commentsApi'
 import { formatCurrency } from '../lib/currency'
 import {
   formatDiscountRate,
@@ -605,6 +609,7 @@ function ProductReviewPanel({ product }) {
   const [reviewFeedback, setReviewFeedback] = useState('')
   const [reviewError, setReviewError] = useState('')
   const [submitBusy, setSubmitBusy] = useState(false)
+  const [deleteBusy, setDeleteBusy] = useState(false)
   const session = authState.session
   const currentUserState = authState.currentUserState
   const hasSession = authState.hasUsableSession
@@ -620,9 +625,9 @@ function ProductReviewPanel({ product }) {
   const hasDisplayName = Boolean(currentUser?.displayname?.trim())
   const editorMode = Boolean(selfComment && selfCommentEditing)
   const canEditSelfComment = Boolean(selfComment && !isCurrentUserLoading && hasDisplayName)
-  const editCommentDisabled = submitBusy || !canEditSelfComment
+  const editCommentDisabled = submitBusy || deleteBusy || !canEditSelfComment
   const reviewFormDisabled =
-    submitBusy || isCurrentUserLoading || !hasDisplayName || (!canComment && !editorMode)
+    submitBusy || deleteBusy || isCurrentUserLoading || !hasDisplayName || (!canComment && !editorMode)
   const showReviewPrivacyControls =
     (canComment || editorMode) && !isCurrentUserLoading && hasDisplayName
   const selfCommentStatus = String(selfComment?.status || '').trim().toLowerCase()
@@ -952,6 +957,47 @@ function ProductReviewPanel({ product }) {
     })()
   }
 
+  const handleReviewDelete = () => {
+    setReviewError('')
+    setReviewFeedback('')
+
+    if (!selfComment || deleteBusy) {
+      return
+    }
+
+    if (!window.confirm('Delete your rating or comment for this product?')) {
+      return
+    }
+
+    void (async () => {
+      setDeleteBusy(true)
+
+      try {
+        const hasFreshReviewSession = await confirmReviewSession()
+
+        if (!hasFreshReviewSession) {
+          return
+        }
+
+        const result = await deleteProductComment(product.id)
+        const nextResult = await fetchApprovedProductComments(product.id)
+
+        setReviews(nextResult.comments || [])
+        setSelfComment(nextResult.selfComment || null)
+        setSelfCommentEditing(false)
+        setReviewRating(0)
+        setHoverReviewRating(0)
+        setReviewComment('')
+        setCommentsError('')
+        setReviewFeedback(result?.msg || 'Your comment was deleted.')
+      } catch (error) {
+        setReviewError(error?.message || 'Could not delete your comment.')
+      } finally {
+        setDeleteBusy(false)
+      }
+    })()
+  }
+
   return (
     <AuroraWidget
       title={editorMode ? 'Edit your comment' : 'Share your take'}
@@ -1031,6 +1077,16 @@ function ProductReviewPanel({ product }) {
                 }}
               >
                 Edit comment
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                size="compact"
+                variant="quiet"
+                disabled={deleteBusy || submitBusy}
+                loading={deleteBusy}
+                onClick={handleReviewDelete}
+              >
+                Delete
               </LiquidGlassButton>
             </div>
           </div>
