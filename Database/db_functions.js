@@ -344,6 +344,7 @@ func.enrichProductsWithOptions = async function(userId, products) {
             variant_id: img.variant_id,
             sort_order: img.sort_order
         }));
+        if (p.images.length === 0) p.images = []
 
         // Product level discount
         const pDiscountRate = parseFloat(p.discount_rate || 0);
