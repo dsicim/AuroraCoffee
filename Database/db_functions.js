@@ -830,6 +830,19 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
     }
 };
 
+func.deleteComment = async function (userId, itemId) {
+    if (!userId || !itemId) throw new DBError(400, 'User ID and Item ID are required');
+    try {
+        const [result] = await pool.execute('DELETE FROM comments WHERE id = ? AND user_id = ?', [itemId, userId]);
+        if (result.affectedRows === 0) throw new DBError(404, 'Comment not found');
+        return { success: true, message: 'Comment removed' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Delete comment error:', error);
+        throw new DBError(500, 'Failed to delete comment');
+    }
+}
+
 func.setCommentStatus = async function (commentId, status) {
     if (!commentId || !status) {
         throw new DBError(400, 'Comment ID and status are required');

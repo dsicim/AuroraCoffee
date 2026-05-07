@@ -172,6 +172,19 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });
         }
+        else if (method === "DELETE") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const commentId = body.data.id;
+            return await sql.deleteComment(currentUser.id, commentId).then(result => {
+                if (result.success) return { s: 200, j: true, d: { msg: "Comment deleted successfully" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            }).catch(err => {
+                console.error("Delete comment error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not found" } };
