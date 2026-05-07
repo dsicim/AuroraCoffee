@@ -157,6 +157,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     const pdfResult = await pdf.generatePDF(details).then(document => {
         return { filename: `invoice-${orderNumber}.pdf`, content: document, contentType: "application/pdf" };
     }).catch(err => {
+        console.error(err);
         return null;
     });
     await mailer.sendEmail(email, "Thank you for your recent purchase", template, pdfResult ? [pdfResult] : []).then(res => {
@@ -537,10 +538,20 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 item.general_stock = products[item.product_id].stock;
                 variantid = null;
                 if (item.variant_code) variantid = products[item.product_id].variants.find(v => v.variant_code === item.variant_code)?.id || null;
-                if (variantid) item.product_image = products[item.product_id].images.filter(i => i.variant_id === variantid)[0];
-                if (item.product_image.length === undefined) item.product_image = products[item.product_id].images.filter(i => i.is_primary)[0];
-                if (item.product_image.length === undefined) item.product_image = {url: "null"};
-                item.product_image = config.domain + "/uploads/" + item.product_image.url;
+
+                const prodImages = products[item.product_id].images || [];
+                let chosenImage = null;
+                if (variantid) {
+                    chosenImage = prodImages.find(i => String(i.variant_id) === String(variantid));
+                }
+                if (!chosenImage) {
+                    chosenImage = prodImages.find(i => i.is_primary) || prodImages[0] || null;
+                }
+                if (!chosenImage || !chosenImage.url) {
+                    item.product_image = config.domain + "/uploads/null";
+                } else {
+                    item.product_image = config.domain + "/uploads/" + chosenImage.url;
+                }
                 if (products[item.product_id].has_variants) {
                     const variant = products[item.product_id].variants.find(v => v.variant_code === item.variant_code);
                     if (variant) {
