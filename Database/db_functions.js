@@ -239,15 +239,6 @@ func.enrichProductsWithOptions = async function (userId, products) {
         SELECT * FROM product_images WHERE product_id IN (?) ORDER BY sort_order ASC
     `, [productIds]);
 
-    // Map images
-    p.images = images.filter(img => img.product_id === p.id).map(img => ({
-        id: img.id,
-        url: img.image_url,
-        is_primary: !!img.is_primary,
-        variant_id: img.variant_id,
-        sort_order: img.sort_order
-    }));
-
     // Map to products
     let brewMethods = null;
     for (let p of products) {
@@ -286,6 +277,14 @@ func.enrichProductsWithOptions = async function (userId, products) {
             }
             p.options = Object.values(groups);
         }
+        // Map images
+        p.images = images.filter(img => img.product_id === p.id).map(img => ({
+            id: img.id,
+            url: img.image_url,
+            is_primary: !!img.is_primary,
+            variant_id: img.variant_id,
+            sort_order: img.sort_order
+        }));
         if (!p.has_variants) {
             p.variants = [];
             continue;
