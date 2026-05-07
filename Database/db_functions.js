@@ -204,10 +204,10 @@ func.resetDB = async function () {
 //     }
 // };
 
-func.enrichProductsWithOptions = async function(userId, products) {
+func.enrichProductsWithOptions = async function (userId, products) {
     if (!products || products.length === 0) return products;
     const productIds = products.map(p => p.id);
-    
+
     if (userId) {
         const [delivereds] = await pool.query(`SELECT * FROM delivered_items WHERE user_id = ? AND product_id IN (?)`, [userId, productIds]);
         for (const item of delivereds) {
@@ -224,7 +224,7 @@ func.enrichProductsWithOptions = async function(userId, products) {
         WHERE pog.product_id IN (?)
         ORDER BY pog.priority, pov.sort_order
     `, [productIds]);
-    
+
     // Fetch variants
     const [variants] = await pool.query(`
         SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price_add, pv.price_mult, pv.stock, pv.discount_rate,
@@ -238,6 +238,15 @@ func.enrichProductsWithOptions = async function(userId, products) {
     const [images] = await pool.query(`
         SELECT * FROM product_images WHERE product_id IN (?) ORDER BY sort_order ASC
     `, [productIds]);
+
+    // Map images
+    p.images = images.filter(img => img.product_id === p.id).map(img => ({
+        id: img.id,
+        url: img.image_url,
+        is_primary: !!img.is_primary,
+        variant_id: img.variant_id,
+        sort_order: img.sort_order
+    }));
 
     // Map to products
     let brewMethods = null;
@@ -320,7 +329,7 @@ func.enrichProductsWithOptions = async function(userId, products) {
                 let op = {};
                 try {
                     op = JSON.parse(Buffer.from(v.variant_code, 'base64').toString('utf-8'));
-                } catch (error) {};
+                } catch (error) { };
                 const vBasePrice = (originalPrice + parseFloat(v.price_add)) * parseFloat(v.price_mult);
                 const vDiscountRate = parseFloat(v.discount_rate || 0);
                 pVariants[v.variant_id] = {
@@ -335,16 +344,6 @@ func.enrichProductsWithOptions = async function(userId, products) {
             }
         }
         p.variants = Object.values(pVariants);
-
-        // Map images
-        p.images = images.filter(img => img.product_id === p.id).map(img => ({
-            id: img.id,
-            url: img.image_url,
-            is_primary: !!img.is_primary,
-            variant_id: img.variant_id,
-            sort_order: img.sort_order
-        }));
-        if (p.images.length === 0) p.images = []
 
         // Product level discount
         const pDiscountRate = parseFloat(p.discount_rate || 0);
@@ -368,7 +367,7 @@ func.getAllProducts = async function (userId) {
         throw new DBError(500, 'Failed to fetch products: ' + error.message);
     }
 };
-func.getAllImageURLs = async function() {
+func.getAllImageURLs = async function () {
     try {
         let [rows] = await pool.execute(`
             SELECT image_url
@@ -380,7 +379,7 @@ func.getAllImageURLs = async function() {
         throw new DBError(500, 'Failed to fetch image URLs: ' + error.message);
     }
 };
-func.getProductsByIds = async function (userId,productId, isUrl = false) {
+func.getProductsByIds = async function (userId, productId, isUrl = false) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -397,13 +396,13 @@ func.getProductsByIds = async function (userId,productId, isUrl = false) {
             throw new DBError(404, 'No products found');
         }
         rows = await func.enrichProductsWithOptions(userId, rows);
-        const foundIds = rows.map(r => r[""+(isUrl ? 'product_code' : 'id')]);
+        const foundIds = rows.map(r => r["" + (isUrl ? 'product_code' : 'id')]);
         const missingIds = productId.filter(id => !foundIds.includes(id));
         return { success: true, products: rows, idsnotfound: missingIds };
     } catch (error) {
         if (error instanceof DBError) throw error;
         console.error('Get products by IDs error:', error);
-        throw new DBError(500, 'Failed to fetch products: '+ error.message);
+        throw new DBError(500, 'Failed to fetch products: ' + error.message);
     }
 };
 
@@ -444,7 +443,7 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
 };
 
 func.getCategories = async function (parent) {
-    
+
 };
 
 func.decreaseStock = async function (productId, qty, variantId = null) {
@@ -463,7 +462,7 @@ func.decreaseStock = async function (productId, qty, variantId = null) {
             throw new DBError(400, 'Insufficient total product stock');
         }
         await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ?', [qty, productId]);
-        
+
         if (variantId) {
             const [vRows] = await connection.execute('SELECT stock FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE', [variantId, productId]);
             if (vRows.length === 0) {
@@ -474,7 +473,7 @@ func.decreaseStock = async function (productId, qty, variantId = null) {
             }
             await connection.execute('UPDATE product_variants SET stock = stock - ? WHERE id = ?', [qty, variantId]);
         }
-        
+
         await connection.commit();
         return { success: true, message: 'Stock decreased successfully' };
     } catch (error) {
@@ -514,8 +513,8 @@ func.addProduct = async function (data) {
                 name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes, material, capacity, image_url, discount_rate
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            name, description || null, price, stock || 0, category_id || null, 
-            origin || null, roast_level || null, acidity || null, flavor_notes || null, 
+            name, description || null, price, stock || 0, category_id || null,
+            origin || null, roast_level || null, acidity || null, flavor_notes || null,
             material || null, capacity || null, image_url || null, discount_rate || 0
         ]);
         return { success: true, message: 'Product added successfully', productId: result.insertId };
@@ -533,7 +532,7 @@ func.updateProduct = async function (productId, data) {
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = Object.values(data);
         values.push(productId);
-        
+
         const [result] = await pool.execute(`UPDATE products SET ${fields} WHERE id = ?`, values);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
@@ -660,7 +659,7 @@ func.setImageOrder = async function (imageUrl, newSortOrder) {
     }
 }
 
-func.setPrimaryImage = async function (productId,imageUrl) {
+func.setPrimaryImage = async function (productId, imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
@@ -921,7 +920,7 @@ func.reserveOrderNumber = async function (userId, details) {
     let orderId = null;
     try {
         while (!orderId) {
-            const random = crypto.randomBytes(20).toString("base64").replaceAll("+","").replaceAll("/","").toUpperCase().substring(0,20);
+            const random = crypto.randomBytes(20).toString("base64").replaceAll("+", "").replaceAll("/", "").toUpperCase().substring(0, 20);
             try {
                 const [result] = await pool.execute('INSERT INTO orders (id, user_id, details) VALUES (?, ?, ?)', [random, userId, details]);
                 if (result.affectedRows !== 0) orderId = random;
@@ -967,7 +966,7 @@ func.createOrder = async function (userId, items) {
                 'INSERT INTO order_items (order_id, product_id, quantity, price_at_purchase) VALUES (?, ?, ?, ?)',
                 [orderId, item.productId, item.quantity, item.price]
             );
-            
+
             // Decrease stock
             const [stockResult] = await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ? AND stock >= ?', [item.quantity, item.productId, item.quantity]);
             if (stockResult.affectedRows === 0) {
@@ -1068,7 +1067,7 @@ func.getUserOrders = async function (userId, orderId = null) {
         throw new DBError(400, 'User ID is required');
     }
     try {
-        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ?'+(orderId ? ' AND id = ?' : ' ORDER BY created_at DESC'), orderId?[userId, orderId] : [userId]);
+        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ?' + (orderId ? ' AND id = ?' : ' ORDER BY created_at DESC'), orderId ? [userId, orderId] : [userId]);
         return { success: true, orders: orders };
     } catch (error) {
         console.error('Get user orders error:', error);
@@ -1130,7 +1129,7 @@ func.requestRefund = async function (orderId, productId) {
         // 1. Get order info (must be delivered and within 30 days)
         const [orders] = await pool.execute('SELECT user_id, status, created_at FROM orders WHERE id = ?', [orderId]);
         if (orders.length === 0) throw new DBError(404, 'Order not found');
-        
+
         const order = orders[0];
         if (order.status !== 'delivered') {
             throw new DBError(400, 'Only delivered orders can be refunded');
@@ -1139,7 +1138,7 @@ func.requestRefund = async function (orderId, productId) {
         const orderDate = new Date(order.created_at);
         const now = new Date();
         const diffDays = Math.ceil(Math.abs(now - orderDate) / (1000 * 60 * 60 * 24));
-        
+
         if (diffDays > 30) {
             throw new DBError(400, 'Refund request period (30 days) has expired');
         }
@@ -1175,7 +1174,7 @@ func.approveRefund = async function (refundId) {
         // 1. Get refund info
         const [refunds] = await connection.execute('SELECT * FROM refunds WHERE id = ? FOR UPDATE', [refundId]);
         if (refunds.length === 0) throw new DBError(404, 'Refund request not found');
-        
+
         const refund = refunds[0];
         if (refund.status !== 'pending') {
             throw new DBError(400, `Refund is already ${refund.status}`);
@@ -1241,7 +1240,7 @@ func.addToCart = async function (userId, productId, quantity = 1, options, varia
     try {
         let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?';
         let params = [userId, productId];
-        
+
         if (options !== undefined && options !== null) {
             sql += ' AND options = ?';
             params.push(options);
@@ -1255,9 +1254,9 @@ func.addToCart = async function (userId, productId, quantity = 1, options, varia
         } else {
             sql += ' AND variant_id IS NULL';
         }
-        
+
         const [existing] = await pool.execute(sql, params);
-        
+
         if (existing.length > 0) {
             await pool.execute('UPDATE cart SET quantity = quantity + ? WHERE id = ?', [quantity, existing[0].id]);
         } else {
@@ -1276,7 +1275,7 @@ func.modifyCartItem = async function (userId, itemId, quantity, options, variant
         let sql = 'UPDATE cart SET ';
         let params = [];
         let updates = [];
-        
+
         if (quantity !== undefined) {
             updates.push('quantity = ?');
             params.push(quantity);
@@ -1352,7 +1351,7 @@ func.saveAddress = async function (userId, addressEnc) {
     if (!userId || !addressEnc) throw new DBError(400, 'User ID and address are required');
     try {
         const [result] = await pool.execute(
-            'INSERT INTO addresses (user_id, address) VALUES (?, ?)', 
+            'INSERT INTO addresses (user_id, address) VALUES (?, ?)',
             [userId, addressEnc]
         );
         return { success: true, message: 'Address saved successfully', addressId: result.insertId };
@@ -1366,7 +1365,7 @@ func.editAddress = async function (userId, addressId, addressEnc) {
     if (!userId || !addressId || !addressEnc) throw new DBError(400, 'All fields are required');
     try {
         const [result] = await pool.execute(
-            'UPDATE addresses SET address = ? WHERE id = ? AND user_id = ?', 
+            'UPDATE addresses SET address = ? WHERE id = ? AND user_id = ?',
             [addressEnc, addressId, userId]
         );
         if (result.affectedRows === 0) throw new DBError(404, 'Address not found');
@@ -1391,9 +1390,9 @@ func.deleteAddress = async function (userId, addressId) {
     }
 }
 
-module.exports = { 
-    DBError, 
-    ...func 
+module.exports = {
+    DBError,
+    ...func
 };
 
 
