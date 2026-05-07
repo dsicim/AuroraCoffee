@@ -87,6 +87,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return sum;
                 }
                 const qtyAlreadyInCart = item.length > 0 ? sumOfArray(item) : 0;
+                console.log(item);
+                console.log("Quantity of product ID " + body.data.id + " with variant ID " + body.data.var + " already in cart: " + qtyAlreadyInCart);
                 const product = await sql.getProductsByIds(null, [body.data.id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
