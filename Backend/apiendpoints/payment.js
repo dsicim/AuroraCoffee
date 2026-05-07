@@ -135,6 +135,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     let itemshtml = "";
     details.products.forEach(product => {
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
+        .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
         .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
         .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
         .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
@@ -528,6 +529,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 item.tax = parseInt(products[item.product_id].tax);
                 item.product_price = parseFloat(products[item.product_id].price);
                 item.general_stock = products[item.product_id].stock;
+                variantid = null;
+                if (item.variant_code) variantid = products[item.product_id].variants.find(v => v.variant_code === item.variant_code)?.id || null;
+                if (variantid) item.product_image = products[item.product_id].images.filter(i => i.variant_id === variantid)[0];
+                if (item.product_image.length === undefined) item.product_image = products[item.product_id].images.filter(i => i.is_primary)[0];
+                if (item.product_image.length === undefined) item.product_image = {url: "null"};
+                item.product_image = config.domain + "/uploads/" + item.product_image.url;
                 if (products[item.product_id].has_variants) {
                     const variant = products[item.product_id].variants.find(v => v.variant_code === item.variant_code);
                     if (variant) {
