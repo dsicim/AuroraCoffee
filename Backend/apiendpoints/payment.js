@@ -154,7 +154,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
     .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
     .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
-    const pdfResult = await pdf.generatePDF(details).then(document => {
+    const pdfResult = await pdf.generatePDF({id:orderNumber, details:details}).then(document => {
         return { filename: `invoice-${orderNumber}.pdf`, content: document, contentType: "application/pdf" };
     }).catch(err => {
         console.error(err);
