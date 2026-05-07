@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const sql = require("../../Database/server.js");
 const fs = require("fs");
+const fsp = fs.promises;
 const path = require("path");
 const { Readable } = require("stream");
 function streamDump(res, { user, password, host = "localhost", db }) {
@@ -125,8 +126,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         stdio: ["pipe", "ignore", "pipe"],
                     });
                     console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.");
-                    await fs.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
-                    await fs.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
+                    await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
+                    await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
 
                     let mysqlErr = "";
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
