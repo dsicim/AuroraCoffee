@@ -619,8 +619,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
 
             // Shipping Address Validation
-            const shippingRecords = (shippingToken) ? await sql.getAddresses(currentUser.id, shippingToken).then(async result => { return await parseAddress(result, shippingToken); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "No token provided" };
-            if (!shippingToken && !shippingRecords.s) return { s: 500, j: true, d: { success: false, e: { what: "Shipping Address", why: "Failed to retrieve shipping address information: " + shippingRecords.e, resolution: "Please choose a different address or edit your saved addresses and try again." } } };
+            console.log("Shipping address token:", body.data.shipping.token);
+            console.log("Shipping address:", shippingRecords);
+            const shippingRecords = (body.data.shipping.token) ? await sql.getAddresses(currentUser.id, body.data.shipping.token).then(async result => { return await parseAddress(result, body.data.shipping.token); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "No token provided" };
+            console.log("Parsed shipping address:", shippingRecords);
+            if (!body.data.shipping.token && !shippingRecords.s) return { s: 500, j: true, d: { success: false, e: { what: "Shipping Address", why: "Failed to retrieve shipping address information: " + shippingRecords.e, resolution: "Please choose a different address or edit your saved addresses and try again." } } };
             const shippingAddress = (shippingRecords.s) ? shippingRecords.address : {
                 name: checkTrim(body.data.shipping.name),
                 surname: checkTrim(body.data.shipping.surname),
