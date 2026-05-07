@@ -157,7 +157,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         "SET FOREIGN_KEY_CHECKS=1"].join("; ")
                     );
                     console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " DATABASE DROPPED.");
-                    const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p ${config.password}`, "308_db"], {
+                    const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p${config.password}`, "308_db"], {
                         stdio: ["pipe", "ignore", "pipe"],
                     });
                     console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.");
