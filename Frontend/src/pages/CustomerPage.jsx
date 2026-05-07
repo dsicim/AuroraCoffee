@@ -552,7 +552,7 @@ export default function CustomerPage() {
                         </div>
 
                         <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                          {comment.comment || 'This comment is in moderation, and the current API does not return its draft text yet.'}
+                          {comment.comment || 'No written comment.'}
                         </p>
 
                         <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">

@@ -810,12 +810,14 @@ function ProductReviewPanel({ product }) {
   }, [reviews, selfComment])
 
   const reviewAverage = useMemo(() => {
-    if (!metricReviews.length) {
+    const ratedReviews = metricReviews.filter((review) => review.rating)
+
+    if (!ratedReviews.length) {
       return 0
     }
 
-    const totalRating = metricReviews.reduce((sum, review) => sum + review.rating, 0)
-    return totalRating / metricReviews.length
+    const totalRating = ratedReviews.reduce((sum, review) => sum + review.rating, 0)
+    return totalRating / ratedReviews.length
   }, [metricReviews])
 
   const activeReviewValue = hoverReviewRating || reviewRating || reviewAverage
@@ -883,13 +885,8 @@ function ProductReviewPanel({ product }) {
     setReviewError('')
     setReviewFeedback('')
 
-    if (!reviewRating) {
-      setReviewError('Choose a half-step rating before posting your comment.')
-      return
-    }
-
-    if (!trimmedComment) {
-      setReviewError('Write a short comment before posting it.')
+    if (!reviewRating && !trimmedComment) {
+      setReviewError('Add a rating or comment before posting.')
       return
     }
 
@@ -1008,10 +1005,18 @@ function ProductReviewPanel({ product }) {
             <div className="flex flex-wrap items-center gap-3">
               {selfCommentCardSnapshot ? (
                 <div className="aurora-review-card-score">
-                  <ReviewStars value={selfCommentCardSnapshot.rating} compact />
-                  <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                    {formatReviewScore(selfCommentCardSnapshot.rating)}
-                  </span>
+                  {selfCommentCardSnapshot.rating ? (
+                    <>
+                      <ReviewStars value={selfCommentCardSnapshot.rating} compact />
+                      <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                        {formatReviewScore(selfCommentCardSnapshot.rating)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                      No rating
+                    </span>
+                  )}
                 </div>
               ) : null}
               <LiquidGlassButton
@@ -1032,7 +1037,7 @@ function ProductReviewPanel({ product }) {
 
           <p className="text-base leading-8 text-[var(--aurora-text)]">
             {selfCommentCardSnapshot?.comment ||
-              'Your comment is in moderation. Open the editor if you want to replace the current draft.'}
+              'No written comment.'}
           </p>
 
           {hasPendingSelfComment || hasRejectedSelfComment ? (
@@ -1226,14 +1231,22 @@ function ProductReviewPanel({ product }) {
                   </p>
                 </div>
                 <div className="aurora-review-card-score">
-                  <ReviewStars value={review.rating} compact />
-                  <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                    {formatReviewScore(review.rating)}
-                  </span>
+                  {review.rating ? (
+                    <>
+                      <ReviewStars value={review.rating} compact />
+                      <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                        {formatReviewScore(review.rating)}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                      No rating
+                    </span>
+                  )}
                 </div>
               </div>
               <p className="text-base leading-8 text-[var(--aurora-text)]">
-                {review.comment}
+                {review.comment || 'No written comment.'}
               </p>
             </AuroraInset>
           ))

@@ -1303,7 +1303,7 @@ function CommentSnapshotCard({
         </div>
         <div className="text-right">
           <p className="text-sm font-semibold" style={{ color: surface.color || 'var(--aurora-text-strong)' }}>
-            {formatCommentRating(snapshot.rating)} / 5
+            {snapshot.rating ? `${formatCommentRating(snapshot.rating)} / 5` : 'No rating'}
           </p>
           <p
             className="mt-2 text-xs uppercase tracking-[0.2em]"
@@ -1322,7 +1322,7 @@ function CommentSnapshotCard({
           wordBreak: 'break-word',
         }}
       >
-        {snapshot.comment}
+        {snapshot.comment || 'No written comment.'}
       </p>
 
       <div

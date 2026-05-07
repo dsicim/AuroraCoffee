@@ -104,13 +104,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint.length === 0) {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || (!body.data.rating && !body.data.comment) || !body.data.privacy || String(parseInt(body.data.rating)) === "NaN" || parseInt(body.data.rating) < 1 || parseInt(body.data.rating) > 10) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            body.data.comment = body.data.comment.trim();
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.privacy) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const rawRating = body.data.rating;
+            const hasRating = rawRating !== null && rawRating !== undefined && String(rawRating).trim() !== "";
+            const parsedRating = hasRating ? parseInt(rawRating) : null;
+            body.data.comment = body.data.comment === null || body.data.comment === undefined ? null : String(body.data.comment).trim();
             if (!body.data.comment) body.data.comment = null;
-            if (body.data.comment.length === 0) body.data.comment = null;
-            // if (body.data.comment.length === 0) return { s: 400, j: true, d: { e: "Comment cannot be empty" } };
-            if (!body.data.comment && !body.data.rating) return { s: 400, j: true, d: { e: "Either comment or rating is required" } };
-            if (body.data.comment.length > 2000) return { s: 400, j: true, d: { e: "Comment cannot be longer than 2000 characters" } };
+            if (!body.data.comment && !hasRating) return { s: 400, j: true, d: { e: "Either comment or rating is required" } };
+            if (hasRating && (String(parsedRating) === "NaN" || parsedRating < 1 || parsedRating > 10)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (body.data.comment && body.data.comment.length > 2000) return { s: 400, j: true, d: { e: "Comment cannot be longer than 2000 characters" } };
             const userwords = currentUser.displayname.split(" ").map(s => s.trim()).filter(s => s.length > 0);
             let privacyinvalid = false;
             const userprivacy = body.data.privacy.split("").map(s => {
@@ -145,12 +147,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (!product) return { s: 404, j: true, d: { e: "Product not found" } };
             if (product.can_comment !== true) return { s: 403, j: true, d: { e: "You are unable to comment on this product. Purchase this product to leave a comment. If you have already purchased it, please wait until it is delivered to you." } };
-            if (body.data.rating) {
-                body.data.rating = parseInt(body.data.rating)
-            }
-            else {
-                body.data.rating = null;
-            }
+            body.data.rating = hasRating ? parsedRating : null;
             return await sql.addComment(currentUser.id, body.data.id, body.data.comment, body.data.rating, nameresult).then(result => {
                 if (result.success) return { s: 200, j: true, d: { msg: result.message } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };

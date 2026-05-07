@@ -20,9 +20,13 @@ function dispatchCommentsChange(type = 'sync') {
 }
 
 function toUiRating(value) {
+  if (value === null || value === undefined || value === '') {
+    return 0
+  }
+
   const numericValue = Number(value)
 
-  if (!Number.isFinite(numericValue)) {
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
     return 0
   }
 
@@ -30,9 +34,13 @@ function toUiRating(value) {
 }
 
 function toBackendRating(value) {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
   const numericValue = Number(value)
 
-  if (!Number.isFinite(numericValue)) {
+  if (!Number.isFinite(numericValue) || numericValue <= 0) {
     return null
   }
 
@@ -46,7 +54,7 @@ function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
   const editedAt = normalizeText(rawComment?.edit) || null
   const rating = toUiRating(rawComment?.rating)
 
-  if (!comment || !rating) {
+  if (!comment && !rating) {
     return null
   }
 
@@ -55,7 +63,7 @@ function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
     author,
     comment,
     rating,
-    backendRating: toBackendRating(rating),
+    backendRating: rating ? toBackendRating(rating) : null,
     createdAt,
     editedAt,
     visibilityFlag: rawComment?.visible === true,
@@ -237,10 +245,9 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
   const comment = normalizeText(snapshot?.text)
   const createdAt = normalizeText(snapshot?.time)
   const editedAt = normalizeText(snapshot?.edit) || null
-  const backendRating = Number(snapshot?.rating)
-  const rating = toUiRating(backendRating)
+  const rating = toUiRating(snapshot?.rating)
 
-  if (!comment || !rating) {
+  if (!comment && !rating) {
     return null
   }
 
@@ -249,7 +256,7 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
     author,
     comment,
     rating,
-    backendRating: Number.isFinite(backendRating) ? backendRating : toBackendRating(rating),
+    backendRating: rating ? toBackendRating(rating) : null,
     createdAt,
     editedAt,
     visibilityFlag: snapshot?.visible === true ? true : snapshot?.visible === false ? false : null,
@@ -691,12 +698,8 @@ export async function submitProductComment({
     throw new CommentRequestError('Invalid product', 400)
   }
 
-  if (!backendRating) {
-    throw new CommentRequestError('Choose a valid rating', 400)
-  }
-
-  if (!normalizedComment) {
-    throw new CommentRequestError('Comment cannot be empty', 400)
+  if (!backendRating && !normalizedComment) {
+    throw new CommentRequestError('Add a rating or comment before posting', 400)
   }
 
   if (!normalizedPrivacy) {
@@ -710,7 +713,7 @@ export async function submitProductComment({
     body: JSON.stringify({
       id: normalizedProductId,
       rating: backendRating,
-      comment: normalizedComment,
+      comment: normalizedComment || null,
       privacy: normalizedPrivacy,
     }),
   })
