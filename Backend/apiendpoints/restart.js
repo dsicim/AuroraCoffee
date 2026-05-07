@@ -188,15 +188,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             for (let i = 0; i < result.image_urls.length; i++) {
                                 const url = result.image_urls[i];
                                 console.log("Fetching "+i+"/"+result.image_urls.length)
+                                console.log("Fetching image URL " + baseURL + url);
                                 await fetch(baseURL +url).then(res => {
                                     if (!res.ok) {
-                                        throw new Error("Failed to fetch image URL " + url + ": " + res.statusText);
+                                        throw new Error("Failed to fetch image URL " + baseURL + url + ": " + res.statusText);
                                     }
                                     else {
                                         const writeStream = fs.createWriteStream(path.join(__dirname, "..", "Database", "uploads", path.basename(url)));
                                         Readable.fromWeb(res.body).pipe(writeStream);
                                     }
-                                }).catch(err => console.error("Failed to fetch image URL " + url + ": " + err.toString()));
+                                }).catch(err => console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString()));
                             }
                             console.log("RESTORE COMPLETE.");
                             return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
