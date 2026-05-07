@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
@@ -588,7 +588,11 @@ function shouldPreventProductEditEnterSubmit(event) {
     return false
   }
 
-  return tagName === 'input' || tagName === 'select'
+  if (tagName !== 'input') {
+    return tagName === 'select'
+  }
+
+  return target.getAttribute('type') !== 'file'
 }
 
 function getProductManagerSelectKey(product) {
@@ -700,6 +704,7 @@ function ProductImageManager({ product }) {
     }))
     .filter((variant) => variant.id > 0)
   const [selectedFile, setSelectedFile] = useState(null)
+  const fileInputRef = useRef(null)
   const [selectedVariantKey, setSelectedVariantKey] = useState('')
   const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
   const [imageState, setImageState] = useState({
@@ -751,6 +756,9 @@ function ProductImageManager({ product }) {
     })
       .then((result) => {
         setSelectedFile(null)
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
         setSelectedVariantKey('')
         setPrimaryUpload(false)
         setImageSuccess(result?.msg || 'Product image uploaded.')
@@ -815,6 +823,7 @@ function ProductImageManager({ product }) {
         <label className="aurora-product-edit-field">
           <span className="aurora-product-edit-label">Upload image</span>
           <input
+            ref={fileInputRef}
             className="aurora-input aurora-product-edit-input mt-3"
             type="file"
             accept="image/png,image/jpeg,image/webp"
@@ -971,9 +980,7 @@ function ProductEditPanel({ products, loading }) {
     success: '',
   })
 
-  function handleSubmit(event) {
-    event.preventDefault()
-
+  function handleSave(formElement) {
     if (!selectedProduct) {
       setSaveState({
         saving: false,
@@ -986,7 +993,7 @@ function ProductEditPanel({ products, loading }) {
     let edits = null
 
     try {
-      const formData = new FormData(event.currentTarget)
+      const formData = new FormData(formElement)
       const form = Object.fromEntries(
         productEditFields.map((field) => [field.key, formData.get(field.key) || '']),
       )
@@ -1062,7 +1069,9 @@ function ProductEditPanel({ products, loading }) {
 
       <form
         className="aurora-product-edit-form"
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault()
+        }}
         onKeyDown={(event) => {
           if (shouldPreventProductEditEnterSubmit(event)) {
             event.preventDefault()
@@ -1156,10 +1165,13 @@ function ProductEditPanel({ products, loading }) {
                   Reset fields
                 </LiquidGlassButton>
                 <LiquidGlassButton
-                  type="submit"
+                  type="button"
                   variant="secondary"
                   loading={saveState.saving}
                   disabled={saveState.saving}
+                  onClick={(event) => {
+                    handleSave(event.currentTarget.form)
+                  }}
                 >
                   Save product
                 </LiquidGlassButton>
