@@ -979,8 +979,34 @@ function ProductEditPanel({ products, loading }) {
     error: '',
     success: '',
   })
+  const editFieldsRef = useRef(null)
 
-  function handleSave(formElement) {
+  function getCurrentEditForm() {
+    return Object.fromEntries(
+      productEditFields.map((field) => {
+        const input = editFieldsRef.current?.querySelector(`[name="${field.key}"]`)
+        return [field.key, input?.value || '']
+      }),
+    )
+  }
+
+  function resetEditFields() {
+    if (!selectedProduct || !editFieldsRef.current) {
+      return
+    }
+
+    const nextForm = getProductEditForm(selectedProduct)
+
+    for (const field of productEditFields) {
+      const input = editFieldsRef.current.querySelector(`[name="${field.key}"]`)
+
+      if (input) {
+        input.value = nextForm[field.key] || ''
+      }
+    }
+  }
+
+  function handleSave() {
     if (!selectedProduct) {
       setSaveState({
         saving: false,
@@ -993,10 +1019,7 @@ function ProductEditPanel({ products, loading }) {
     let edits = null
 
     try {
-      const formData = new FormData(formElement)
-      const form = Object.fromEntries(
-        productEditFields.map((field) => [field.key, formData.get(field.key) || '']),
-      )
+      const form = getCurrentEditForm()
       edits = buildProductEdits(selectedProduct, form)
     } catch (validationError) {
       setSaveState({
@@ -1067,11 +1090,8 @@ function ProductEditPanel({ products, loading }) {
         </p>
       </div>
 
-      <form
+      <div
         className="aurora-product-edit-form"
-        onSubmit={(event) => {
-          event.preventDefault()
-        }}
         onKeyDown={(event) => {
           if (shouldPreventProductEditEnterSubmit(event)) {
             event.preventDefault()
@@ -1117,7 +1137,11 @@ function ProductEditPanel({ products, loading }) {
 
         {selectedProduct ? (
           <>
-            <div key={selectedProduct.id} className="aurora-product-edit-workspace">
+            <div
+              key={selectedProduct.id}
+              ref={editFieldsRef}
+              className="aurora-product-edit-workspace"
+            >
               <ProductEditSnapshot product={selectedProduct} />
               <ProductImageManager product={selectedProduct} />
 
@@ -1153,8 +1177,8 @@ function ProductEditPanel({ products, loading }) {
                   type="button"
                   variant="quiet"
                   disabled={saveState.saving}
-                  onClick={(event) => {
-                    event.currentTarget.form?.reset()
+                  onClick={() => {
+                    resetEditFields()
                     setSaveState({
                       saving: false,
                       error: '',
@@ -1169,8 +1193,8 @@ function ProductEditPanel({ products, loading }) {
                   variant="secondary"
                   loading={saveState.saving}
                   disabled={saveState.saving}
-                  onClick={(event) => {
-                    handleSave(event.currentTarget.form)
+                  onClick={() => {
+                    handleSave()
                   }}
                 >
                   Save product
@@ -1184,7 +1208,7 @@ function ProductEditPanel({ products, loading }) {
             description="Choose a catalog item to load editable details."
           />
         )}
-      </form>
+      </div>
 
       {saveState.error ? (
         <div className="aurora-message aurora-message-error mt-6">{saveState.error}</div>
