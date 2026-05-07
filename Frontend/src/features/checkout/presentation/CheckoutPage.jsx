@@ -408,6 +408,7 @@ export default function CheckoutPage() {
   const serviceFee = 0
   const total = subtotal + serviceFee
   const currentStep = checkoutSteps[stepIndex]
+  const submittedOrderNumber = submittedOrder?.orderNumber ? String(submittedOrder.orderNumber) : ''
   const isLoggedIn = Boolean(session?.token)
   const installmentBin = payment.cardNumber.replace(/\D/g, '').slice(0, 6)
   const installmentOptions = getInstallmentOptions(installmentInfo)
@@ -1152,13 +1153,15 @@ export default function CheckoutPage() {
           <div className="aurora-summary-card p-5">
             <div className="aurora-widget-body">
               <div className="aurora-widget-heading">
-                <p className="aurora-kicker">{submittedOrder ? 'Status' : 'Progress'}</p>
-                <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
-                  {submittedOrder ? 'Confirmed' : `Step ${stepIndex + 1}`}
+                <p className="aurora-kicker">
+                  {submittedOrderNumber ? 'Order number' : submittedOrder ? 'Status' : 'Progress'}
+                </p>
+                <p className="mt-2 break-all font-display text-3xl text-[var(--aurora-text-strong)]">
+                  {submittedOrderNumber || (submittedOrder ? 'Confirmed' : `Step ${stepIndex + 1}`)}
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                {submittedOrder ? 'Your purchase is complete.' : 'Current checkout stage.'}
+                {submittedOrderNumber || submittedOrder ? 'Your purchase is complete.' : 'Current checkout stage.'}
               </p>
             </div>
           </div>
@@ -2059,7 +2062,7 @@ export default function CheckoutPage() {
                 Your order has been placed
               </h2>
               <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
-                Your purchase was completed on{' '}
+                {submittedOrderNumber ? `Order number ${submittedOrderNumber} was confirmed on ` : 'Your purchase was completed on '}
                 {new Date(submittedOrder.submittedAt).toLocaleString('en-GB', {
                   hour12: false,
                 })}
