@@ -694,26 +694,41 @@ function moveProductImageUrl(images, fromIndex, direction) {
   return nextImages.map((entry) => entry.url)
 }
 
+function preventProductImageEnterAction(event) {
+  if (event.key !== 'Enter' || event.defaultPrevented || event.isComposing) {
+    return
+  }
+
+  event.preventDefault()
+  event.stopPropagation()
+}
+
 function ProductImageManager({ product }) {
   const images = Array.isArray(product?.images) ? product.images : []
   const variantOptions = (product?.variants || [])
-    .map((variant, index) => ({
-      key: variant.variantCode || `variant-${index}`,
+    .map((variant) => ({
       id: Number(variant.id) || 0,
       label: getProductImageVariantLabel(product, variant.id),
     }))
     .filter((variant) => variant.id > 0)
   const [selectedFile, setSelectedFile] = useState(null)
   const fileInputRef = useRef(null)
-  const [selectedVariantKey, setSelectedVariantKey] = useState('')
+  const [fileInputVersion, setFileInputVersion] = useState(0)
+  const [selectedVariantId, setSelectedVariantId] = useState('')
   const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
+  const [nextUploadSortOrder, setNextUploadSortOrder] = useState(() =>
+    getNextProductImageSortOrder(images),
+  )
   const [imageState, setImageState] = useState({
     busy: '',
     error: '',
     success: '',
   })
 
-  const selectedVariant = variantOptions.find((variant) => variant.key === selectedVariantKey)
+  const selectedVariant = variantOptions.find(
+    (variant) => String(variant.id) === selectedVariantId,
+  )
+  const imageBusy = Boolean(imageState.busy)
 
   function setImageBusy(busy) {
     setImageState({
@@ -740,6 +755,10 @@ function ProductImageManager({ product }) {
   }
 
   function handleUpload() {
+    if (imageBusy) {
+      return
+    }
+
     if (!selectedFile) {
       setImageError(new Error('Choose an image file before uploading.'))
       return
@@ -750,16 +769,18 @@ function ProductImageManager({ product }) {
     void uploadProductImage({
       productId: product.id,
       file: selectedFile,
-      sortOrder: getNextProductImageSortOrder(images),
+      sortOrder: Math.max(nextUploadSortOrder, getNextProductImageSortOrder(images)),
       variantId: selectedVariant?.id || '',
       primary: primaryUpload,
     })
       .then((result) => {
         setSelectedFile(null)
+        setFileInputVersion((version) => version + 1)
+        setNextUploadSortOrder((sortOrder) => sortOrder + 1)
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
-        setSelectedVariantKey('')
+        setSelectedVariantId('')
         setPrimaryUpload(false)
         setImageSuccess(result?.msg || 'Product image uploaded.')
       })
@@ -810,7 +831,10 @@ function ProductImageManager({ product }) {
   }
 
   return (
-    <section className="aurora-product-edit-group aurora-product-image-manager">
+    <section
+      className="aurora-product-edit-group aurora-product-image-manager"
+      onKeyDownCapture={preventProductImageEnterAction}
+    >
       <div className="aurora-product-image-manager-header">
         <div>
           <p className="aurora-product-edit-label">Product images</p>
@@ -823,11 +847,17 @@ function ProductImageManager({ product }) {
         <label className="aurora-product-edit-field">
           <span className="aurora-product-edit-label">Upload image</span>
           <input
+            key={fileInputVersion}
             ref={fileInputRef}
             className="aurora-input aurora-product-edit-input mt-3"
             type="file"
             accept="image/png,image/jpeg,image/webp"
+            disabled={imageBusy}
             onChange={(event) => {
+              if (imageBusy) {
+                return
+              }
+
               setSelectedFile(event.target.files?.[0] || null)
               setImageState({ busy: '', error: '', success: '' })
             }}
@@ -838,14 +868,15 @@ function ProductImageManager({ product }) {
           <span className="aurora-product-edit-label">Variant key</span>
           <select
             className="aurora-select aurora-product-edit-input mt-3"
-            value={selectedVariantKey}
+            value={selectedVariantId}
+            disabled={imageBusy}
             onChange={(event) => {
-              setSelectedVariantKey(event.target.value)
+              setSelectedVariantId(event.target.value)
             }}
           >
             <option value="">Base product image</option>
             {variantOptions.map((variant) => (
-              <option key={variant.key} value={variant.key}>
+              <option key={variant.id} value={String(variant.id)}>
                 {variant.label}
               </option>
             ))}
@@ -856,6 +887,7 @@ function ProductImageManager({ product }) {
           <input
             type="checkbox"
             checked={primaryUpload}
+            disabled={imageBusy}
             onChange={(event) => {
               setPrimaryUpload(event.target.checked)
             }}
@@ -867,7 +899,7 @@ function ProductImageManager({ product }) {
           type="button"
           variant="secondary"
           loading={imageState.busy === 'upload'}
-          disabled={Boolean(imageState.busy)}
+          disabled={imageBusy}
           onClick={handleUpload}
         >
           Upload image
@@ -898,7 +930,7 @@ function ProductImageManager({ product }) {
                     type="button"
                     size="compact"
                     variant="quiet"
-                    disabled={Boolean(imageState.busy) || index === 0}
+                    disabled={imageBusy || index === 0}
                     loading={imageState.busy === `order:${image.url}:-1`}
                     onClick={() => {
                       handleReorder(index, -1)
@@ -910,7 +942,7 @@ function ProductImageManager({ product }) {
                     type="button"
                     size="compact"
                     variant="quiet"
-                    disabled={Boolean(imageState.busy) || index === images.length - 1}
+                    disabled={imageBusy || index === images.length - 1}
                     loading={imageState.busy === `order:${image.url}:1`}
                     onClick={() => {
                       handleReorder(index, 1)
@@ -922,7 +954,7 @@ function ProductImageManager({ product }) {
                     type="button"
                     size="compact"
                     variant="secondary"
-                    disabled={Boolean(imageState.busy) || image.isPrimary}
+                    disabled={imageBusy || image.isPrimary}
                     loading={imageState.busy === `primary:${image.url}`}
                     onClick={() => {
                       handleSetPrimary(image)
@@ -934,7 +966,7 @@ function ProductImageManager({ product }) {
                     type="button"
                     size="compact"
                     variant="danger"
-                    disabled={Boolean(imageState.busy)}
+                    disabled={imageBusy}
                     loading={imageState.busy === `delete:${image.url}`}
                     onClick={() => {
                       handleDelete(image)
