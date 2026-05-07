@@ -153,7 +153,12 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
     .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
     .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
-    await mailer.sendEmail(email, "Thank you for your recent purchase", template).then(res => {
+    const pdfResult = await pdf.generatePDF(details).then(document => {
+        return { filename: `invoice-${orderNumber}.pdf`, content: document, contentType: "application/pdf" };
+    }).catch(err => {
+        return null;
+    });
+    await mailer.sendEmail(email, "Thank you for your recent purchase", template, pdfResult ? [pdfResult] : []).then(res => {
         console.log("Email sent:", res);
     }).catch(err => {
         console.error("Email sending error:", err);
