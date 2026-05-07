@@ -111,12 +111,17 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (body.data.action === "restore") {
                     const backup = config.isBackup;
-                    console.log("FULL DATABASE RESTORE INITIATED FROM " + (backup ? "MAIN SITE" : "BACKUP SITE"));
+                    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+                    res.setHeader("Cache-Control", "no-cache");
+                    res.flushHeaders();
+                    res.write("FULL DATABASE RESTORE INITIATED FROM " + (backup ? "MAIN SITE" : "BACKUP SITE"));
                     const sqlDumpFromOtherSite = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart", { headers: { authorization: config.password }, method: "POST", body: JSON.stringify({ action: "dumpsql" }) });
                     if (!sqlDumpFromOtherSite.ok) {
-                        return { s: 500, j: false, d: "Failed to fetch SQL dump from " + (backup ? "main site" : "backup site") + ": " + sqlDumpFromOtherSite.statusText };
+                        res.write("Failed to fetch SQL dump from " + (backup ? "main site" : "backup site") + ": " + sqlDumpFromOtherSite.statusText);
+                        res.end();
+                        return { s: 500, j: false, d: null, resended: true };
                     }
-                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, STARTING TO STREAM AND RESTORE DATABASE");
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, STARTING TO STREAM AND RESTORE DATABASE");
                     await runMysqlAdmin(
                         { user: config.user, password: config.password },
                         ["USE 308_db",
@@ -156,18 +161,18 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
 
                         "SET FOREIGN_KEY_CHECKS=1"].join("; ")
                     );
-                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " DATABASE DROPPED.");
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " DATABASE DROPPED.");
                     const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p${config.password}`, "308_db"], {
                         stdio: ["pipe", "ignore", "pipe"],
                     });
-                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.");
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.");
                     await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
                     await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
 
                     let mysqlErr = "";
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
 
-                    console.log("REBUILDING SQL FROM DUMP...");
+                    res.write("REBUILDING SQL FROM DUMP...");
                     await new Promise((resolve, reject) => {
                         const dumpStream = Readable.fromWeb(sqlDumpFromOtherSite.body);
                         dumpStream.on("error", reject);
@@ -180,14 +185,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     });
 
 
-                    console.log("REDOWNLOADING IMAGES...");
+                    res.write("REDOWNLOADING IMAGES...");
                     return await sql.getAllImageURLs().then(async result => {
                         if (result.success) {
-                            console.log("FOUND IMAGES TO DOWNLOAD.");
+                            res.write("FOUND IMAGES TO DOWNLOAD.");
                             const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
                             for (const [i, url] of result.image_urls.entries()) {
                                 try {
-                                    console.log(`Fetching image ${i + 1}/${result.image_urls.length}: ${baseURL + url}`);
+                                    res.write(`Fetching image ${i + 1}/${result.image_urls.length}: ${baseURL + url}`);
                                     const resp = await fetch(baseURL + url);
                                     if (!resp.ok) throw new Error(`Fetch failed ${resp.status} ${resp.statusText}`);
                                     const dest = path.join(__dirname, "..", "Database", "uploads", path.basename(url));
@@ -209,21 +214,27 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     bodyStream.pipe(writeStream);
                                     });
 
-                                    console.log(`Downloaded ${i + 1}/${result.image_urls.length}: ${url}`);
+                                    res.write(`Downloaded ${i + 1}/${result.image_urls.length}: ${url}`);
                                 } catch (err) {
                                     console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString());
                                 }
                             }
-                            console.log("RESTORE COMPLETE.");
-                            return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
+                            res.write("RESTORE COMPLETE.");
+                            res.write("Database restore successful from " + (backup ? "main site" : "backup site") );
+                            res.end();
+                            return { s: 200, j: false, d: null, resended: true };
                         }
                         else {
-                            return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                            res.write("An unknown error occurred");
+                            res.end();
+                            return { s: 500, j: false, d: null, resended: true };
                         }
                     }).catch(err => {
                         console.error("Get all image URLs error:", err);
-                        if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                        else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                        if (err instanceof sql.DBError) res.write(err.error || "An unknown error occurred");
+                        else res.write("An unknown error occurred");
+                        res.end();
+                        return { s: 500, j: false, d: null, resended: true };
                     });
                 }
                 else if (body.data.action === "backup") {

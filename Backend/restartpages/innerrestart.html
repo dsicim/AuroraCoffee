@@ -132,7 +132,22 @@
             if (!confirm("Are you sure you want to restore the database from the backup? THIS WILL OVERWRITE THE CURRENT DATABASE.")) return;
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             updateOutput("Restoring SQL...");
-            await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "restore" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+
+            const r = await fetch("/api/restart", { method: "POST", headers: {authorization: pjs(localStorage.getItem("auroraAuth")).token}, body: JSON.stringify({ action: "restore" }) }).then(res => res.text()).then(res => { updateOutput("RESPONSE: " + res); }).catch(err => { updateOutput("ERROR: " + err); });
+            const reader = r.body.getReader();
+            const dec = new TextDecoder();
+            let buf = "";
+            while (true) {
+                const { done, value } = await reader.read();
+                buf += dec.decode(value);
+                if (buf.includes("\n")) {
+                    const lines = buf.split("\n");
+                    updateOutput(done?"RESPONSE: \n":"Restoring...\n");
+                    lines.slice(0, -1).forEach(line => updateOutput(line));
+                    buf = lines[lines.length - 1];
+                }
+                if (done) break;
+            }
             document.querySelectorAll("button").forEach(btn => btn.disabled = false);
         });
         document.getElementById("resetDatabaseButton").addEventListener("click", async () => {
