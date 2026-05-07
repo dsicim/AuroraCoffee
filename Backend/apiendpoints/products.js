@@ -126,7 +126,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body || !body.raw || !body.exists || !body.upload) return { s: 500, j: true, d: { e: "Internal invalid request body" } };
             const opts = {
                 productId: headers["x-product"] ? parseInt(headers["x-product"]) : null,
-                isPrimary: Boolean(headers["x-primary"] === "1" || headers["x-primary"].toLowerCase() === "true"),
+                isPrimary: Boolean(headers["x-primary"] && (headers["x-primary"] === "1" || headers["x-primary"].toLowerCase() === "true")),
                 sortOrder: headers["x-sortorder"] ? parseInt(headers["x-sortorder"]) : 0,
                 variantId: headers["x-variant"] ? parseInt(headers["x-variant"]) : null
             }
