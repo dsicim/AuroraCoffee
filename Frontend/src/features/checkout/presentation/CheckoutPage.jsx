@@ -29,6 +29,7 @@ import {
   enrichCartItems,
   buildCheckoutCartPayload,
   cartChangeEvent,
+  clearCart,
   formatCartOptionLabel,
   getCartItems,
   getCartItemOptionEntries,
@@ -46,6 +47,7 @@ import {
   savePaymentMethod,
 } from '../application/payment'
 import {
+  buildSubmittedOrderSnapshotFromPending,
   buildPaymentSummary,
   consumeCheckout3DSReturnState,
   createPending3DSCheckoutSnapshot,
@@ -396,7 +398,7 @@ export default function CheckoutPage() {
   const [selectedInstallments, setSelectedInstallments] = useState('')
   const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
-  const [submittedOrder] = useState(null)
+  const [submittedOrder, setSubmittedOrder] = useState(null)
   const [paymentSummaryOverride, setPaymentSummaryOverride] = useState(null)
 
   const subtotal = items.reduce(
@@ -953,27 +955,27 @@ export default function CheckoutPage() {
           avoid3DS: effectiveAvoid3DS,
         })
 
+        const checkoutSnapshot = createPending3DSCheckoutSnapshot({
+          items,
+          delivery,
+          billing,
+          useShippingAsBilling,
+          selectedAddressId,
+          selectedSavedCardId,
+          payment,
+          savedCards,
+          saveCardForLater,
+          selectedInstallments,
+          installmentSelectionLabel: activeInstallmentLabel,
+          subtotal: pricing.itemsGross,
+          serviceFee: pricing.installmentFee,
+          taxTotal: pricing.taxTotal,
+          installmentFee: pricing.installmentFee,
+          total: pricing.totalCharged,
+        })
+
         if (paymentResponse?.redirect3DS && paymentResponse?.target) {
-          savePending3DSCheckoutSnapshot(
-            createPending3DSCheckoutSnapshot({
-              items,
-              delivery,
-              billing,
-              useShippingAsBilling,
-              selectedAddressId,
-              selectedSavedCardId,
-              payment,
-              savedCards,
-              saveCardForLater,
-              selectedInstallments,
-              installmentSelectionLabel: activeInstallmentLabel,
-              subtotal: pricing.itemsGross,
-              serviceFee: pricing.installmentFee,
-              taxTotal: pricing.taxTotal,
-              installmentFee: pricing.installmentFee,
-              total: pricing.totalCharged,
-            }),
-          )
+          savePending3DSCheckoutSnapshot(checkoutSnapshot)
           open3DSTargetSameTab(paymentResponse.target)
           return
         }
@@ -982,6 +984,27 @@ export default function CheckoutPage() {
           throw new Error(
             '3D Secure was requested, but the payment page could not be opened.',
           )
+        }
+
+        if (paymentResponse?.success && paymentResponse?.orderNumber) {
+          const nextOrder = buildSubmittedOrderSnapshotFromPending(
+            checkoutSnapshot,
+            paymentResponse,
+          )
+
+          try {
+            await clearCart()
+            if (getAuthSession()?.token) {
+              await reconcileCartStorageWithAuth()
+            }
+          } catch {
+            // Keep the confirmed-payment path moving even if local cart cleanup is stale.
+          }
+
+          setSubmittedOrder(nextOrder)
+          setItems([])
+          setStepIndex(checkoutSteps.findIndex((step) => step.key === 'success'))
+          return
         }
 
         throw new Error(
