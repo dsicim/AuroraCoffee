@@ -786,18 +786,19 @@ func.getUserCards = async function (userId) {
 // --- Comment & Rating Functions ---
 
 func.addComment = async function (userId, productId, text, rating, namesnapshot) {
-    if (!userId || !productId || !text || rating === undefined) {
-        throw new DBError(400, 'User ID, Product ID, text and rating are required');
+    if (!userId || !productId || (!text && rating === null)) {
+        throw new DBError(400, 'User ID, Product ID and (text or rating) are required');
     }
     try {
         // Check if user has already commented on the product
         const commented = await func.hasUserAlreadyCommented(userId, productId);
         if (commented === false) {
+            if (!text) text = "";
             const [result] = await pool.execute(
                 'INSERT INTO comments (user_id, product_id, comment_text, rating, status, name_snapshot) VALUES (?, ?, ?, ?, ?, ?)',
                 [userId, productId, text, rating, 'pending', namesnapshot]
             );
-            return { success: true, message: 'Comment submitted successfully, awaiting approval', commentId: result.insertId };
+            return { success: true, message: 'Comment submitted successfully'+text===""?'':', awaiting approval', commentId: result.insertId };
         }
         else if (["rejected", "pending"].includes(commented.status)) {
             const [result] = await pool.execute(
@@ -807,17 +808,19 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
             if (result.affectedRows === 0) {
                 throw new DBError(404, 'Comment not found');
             }
-            return { success: true, message: 'Comment edit submitted successfully, your comment is now awaiting approval.', commentId: result.insertId };
+            return { success: true, message: 'Comment edit submitted successfully'+text===""?'':', your comment is now awaiting approval.', commentId: result.insertId };
         }
         else {
+            if (!text) text = "";
+            const bypassApproval = commented.status === "approved" && (text === commented.comment_text || text === "") && (namesnapshot === commented.name_snapshot || namesnapshot === "Anonymous");
             const [result] = await pool.execute(
-                'UPDATE comments SET edited_text = ?, edited_rating = ?, status = ?, edited_name_snapshot = ?, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [text, rating, 'pending_edit', namesnapshot, commented.id]
+                'UPDATE comments SET edited_text = ?, rating = ?, status = ?, edited_name_snapshot = ?, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [text, rating, bypassApproval ? 'approved' : 'pending_edit', namesnapshot, commented.id]
             );
             if (result.affectedRows === 0) {
                 throw new DBError(404, 'Comment not found');
             }
-            return { success: true, message: 'Comment edit submitted successfully, the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.', commentId: result.insertId };
+            return { success: true, message: 'Comment edit submitted successfully'+text===""?'':', the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.', commentId: result.insertId };
         }
     } catch (error) {
         if (error instanceof DBError) throw error;
@@ -1215,11 +1218,11 @@ func.approveRefund = async function (refundId) {
 func.hasUserAlreadyCommented = async function (userId, productId) {
     try {
         const [rows] = await pool.execute(`
-            SELECT id, status FROM comments c
+            SELECT id, status, comment_text, edited_text, name_snapshot FROM comments c
             WHERE c.user_id = ? AND c.product_id = ?
             LIMIT 1
         `, [userId, productId]);
-        return rows.length > 0 ? { id: rows[0].id, status: rows[0].status } : false;
+        return rows.length > 0 ? { id: rows[0].id, status: rows[0].status, comment_text: rows[0].comment_text, edited_text: rows[0].edited_text, name_snapshot: rows[0].name_snapshot } : false;
     } catch (error) {
         console.error('Check purchase error:', error);
         return false;
