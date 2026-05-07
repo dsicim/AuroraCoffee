@@ -183,21 +183,36 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     console.log("REDOWNLOADING IMAGES...");
                     return await sql.getAllImageURLs().then(async result => {
                         if (result.success) {
-                            const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
                             console.log("FOUND IMAGES TO DOWNLOAD.");
-                            for (let i = 0; i < result.image_urls.length; i++) {
-                                const url = result.image_urls[i];
-                                console.log("Fetching "+i+"/"+result.image_urls.length)
-                                console.log("Fetching image URL " + baseURL + url);
-                                await fetch(baseURL +url).then(res => {
-                                    if (!res.ok) {
-                                        throw new Error("Failed to fetch image URL " + baseURL + url + ": " + res.statusText);
-                                    }
-                                    else {
-                                        const writeStream = fs.createWriteStream(path.join(__dirname, "..", "Database", "uploads", path.basename(url)));
-                                        Readable.fromWeb(res.body).pipe(writeStream);
-                                    }
-                                }).catch(err => console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString()));
+                            const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
+                            for (const [i, url] of result.image_urls.entries()) {
+                                try {
+                                    console.log(`Fetching image ${i + 1}/${result.image_urls.length}: ${baseURL + url}`);
+                                    const resp = await fetch(baseURL + url);
+                                    if (!resp.ok) throw new Error(`Fetch failed ${resp.status} ${resp.statusText}`);
+                                    const dest = path.join(__dirname, "..", "Database", "uploads", path.basename(url));
+
+                                    await new Promise((resolve, reject) => {
+                                    const writeStream = fs.createWriteStream(dest);
+                                    const bodyStream = Readable.fromWeb(resp.body);
+
+                                    bodyStream.on("error", (err) => {
+                                        writeStream.destroy();
+                                        reject(err);
+                                    });
+                                    writeStream.on("error", (err) => {
+                                        bodyStream.destroy();
+                                        reject(err);
+                                    });
+                                    writeStream.on("finish", resolve);
+
+                                    bodyStream.pipe(writeStream);
+                                    });
+
+                                    console.log(`Downloaded ${i + 1}/${result.image_urls.length}: ${url}`);
+                                } catch (err) {
+                                    console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString());
+                                }
                             }
                             console.log("RESTORE COMPLETE.");
                             return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
