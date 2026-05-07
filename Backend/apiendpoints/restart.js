@@ -114,7 +114,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         return { s: 500, j: false, d: "Failed to fetch SQL dump from " + (backup ? "main site" : "backup site") + ": " + sqlDumpFromOtherSite.statusText };
                     }
                     await runMysqlAdmin(
-                        { user: DB_USER, password: DB_PASS },
+                        { user: config.user, password: config.password },
                         "DROP DATABASE IF EXISTS 308_db; CREATE DATABASE 308_db;"
                     );
                     const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p ${config.password}`, "308_db"], {
