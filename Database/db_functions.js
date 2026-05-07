@@ -830,10 +830,10 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
     }
 };
 
-func.deleteComment = async function (userId, itemId) {
-    if (!userId || !itemId) throw new DBError(400, 'User ID and Item ID are required');
+func.deleteComment = async function (userId, productId) {
+    if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
     try {
-        const [result] = await pool.execute('DELETE FROM comments WHERE id = ? AND user_id = ?', [itemId, userId]);
+        const [result] = await pool.execute('DELETE FROM comments WHERE product_id = ? AND user_id = ?', [productId, userId]);
         if (result.affectedRows === 0) throw new DBError(404, 'Comment not found');
         return { success: true, message: 'Comment removed' };
     } catch (error) {
