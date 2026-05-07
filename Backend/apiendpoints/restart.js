@@ -93,7 +93,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "dumpimages") {
-                    const archive = spawn("tar", ["-czf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "pipe"] });
+                    const archive = spawn("tar", ["-cf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "pipe"] });
                     archive.stdout.pipe(res);
                     let err = "";
                     archive.stderr.on("data", c => err += c.toString("utf8"));
@@ -146,7 +146,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
                     await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
                     const extractPath = path.join(__dirname, "..", "Database");
-                    const tar = spawn("tar", ["-xzf", "-", "-C", extractPath], { stdio: ["pipe", "ignore", "pipe"] });
+                    res.write("IMAGE DUMP STREAMING.\n");
+                    const tar = spawn("tar", ["-xf", "-", "-C", extractPath], { stdio: ["pipe", "ignore", "pipe"] });
                     let tarErr = "";
                     tar.stderr.on("data", (c) => (tarErr += c.toString("utf8")));
                     await new Promise((resolve, reject) => {
