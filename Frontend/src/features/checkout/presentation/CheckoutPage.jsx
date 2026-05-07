@@ -1152,13 +1152,13 @@ export default function CheckoutPage() {
           <div className="aurora-summary-card p-5">
             <div className="aurora-widget-body">
               <div className="aurora-widget-heading">
-                <p className="aurora-kicker">Reference</p>
+                <p className="aurora-kicker">{submittedOrder ? 'Status' : 'Progress'}</p>
                 <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
-                  {submittedOrder ? submittedOrder.reference : `Step ${stepIndex + 1}`}
+                  {submittedOrder ? 'Confirmed' : `Step ${stepIndex + 1}`}
                 </p>
               </div>
               <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                {submittedOrder ? 'Submitted order snapshot stored locally.' : 'Current checkout stage.'}
+                {submittedOrder ? 'Your purchase is complete.' : 'Current checkout stage.'}
               </p>
             </div>
           </div>
@@ -2059,7 +2059,7 @@ export default function CheckoutPage() {
                 Your order has been placed
               </h2>
               <p className="mt-5 text-lg leading-8 text-[var(--aurora-text)]">
-                Reference {submittedOrder.reference} was created on{' '}
+                Your purchase was completed on{' '}
                 {new Date(submittedOrder.submittedAt).toLocaleString('en-GB', {
                   hour12: false,
                 })}
