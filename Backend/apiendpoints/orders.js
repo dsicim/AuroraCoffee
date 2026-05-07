@@ -88,7 +88,39 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!query || !query.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const specificorder = Boolean(query.id) ? query.id : null;
             if (!specificorder) return { s: 400, j: true, d: { e: "Order ID is required" } };
-            return await sql.getUserOrders(currentUser.id, specificorder).then(async result => {
+            const admin = (["Admin","Sales Manager"].includes(currentUser.role)) ? true : false;
+            if (admin) return await sql.getAllOrders(specificorder).then(async result => {
+                if (result.success) {
+                    const errors = [];
+                    const ordr = result.orders.find(o => o.id === specificorder);
+                    if (!ordr) return { s: 404, j: true, d: { e: "Order not found" } };
+                    try {
+                        ordr.details = aes.pjs(ordr.details);
+                        if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                        const decrypted = aes.decrypt(ordr.details, ordr.user_id);
+                        if (!decrypted.s) throw new Error("Decryption failed");
+                        const order = aes.pjs(decrypted.value);
+                        if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                        ordr.details = order;
+                        return await pdf.generatePDF(ordr).then(document => {
+                            return { s: 200, j: false, d: document, h: {"Content-Type": "application/pdf", "Content-Disposition": "inline; filename=invoice.pdf", "Content-Length": Buffer.byteLength(document)} };
+                        }).catch(err => {
+                            return { s: 500, j: true, d: { e: "Issue with PDF rendering: "+err.toString() } };
+                        });
+                    } catch (err) {
+                        console.error("Generate PDF error:", err);
+                        return { s: 500, j:true, d: { e: err.toString() } };
+                    }
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get orders error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+            else return await sql.getUserOrders(currentUser.id, specificorder).then(async result => {
                 if (result.success) {
                     const errors = [];
                     const ordr = result.orders.find(o => o.id === specificorder);
