@@ -996,13 +996,15 @@ function ProductEditPanel({ products, loading }) {
   )
   const [selectedProductKey, setSelectedProductKey] = useState('')
   const [selectedProductId, setSelectedProductId] = useState(null)
-  const selectedProduct = useMemo(
+  const [selectedProductSnapshot, setSelectedProductSnapshot] = useState(null)
+  const currentSelectedProduct = useMemo(
     () =>
-      editableProducts.find((product) => product.id === selectedProductId) ||
+      editableProducts.find((product) => Number(product.id) === Number(selectedProductId)) ||
       editableProducts.find((product) => getProductManagerSelectKey(product) === selectedProductKey) ||
       null,
     [editableProducts, selectedProductId, selectedProductKey],
   )
+  const selectedProduct = currentSelectedProduct || selectedProductSnapshot
   const selectedProductSelectKey = selectedProduct
     ? getProductManagerSelectKey(selectedProduct)
     : selectedProductKey
@@ -1145,6 +1147,7 @@ function ProductEditPanel({ products, loading }) {
 
                 setSelectedProductKey(nextProductKey)
                 setSelectedProductId(nextProduct?.id ?? null)
+                setSelectedProductSnapshot(nextProduct)
                 setSaveState({
                   saving: false,
                   error: '',
