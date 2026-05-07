@@ -244,9 +244,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[item.product_id], body.data.opt, body.data.var, true);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
+                console.log(product.product[item.product_id].variants);
                 const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.id === body.data.var ? body.data.var : item.variant_id).stock : product.product[item.product_id].stock;
                 const qty = body.data.qty || item.qty;
-                console.log("Stock for product ID " + body.data.id + " with variant ID " + body.data.var + ": " + stock);
+                console.log("Stock for product ID " + item.product_id + " with variant ID " + body.data.var + ": " + stock);
                 console.log("Requested quantity:", body.data.qty);
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
                 return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt ? JSON.stringify(body.data.opt) : undefined, body.data.var || null).then(result => {
