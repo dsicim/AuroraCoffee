@@ -813,9 +813,10 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
         else {
             if (!text) text = "";
             const bypassApproval = commented.status === "approved" && (text === commented.comment_text || text === "") && (namesnapshot === commented.name_snapshot || namesnapshot === "Anonymous");
+            if (text === "") commented.comment_text = "";
             const [result] = await pool.execute(
-                'UPDATE comments SET edited_text = ?, rating = ?, status = ?, edited_name_snapshot = ?, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
-                [text, rating, bypassApproval ? 'approved' : 'pending_edit', namesnapshot, commented.id]
+                'UPDATE comments SET comment_text = ?, edited_text = ?, rating = ?, status = ?, edited_name_snapshot = ?, edited_edited_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [commented.comment_text, text, rating, bypassApproval ? 'approved' : 'pending_edit', namesnapshot, commented.id]
             );
             if (result.affectedRows === 0) {
                 throw new DBError(404, 'Comment not found');
