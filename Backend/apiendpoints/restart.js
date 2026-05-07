@@ -125,8 +125,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
 
                     await new Promise((resolve, reject) => {
-                        dumpRes.body.pipe(mysql.stdin);
-                        dumpRes.body.on("error", reject);
+                        sqlDumpFromOtherSite.body.pipe(mysql.stdin);
+                        sqlDumpFromOtherSite.body.on("error", reject);
                         mysql.on("error", reject);
                         mysql.on("close", (code) => {
                         if (code === 0) resolve();
