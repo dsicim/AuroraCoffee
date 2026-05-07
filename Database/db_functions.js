@@ -1061,6 +1061,15 @@ func.getDeliveredItems = async function (userId) {
         throw new DBError(500, 'Failed to fetch delivered items');
     }
 }
+func.getAllOrders = async function (orderId = null) {
+    try {
+        const [orders] = await pool.execute('SELECT o.*, u.displayname AS customer_name, u.username AS customer_email FROM orders o LEFT JOIN users u ON o.user_id = u.id' + (orderId ? ' WHERE o.id = ?' : ' ')+' ORDER BY o.created_at DESC', orderId ? [orderId] : []);
+        return { success: true, orders: orders };
+    } catch (error) {
+        console.error('Get user orders error:', error);
+        throw new DBError(500, 'Failed to fetch user orders');
+    }
+};
 func.getUserOrders = async function (userId, orderId = null) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
