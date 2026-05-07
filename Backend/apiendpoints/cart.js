@@ -65,6 +65,28 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                const cart = await sql.getCart(currentUser.id).then(result => {
+                    if (result.success) {
+                        return { s: true, cart: result.cart.map(item => { try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) };
+                    }
+                    else {
+                        return { s: false, e: "Failed to fetch cart" };
+                    }
+                }).catch(err => {
+                    console.error("Get cart error:", err);
+                    if (err instanceof sql.DBError) return { s: false, e: err.error || "Failed to fetch cart" };
+                    else return { s: false, e: "Failed to fetch cart" };
+                });
+                if (!cart.s) return { s: 400, j: true, d: { e: cart.e || "Failed to fetch cart" } };
+                const item = cart.cart.filter(item => item.product_id === body.data.id && item.variant_id == body.data.var);
+                function sumOfArray(arr) {
+                    let sum = 0;
+                    arr.forEach(num => {
+                        sum += num.quantity;
+                    });
+                    return sum;
+                }
+                const qtyAlreadyInCart = item.length > 0 ? sumOfArray(item) : 0;
                 const product = await sql.getProductsByIds(null, [body.data.id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
@@ -91,7 +113,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 console.log("Stock for product ID " + body.data.id + " with variant ID " + body.data.var + ": " + stock);
                 console.log("Requested quantity:", body.data.qty);
                 const qty = body.data.qty;
-                if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
+                if (qty + qtyAlreadyInCart > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
                 return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt ? body.data.opt : {}), body.data.var || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Item added to cart" } };
                     else return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -255,8 +277,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                 }
                 const qty = body.data.qty || item.qty;
-                console.log("Stock for product ID " + item.product_id + " with variant ID " + body.data.var + ": " + stock);
-                console.log("Requested quantity:", body.data.qty);
                 if (qty > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
                 return await sql.modifyCartItem(currentUser.id, body.data.id, body.data.qty, body.data.opt ? JSON.stringify(body.data.opt) : undefined, body.data.var || null).then(result => {
                     if (result.success) return { s: 200, j: true, d: { msg: "Cart item updated" } };
