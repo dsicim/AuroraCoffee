@@ -18,7 +18,7 @@ export const orderProgressSteps = [
 
 const MAX_CACHED_ORDER_DETAILS = 30
 
-const knownOrderStatuses = new Set([
+export const orderStatusOptions = [
   'initialized',
   'pending',
   'confirmed',
@@ -26,7 +26,9 @@ const knownOrderStatuses = new Set([
   'shipped',
   'delivered',
   'cancelled',
-])
+]
+
+const knownOrderStatuses = new Set(orderStatusOptions)
 
 const orderStatusLabels = {
   initialized: 'Pending',
@@ -714,6 +716,59 @@ export async function fetchOrderById(orderId, { force = false } = {}) {
 
   inFlightOrderDetailPromises.set(cacheKey, request)
   return request
+}
+
+export async function fetchAdminOrders() {
+  const payload = await requestOrdersJson('?admin=1', {
+    method: 'GET',
+  })
+
+  return sortOrders(
+    Array.isArray(payload?.orders)
+      ? payload.orders.map(normalizeOrderSummary).filter(Boolean)
+      : [],
+  )
+}
+
+export async function fetchAdminOrderById(orderId) {
+  const normalizedOrderId = String(orderId || '').trim()
+
+  if (!normalizedOrderId) {
+    return null
+  }
+
+  const payload = await requestOrdersJson(`?admin=1&id=${encodeURIComponent(normalizedOrderId)}`, {
+    method: 'GET',
+  })
+  const detailOrder = await normalizeOrderDetail(payload?.order)
+
+  if (!detailOrder) {
+    throw new Error('Order not found')
+  }
+
+  return detailOrder
+}
+
+export async function updateOrderStatus(orderId, status) {
+  const normalizedOrderId = String(orderId || '').trim()
+  const normalizedStatus = normalizeOrderStatusKey(status)
+
+  if (!normalizedOrderId) {
+    throw new Error('Order ID is required')
+  }
+
+  const result = await requestOrdersJson('/status', {
+    method: 'PATCH',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedOrderId,
+      status: normalizedStatus,
+    }),
+  })
+
+  invalidateOrdersCache()
+  dispatchOrdersChange('status', normalizedOrderId)
+  return result
 }
 
 export function invalidateOrdersCache() {
