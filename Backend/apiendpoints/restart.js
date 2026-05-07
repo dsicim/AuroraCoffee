@@ -199,24 +199,25 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     const dest = path.join(__dirname, "..", "Database", "uploads", path.basename(url));
 
                                     await new Promise((resolve, reject) => {
-                                    const writeStream = fs.createWriteStream(dest);
-                                    const bodyStream = Readable.fromWeb(resp.body);
+                                        const writeStream = fs.createWriteStream(dest);
+                                        const bodyStream = Readable.fromWeb(resp.body);
 
-                                    bodyStream.on("error", (err) => {
-                                        writeStream.destroy();
-                                        reject(err);
-                                    });
-                                    writeStream.on("error", (err) => {
-                                        bodyStream.destroy();
-                                        reject(err);
-                                    });
-                                    writeStream.on("finish", resolve);
+                                        bodyStream.on("error", (err) => {
+                                            writeStream.destroy();
+                                            reject(err);
+                                        });
+                                        writeStream.on("error", (err) => {
+                                            bodyStream.destroy();
+                                            reject(err);
+                                        });
+                                        writeStream.on("finish", resolve);
 
-                                    bodyStream.pipe(writeStream);
+                                        bodyStream.pipe(writeStream);
                                     });
 
                                     res.write(`Downloaded ${url}\n`);
                                 } catch (err) {
+                                    res.write(`FAILED to download ${url}: ${err.toString()}\n`);
                                     console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString());
                                 }
                             }
