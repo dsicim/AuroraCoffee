@@ -110,24 +110,32 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 else if (body.data.action === "restore") {
                     const backup = config.isBackup;
+                    console.log("FULL DATABASE RESTORE INITIATED FROM " + (backup ? "MAIN SITE" : "BACKUP SITE"));
                     const sqlDumpFromOtherSite = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart", { headers: { authorization: config.password }, method: "POST", body: JSON.stringify({ action: "dumpsql" }) });
                     if (!sqlDumpFromOtherSite.ok) {
                         return { s: 500, j: false, d: "Failed to fetch SQL dump from " + (backup ? "main site" : "backup site") + ": " + sqlDumpFromOtherSite.statusText };
                     }
+                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, STARTING TO STREAM AND RESTORE DATABASE");
                     await runMysqlAdmin(
                         { user: config.user, password: config.password },
                         "DROP DATABASE IF EXISTS 308_db; CREATE DATABASE 308_db;"
                     );
+                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " DATABASE DROPPED.");
                     const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p ${config.password}`, "308_db"], {
                         stdio: ["pipe", "ignore", "pipe"],
                     });
+                    console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.");
+                    await fs.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
+                    await fs.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
 
                     let mysqlErr = "";
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
 
+                    console.log("REBUILDING SQL FROM DUMP...");
                     await new Promise((resolve, reject) => {
-                        Readable.fromWeb(sqlDumpFromOtherSite.body).pipe(mysql.stdin);
-                        sqlDumpFromOtherSite.body.on("error", reject);
+                        const dumpStream = Readable.fromWeb(sqlDumpFromOtherSite.body);
+                        dumpStream.on("error", reject);
+                        dumpStream.pipe(mysql.stdin);
                         mysql.on("error", reject);
                         mysql.on("close", (code) => {
                         if (code === 0) resolve();
@@ -136,9 +144,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     });
 
 
+                    console.log("REDOWNLOADING IMAGES...");
                     return await sql.getAllImageURLs().then(async result => {
                         if (result.success) {
                             const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
+                            console.log("FOUND IMAGES TO DOWNLOAD.");
                             result.image_urls.forEach(async (url) => {
                                 await fetch(baseURL +url).then(res => {
                                     if (!res.ok) {
@@ -150,6 +160,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     }
                                 }).catch(err => console.error("Failed to fetch image URL " + url + ": " + err.toString()));
                             });
+                            console.log("RESTORE COMPLETE.");
                             return { s: 200, j: true, d: "Database restore successful from " + (backup ? "main site" : "backup site") };
                         }
                         else {
