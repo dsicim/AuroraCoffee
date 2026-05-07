@@ -798,7 +798,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
                 'INSERT INTO comments (user_id, product_id, comment_text, rating, status, name_snapshot) VALUES (?, ?, ?, ?, ?, ?)',
                 [userId, productId, text, rating, 'pending', namesnapshot]
             );
-            return { success: true, message: 'Comment submitted successfully'+text===""?'':', awaiting approval', commentId: result.insertId };
+            return { success: true, message: 'Comment submitted successfully'+(text===""?'':', awaiting approval'), commentId: result.insertId };
         }
         else if (["rejected", "pending"].includes(commented.status)) {
             const [result] = await pool.execute(
@@ -808,7 +808,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
             if (result.affectedRows === 0) {
                 throw new DBError(404, 'Comment not found');
             }
-            return { success: true, message: 'Comment edit submitted successfully'+text===""?'':', your comment is now awaiting approval.', commentId: result.insertId };
+            return { success: true, message: 'Comment edit submitted successfully'+(text===""?'':', your comment is now awaiting approval.'), commentId: result.insertId };
         }
         else {
             if (!text) text = "";
@@ -820,7 +820,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
             if (result.affectedRows === 0) {
                 throw new DBError(404, 'Comment not found');
             }
-            return { success: true, message: 'Comment edit submitted successfully'+text===""?'':', the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.', commentId: result.insertId };
+            return { success: true, message: 'Comment edit submitted successfully'+(text===""?'':', the edit is now awaiting approval. Your previous comment will still be visible until your new comment is approved.'), commentId: result.insertId };
         }
     } catch (error) {
         if (error instanceof DBError) throw error;
