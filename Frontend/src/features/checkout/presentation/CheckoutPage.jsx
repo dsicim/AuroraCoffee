@@ -409,6 +409,8 @@ export default function CheckoutPage() {
   const isLoggedIn = Boolean(session?.token)
   const installmentBin = payment.cardNumber.replace(/\D/g, '').slice(0, 6)
   const installmentOptions = getInstallmentOptions(installmentInfo)
+  const force3DS = installmentInfo?.features?.force3DS === true
+  const effectiveAvoid3DS = force3DS ? false : avoid3DS
   const activeInstallmentLabel = getInstallmentSelectionLabel(
     installmentInfo,
     selectedInstallments,
@@ -948,7 +950,7 @@ export default function CheckoutPage() {
           savedCardToken: selectedSavedCardId || '',
           cvc: payment.cvc,
           card: selectedSavedCardId ? null : payment,
-          avoid3DS,
+          avoid3DS: effectiveAvoid3DS,
         })
 
         if (paymentResponse?.redirect3DS && paymentResponse?.target) {
@@ -1786,7 +1788,8 @@ export default function CheckoutPage() {
               <label className="glass-toggle sm:col-span-2">
                 <input
                   type="checkbox"
-                  checked={avoid3DS}
+                  checked={effectiveAvoid3DS}
+                  disabled={force3DS}
                   onChange={(event) => setAvoid3DS(event.target.checked)}
                   className="toggle-input"
                 />
@@ -1801,7 +1804,9 @@ export default function CheckoutPage() {
                   </span>
                 </span>
                 <span className="toggle-label">
-                  Skip 3D Secure when the card allows it
+                  {force3DS
+                    ? '3D Secure is required for this card'
+                    : 'Skip 3D Secure when the card allows it'}
                 </span>
               </label>
 
@@ -1955,7 +1960,7 @@ export default function CheckoutPage() {
                       <br />
                       {activePaymentSummary.maskedCardNumber}
                       <br />
-                      {avoid3DS
+                      {effectiveAvoid3DS
                         ? '3D Secure skipped when available'
                         : '3D Secure requested'}
                       {!selectedSavedCardId && activePaymentSummary.expiry ? (
