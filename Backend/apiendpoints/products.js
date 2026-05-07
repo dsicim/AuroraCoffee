@@ -2,7 +2,6 @@ const fs = require("fs");
 const path = require("path");
 const sql = require("../../Database/server.js");
 const uploader = require("../components/upload.js");
-const pdf = require("../invoice/pdf.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     const userId = currentUser && !currentUser.e && currentUser.id ? currentUser.id : null;
     if (endpoint.length === 0) {
