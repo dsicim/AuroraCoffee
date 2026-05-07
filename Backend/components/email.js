@@ -15,7 +15,8 @@ async function sendEmail(to, subject, body, attachments = []) {
         attachments: attachments.map(att => ({
             filename: att.filename,
             content: att.content,
-            contentType: att.contentType
+            contentType: att.contentType,
+            contentDisposition: "attachment" // Ensure the attachment is treated as a file attachment, not inline
         }))
     };
     const mail = nodemailer.createTransport({
