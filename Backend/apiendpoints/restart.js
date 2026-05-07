@@ -193,7 +193,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
                             for (const [i, url] of result.image_urls.entries()) {
                                 try {
-                                    res.write(`Fetching image ${i + 1}/${result.image_urls.length}: ${baseURL + url}\n`);
+                                    res.write(`Fetching image ${i + 1}/${result.image_urls.length}\n`);
                                     const resp = await fetch(baseURL + url);
                                     if (!resp.ok) throw new Error(`Fetch failed ${resp.status} ${resp.statusText}`);
                                     const dest = path.join(__dirname, "..", "Database", "uploads", path.basename(url));
@@ -215,7 +215,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     bodyStream.pipe(writeStream);
                                     });
 
-                                    res.write(`Downloaded ${i + 1}/${result.image_urls.length}: ${url}\n`);
+                                    res.write(`Downloaded ${url}\n`);
                                 } catch (err) {
                                     console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString());
                                 }

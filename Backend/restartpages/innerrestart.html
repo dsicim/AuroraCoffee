@@ -153,12 +153,12 @@
                         const line = buf.slice(0, nl);
                         buf = buf.slice(nl + 1);
                         output += line + "\n";
-                        updateOutput(output);
+                        updateOutput("Restoring SQL...\n"+output);
                     }
                 }
                 if (buf.length) {
                     output += buf;
-                    updateOutput(output);
+                    updateOutput("RESPONSE:\n"+output);
                 }
             } catch (err) {
                 updateOutput("ERROR: " + err);
