@@ -980,9 +980,7 @@ function ProductEditPanel({ products, loading }) {
     success: '',
   })
 
-  function handleSubmit(event) {
-    event.preventDefault()
-
+  function handleSave(formElement) {
     if (!selectedProduct) {
       setSaveState({
         saving: false,
@@ -995,7 +993,7 @@ function ProductEditPanel({ products, loading }) {
     let edits = null
 
     try {
-      const formData = new FormData(event.currentTarget)
+      const formData = new FormData(formElement)
       const form = Object.fromEntries(
         productEditFields.map((field) => [field.key, formData.get(field.key) || '']),
       )
@@ -1071,7 +1069,9 @@ function ProductEditPanel({ products, loading }) {
 
       <form
         className="aurora-product-edit-form"
-        onSubmit={handleSubmit}
+        onSubmit={(event) => {
+          event.preventDefault()
+        }}
         onKeyDown={(event) => {
           if (shouldPreventProductEditEnterSubmit(event)) {
             event.preventDefault()
@@ -1165,10 +1165,13 @@ function ProductEditPanel({ products, loading }) {
                   Reset fields
                 </LiquidGlassButton>
                 <LiquidGlassButton
-                  type="submit"
+                  type="button"
                   variant="secondary"
                   loading={saveState.saving}
                   disabled={saveState.saving}
+                  onClick={(event) => {
+                    handleSave(event.currentTarget.form)
+                  }}
                 >
                   Save product
                 </LiquidGlassButton>
