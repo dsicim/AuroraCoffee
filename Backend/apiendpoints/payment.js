@@ -620,7 +620,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
 
             // Shipping Address Validation
             console.log("Shipping address token:", body.data.shipping.token);
-            console.log("Shipping address:", shippingRecords);
+            console.log("Shipping address:", shippingToken);
             const shippingRecords = (body.data.shipping.token) ? await sql.getAddresses(currentUser.id, body.data.shipping.token).then(async result => { return await parseAddress(result, body.data.shipping.token); }).catch(err => { return parseAddressError(err); }) : { s: false, e: "No token provided" };
             console.log("Parsed shipping address:", shippingRecords);
             if (!body.data.shipping.token && !shippingRecords.s) return { s: 500, j: true, d: { success: false, e: { what: "Shipping Address", why: "Failed to retrieve shipping address information: " + shippingRecords.e, resolution: "Please choose a different address or edit your saved addresses and try again." } } };
