@@ -93,12 +93,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "dumpimages") {
-                    const archive = spawn("tar", ["-czf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "ignore"] });
+                    const archive = spawn("tar", ["-czf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "pipe"] });
                     archive.stdout.pipe(res);
                     let err = "";
                     archive.stderr.on("data", c => err += c.toString("utf8"));
                     archive.on("close", code => {
                         if (code !== 0) console.error("Image dump failed:", err);
+                    });
+                    archive.on("error", e => {
+                        console.error("Image dump spawn failed:", e);
                     });
                     return { s: 200, j: false, d: null, resended: true };
                 }
