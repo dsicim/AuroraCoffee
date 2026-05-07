@@ -244,8 +244,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[item.product_id], body.data.opt, body.data.var, true);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
-                console.log(product.product[item.product_id].variants);
-                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => v.id === body.data.var ? body.data.var : item.variant_id).stock : product.product[item.product_id].stock;
+                console.log(body.data.var);
+                console.log(product.product[item.product_id]);
+                const stock = (product.product[item.product_id].has_variants) ? product.product[item.product_id].variants.find(v => (v.id === body.data.var) ? body.data.var : item.variant_id).stock : product.product[item.product_id].stock;
                 const qty = body.data.qty || item.qty;
                 console.log("Stock for product ID " + item.product_id + " with variant ID " + body.data.var + ": " + stock);
                 console.log("Requested quantity:", body.data.qty);
