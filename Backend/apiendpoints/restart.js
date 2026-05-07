@@ -119,7 +119,42 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, STARTING TO STREAM AND RESTORE DATABASE");
                     await runMysqlAdmin(
                         { user: config.user, password: config.password },
-                        "DROP DATABASE IF EXISTS 308_db; CREATE DATABASE 308_db;"
+                        ["USE 308_db",
+                        "SET FOREIGN_KEY_CHECKS=0",
+                        "SET @v := (SELECT GROUP_CONCAT(CONCAT('`', table_name, '`') SEPARATOR ',') FROM information_schema.views WHERE table_schema='308_db')",
+                        "SET @sv := IF(@v IS NULL, 'SELECT 1', CONCAT('DROP VIEW ', @v))",
+                        "PREPARE stmtv FROM @sv",
+                        "EXECUTE stmtv",
+                        "DEALLOCATE PREPARE stmtv",
+
+                        // drop base tables
+                        "SET @t := (SELECT GROUP_CONCAT(CONCAT('`', table_name, '`') SEPARATOR ',') FROM information_schema.tables WHERE table_schema='308_db' AND table_type='BASE TABLE')",
+                        "SET @st := IF(@t IS NULL, 'SELECT 1', CONCAT('DROP TABLE ', @t))",
+                        "PREPARE stmtt FROM @st",
+                        "EXECUTE stmtt",
+                        "DEALLOCATE PREPARE stmtt",
+
+                        // drop routines
+                        "SET @p := (SELECT GROUP_CONCAT(CONCAT('`', routine_name, '`') SEPARATOR ',') FROM information_schema.routines WHERE routine_schema='308_db' AND routine_type='PROCEDURE')",
+                        "SET @sp := IF(@p IS NULL, 'SELECT 1', CONCAT('DROP PROCEDURE ', @p))",
+                        "PREPARE stmtp FROM @sp",
+                        "EXECUTE stmtp",
+                        "DEALLOCATE PREPARE stmtp",
+
+                        "SET @f := (SELECT GROUP_CONCAT(CONCAT('`', routine_name, '`') SEPARATOR ',') FROM information_schema.routines WHERE routine_schema='308_db' AND routine_type='FUNCTION')",
+                        "SET @sf := IF(@f IS NULL, 'SELECT 1', CONCAT('DROP FUNCTION ', @f))",
+                        "PREPARE stmtf FROM @sf",
+                        "EXECUTE stmtf",
+                        "DEALLOCATE PREPARE stmtf",
+
+                        // drop events
+                        "SET @e := (SELECT GROUP_CONCAT(CONCAT('`', event_name, '`') SEPARATOR ',') FROM information_schema.events WHERE event_schema='308_db')",
+                        "SET @se := IF(@e IS NULL, 'SELECT 1', CONCAT('DROP EVENT ', @e))",
+                        "PREPARE stmte FROM @se",
+                        "EXECUTE stmte",
+                        "DEALLOCATE PREPARE stmte",
+
+                        "SET FOREIGN_KEY_CHECKS=1"].join("; ")
                     );
                     console.log((backup ? "MAIN SITE" : "BACKUP SITE") + " DATABASE DROPPED.");
                     const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p ${config.password}`, "308_db"], {
