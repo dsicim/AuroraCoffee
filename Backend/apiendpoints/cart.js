@@ -110,12 +110,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return sum;
                 }
                 const qtyAlreadyInCart = item.length > 0 ? sumOfArray(item) : 0;
-                console.log(item);
-                console.log("Quantity of product ID " + body.data.id + " with variant ID " + body.data.var + " already in cart: " + qtyAlreadyInCart);
-                
                 const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.id === body.data.var).stock : product.product[body.data.id].stock;
-                console.log("Stock for product ID " + body.data.id + " with variant ID " + body.data.var + ": " + stock);
-                console.log("Requested quantity:", body.data.qty);
                 const qty = body.data.qty;
                 if (qty + qtyAlreadyInCart > stock) return { s: 400, j: true, d: { e: "Requested quantity exceeds available stock. Available stock: " + stock } };
                 return await sql.addToCart(currentUser.id, body.data.id, body.data.qty || 1, JSON.stringify(body.data.opt ? body.data.opt : {}), body.data.var || null).then(result => {
