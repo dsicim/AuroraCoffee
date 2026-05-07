@@ -92,6 +92,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     });
                     return { s: 200, j: false, d: null, resended: true };
                 }
+                else if (body.data.action === "dumpimages") {
+                    const archive = spawn("tar", ["-czf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "ignore"] });
+                    archive.stdout.pipe(res);
+                    let err = "";
+                    archive.stderr.on("data", c => err += c.toString("utf8"));
+                    archive.on("close", code => {
+                        if (code !== 0) console.error("Image dump failed:", err);
+                    });
+                    return { s: 200, j: false, d: null, resended: true };
+                }
                 else if (body.data.action === "sql" || body.data.action === "sqlrerun") {
                     if (currentUser.internal) {
                         return { s: 403, j: false, d: "Forbidden" };
@@ -122,7 +132,30 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         res.end();
                         return { s: 500, j: false, d: null, resended: true };
                     }
-                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, STARTING TO STREAM AND RESTORE DATABASE\n");
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR SQL DUMP, CONTACTING AGAIN FOR IMAGE DUMP\n");
+                    const imageDumpFromOtherSite = await fetch((backup ? "https://auroracoffee.youcantdrop.com" : "https://backupauroracoffee.youcantdrop.com") + "/api/restart", { headers: { authorization: config.password }, method: "POST", body: JSON.stringify({ action: "dumpimages" }) });
+                    if (!imageDumpFromOtherSite.ok) {
+                        res.write("Failed to fetch IMAGE dump from " + (backup ? "main site" : "backup site") + ": " + imageDumpFromOtherSite.statusText);
+                        res.end();
+                        return { s: 500, j: false, d: null, resended: true };
+                    }
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.\n");
+                    await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
+                    await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
+                    const extractPath = path.join(__dirname, "..", "Database");
+                    const tar = spawn("tar", ["-xzf", "-", "-C", extractPath], { stdio: ["pipe", "ignore", "pipe"] });
+                    let tarErr = "";
+                    tar.stderr.on("data", (c) => (tarErr += c.toString("utf8")));
+                    await new Promise((resolve, reject) => {
+                        Readable.fromWeb(imageDumpFromOtherSite.body).pipe(tar.stdin);
+                        tar.on("error", reject);
+                        tar.on("close", (code) => {
+                            if (code === 0) resolve();
+                            else reject(new Error(tarErr || `tar exited ${code}`));
+                        });
+                    });
+
+                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " CONTACTED FOR IMAGE DUMP, STARTING TO STREAM AND RESTORE DATABASE\n");
                     await runMysqlAdmin(
                         { user: config.user, password: config.password },
                         ["USE 308_db",
@@ -166,9 +199,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     const mysql = spawn("mysql", ["-h", "localhost", "-u", config.user, `-p${config.password}`, "308_db"], {
                         stdio: ["pipe", "ignore", "pipe"],
                     });
-                    res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.\n");
-                    await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
-                    await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
 
                     let mysqlErr = "";
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
@@ -185,59 +215,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         });
                     });
 
-
-                    res.write("REDOWNLOADING IMAGES...\n");
-                    return await sql.getAllImageURLs().then(async result => {
-                        if (result.success) {
-                            res.write("FOUND IMAGES TO DOWNLOAD.\n");
-                            const baseURL = backup ? "https://auroracoffee.youcantdrop.com/uploads/" : "https://backupauroracoffee.youcantdrop.com/uploads/";
-                            for (const [i, url] of result.image_urls.entries()) {
-                                try {
-                                    res.write(`Fetching image ${i + 1}/${result.image_urls.length}\n`);
-                                    const resp = await fetch(baseURL + url);
-                                    if (!resp.ok) throw new Error(`Fetch failed ${resp.status} ${resp.statusText}`);
-                                    const dest = path.join(__dirname, "..", "Database", "uploads", path.basename(url));
-
-                                    await new Promise((resolve, reject) => {
-                                        const writeStream = fs.createWriteStream(dest);
-                                        const bodyStream = Readable.fromWeb(resp.body);
-
-                                        bodyStream.on("error", (err) => {
-                                            writeStream.destroy();
-                                            reject(err);
-                                        });
-                                        writeStream.on("error", (err) => {
-                                            bodyStream.destroy();
-                                            reject(err);
-                                        });
-                                        writeStream.on("finish", resolve);
-
-                                        bodyStream.pipe(writeStream);
-                                    });
-
-                                    res.write(`Downloaded ${url}\n`);
-                                } catch (err) {
-                                    res.write(`FAILED to download ${url}: ${err.toString()}\n`);
-                                    console.error("Failed to fetch image URL " + baseURL + url + ": " + err.toString());
-                                }
-                            }
-                            res.write("RESTORE COMPLETE.\n");
-                            res.write("Database restore successful from " + (backup ? "main site" : "backup site") + "\n");
-                            res.end();
-                            return { s: 200, j: false, d: null, resended: true };
-                        }
-                        else {
-                            res.write("An unknown error occurred\n");
-                            res.end();
-                            return { s: 500, j: false, d: null, resended: true };
-                        }
-                    }).catch(err => {
-                        console.error("Get all image URLs error:", err);
-                        if (err instanceof sql.DBError) res.write((err.error+"\n") || "An unknown error occurred\n");
-                        else res.write("An unknown error occurred\n");
-                        res.end();
-                        return { s: 500, j: false, d: null, resended: true };
-                    });
+                    res.write("RESTORE COMPLETE.\n");
+                    res.write("Database restore successful from " + (backup ? "main site" : "backup site") + "\n");
+                    res.end();
                 }
                 else if (body.data.action === "backup") {
                     const backup = config.isBackup;
