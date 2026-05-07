@@ -2,6 +2,7 @@ const { spawn } = require("child_process");
 const sql = require("../../Database/server.js");
 const fs = require("fs");
 const path = require("path");
+const { Readable } = require("stream");
 function streamDump(res, { user, password, host = "localhost", db }) {
     const p = spawn("mysqldump", [
         "-h", host, "-u", user, `-p${password}`,
@@ -125,7 +126,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     mysql.stderr.on("data", (c) => (mysqlErr += c.toString("utf8")));
 
                     await new Promise((resolve, reject) => {
-                        sqlDumpFromOtherSite.body.pipe(mysql.stdin);
+                        Readable.fromWeb(sqlDumpFromOtherSite.body).pipe(mysql.stdin);
                         sqlDumpFromOtherSite.body.on("error", reject);
                         mysql.on("error", reject);
                         mysql.on("close", (code) => {
@@ -145,7 +146,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     }
                                     else {
                                         const writeStream = fs.createWriteStream(path.join(__dirname, "..", "Database", "uploads", path.basename(url)));
-                                        res.body.pipe(writeStream);
+                                        Readable.fromWeb(res.body).pipe(writeStream);
                                     }
                                 }).catch(err => console.error("Failed to fetch image URL " + url + ": " + err.toString()));
                             });
