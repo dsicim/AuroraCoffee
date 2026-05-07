@@ -65,30 +65,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else if (method === "POST") { // Add item to cart
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                const cart = await sql.getCart(currentUser.id).then(result => {
-                    if (result.success) {
-                        return { s: true, cart: result.cart.map(item => { try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) };
-                    }
-                    else {
-                        return { s: false, e: "Failed to fetch cart" };
-                    }
-                }).catch(err => {
-                    console.error("Get cart error:", err);
-                    if (err instanceof sql.DBError) return { s: false, e: err.error || "Failed to fetch cart" };
-                    else return { s: false, e: "Failed to fetch cart" };
-                });
-                if (!cart.s) return { s: 400, j: true, d: { e: cart.e || "Failed to fetch cart" } };
-                const item = cart.cart.filter(item => item.product_id === body.data.id && item.variant_id == body.data.var);
-                function sumOfArray(arr) {
-                    let sum = 0;
-                    arr.forEach(num => {
-                        sum += num.quantity;
-                    });
-                    return sum;
-                }
-                const qtyAlreadyInCart = item.length > 0 ? sumOfArray(item) : 0;
-                console.log(item);
-                console.log("Quantity of product ID " + body.data.id + " with variant ID " + body.data.var + " already in cart: " + qtyAlreadyInCart);
                 const product = await sql.getProductsByIds(null, [body.data.id]).then(async result => {
                     if (result.success) {
                         const productObj = {};
@@ -111,6 +87,32 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const validation = validateOptions(product.product[body.data.id], body.data.opt, body.data.var);
                 if (!validation.s) return { s: 400, j: true, d: { e: validation.e } };
                 if (validation.variant) body.data.var = validation.variant;
+
+                const cart = await sql.getCart(currentUser.id).then(result => {
+                    if (result.success) {
+                        return { s: true, cart: result.cart.map(item => { try { item.options = JSON.parse(item.options); } catch (e) { }; return item; }) };
+                    }
+                    else {
+                        return { s: false, e: "Failed to fetch cart" };
+                    }
+                }).catch(err => {
+                    console.error("Get cart error:", err);
+                    if (err instanceof sql.DBError) return { s: false, e: err.error || "Failed to fetch cart" };
+                    else return { s: false, e: "Failed to fetch cart" };
+                });
+                if (!cart.s) return { s: 400, j: true, d: { e: cart.e || "Failed to fetch cart" } };
+                const item = cart.cart.filter(item => item.product_id === body.data.id && item.variant_id === (body.data.var || null));
+                function sumOfArray(arr) {
+                    let sum = 0;
+                    arr.forEach(num => {
+                        sum += num.quantity;
+                    });
+                    return sum;
+                }
+                const qtyAlreadyInCart = item.length > 0 ? sumOfArray(item) : 0;
+                console.log(item);
+                console.log("Quantity of product ID " + body.data.id + " with variant ID " + body.data.var + " already in cart: " + qtyAlreadyInCart);
+                
                 const stock = (product.product[body.data.id].has_variants) ? product.product[body.data.id].variants.find(v => v.id === body.data.var).stock : product.product[body.data.id].stock;
                 console.log("Stock for product ID " + body.data.id + " with variant ID " + body.data.var + ": " + stock);
                 console.log("Requested quantity:", body.data.qty);
