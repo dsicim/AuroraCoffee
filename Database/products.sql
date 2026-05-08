@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS products (
     discount_rate DECIMAL(5, 2) DEFAULT 0.00,
     warranty_status VARCHAR(255) DEFAULT NULL,
     distributor_information VARCHAR(255) DEFAULT NULL,
+    sales INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
 );
@@ -102,6 +103,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     price_add DECIMAL(10, 2) UNSIGNED DEFAULT 0,
     price_mult DECIMAL(10, 4) UNSIGNED DEFAULT 1,
     stock INT DEFAULT 0,
+    sales INT DEFAULT 0,
     discount_rate DECIMAL(5, 2) DEFAULT 0.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE

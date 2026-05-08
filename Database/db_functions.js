@@ -479,7 +479,7 @@ func.decreaseStock = async function (productId, qty, variantId = null) {
         if (currentStock < qty) {
             throw new DBError(400, 'Insufficient total product stock');
         }
-        await connection.execute('UPDATE products SET stock = stock - ? WHERE id = ?', [qty, productId]);
+        await connection.execute('UPDATE products SET stock = stock - ?, sales = sales + ? WHERE id = ?', [qty, qty, productId]);
 
         if (variantId) {
             const [vRows] = await connection.execute('SELECT stock FROM product_variants WHERE id = ? AND product_id = ? FOR UPDATE', [variantId, productId]);
@@ -489,7 +489,7 @@ func.decreaseStock = async function (productId, qty, variantId = null) {
             if (vRows[0].stock < qty) {
                 throw new DBError(400, 'Insufficient variant stock');
             }
-            await connection.execute('UPDATE product_variants SET stock = stock - ? WHERE id = ?', [qty, variantId]);
+            await connection.execute('UPDATE product_variants SET stock = stock - ?, sales = sales + ? WHERE id = ?', [qty, qty, variantId]);
         }
 
         await connection.commit();

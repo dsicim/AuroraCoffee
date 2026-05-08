@@ -11,7 +11,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (ids.length > 0) {
                     return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids)).then(async result => {
                         if (result.success) {
-                            return { s: 200, j: true, d: { products: result.products, idsnotfound: result.idsnotfound } };
+                            return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = p.variants.map(v => {delete v.sales});return p}), idsnotfound: result.idsnotfound } };
                         }
                         else {
                             return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -49,7 +49,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getAllProducts(userId).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { products: result.products } };
+                    return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = p.variants.map(v => {delete v.sales});return p}) } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -68,7 +68,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 query.q = query.q.replaceAll("%20", " ").trim();
                 return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
-                        return { s: 200, j: true, d: { products: result.products } };
+                        return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = p.variants.map(v => {delete v.sales});return p}) } };
                     }
                     else {
                         return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -89,7 +89,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getCategories(parent).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { categories: result.categories, products: result.products } };
+                    return { s: 200, j: true, d: { categories: result.categories, products: result.products.map(p => {delete p.sales;p.variants = p.variants.map(v => {delete v.sales});return p}) } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
