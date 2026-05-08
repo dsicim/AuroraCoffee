@@ -988,9 +988,10 @@ export function useProductBySlug(slug) {
       }
 
       ensureProductCatalogScope(getProductCatalogScope())
+      const session = getAuthSession()
       const cachedProduct = getProductFromLookupBySlug(normalizedSlug)
 
-      if (cachedProduct && !force) {
+      if (cachedProduct && !force && !session?.token) {
         if (active) {
           setProduct(cachedProduct)
           setLoading(false)
