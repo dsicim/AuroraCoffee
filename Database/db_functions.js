@@ -243,6 +243,7 @@ func.enrichProductsWithOptions = async function (userId, products) {
     let brewMethods = null;
     for (let p of products) {
         const originalPrice = parseFloat(p.price);
+        if (p.averageRating) p.averageRating = parseFloat(p.averageRating);
         p.options = [];
         if (p.parent_category_name == "Coffee") {
             if (!brewMethods) {
