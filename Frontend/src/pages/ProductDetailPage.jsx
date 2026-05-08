@@ -491,47 +491,24 @@ function ReviewRatingInput({
         onHoverChange(null)
       }}
     >
-      <button
-        type="button"
-        className={`aurora-review-zero-button ${value === 0 ? 'is-selected' : ''}`.trim()}
-        aria-label="Rate 0 out of 5"
-        aria-pressed={value === 0 ? 'true' : 'false'}
-        disabled={disabled}
-        onMouseEnter={() => {
-          if (!disabled) {
-            onHoverChange(0)
-          }
-        }}
-        onFocus={() => {
-          if (!disabled) {
-            onHoverChange(0)
-          }
-        }}
-        onBlur={() => {
-          onHoverChange(null)
-        }}
-        onClick={() => {
-          if (!disabled) {
-            onChange(0)
-          }
-        }}
-      >
-        0
-      </button>
       {Array.from({ length: 5 }, (_, index) => {
         const starNumber = index + 1
         const leftStep = starNumber - 0.5
         const rightStep = starNumber
+        const starSteps = starNumber === 1 ? [0, leftStep, rightStep] : [leftStep, rightStep]
 
         return (
           <div key={starNumber} className="aurora-review-input-star">
             <ReviewStar fillPercent={getStarFillPercent(activeValue, starNumber)} />
-            <div className="aurora-review-star-hitbox">
-              {[leftStep, rightStep].map((step, stepIndex) => (
+            <div
+              className="aurora-review-star-hitbox"
+              style={{ gridTemplateColumns: `repeat(${starSteps.length}, minmax(0, 1fr))` }}
+            >
+              {starSteps.map((step, stepIndex) => (
                 <button
                   key={step}
                   type="button"
-                  className={`aurora-review-step-button ${value === step ? 'is-selected' : ''} ${stepIndex === 0 ? 'is-left' : 'is-right'}`}
+                  className={`aurora-review-step-button ${value === step ? 'is-selected' : ''} ${stepIndex === 0 ? 'is-left' : ''} ${stepIndex === starSteps.length - 1 ? 'is-right' : ''}`.trim()}
                   aria-label={`Rate ${step} out of 5`}
                   aria-pressed={value === step ? 'true' : 'false'}
                   disabled={disabled}
@@ -546,7 +523,7 @@ function ReviewRatingInput({
                     }
                   }}
                   onBlur={() => {
-                    onHoverChange(0)
+                    onHoverChange(null)
                   }}
                   onClick={() => {
                     if (!disabled) {

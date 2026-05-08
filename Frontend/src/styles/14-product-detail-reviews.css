@@ -232,49 +232,10 @@
     height: 100%;
   }
 
-  .aurora-review-zero-button {
-    appearance: none;
-    display: inline-grid;
-    place-items: center;
-    width: 2rem;
-    height: 2rem;
-    border: 1px solid rgba(120, 105, 83, 0.22);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.5);
-    color: var(--aurora-text);
-    font-size: 0.75rem;
-    font-weight: 800;
-    cursor: pointer;
-    outline: none;
-    transition:
-      border-color 0.16s ease,
-      background 0.16s ease,
-      color 0.16s ease,
-      transform 0.16s ease;
-  }
-
-  .aurora-review-zero-button:hover,
-  .aurora-review-zero-button.is-selected {
-    border-color: rgba(255, 190, 83, 0.7);
-    background: rgba(255, 224, 154, 0.5);
-    color: var(--aurora-text-strong);
-    transform: translateY(-1px);
-  }
-
-  .aurora-review-zero-button:disabled {
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  .aurora-review-zero-button:focus-visible {
-    box-shadow: 0 0 0 2px rgba(255, 226, 161, 0.36);
-  }
-
   .aurora-review-star-hitbox {
     position: absolute;
     inset: 0;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .aurora-review-step-button {
