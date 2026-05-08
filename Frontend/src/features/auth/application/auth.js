@@ -1,4 +1,4 @@
-import { buildApiUrl } from '../../../shared/api/api'
+import { buildApiUrl } from '../../../shared/api/api.js'
 
 export const authStorageKey = 'auroraAuth'
 export const authChangeEvent = 'aurora-auth-change'

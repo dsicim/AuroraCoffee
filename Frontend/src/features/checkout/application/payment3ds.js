@@ -1,5 +1,5 @@
-import { getAuthSession } from '../../../lib/auth'
-import { maskSavedCard } from './payment'
+import { getAuthSession } from '../../../lib/auth.js'
+import { maskSavedCard } from './payment.js'
 
 const payment3DSPendingStorageKey = 'auroraPayment3DSPending'
 const payment3DSReturnStorageKey = 'auroraPayment3DSReturn'

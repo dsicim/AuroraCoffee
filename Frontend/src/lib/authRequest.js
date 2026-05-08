@@ -1,5 +1,5 @@
-import { buildApiUrl } from '../shared/api/api'
-import { clearAuthSession, getAuthSession } from './auth'
+import { buildApiUrl } from '../shared/api/api.js'
+import { clearAuthSession, getAuthSession } from './auth.js'
 
 export function getAuthorizationHeaders() {
   const session = getAuthSession()

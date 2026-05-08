@@ -1,5 +1,5 @@
-import { getAuthSession } from '../../../lib/auth'
-import { fetchAuthJson } from '../../../lib/authRequest'
+import { getAuthSession } from '../../../lib/auth.js'
+import { fetchAuthJson } from '../../../lib/authRequest.js'
 
 export const paymentMethodsChangeEvent = 'aurora-payment-methods-change'
 
