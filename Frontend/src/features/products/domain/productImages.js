@@ -159,6 +159,7 @@ function normalizeGalleryEntry(entry, index = 0) {
     alt: normalizeText(entry.alt || label),
     label,
     variantKey,
+    variantId: Number(entry.variantId ?? entry.variant_id) || null,
     optionValueCodes:
       entry.optionValueCodes && typeof entry.optionValueCodes === 'object'
         ? entry.optionValueCodes
@@ -198,6 +199,35 @@ function normalizeSelectedOptionCode(product, selectedOptionsByGroup, group) {
       .filter(Boolean)
       .join(' '),
   )
+}
+
+function getSelectedVariantImageId(product, selectedOptionsByGroup) {
+  const optionGroups = Array.isArray(product?.options) ? product.options : []
+
+  for (const group of optionGroups) {
+    if (!group?.storeAsVariant) {
+      continue
+    }
+
+    const groupKey = normalizeCode(group?.code || group?.id || group?.name)
+    const selectedCode = normalizeCode(selectedOptionsByGroup?.[groupKey])
+
+    if (!selectedCode) {
+      continue
+    }
+
+    const selectedValue = (group?.values || []).find((optionValue) => {
+      const valueCode = normalizeCode(optionValue?.valueCode || optionValue?.id || optionValue?.label)
+      return valueCode === selectedCode
+    })
+    const selectedValueId = Number(selectedValue?.id)
+
+    if (Number.isFinite(selectedValueId) && selectedValueId > 0) {
+      return selectedValueId
+    }
+  }
+
+  return null
 }
 
 function getSelectedGalleryVariantKey(product, selectedOptionsByGroup) {
@@ -361,9 +391,28 @@ export function getProductGalleryImages(product, selectedOptionsByGroup = {}) {
   return []
 }
 
-export function getPreferredProductGalleryIndex(product, selectedOptionsByGroup = {}, images = []) {
+export function getPreferredProductGalleryIndex(
+  product,
+  selectedOptionsByGroup = {},
+  images = [],
+  selectedVariantId = null,
+) {
   if (!Array.isArray(images) || !images.length) {
     return 0
+  }
+
+  const normalizedVariantId = Number(
+    selectedVariantId || getSelectedVariantImageId(product, selectedOptionsByGroup),
+  )
+
+  if (Number.isFinite(normalizedVariantId) && normalizedVariantId > 0) {
+    const variantImageIndex = images.findIndex(
+      (entry) => Number(entry?.variantId) === normalizedVariantId,
+    )
+
+    if (variantImageIndex >= 0) {
+      return variantImageIndex
+    }
   }
 
   const selectedVariantKey = getSelectedGalleryVariantKey(product, selectedOptionsByGroup)
