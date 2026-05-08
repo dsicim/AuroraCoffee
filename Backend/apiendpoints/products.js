@@ -66,7 +66,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             if (query.q && query.q.trim().length > 0) {
                 query.q = query.q.replaceAll("%20", " ").trim();
-                return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
+                return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc", "sales"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = p.variants.map(v => {delete v.sales});return p}) } };
                     }
