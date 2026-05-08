@@ -42,4 +42,11 @@ describe('pricing helpers', () => {
       variants: [{ price: 22 }, { price: 18 }],
     }), 18)
   })
+
+  it('ignores invalid variant prices when finding the starting price', () => {
+    assert.equal(getProductStartingPrice({
+      price: 'not set',
+      variants: [{ price: '32.50' }, { price: undefined }],
+    }), 32.5)
+  })
 })
