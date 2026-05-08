@@ -143,9 +143,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         return { s: 500, j: false, d: null, resended: true };
                     }
                     res.write((backup ? "MAIN SITE" : "BACKUP SITE") + " IMAGES DROPPED.\n");
-                    await fsp.rm(path.join(__dirname, "..", "Database", "uploads"), { recursive: true, force: true });
-                    await fsp.mkdir(path.join(__dirname, "..", "Database", "uploads"), { recursive: true });
-                    const extractPath = path.join(__dirname, "..", "Database");
+                    await fsp.rm(path.join(__dirname, "..", "..", "Database", "uploads"), { recursive: true, force: true });
+                    await fsp.mkdir(path.join(__dirname, "..", "..", "Database", "uploads"), { recursive: true });
+                    const extractPath = path.join(__dirname, "..", "..", "Database");
                     res.write("IMAGE DUMP STREAMING.\n");
                     const tar = spawn("tar", ["-xf", "-", "-C", extractPath], { stdio: ["pipe", "ignore", "pipe"] });
                     let tarErr = "";
@@ -222,6 +222,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     res.write("RESTORE COMPLETE.\n");
                     res.write("Database restore successful from " + (backup ? "main site" : "backup site") + "\n");
                     res.end();
+                    return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "backup") {
                     const backup = config.isBackup;
