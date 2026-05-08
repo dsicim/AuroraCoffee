@@ -69,6 +69,33 @@ function buildAttributeCards(product) {
   ]
 }
 
+function buildProductAttributeRows(product) {
+  const rows = [
+    { label: 'Product ID', value: product.id ? `#${product.id}` : '' },
+    { label: 'Product code', value: product.productCode },
+    { label: 'Category', value: getProductCategoryLabel(product) },
+    { label: 'Type', value: getProductTypeLabel(product) },
+  ]
+
+  if (isCoffeeProduct(product)) {
+    rows.push(
+      { label: 'Origin', value: product.origin },
+      { label: 'Roast level', value: product.roastLevel },
+      { label: 'Acidity', value: product.acidity },
+      { label: 'Flavor notes', value: product.flavorNotes },
+    )
+  } else {
+    rows.push(
+      { label: 'Material', value: product.material },
+      { label: 'Capacity', value: product.capacity },
+    )
+  }
+
+  return rows
+    .map((row) => ({ ...row, value: formatDetailAttribute(row.value) }))
+    .filter((row) => row.value !== 'Not provided')
+}
+
 function normalizeOptionCode(value) {
   return typeof value === 'string' || typeof value === 'number'
     ? String(value).trim()
@@ -1696,6 +1723,7 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
+  const attributeRows = buildProductAttributeRows(product)
   const visibleOptionGroups = optionGroups.filter((group, index) => {
     if (index === 0) {
       return true
@@ -1837,6 +1865,28 @@ export default function ProductDetailPage() {
             <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--aurora-text)]">
               {product.description}
             </p>
+            {attributeRows.length ? (
+              <div className="mt-6">
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                  Product attributes
+                </p>
+                <dl className="grid gap-3 sm:grid-cols-2">
+                  {attributeRows.map((attribute) => (
+                    <div
+                      key={attribute.label}
+                      className="rounded-2xl border border-[color:var(--aurora-border)] bg-[color:var(--aurora-surface-soft)] px-4 py-3"
+                    >
+                      <dt className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] text-[var(--aurora-text-muted)]">
+                        {attribute.label}
+                      </dt>
+                      <dd className="mt-1 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                        {attribute.value}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            ) : null}
           </AuroraInset>
         </AuroraWidget>
 
