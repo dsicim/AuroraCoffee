@@ -387,6 +387,16 @@ function formatReviewScore(value) {
   return Number.isInteger(value) ? `${value}` : value.toFixed(1)
 }
 
+function normalizeReviewScore(value) {
+  const rating = Number(value)
+
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return 0
+  }
+
+  return Math.min(5, Math.max(0, rating))
+}
+
 function getStarFillPercent(value, starNumber) {
   const fill = Math.max(0, Math.min(1, value - (starNumber - 1)))
   return fill * 100
@@ -814,7 +824,8 @@ function ProductReviewPanel({ product }) {
     return reviews
   }, [reviews, selfComment])
 
-  const reviewAverage = useMemo(() => {
+  const backendReviewAverage = normalizeReviewScore(product.averageRating)
+  const commentReviewAverage = useMemo(() => {
     const ratedReviews = metricReviews.filter((review) => review.rating)
 
     if (!ratedReviews.length) {
@@ -825,7 +836,7 @@ function ProductReviewPanel({ product }) {
     return totalRating / ratedReviews.length
   }, [metricReviews])
 
-  const activeReviewValue = hoverReviewRating || reviewRating || reviewAverage
+  const reviewAverage = backendReviewAverage || commentReviewAverage
   const emptyReviewMessage = commentsLoading
     ? 'Loading approved comments.'
     : editorMode && selfComment?.visibleSnapshot
@@ -1020,9 +1031,9 @@ function ProductReviewPanel({ product }) {
           </p>
         </div>
         <div className="aurora-review-metrics-side">
-          <ReviewStars value={activeReviewValue} />
+          <ReviewStars value={reviewAverage} />
           <span className="aurora-review-score-pill">
-            {reviewRating ? `${formatReviewScore(reviewRating)} / 5 selected` : 'Tap a star to rate'}
+            {reviewAverage ? `${formatReviewScore(reviewAverage)} / 5 average` : 'No rating yet'}
           </span>
         </div>
       </AuroraInset>
