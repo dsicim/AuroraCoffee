@@ -35,4 +35,11 @@ describe('pricing helpers', () => {
       discountRate: 0,
     })
   })
+
+  it('uses the cheapest variant as the product starting price', () => {
+    assert.equal(getProductStartingPrice({
+      price: 24,
+      variants: [{ price: 22 }, { price: 18 }],
+    }), 18)
+  })
 })
