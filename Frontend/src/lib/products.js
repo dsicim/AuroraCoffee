@@ -593,7 +593,7 @@ export async function searchProducts(query, sortBy = 'newest') {
       ? 'price_asc'
       : sortBy === 'price-desc'
         ? 'price_desc'
-        : sortBy === 'oldest' || sortBy === 'sales'
+        : sortBy === 'oldest' || sortBy === 'sales' || sortBy === 'rating'
           ? sortBy
           : 'newest'
 

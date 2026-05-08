@@ -15,6 +15,7 @@ import {
 
 const sortOptions = [
   { value: 'newest', label: 'Newest first' },
+  { value: 'rating', label: 'Popularity' },
   { value: 'sales', label: 'Best sellers' },
   { value: 'name', label: 'Name: A to Z' },
   { value: 'price-asc', label: 'Price: Low to high' },
@@ -40,6 +41,18 @@ function sortProducts(items, sortBy) {
 
   if (sortBy === 'sales') {
     return sortableItems
+  }
+
+  if (sortBy === 'rating') {
+    return sortableItems.sort((left, right) => {
+      const ratingDelta = (Number(right.averageRating) || 0) - (Number(left.averageRating) || 0)
+
+      if (ratingDelta !== 0) {
+        return ratingDelta
+      }
+
+      return left.name.localeCompare(right.name)
+    })
   }
 
   return sortableItems.sort(

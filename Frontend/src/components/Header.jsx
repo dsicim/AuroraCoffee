@@ -67,7 +67,7 @@ export default function Header() {
         : 'Coffee Lover')
   const roleLabel = hasAccountSession
     ? getRoleLabel(authState.user?.role) || (authState.isChecking ? 'Checking role' : 'Account')
-    : 'Guest'
+    : 'Guest shopper'
   const normalizedRole = normalizeUserRole(authState.user?.role)
   const roleLandingPath = normalizedRole ? getRoleLandingPath(normalizedRole) : '/dashboard'
   const canUseCustomerAccountTools =
@@ -547,7 +547,7 @@ export default function Header() {
                     {cartCount} item{cartCount === 1 ? '' : 's'} in cart
                   </p>
                   <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurora-text-muted)]">
-                    Role: {roleLabel}
+                    {roleLabel}
                   </p>
                 </div>
 
