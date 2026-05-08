@@ -308,6 +308,10 @@
   z-index: 2;
 }
 
+.aurora-product-lightbox-nav:hover {
+  transform: translateY(-50%);
+}
+
 .aurora-product-lightbox-nav.is-prev {
   left: 1rem;
 }
