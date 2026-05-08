@@ -26,4 +26,13 @@ describe('pricing helpers', () => {
       discountRate: 100,
     })
   })
+
+  it('does not apply discounts to zero-priced products', () => {
+    assert.deepEqual(getDiscountPricing({ price: 0, discountRate: 30 }), {
+      hasDiscount: false,
+      originalPrice: 0,
+      currentPrice: 0,
+      discountRate: 0,
+    })
+  })
 })
