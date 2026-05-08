@@ -69,7 +69,28 @@ function buildAttributeCards(product) {
   ]
 }
 
-function buildProductAttributeRows(product) {
+function getSelectedOptionLabel(group, selectedOptionsByGroup) {
+  const selectedCode = normalizeOptionCode(selectedOptionsByGroup[getOptionGroupKey(group)])
+
+  if (!selectedCode) {
+    return ''
+  }
+
+  const selectedValue = (group.values || []).find(
+    (optionValue) => getOptionValueCode(optionValue) === selectedCode,
+  )
+
+  return selectedValue?.label || selectedCode
+}
+
+function buildProductAttributeRows(
+  product,
+  {
+    optionGroups = [],
+    selectedOptionsByGroup = {},
+    matchingVariant = null,
+  } = {},
+) {
   const rows = [
     { label: 'Product ID', value: product.id ? `#${product.id}` : '' },
     { label: 'Product code', value: product.productCode },
@@ -89,6 +110,30 @@ function buildProductAttributeRows(product) {
       { label: 'Material', value: product.material },
       { label: 'Capacity', value: product.capacity },
     )
+  }
+
+  const variantOptionGroups = optionGroups.filter((group) => group.storeAsVariant)
+  const hasVariantOptions = Boolean(product.hasVariants && variantOptionGroups.length)
+  const hasCompleteVariantSelection =
+    hasVariantOptions &&
+    variantOptionGroups.every((group) => selectedOptionsByGroup[getOptionGroupKey(group)]) &&
+    Boolean(matchingVariant)
+
+  if (hasVariantOptions) {
+    variantOptionGroups.forEach((group) => {
+      rows.push({
+        label: group.name,
+        value: getSelectedOptionLabel(group, selectedOptionsByGroup) || `Select ${group.name}`,
+      })
+    })
+
+    if (hasCompleteVariantSelection) {
+      rows.push(
+        { label: 'Variant ID', value: matchingVariant.id ? `#${matchingVariant.id}` : '' },
+        { label: 'Variant stock', value: `${Math.max(0, Number(matchingVariant.stock) || 0)} available` },
+        { label: 'Variant price', value: formatCurrency(matchingVariant.price) },
+      )
+    }
   }
 
   return rows
@@ -1723,7 +1768,6 @@ export default function ProductDetailPage() {
   const availability = getProductAvailability(product)
   const notes = getProductFlavorNotes(product)
   const attributeCards = buildAttributeCards(product)
-  const attributeRows = buildProductAttributeRows(product)
   const visibleOptionGroups = optionGroups.filter((group, index) => {
     if (index === 0) {
       return true
@@ -1774,6 +1818,11 @@ export default function ProductDetailPage() {
       }
     : availability
   const displayPrice = getDisplayPrice(product, selectedOptionRecords, matchingVariant)
+  const attributeRows = buildProductAttributeRows(product, {
+    optionGroups,
+    selectedOptionsByGroup,
+    matchingVariant,
+  })
   const showStartingPrice = hasPendingPriceSelection(product, optionGroups, selectedOptionsByGroup)
   const priceBeforeDiscount = showStartingPrice
     ? getProductStartingPrice(product)
