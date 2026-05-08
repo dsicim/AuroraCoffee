@@ -15,6 +15,7 @@ import {
 
 const sortOptions = [
   { value: 'newest', label: 'Newest first' },
+  { value: 'sales', label: 'Best sellers' },
   { value: 'name', label: 'Name: A to Z' },
   { value: 'price-asc', label: 'Price: Low to high' },
   { value: 'price-desc', label: 'Price: High to low' },
@@ -35,6 +36,10 @@ function sortProducts(items, sortBy) {
 
   if (sortBy === 'price-desc') {
     return sortableItems.sort((left, right) => right.price - left.price)
+  }
+
+  if (sortBy === 'sales') {
+    return sortableItems
   }
 
   return sortableItems.sort(
@@ -173,7 +178,7 @@ export default function ProductsPage() {
             Coffee, gear, and refills in one place.
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[var(--aurora-text)] sm:text-lg">
-            Search by flavor, brew method, or equipment, then sort by price or newest arrivals without leaving the product grid.
+            Search by flavor, brew method, or equipment, then sort by best sellers, price, or newest arrivals without leaving the product grid.
           </p>
         </div>
         <div className="aurora-solid-plate hidden rounded-[1.7rem] p-5 sm:block">

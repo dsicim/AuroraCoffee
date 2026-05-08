@@ -588,8 +588,8 @@ export async function searchProducts(query, sortBy = 'newest') {
       ? 'price_asc'
       : sortBy === 'price-desc'
         ? 'price_desc'
-        : sortBy === 'oldest'
-          ? 'oldest'
+        : sortBy === 'oldest' || sortBy === 'sales'
+          ? sortBy
           : 'newest'
 
   const payload = await requestJson(
