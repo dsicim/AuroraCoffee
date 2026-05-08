@@ -28,6 +28,20 @@ function formatStatusLabel(status) {
   return getOrderStatusPresentation(status).label
 }
 
+function getOrderStatusFeedback(result, nextStatus) {
+  const responseMessage = result?.msg || result?.message
+
+  if (responseMessage) {
+    return responseMessage
+  }
+
+  if (nextStatus === 'delivered') {
+    return 'This user can now comment.'
+  }
+
+  return 'Order status updated successfully.'
+}
+
 function formatShortDate(value) {
   const timestamp = Date.parse(value || '')
 
@@ -232,7 +246,7 @@ export default function SalesManagerPage() {
 
       setOrders(nextOrders)
       setSelectedOrder(nextOrder)
-      setFeedback(result?.msg || 'Order status updated successfully.')
+      setFeedback(getOrderStatusFeedback(result, nextStatus))
     } catch (statusError) {
       setError(statusError?.message || 'Could not update order status.')
     } finally {

@@ -162,6 +162,20 @@ async function requestOrdersJson(path = '', options = {}) {
     throw new Error(data?.e || payload?.e || 'Order request failed')
   }
 
+  if (
+    data &&
+    typeof data === 'object' &&
+    !Array.isArray(data) &&
+    (payload?.msg || payload?.message) &&
+    !data.msg &&
+    !data.message
+  ) {
+    return {
+      ...data,
+      msg: payload.msg || payload.message,
+    }
+  }
+
   return data
 }
 
