@@ -3,8 +3,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import AuroraWidget, { AuroraInset } from '../../../shared/components/ui/AuroraWidget'
 import LiquidGlassButton, { LiquidGlassStepperButton } from '../../../shared/components/ui/LiquidGlassButton'
 import StorefrontLayout from '../../../shared/components/layout/StorefrontLayout'
-import { getAuthSession } from '../../../lib/auth'
+import {
+  authChangeEvent,
+  currentUserChangeEvent,
+  currentUserFetchStatus,
+  fetchCurrentUserResult,
+  getAuthStateSnapshot,
+} from '../../../lib/auth'
 import { formatCurrency } from '../../../lib/currency'
+import { getRoleLabel } from '../../../lib/roles'
 import {
   cartChangeEvent,
   enrichCartItems,
@@ -39,13 +46,17 @@ function renderCartItemOptions(item) {
 export default function CartPage() {
   const navigate = useNavigate()
   const [items, setItems] = useState(() => getCartItems())
-  const [session, setSession] = useState(() => getAuthSession())
+  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [feedback, setFeedback] = useState('')
   const [feedbackType, setFeedbackType] = useState('success')
 
   const subtotal = items.reduce((total, item) => total + item.price * item.quantity, 0)
   const totalItems = items.reduce((total, item) => total + item.quantity, 0)
+  const session = authState.session
   const isLoggedIn = Boolean(session?.token)
+  const roleLabel = isLoggedIn
+    ? getRoleLabel(authState.user?.role) || (authState.isChecking ? 'Checking role' : 'Account')
+    : 'Guest'
   const pricing = getItemsPriceBreakdown(items)
 
   useEffect(() => {
@@ -53,27 +64,55 @@ export default function CartPage() {
       void (async () => {
         await reconcileCartStorageWithAuth()
         setItems(await enrichCartItems(getCartItems()))
-        setSession(getAuthSession())
+        setAuthState(getAuthStateSnapshot())
       })()
     }
 
     const syncCartState = () => {
       void (async () => {
         setItems(await enrichCartItems(getCartItems()))
-        setSession(getAuthSession())
+        setAuthState(getAuthStateSnapshot())
       })()
     }
 
+    const syncAuthState = () => {
+      setAuthState(getAuthStateSnapshot())
+    }
+
     window.addEventListener('storage', syncFromStorage)
+    window.addEventListener(authChangeEvent, syncFromStorage)
+    window.addEventListener(currentUserChangeEvent, syncAuthState)
     window.addEventListener(cartChangeEvent, syncCartState)
     const initialSyncId = window.setTimeout(syncFromStorage, 0)
 
     return () => {
       window.removeEventListener('storage', syncFromStorage)
+      window.removeEventListener(authChangeEvent, syncFromStorage)
+      window.removeEventListener(currentUserChangeEvent, syncAuthState)
       window.removeEventListener(cartChangeEvent, syncCartState)
       window.clearTimeout(initialSyncId)
     }
   }, [])
+
+  useEffect(() => {
+    if (!session?.token) {
+      return
+    }
+
+    if (
+      authState.currentUserState.token === session.token &&
+      (
+        authState.currentUserState.status === currentUserFetchStatus.ok ||
+        authState.currentUserState.status === currentUserFetchStatus.loading ||
+        authState.currentUserState.status === currentUserFetchStatus.unauthorized ||
+        authState.currentUserState.status === currentUserFetchStatus.error
+      )
+    ) {
+      return
+    }
+
+    void fetchCurrentUserResult(session.token)
+  }, [authState.currentUserState.status, authState.currentUserState.token, session?.token])
 
   useEffect(() => {
     if (!feedback) {
@@ -295,6 +334,12 @@ export default function CartPage() {
                 <span>Storage mode</span>
                 <span className="font-semibold text-[var(--aurora-text-strong)]">
                   {isLoggedIn ? 'Saved to account' : 'Guest cart'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>User role</span>
+                <span className="font-semibold text-[var(--aurora-text-strong)]">
+                  {roleLabel}
                 </span>
               </div>
               <div className="flex items-center justify-between border-t border-[rgba(138,144,119,0.18)] pt-4">

@@ -16,6 +16,7 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
+import { getRoleLabel } from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -64,6 +65,9 @@ export default function Header() {
       : authState.isProfileError
         ? 'Account session'
         : 'Coffee Lover')
+  const roleLabel = hasAccountSession
+    ? getRoleLabel(authState.user?.role) || (authState.isChecking ? 'Checking role' : 'Account')
+    : 'Guest'
   useEffect(() => {
     const syncSessionState = () => {
       void (async () => {
@@ -537,6 +541,9 @@ export default function Header() {
                   </p>
                   <p className="mt-1 text-xs leading-5 text-[var(--aurora-text)]">
                     {cartCount} item{cartCount === 1 ? '' : 's'} in cart
+                  </p>
+                  <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--aurora-text-muted)]">
+                    Role: {roleLabel}
                   </p>
                 </div>
 
