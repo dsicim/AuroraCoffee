@@ -194,7 +194,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
             provider: cardDetails.provider,
             family: cardDetails.family,
             bank: cardDetails.bank,
-            last4dig: cardDetails.last4dig || card.number.substring(card.number.length - 4)
+            last4dig: cardDetails.last4dig || String(card.number).substring(card.number.length - 4)
         },
         installment: ins,
         price: {
