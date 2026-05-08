@@ -374,7 +374,7 @@ function mergeProductRecord(existingProduct, incomingProduct) {
       incomingProduct.parentCategoryName || existingProduct.parentCategoryName,
     hasVariants: incomingProduct.hasVariants ?? existingProduct.hasVariants,
     canComment: incomingProduct.canComment ?? existingProduct.canComment,
-    averageRating: incomingProduct.averageRating ?? existingProduct.averageRating,
+    averageRating: incomingProduct.averageRating,
     options: incomingProduct.options?.length ? incomingProduct.options : existingProduct.options,
     variants: incomingProduct.variants?.length ? incomingProduct.variants : existingProduct.variants,
     discountRate: incomingProduct.discountRate ?? existingProduct.discountRate,
