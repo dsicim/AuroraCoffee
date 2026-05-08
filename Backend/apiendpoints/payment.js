@@ -107,8 +107,8 @@ function currencyToDecimal(currency, price) {
 function currencyToSymbol(currency, price, negative = false) {
     price = parseFloat(price);
     const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["CHF", "RUB"].includes(currency)) return (negative?"-":"")+currencyToDecimal(currency, price) + symbol;
-    else return symbol + (negative?"-":"")+currencyToDecimal(currency, price);
+    if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
+    else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
 }
 function parseVariantOptions(variantCode) {
     const normalizedCode = checkTrim(variantCode);
@@ -121,13 +121,13 @@ function parseVariantOptions(variantCode) {
     }
 }
 async function emailInvoice(config, email, orderNumber, details, textformat) {
-    let instemplate = fs.readFileSync("./emails/"+(details.installment.months === 1 ?"orderemailinfull":"orderemailinstallment")+".html", "utf-8");
+    let instemplate = fs.readFileSync("./emails/" + (details.installment.months === 1 ? "orderemailinfull" : "orderemailinstallment") + ".html", "utf-8");
     if (details.installment.months > 1) {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
-        .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
-        .replaceAll("{{ORDER_MONTH}}", currencyToSymbol(details.currency, details.installment.permonth))
-        .replaceAll("{{INSTALLMENT_PERIOD}}", details.installment.months)
-        .replaceAll("{{ORDER_TOTAL_WITH_INTEREST}}", currencyToSymbol(details.currency, details.price.paid));
+            .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
+            .replaceAll("{{ORDER_MONTH}}", currencyToSymbol(details.currency, details.installment.permonth))
+            .replaceAll("{{INSTALLMENT_PERIOD}}", details.installment.months)
+            .replaceAll("{{ORDER_TOTAL_WITH_INTEREST}}", currencyToSymbol(details.currency, details.price.paid));
     }
     else {
         instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.paid));
@@ -136,26 +136,26 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
     let itemshtml = "";
     details.products.forEach(product => {
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
-        .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
-        .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
-        .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
-        .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
+            .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
+            .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
+            .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
+            .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
     });
     const template = fs.readFileSync("./emails/orderemail.html", "utf-8")
-    .replaceAll("{{ORDER_ID}}", orderNumber)
-    .replaceAll("{{ORDER_URL}}","https://" + config.domain + "/account/orders/"+orderNumber)
-    .replaceAll("{{CUSTOMER_NAME}}", details.shippingAddress.name + " " + details.shippingAddress.surname)
-    .replaceAll("{{ADDRESS_LINE}}", details.shippingAddress.address + (details.shippingAddress.address2 ? ", " + details.shippingAddress.address2 : "") + ", " + details.shippingAddress.city)
-    .replaceAll("{{CITY}}", details.shippingAddress.province)
-    .replaceAll("{{POSTAL_CODE}}", details.shippingAddress.zip)
-    .replaceAll("{{PHONE}}", details.shippingAddress.phone)
-    .replaceAll("{{SUBTOTAL}}", currencyToSymbol(details.currency, details.price.subtotal))
-    .replaceAll("{{VAT_TOTAL}}", currencyToSymbol(details.currency, details.price.tax))
-    .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
-    .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
-    .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
+        .replaceAll("{{ORDER_ID}}", orderNumber)
+        .replaceAll("{{ORDER_URL}}", "https://" + config.domain + "/account/orders/" + orderNumber)
+        .replaceAll("{{CUSTOMER_NAME}}", details.shippingAddress.name + " " + details.shippingAddress.surname)
+        .replaceAll("{{ADDRESS_LINE}}", details.shippingAddress.address + (details.shippingAddress.address2 ? ", " + details.shippingAddress.address2 : "") + ", " + details.shippingAddress.city)
+        .replaceAll("{{CITY}}", details.shippingAddress.province)
+        .replaceAll("{{POSTAL_CODE}}", details.shippingAddress.zip)
+        .replaceAll("{{PHONE}}", details.shippingAddress.phone)
+        .replaceAll("{{SUBTOTAL}}", currencyToSymbol(details.currency, details.price.subtotal))
+        .replaceAll("{{VAT_TOTAL}}", currencyToSymbol(details.currency, details.price.tax))
+        .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
+        .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
+        .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
     const rightnow = new Date().toISOString();
-    const pdfResult = await pdf.generatePDF({id:orderNumber, details:details, created_at: rightnow }).then(document => {
+    const pdfResult = await pdf.generatePDF({ id: orderNumber, details: details, created_at: rightnow }).then(document => {
         return { filename: `invoice-${orderNumber}.pdf`, content: document, contentType: "application/pdf" };
     }).catch(err => {
         console.error(err);
@@ -180,8 +180,8 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     let stotal = 0;
     cart.forEach(item => {
         item.product_price = parseFloat(item.product_price);
-        taxes += item.taxAmount*item.quantity;
-        stotal += item.subtotal*item.quantity;
+        taxes += item.taxAmount * item.quantity;
+        stotal += item.subtotal * item.quantity;
         delete item.general_stock;
         delete item.variant_stock;
     });
@@ -243,11 +243,11 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
-    return {s: true, p: payload, o: {user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id)), detailsOpen: details}};
+    return { s: true, p: payload, o: { user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id)), detailsOpen: details } };
 }
 async function completeCart(products) {
     for (const product of products) {
-        await sql.decreaseStock(product.product_id, product.quantity, product.variant_id || null).then(res => {}).catch(err => {});
+        await sql.decreaseStock(product.product_id, product.quantity, product.variant_id || null).then(res => { }).catch(err => { });
     }
     return true;
 }
@@ -498,7 +498,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             if (internalIssue) return { s: 500, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Internal data integrity issue detected in cart information", resolution: "Please remove identical items with identical options and quantities from your cart and then try again." } } };
             if (cartTampered) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart has been modified by the same user from another device", resolution: "Please confirm your up-to date cart contents before confirming your order." } } };
-            let productslist = await sql.getProductsByIds(null,productsMentioned).then(result => {
+            let productslist = await sql.getProductsByIds(null, productsMentioned).then(result => {
                 if (result.success) return { s: true, products: result.products, idsnotfound: result.idsnotfound };
                 else {
                     return { s: false, e: result };
@@ -562,7 +562,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else variantnonexistent = true;
                 }
                 item.subtotal = Math.round((item.product_price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
-                item.taxAmount = item.product_price - (Math.round(item.subtotal*100)/100);
+                item.taxAmount = item.product_price - (Math.round(item.subtotal * 100) / 100);
                 const itemFormat = {
                     id: item.product_id,
                     price: item.product_price,
@@ -681,7 +681,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 const response = await IyzipayAPI(config, "POST", "cardstorage/cards", {}, { locale: "en", cardUserKey: currentToken.value });
                 if (response) {
                     if (response.status === "success" && response.cardDetails) {
-                        const currentCards = response.cardDetails.filter(cd => cd.cardToken === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd,null) }));
+                        const currentCards = response.cardDetails.filter(cd => cd.cardToken === body.data.card.token).map(cd => ({ id: cd.cardToken, alias: cd.cardAlias, last4dig: cd.lastFourDigits, binNumber: cd.binNumber, ...getCardDetailsFromResponse(cd, null) }));
                         if (currentCards.length === 0) return { s: 409, j: true, d: { success: false, e: { what: "Credit Card", why: "Saved card not found", resolution: "Please choose a valid card from your saved cards or manually enter your card details" } } };
                         else cardDetails = currentCards[0];
                     }
@@ -713,7 +713,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
             // All validations passed, create order and initiate payment
             const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
-            
+
             if (!payload.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Creation", why: "Failed to create order", resolution: "Please try again later or contact the developers" } } };
             const tvoyBank = cardDetails.bank || "your bank";
             let tryIn3DS = true;
@@ -746,7 +746,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await completeCart(payload.o.detailsOpen.products);
-                                    await sql.clearCart(currentUser.id).then(result => {}).catch(err => {});
+                                    await sql.clearCart(currentUser.id).then(result => { }).catch(err => { });
+                                    setTimeout(() => {
+                                        await sql.updateOrderStatus(orderNumber.n, "processing", form.paymentId).then(result => {
+                                        }).catch(err => {
+                                            console.error("Update order status error:", err);
+                                        });
+                                    }, 20000);
                                     setTimeout(() => emailInvoice(config, currentUser.username, orderNumber.n, payload.o.detailsOpen, textformatproduct), 0);
                                     return { s: 200, j: true, d: { success: true, orderNumber: orderNumber.n } };
                                 }
@@ -796,10 +802,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "3dscallback") {
         function CallbackEmbed(obj) {
-            return { s: 302, j: false, d: "", h: { "Location": "https://" + config.domain + "/checkout/3dscallback?result="+Buffer.from(JSON.stringify(obj)).toString("base64") } };
+            return { s: 302, j: false, d: "", h: { "Location": "https://" + config.domain + "/checkout/3dscallback?result=" + Buffer.from(JSON.stringify(obj)).toString("base64") } };
         }
         if (method === "POST") {
-            if (headers.origin != config.iyzipay.api || headers.referer != config.iyzipay.api+"/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." }}});
+            if (headers.origin != config.iyzipay.api || headers.referer != config.iyzipay.api + "/") return CallbackEmbed({ s: 403, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } } });
             if (!body || body.json || !body.exists) return CallbackEmbed({ success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please do not try to navigate back and forth during the transaction." } });
             body.data = body.data.split("&").map(pair => {
                 const p = pair.split("=");
@@ -891,8 +897,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     });
                                     if (!updateResult.s) return CallbackEmbed({ success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } });
                                     await completeCart(details.products);
-                                    await sql.clearCart(user).then(result => {}).catch(err => {});
+                                    await sql.clearCart(user).then(result => { }).catch(err => { });
                                     setTimeout(() => emailInvoice(config, email, orderNumber.n, details, textformatproduct), 0);
+                                    setTimeout(() => {
+                                        await sql.updateOrderStatus(orderNumber.n, "processing", form.paymentId).then(result => {
+                                        }).catch(err => {
+                                            console.error("Update order status error:", err);
+                                        });
+                                    }, 20000);
                                     return CallbackEmbed({ success: true, orderNumber: orderNumber.n });
                                 }
                                 else return CallbackEmbed({ success: false, e: { what: "Payment Processor", why: "Payment status is not complete yet. Currently showing as " + authChecker.paymentStatus, resolution: "Please wait for a few minutes and check the orders page." } });
