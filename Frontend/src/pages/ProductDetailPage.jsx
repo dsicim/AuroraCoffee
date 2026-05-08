@@ -1601,11 +1601,6 @@ export default function ProductDetailPage() {
     .map((group) => `${getOptionGroupKey(group)}:${selectedOptionsByGroup[getOptionGroupKey(group)] || ''}`)
     .join('|')
   const productGalleryImages = getProductGalleryImages(product, selectedOptionsByGroup)
-  const preferredGalleryImageIndex = getPreferredProductGalleryIndex(
-    product,
-    selectedOptionsByGroup,
-    productGalleryImages,
-  )
 
   if (loading) {
     const hero = (
@@ -1664,6 +1659,12 @@ export default function ProductDetailPage() {
     (group) => isOptionGroupRequired(group) && !selectedOptionsByGroup[getOptionGroupKey(group)],
   )
   const matchingVariant = getMatchingVariant(product, optionGroups, selectedOptionsByGroup)
+  const preferredGalleryImageIndex = getPreferredProductGalleryIndex(
+    product,
+    selectedOptionsByGroup,
+    productGalleryImages,
+    matchingVariant?.id,
+  )
   const requiredVariantGroups = optionGroups.filter(
     (group) => group.storeAsVariant && isOptionGroupRequired(group),
   )
