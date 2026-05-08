@@ -49,4 +49,10 @@ describe('pricing helpers', () => {
       variants: [{ price: '32.50' }, { price: undefined }],
     }), 32.5)
   })
+
+  it('detects price-changing variant choices', () => {
+    assert.equal(hasPriceChangingChoices({
+      variants: [{ price: 15 }, { price: 18 }],
+    }), true)
+  })
 })
