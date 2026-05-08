@@ -747,7 +747,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     if (!updateResult.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Confirmation", why: "Order update failed: " + updateResult.e, resolution: "Please contact the developers. YOUR CARD HAS ALREADY BEEN CHARGED" } } };
                                     await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => { }).catch(err => { });
-                                    setTimeout(() => {
+                                    setTimeout(async () => {
                                         await sql.updateOrderStatus(orderNumber.n, "processing", form.paymentId).then(result => {
                                         }).catch(err => {
                                             console.error("Update order status error:", err);
@@ -899,7 +899,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     await completeCart(details.products);
                                     await sql.clearCart(user).then(result => { }).catch(err => { });
                                     setTimeout(() => emailInvoice(config, email, orderNumber.n, details, textformatproduct), 0);
-                                    setTimeout(() => {
+                                    setTimeout(async () => {
                                         await sql.updateOrderStatus(orderNumber.n, "processing", form.paymentId).then(result => {
                                         }).catch(err => {
                                             console.error("Update order status error:", err);
