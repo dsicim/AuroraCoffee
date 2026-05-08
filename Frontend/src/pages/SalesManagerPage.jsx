@@ -42,12 +42,6 @@ function getOrderStatusFeedback(result, nextStatus) {
   return 'Order status updated successfully.'
 }
 
-function confirmDeliveredStatusChange() {
-  return window.confirm(
-    'Delivered olduğundan emin misiniz? Artık bunu satın alan kullanıcı yorum yapabilir.',
-  )
-}
-
 function formatShortDate(value) {
   const timestamp = Date.parse(value || '')
 
@@ -100,6 +94,7 @@ export default function SalesManagerPage() {
   const [statusBusy, setStatusBusy] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [pendingDeliveredStatus, setPendingDeliveredStatus] = useState('')
 
   useEffect(() => {
     let active = true
@@ -232,20 +227,11 @@ export default function SalesManagerPage() {
     }
   }
 
-  const handleStatusChange = async (event) => {
-    const nextStatus = event.target.value
-
-    if (!selectedOrderId || !nextStatus || nextStatus === selectedStatus) {
-      return
-    }
-
-    if (nextStatus === 'delivered' && !confirmDeliveredStatusChange()) {
-      return
-    }
-
+  const applyStatusChange = async (nextStatus) => {
     setStatusBusy(true)
     setFeedback('')
     setError('')
+    setPendingDeliveredStatus('')
 
     try {
       const result = await updateOrderStatus(selectedOrderId, nextStatus)
@@ -262,6 +248,33 @@ export default function SalesManagerPage() {
     } finally {
       setStatusBusy(false)
     }
+  }
+
+  const handleStatusChange = async (event) => {
+    const nextStatus = event.target.value
+
+    if (!selectedOrderId || !nextStatus || nextStatus === selectedStatus) {
+      return
+    }
+
+    if (nextStatus === 'delivered') {
+      setPendingDeliveredStatus(nextStatus)
+      return
+    }
+
+    await applyStatusChange(nextStatus)
+  }
+
+  const handleDeliveredConfirm = () => {
+    if (!pendingDeliveredStatus) {
+      return
+    }
+
+    void applyStatusChange(pendingDeliveredStatus)
+  }
+
+  const handleDeliveredCancel = () => {
+    setPendingDeliveredStatus('')
   }
 
   return (
@@ -588,6 +601,78 @@ export default function SalesManagerPage() {
           </section>
         </div>
       </div>
+
+      {pendingDeliveredStatus ? (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-[rgba(38,30,23,0.32)] px-4 py-8 backdrop-blur-sm"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              handleDeliveredCancel()
+            }
+          }}
+        >
+          <div
+            className="aurora-summary-card w-full max-w-lg p-6 shadow-[0_30px_90px_rgba(73,53,36,0.24)]"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delivered-confirm-title"
+            aria-describedby="delivered-confirm-description"
+          >
+            <div className="aurora-widget-body gap-5">
+              <div>
+                <p className="aurora-kicker">Confirm delivery</p>
+                <h2
+                  id="delivered-confirm-title"
+                  className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]"
+                >
+                  Mark this order as delivered?
+                </h2>
+                <p
+                  id="delivered-confirm-description"
+                  className="mt-4 text-sm leading-7 text-[var(--aurora-text)]"
+                >
+                  Once this order is delivered, the customer who purchased it will be able to
+                  leave a product review.
+                </p>
+              </div>
+
+              <div className="aurora-widget-subsurface p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="aurora-kicker">Order</p>
+                    <p className="mt-2 font-semibold text-[var(--aurora-text-strong)]">
+                      {selectedOrder?.displayId || selectedOrder?.id || 'Selected order'}
+                    </p>
+                  </div>
+                  <span className="aurora-order-status-chip is-delivered inline-flex">
+                    Delivered
+                  </span>
+                </div>
+              </div>
+
+              <div className="aurora-widget-actions justify-end">
+                <LiquidGlassButton
+                  type="button"
+                  variant="quiet"
+                  size="compact"
+                  onClick={handleDeliveredCancel}
+                >
+                  Keep current status
+                </LiquidGlassButton>
+                <LiquidGlassButton
+                  type="button"
+                  size="compact"
+                  onClick={handleDeliveredConfirm}
+                  disabled={statusBusy}
+                >
+                  Confirm delivered
+                </LiquidGlassButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </RoleOverviewLayout>
   )
 }
