@@ -1829,6 +1829,11 @@ export default function ProductDetailPage() {
             {getProductMetaLine(product) ? (
               <p className="text-sm text-[var(--aurora-text)]">{getProductMetaLine(product)}</p>
             ) : null}
+            {product.id ? (
+              <p className="mt-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text-muted)]">
+                Product ID #{product.id}
+              </p>
+            ) : null}
             <p className="mt-4 max-w-2xl text-base leading-8 text-[var(--aurora-text)]">
               {product.description}
             </p>
