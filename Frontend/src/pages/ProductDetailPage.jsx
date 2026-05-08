@@ -327,6 +327,19 @@ function buildReviewPrivacySelection(displayName, mode = 'initials') {
   return words.map(() => normalizedMode)
 }
 
+function getReviewPrivacyFallbackMode(selection, fallbackMode = 'initials') {
+  if (!Array.isArray(selection) || !selection.length) {
+    return normalizeReviewPrivacyMode(fallbackMode)
+  }
+
+  const normalizedSelection = selection.map((mode) => normalizeReviewPrivacyMode(mode))
+  const [firstMode] = normalizedSelection
+
+  return normalizedSelection.every((mode) => mode === firstMode)
+    ? firstMode
+    : normalizeReviewPrivacyMode(fallbackMode)
+}
+
 function resolveReviewPrivacySelection(selection, displayName, fallbackMode = 'initials') {
   const words = getDisplayNameWords(displayName)
 
@@ -338,7 +351,9 @@ function resolveReviewPrivacySelection(selection, displayName, fallbackMode = 'i
     return buildReviewPrivacySelection(displayName, fallbackMode)
   }
 
-  return words.map((_, index) => normalizeReviewPrivacyMode(selection[index] || fallbackMode))
+  const normalizedFallbackMode = getReviewPrivacyFallbackMode(selection, fallbackMode)
+
+  return words.map((_, index) => normalizeReviewPrivacyMode(selection[index] || normalizedFallbackMode))
 }
 
 function buildReviewPrivacyPreviewName(selection, displayName) {
@@ -852,6 +867,20 @@ function ProductReviewPanel({ product }) {
       ),
     )
   }, [currentUser?.displayname, editorMode, hasSession, product.id, selfComment])
+
+  useEffect(() => {
+    if (!hasSession || !currentUser?.displayname) {
+      return
+    }
+
+    setReviewPrivacySelection((currentSelection) =>
+      resolveReviewPrivacySelection(
+        currentSelection,
+        currentUser.displayname,
+        getReviewPrivacyFallbackMode(currentSelection),
+      ),
+    )
+  }, [currentUser?.displayname, hasSession])
 
   const metricReviews = useMemo(() => {
     if (selfComment?.visibleSnapshot) {
