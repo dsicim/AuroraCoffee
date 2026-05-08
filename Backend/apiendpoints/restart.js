@@ -93,7 +93,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return { s: 200, j: false, d: null, resended: true };
                 }
                 else if (body.data.action === "dumpimages") {
-                    const archive = spawn("tar", ["-cf", "-", "-C", path.join(__dirname, "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "pipe"] });
+                    const archive = spawn("tar", ["-cf", "-", "-C", path.join(__dirname, "..", "..", "Database"), "uploads"], { stdio: ["ignore", "pipe", "pipe"] });
                     archive.stdout.pipe(res);
                     let err = "";
                     archive.stderr.on("data", c => err += c.toString("utf8"));
