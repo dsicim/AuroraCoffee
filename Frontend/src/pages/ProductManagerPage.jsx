@@ -704,7 +704,7 @@ function preventProductImageEnterAction(event) {
 }
 
 function ProductImageManager({ product }) {
-  const images = Array.isArray(product?.images) ? product.images : []
+  const images = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product])
   const variantOptions = (product?.variants || [])
     .map((variant) => ({
       id: Number(variant.id) || 0,
@@ -713,12 +713,10 @@ function ProductImageManager({ product }) {
     .filter((variant) => variant.id > 0)
   const [selectedFile, setSelectedFile] = useState(null)
   const fileInputRef = useRef(null)
+  const uploadInFlightRef = useRef(false)
   const [fileInputVersion, setFileInputVersion] = useState(0)
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
-  const [nextUploadSortOrder, setNextUploadSortOrder] = useState(() =>
-    getNextProductImageSortOrder(images),
-  )
   const [imageState, setImageState] = useState({
     busy: '',
     error: '',
@@ -729,6 +727,7 @@ function ProductImageManager({ product }) {
     (variant) => String(variant.id) === selectedVariantId,
   )
   const imageBusy = Boolean(imageState.busy)
+  const nextUploadSortOrder = getNextProductImageSortOrder(images)
 
   function setImageBusy(busy) {
     setImageState({
@@ -754,8 +753,11 @@ function ProductImageManager({ product }) {
     })
   }
 
-  function handleUpload() {
-    if (imageBusy) {
+  function handleUpload(event) {
+    event?.preventDefault()
+    event?.stopPropagation()
+
+    if (imageBusy || uploadInFlightRef.current) {
       return
     }
 
@@ -764,6 +766,7 @@ function ProductImageManager({ product }) {
       return
     }
 
+    uploadInFlightRef.current = true
     setImageBusy('upload')
 
     void uploadProductImage({
@@ -776,7 +779,6 @@ function ProductImageManager({ product }) {
       .then((result) => {
         setSelectedFile(null)
         setFileInputVersion((version) => version + 1)
-        setNextUploadSortOrder((sortOrder) => sortOrder + 1)
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
         }
@@ -785,6 +787,9 @@ function ProductImageManager({ product }) {
         setImageSuccess(result?.msg || 'Product image uploaded.')
       })
       .catch(setImageError)
+      .finally(() => {
+        uploadInFlightRef.current = false
+      })
   }
 
   function handleSetPrimary(image) {
@@ -834,6 +839,10 @@ function ProductImageManager({ product }) {
     <section
       className="aurora-product-edit-group aurora-product-image-manager"
       onKeyDownCapture={preventProductImageEnterAction}
+      onSubmitCapture={(event) => {
+        event.preventDefault()
+        event.stopPropagation()
+      }}
     >
       <div className="aurora-product-image-manager-header">
         <div>
