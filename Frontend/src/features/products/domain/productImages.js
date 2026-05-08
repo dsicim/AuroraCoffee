@@ -401,17 +401,22 @@ export function getPreferredProductGalleryIndex(
     return 0
   }
 
-  const normalizedVariantId = Number(
-    selectedVariantId || getSelectedVariantImageId(product, selectedOptionsByGroup),
-  )
+  const variantImageIds = [
+    selectedVariantId,
+    getSelectedVariantImageId(product, selectedOptionsByGroup),
+  ]
 
-  if (Number.isFinite(normalizedVariantId) && normalizedVariantId > 0) {
-    const variantImageIndex = images.findIndex(
-      (entry) => Number(entry?.variantId) === normalizedVariantId,
-    )
+  for (const variantImageId of variantImageIds) {
+    const normalizedVariantId = Number(variantImageId)
 
-    if (variantImageIndex >= 0) {
-      return variantImageIndex
+    if (Number.isFinite(normalizedVariantId) && normalizedVariantId > 0) {
+      const variantImageIndex = images.findIndex(
+        (entry) => Number(entry?.variantId) === normalizedVariantId,
+      )
+
+      if (variantImageIndex >= 0) {
+        return variantImageIndex
+      }
     }
   }
 
