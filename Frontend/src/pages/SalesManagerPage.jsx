@@ -42,6 +42,12 @@ function getOrderStatusFeedback(result, nextStatus) {
   return 'Order status updated successfully.'
 }
 
+function confirmDeliveredStatusChange() {
+  return window.confirm(
+    'Delivered olduğundan emin misiniz? Artık bunu satın alan kullanıcı yorum yapabilir.',
+  )
+}
+
 function formatShortDate(value) {
   const timestamp = Date.parse(value || '')
 
@@ -230,6 +236,10 @@ export default function SalesManagerPage() {
     const nextStatus = event.target.value
 
     if (!selectedOrderId || !nextStatus || nextStatus === selectedStatus) {
+      return
+    }
+
+    if (nextStatus === 'delivered' && !confirmDeliveredStatusChange()) {
       return
     }
 
