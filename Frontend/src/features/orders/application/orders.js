@@ -4,6 +4,7 @@ import {
   fetchProductsByIds,
   getProductCategoryLabel,
   getProductMetaLine,
+  invalidateProductCatalogCache,
 } from '../../../lib/products'
 import { getItemsPriceBreakdown } from '../../../lib/tax'
 
@@ -767,6 +768,7 @@ export async function updateOrderStatus(orderId, status) {
   })
 
   invalidateOrdersCache()
+  invalidateProductCatalogCache()
   dispatchOrdersChange('status', normalizedOrderId)
   return result
 }

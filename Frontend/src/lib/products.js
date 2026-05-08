@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { fetchAuthJson, fetchAuthResponse, readJsonResponse } from './authRequest'
-import { buildApiUrl } from '../shared/api/api'
 import { getGeneratedProductImageUrl } from '../features/products/domain/generatedProductImages'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
@@ -448,7 +447,7 @@ function getProductFromLookupBySlug(slug) {
 }
 
 async function requestJson(path, options = {}) {
-  const response = await fetch(buildApiUrl(path), options)
+  const response = await fetchAuthResponse(path, options)
   const { payload, data } = await readJsonResponse(response)
 
   if (!response.ok || data?.e || payload?.e) {
@@ -970,7 +969,7 @@ export function useProductBySlug(slug) {
   useEffect(() => {
     let active = true
 
-    const loadProduct = async () => {
+    const loadProduct = async ({ force = false } = {}) => {
       const normalizedSlug = String(slug || '').trim()
 
       if (!normalizedSlug) {
@@ -985,7 +984,7 @@ export function useProductBySlug(slug) {
       ensureProductCatalogScope(getProductCatalogScope())
       const cachedProduct = getProductFromLookupBySlug(normalizedSlug)
 
-      if (cachedProduct) {
+      if (cachedProduct && !force) {
         if (active) {
           setProduct(cachedProduct)
           setLoading(false)
@@ -1020,14 +1019,20 @@ export function useProductBySlug(slug) {
     }
 
     const handleAuthChange = () => {
-      void loadProduct()
+      void loadProduct({ force: true })
     }
 
+    const handleProductCatalogChange = () => {
+      void loadProduct({ force: true })
+    }
+
+    window.addEventListener(productCatalogChangeEvent, handleProductCatalogChange)
     window.addEventListener(authChangeEvent, handleAuthChange)
     void loadProduct()
 
     return () => {
       active = false
+      window.removeEventListener(productCatalogChangeEvent, handleProductCatalogChange)
       window.removeEventListener(authChangeEvent, handleAuthChange)
     }
   }, [slug])
