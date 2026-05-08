@@ -384,7 +384,7 @@ function formatReviewScore(value) {
     return '0'
   }
 
-  return Number.isInteger(value) ? `${value}` : value.toFixed(1)
+  return value.toFixed(2)
 }
 
 function normalizeReviewScore(value) {

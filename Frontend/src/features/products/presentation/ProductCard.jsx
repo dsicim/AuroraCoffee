@@ -32,7 +32,7 @@ function formatProductRating(value) {
     return 'No rating'
   }
 
-  return `${Number.isInteger(rating) ? rating : rating.toFixed(1)} / 5`
+  return `${rating.toFixed(2)} / 5`
 }
 
 function getStarFillPercent(value, starNumber) {
