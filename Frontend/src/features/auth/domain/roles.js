@@ -64,17 +64,11 @@ export function getAccessibleRoleLevels(role) {
   }
 
   if (normalizedRole === userRoles.productManager) {
-    return roleAccessLevels.filter(({ role: accessRole }) => (
-      accessRole === userRoles.customer ||
-      accessRole === userRoles.productManager
-    ))
+    return roleAccessLevels.filter(({ role: accessRole }) => accessRole === userRoles.productManager)
   }
 
   if (normalizedRole === userRoles.salesManager) {
-    return roleAccessLevels.filter(({ role: accessRole }) => (
-      accessRole === userRoles.customer ||
-      accessRole === userRoles.salesManager
-    ))
+    return roleAccessLevels.filter(({ role: accessRole }) => accessRole === userRoles.salesManager)
   }
 
   if (normalizedRole === userRoles.customer) {

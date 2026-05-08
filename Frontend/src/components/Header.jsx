@@ -16,7 +16,7 @@ import {
   getCartCount,
   reconcileCartStorageWithAuth,
 } from '../lib/cart'
-import { getRoleLabel } from '../lib/roles'
+import { getRoleLandingPath, getRoleLabel, normalizeUserRole, userRoles } from '../lib/roles'
 
 const navItems = [
   { label: 'Home', to: '/' },
@@ -68,6 +68,10 @@ export default function Header() {
   const roleLabel = hasAccountSession
     ? getRoleLabel(authState.user?.role) || (authState.isChecking ? 'Checking role' : 'Account')
     : 'Guest'
+  const normalizedRole = normalizeUserRole(authState.user?.role)
+  const roleLandingPath = normalizedRole ? getRoleLandingPath(normalizedRole) : '/dashboard'
+  const canUseCustomerAccountTools =
+    normalizedRole === userRoles.customer || normalizedRole === userRoles.admin
   useEffect(() => {
     const syncSessionState = () => {
       void (async () => {
@@ -564,7 +568,7 @@ export default function Header() {
                     <>
                       <LiquidGlassButton
                         as={Link}
-                        to="/account/orders"
+                        to={roleLandingPath}
                         onClick={() => setMenuOpen(false)}
                         role="menuitem"
                         variant="quiet"
@@ -572,20 +576,36 @@ export default function Header() {
                         className="w-full"
                         contentClassName="w-full justify-start"
                       >
-                        Orders
+                        Dashboard
                       </LiquidGlassButton>
-                      <LiquidGlassButton
-                        as={Link}
-                        to="/account"
-                        onClick={() => setMenuOpen(false)}
-                        role="menuitem"
-                        variant="quiet"
-                        size="compact"
-                        className="w-full"
-                        contentClassName="w-full justify-start"
-                      >
-                        Account
-                      </LiquidGlassButton>
+                      {canUseCustomerAccountTools ? (
+                        <>
+                          <LiquidGlassButton
+                            as={Link}
+                            to="/account/orders"
+                            onClick={() => setMenuOpen(false)}
+                            role="menuitem"
+                            variant="quiet"
+                            size="compact"
+                            className="w-full"
+                            contentClassName="w-full justify-start"
+                          >
+                            Orders
+                          </LiquidGlassButton>
+                          <LiquidGlassButton
+                            as={Link}
+                            to="/account"
+                            onClick={() => setMenuOpen(false)}
+                            role="menuitem"
+                            variant="quiet"
+                            size="compact"
+                            className="w-full"
+                            contentClassName="w-full justify-start"
+                          >
+                            Account
+                          </LiquidGlassButton>
+                        </>
+                      ) : null}
                     </>
                   ) : null}
                 </div>

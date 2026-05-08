@@ -40,8 +40,10 @@ function isRouteActive(pathname, to) {
 function AccessLevelControl({ accessLevels, pathname }) {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
-  const customerHomeActive = isRouteActive(pathname, customerHomeLink.to)
   const levels = accessLevels.length ? accessLevels : [customerHomeLink]
+  const primaryLevel = levels[0]
+  const primaryLevelActive = isRouteActive(pathname, primaryLevel.to)
+  const accessLevelActive = levels.some((level) => isRouteActive(pathname, level.to))
 
   useEffect(() => {
     if (!open) {
@@ -73,13 +75,13 @@ function AccessLevelControl({ accessLevels, pathname }) {
     return (
       <LiquidGlassButton
         as={Link}
-        to={customerHomeLink.to}
-        variant={customerHomeActive ? 'secondary' : 'quiet'}
+        to={primaryLevel.to}
+        variant={primaryLevelActive ? 'secondary' : 'quiet'}
         size="compact"
         className="w-full"
         contentClassName="w-full justify-start"
       >
-        {customerHomeLink.label}
+        {primaryLevel.label}
       </LiquidGlassButton>
     )
   }
@@ -94,7 +96,7 @@ function AccessLevelControl({ accessLevels, pathname }) {
     >
       <LiquidGlassButton
         type="button"
-        variant={customerHomeActive || open ? 'secondary' : 'quiet'}
+        variant={accessLevelActive || open ? 'secondary' : 'quiet'}
         size="compact"
         selected={open}
         aria-haspopup="menu"
@@ -104,7 +106,7 @@ function AccessLevelControl({ accessLevels, pathname }) {
         className="aurora-access-trigger w-full"
         contentClassName="w-full justify-between gap-3"
       >
-        <span>{customerHomeLink.label}</span>
+        <span>Access levels</span>
         <svg
           aria-hidden="true"
           viewBox="0 0 20 20"
