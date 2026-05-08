@@ -748,7 +748,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     await completeCart(payload.o.detailsOpen.products);
                                     await sql.clearCart(currentUser.id).then(result => { }).catch(err => { });
                                     setTimeout(async () => {
-                                        await sql.updateOrderStatus(orderNumber.n, "processing", form.paymentId).then(result => {
+                                        await sql.updateOrderStatus(orderNumber.n, "processing", response.paymentId).then(result => {
                                         }).catch(err => {
                                             console.error("Update order status error:", err);
                                         });
