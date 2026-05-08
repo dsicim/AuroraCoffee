@@ -328,7 +328,13 @@ function normalizeProduct(rawProduct) {
     categoryName: normalizeText(rawProduct.category_name),
     parentCategoryName: normalizeText(rawProduct.parent_category_name),
     hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
-    canComment: toBoolean(rawProduct.can_comment ?? rawProduct.canComment),
+    canComment: toBoolean(
+      rawProduct.can_comment ??
+        rawProduct.canComment ??
+        rawProduct.able_to_comment ??
+        rawProduct.ableToComment ??
+        rawProduct.abletocomment,
+    ),
     averageRating: toNullableNumber(rawProduct.averageRating ?? rawProduct.average_rating),
     options: optionGroups,
     variants,
