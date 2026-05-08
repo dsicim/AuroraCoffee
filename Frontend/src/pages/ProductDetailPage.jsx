@@ -380,18 +380,28 @@ function formatReviewDate(value) {
 }
 
 function formatReviewScore(value) {
-  if (!value) {
+  const rating = Number(value)
+
+  if (!Number.isFinite(rating)) {
     return '0'
   }
 
-  return value.toFixed(2)
+  return rating.toFixed(2)
+}
+
+function hasReviewRating(value) {
+  return value !== null && value !== undefined && Number.isFinite(Number(value))
 }
 
 function normalizeReviewScore(value) {
+  if (!hasReviewRating(value)) {
+    return null
+  }
+
   const rating = Number(value)
 
-  if (!Number.isFinite(rating) || rating <= 0) {
-    return 0
+  if (rating < 0) {
+    return null
   }
 
   return Math.min(5, Math.max(0, rating))
@@ -457,15 +467,42 @@ function ReviewRatingInput({
   onHoverChange,
   disabled = false,
 }) {
-  const activeValue = hoverValue || value
+  const activeValue = hoverValue ?? value ?? 0
 
   return (
     <div
       className={`aurora-review-rating-picker ${disabled ? 'opacity-60' : ''}`.trim()}
       onMouseLeave={() => {
-        onHoverChange(0)
+        onHoverChange(null)
       }}
     >
+      <button
+        type="button"
+        className={`aurora-review-zero-button ${value === 0 ? 'is-selected' : ''}`.trim()}
+        aria-label="Rate 0 out of 5"
+        aria-pressed={value === 0 ? 'true' : 'false'}
+        disabled={disabled}
+        onMouseEnter={() => {
+          if (!disabled) {
+            onHoverChange(0)
+          }
+        }}
+        onFocus={() => {
+          if (!disabled) {
+            onHoverChange(0)
+          }
+        }}
+        onBlur={() => {
+          onHoverChange(null)
+        }}
+        onClick={() => {
+          if (!disabled) {
+            onChange(0)
+          }
+        }}
+      >
+        0
+      </button>
       {Array.from({ length: 5 }, (_, index) => {
         const starNumber = index + 1
         const leftStep = starNumber - 0.5
@@ -606,8 +643,8 @@ function ProductReviewPanel({ product }) {
   const navigate = useNavigate()
   const reviewTextareaRef = useRef(null)
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
-  const [reviewRating, setReviewRating] = useState(0)
-  const [hoverReviewRating, setHoverReviewRating] = useState(0)
+  const [reviewRating, setReviewRating] = useState(null)
+  const [hoverReviewRating, setHoverReviewRating] = useState(null)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewPrivacySelection, setReviewPrivacySelection] = useState([])
   const [privacyMenuOpen, setPrivacyMenuOpen] = useState(true)
@@ -694,7 +731,7 @@ function ProductReviewPanel({ product }) {
     const clearSelfCommentState = () => {
       setSelfComment(null)
       setSelfCommentEditing(false)
-      setReviewRating(0)
+      setReviewRating(null)
       setReviewComment('')
     }
 
@@ -793,11 +830,11 @@ function ProductReviewPanel({ product }) {
   }, [product.id, session?.token])
 
   useEffect(() => {
-    setHoverReviewRating(0)
+    setHoverReviewRating(null)
     setPrivacyMenuOpen(true)
 
     if (!hasSession || !selfComment || !editorMode) {
-      setReviewRating(0)
+      setReviewRating(null)
       setReviewComment('')
       setReviewPrivacySelection(
         buildReviewPrivacySelection(currentUser?.displayname, 'initials'),
@@ -805,7 +842,7 @@ function ProductReviewPanel({ product }) {
       return
     }
 
-    setReviewRating(selfComment.prefill?.rating || 0)
+    setReviewRating(selfComment.prefill?.rating ?? null)
     setReviewComment(selfComment.prefill?.comment || '')
     setReviewPrivacySelection(
       resolveReviewPrivacySelection(
@@ -826,17 +863,18 @@ function ProductReviewPanel({ product }) {
 
   const backendReviewAverage = normalizeReviewScore(product.averageRating)
   const commentReviewAverage = useMemo(() => {
-    const ratedReviews = metricReviews.filter((review) => review.rating)
+    const ratedReviews = metricReviews.filter((review) => hasReviewRating(review.rating))
 
     if (!ratedReviews.length) {
-      return 0
+      return null
     }
 
     const totalRating = ratedReviews.reduce((sum, review) => sum + review.rating, 0)
     return totalRating / ratedReviews.length
   }, [metricReviews])
 
-  const reviewAverage = backendReviewAverage || commentReviewAverage
+  const reviewAverage = backendReviewAverage ?? commentReviewAverage
+  const hasReviewAverage = hasReviewRating(reviewAverage)
   const emptyReviewMessage = commentsLoading
     ? 'Loading approved comments.'
     : editorMode && selfComment?.visibleSnapshot
@@ -858,7 +896,7 @@ function ProductReviewPanel({ product }) {
   const clearSelfCommentState = () => {
     setSelfComment(null)
     setSelfCommentEditing(false)
-    setReviewRating(0)
+    setReviewRating(null)
     setReviewComment('')
   }
 
@@ -901,7 +939,7 @@ function ProductReviewPanel({ product }) {
     setReviewError('')
     setReviewFeedback('')
 
-    if (!reviewRating && !trimmedComment) {
+    if (!hasReviewRating(reviewRating) && !trimmedComment) {
       setReviewError('Add a rating or comment before posting.')
       return
     }
@@ -942,7 +980,7 @@ function ProductReviewPanel({ product }) {
           privacy,
         })
 
-        setHoverReviewRating(0)
+        setHoverReviewRating(null)
         setPrivacyMenuOpen(true)
         setReviewFeedback(
           result?.msg ||
@@ -996,8 +1034,8 @@ function ProductReviewPanel({ product }) {
         setReviews(nextResult.comments || [])
         setSelfComment(nextResult.selfComment || null)
         setSelfCommentEditing(false)
-        setReviewRating(0)
-        setHoverReviewRating(0)
+        setReviewRating(null)
+        setHoverReviewRating(null)
         setReviewComment('')
         setCommentsError('')
         setReviewFeedback(result?.msg || 'Your comment was deleted.')
@@ -1031,9 +1069,11 @@ function ProductReviewPanel({ product }) {
           </p>
         </div>
         <div className="aurora-review-metrics-side">
-          <ReviewStars value={reviewAverage} />
+          <ReviewStars value={reviewAverage ?? 0} />
           <span className="aurora-review-score-pill">
-            {reviewAverage ? `${formatReviewScore(reviewAverage)} / 5 average` : 'No rating yet'}
+            {hasReviewAverage
+              ? `${formatReviewScore(reviewAverage)} / 5 average`
+              : 'No rating yet'}
           </span>
         </div>
       </AuroraInset>
@@ -1062,7 +1102,7 @@ function ProductReviewPanel({ product }) {
             <div className="flex flex-wrap items-center gap-3">
               {selfCommentCardSnapshot ? (
                 <div className="aurora-review-card-score">
-                  {selfCommentCardSnapshot.rating ? (
+                  {hasReviewRating(selfCommentCardSnapshot.rating) ? (
                     <>
                       <ReviewStars value={selfCommentCardSnapshot.rating} compact />
                       <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">
@@ -1129,7 +1169,7 @@ function ProductReviewPanel({ product }) {
                 <div>
                   <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Your rating'}</p>
                   <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
-                    {reviewRating ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
+                    {hasReviewRating(reviewRating) ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
                   </h4>
                 </div>
                 <span className="aurora-review-score-pill">Half-step stars</span>
@@ -1298,7 +1338,7 @@ function ProductReviewPanel({ product }) {
                   </p>
                 </div>
                 <div className="aurora-review-card-score">
-                  {review.rating ? (
+                  {hasReviewRating(review.rating) ? (
                     <>
                       <ReviewStars value={review.rating} compact />
                       <span className="text-sm font-semibold text-[var(--aurora-text-strong)]">

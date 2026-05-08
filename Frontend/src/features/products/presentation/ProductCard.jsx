@@ -25,10 +25,14 @@ function keepHyphenatedWordsTogether(value) {
   return String(value || '').replaceAll('-', '\u2011')
 }
 
+function hasProductRating(value) {
+  return value !== null && value !== undefined && value !== '' && Number.isFinite(Number(value))
+}
+
 function formatProductRating(value) {
   const rating = Number(value)
 
-  if (!Number.isFinite(rating) || rating <= 0) {
+  if (!hasProductRating(value) || rating < 0) {
     return 'No rating'
   }
 
@@ -66,7 +70,7 @@ function ProductRatingStar({ fillPercent }) {
 
 function ProductRatingBadge({ value }) {
   const rating = Number(value)
-  const hasRating = Number.isFinite(rating) && rating > 0
+  const hasRating = hasProductRating(value) && rating >= 0
 
   if (!hasRating) {
     return (
@@ -89,6 +93,9 @@ function ProductRatingBadge({ value }) {
             fillPercent={getStarFillPercent(rating, index + 1)}
           />
         ))}
+      </span>
+      <span className="text-[10px] font-semibold text-[var(--aurora-text-strong)]">
+        {rating.toFixed(2)}
       </span>
     </span>
   )

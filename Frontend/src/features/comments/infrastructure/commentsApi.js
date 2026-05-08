@@ -21,16 +21,16 @@ function dispatchCommentsChange(type = 'sync') {
 
 function toUiRating(value) {
   if (value === null || value === undefined || value === '') {
-    return 0
+    return null
   }
 
   const numericValue = Number(value)
 
-  if (!Number.isFinite(numericValue) || numericValue <= 0) {
-    return 0
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
+    return null
   }
 
-  return Math.max(0.5, Math.min(5, Math.round(numericValue) / 2))
+  return Math.max(0, Math.min(5, Math.round(numericValue) / 2))
 }
 
 function toBackendRating(value) {
@@ -40,11 +40,11 @@ function toBackendRating(value) {
 
   const numericValue = Number(value)
 
-  if (!Number.isFinite(numericValue) || numericValue <= 0) {
+  if (!Number.isFinite(numericValue) || numericValue < 0) {
     return null
   }
 
-  return Math.max(1, Math.min(10, Math.round(numericValue * 2)))
+  return Math.max(0, Math.min(10, Math.round(numericValue * 2)))
 }
 
 function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
@@ -54,7 +54,7 @@ function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
   const editedAt = normalizeText(rawComment?.edit) || null
   const rating = toUiRating(rawComment?.rating)
 
-  if (!comment && !rating) {
+  if (!comment && rating === null) {
     return null
   }
 
@@ -63,7 +63,7 @@ function normalizeCommentRecord(rawComment, index, suffix = 'comment') {
     author,
     comment,
     rating,
-    backendRating: rating ? toBackendRating(rating) : null,
+    backendRating: rating === null ? null : toBackendRating(rating),
     createdAt,
     editedAt,
     visibilityFlag: rawComment?.visible === true,
@@ -198,7 +198,7 @@ function normalizeApprovedCommentEntry(rawComment, index) {
         status,
         prefill: {
           comment: prefillSource?.comment || '',
-          rating: prefillSource?.rating || 0,
+          rating: prefillSource?.rating ?? null,
           privacySelection: inferPrivacySelection(prefillSource?.author),
           privacyMode: inferPrivacyMode(prefillSource?.author),
         },
@@ -247,7 +247,7 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
   const editedAt = normalizeText(snapshot?.edit) || null
   const rating = toUiRating(snapshot?.rating)
 
-  if (!comment && !rating) {
+  if (!comment && rating === null) {
     return null
   }
 
@@ -256,7 +256,7 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
     author,
     comment,
     rating,
-    backendRating: rating ? toBackendRating(rating) : null,
+    backendRating: rating === null ? null : toBackendRating(rating),
     createdAt,
     editedAt,
     visibilityFlag: snapshot?.visible === true ? true : snapshot?.visible === false ? false : null,
@@ -398,10 +398,12 @@ function normalizeCurrentUserComment(product, selfComment) {
     status,
     statusLabel: getSelfCommentStatusLabel(status),
     comment: latestSnapshot?.comment || '',
-    rating: latestSnapshot?.rating || 0,
+    rating: latestSnapshot?.rating ?? null,
     backendRating:
       latestSnapshot?.backendRating ??
-      (latestSnapshot?.rating ? toBackendRating(latestSnapshot.rating) : null),
+      (latestSnapshot?.rating === null || latestSnapshot?.rating === undefined
+        ? null
+        : toBackendRating(latestSnapshot.rating)),
     createdAt: normalizeText(latestSnapshot?.createdAt),
     editedAt: normalizeText(latestSnapshot?.editedAt) || null,
     publishedSnapshot: selfComment.visibleSnapshot || null,
@@ -715,7 +717,7 @@ export async function submitProductComment({
     throw new CommentRequestError('Invalid product', 400)
   }
 
-  if (!backendRating && !normalizedComment) {
+  if (backendRating === null && !normalizedComment) {
     throw new CommentRequestError('Add a rating or comment before posting', 400)
   }
 
