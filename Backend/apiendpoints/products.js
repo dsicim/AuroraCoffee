@@ -2,6 +2,20 @@ const fs = require("fs");
 const path = require("path");
 const sql = require("../../Database/server.js");
 const uploader = require("../components/upload.js");
+
+function sanitizeProductForResponse(product) {
+    delete product.sales;
+    product.variants = (Array.isArray(product.variants) ? product.variants : []).map(v => {
+        if (!v) return v;
+        delete v.sales;
+        return v;
+    });
+    if (product.has_variants) {
+        product.stock = product.variants.reduce((sum, variant) => sum + Math.max(0, Number(variant && variant.stock) || 0), 0);
+    }
+    return product;
+}
+
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     const userId = currentUser && !currentUser.e && currentUser.id ? currentUser.id : null;
     if (endpoint.length === 0) {
@@ -11,7 +25,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (ids.length > 0) {
                     return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids)).then(async result => {
                         if (result.success) {
-                            return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = (Array.isArray(p.variants) ? p.variants : []).map(v => { if (!v) return v; delete v.sales; return v; });;return p}), idsnotfound: result.idsnotfound } };
+                            return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse), idsnotfound: result.idsnotfound } };
                         }
                         else {
                             return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -49,7 +63,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getAllProducts(userId).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = (Array.isArray(p.variants) ? p.variants : []).map(v => { if (!v) return v; delete v.sales; return v; });;return p}) } };
+                    return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -68,7 +82,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 query.q = query.q.replaceAll("%20", " ").trim();
                 return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc", "sales"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
                     if (result.success) {
-                        return { s: 200, j: true, d: { products: result.products.map(p => {delete p.sales;p.variants = (Array.isArray(p.variants) ? p.variants : []).map(v => { if (!v) return v; delete v.sales; return v; });return p}) } };
+                        return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
                     }
                     else {
                         return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -89,7 +103,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getCategories(parent).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { categories: result.categories, products: result.products.map(p => {delete p.sales;p.variants = (Array.isArray(p.variants) ? p.variants : []).map(v => { if (!v) return v; delete v.sales; return v; });return p}) } };
+                    return { s: 200, j: true, d: { categories: result.categories, products: result.products.map(sanitizeProductForResponse) } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
