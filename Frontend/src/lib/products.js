@@ -213,46 +213,6 @@ function normalizeProductVariant(rawVariant, optionGroups) {
   }
 }
 
-function buildFallbackVariantsFromOptions(optionGroups, images, rawProduct) {
-  const variantBackedGroups = (optionGroups || []).filter((group) => group.storeAsVariant)
-
-  if (variantBackedGroups.length !== 1) {
-    return []
-  }
-
-  const [variantGroup] = variantBackedGroups
-  const groupKey = variantGroup.code || variantGroup.id
-  const values = Array.isArray(variantGroup.values) ? variantGroup.values : []
-
-  if (!groupKey || !values.length) {
-    return []
-  }
-
-  const variantImages = (Array.isArray(images) ? images : [])
-    .filter((image) => Number(image?.variantId) > 0)
-    .sort((left, right) => left.sortOrder - right.sortOrder || Number(left.id || 0) - Number(right.id || 0))
-  const basePrice = toNumber(rawProduct?.price)
-  const baseStock = Math.max(0, Number(rawProduct?.stock) || 0)
-
-  return values.map((value, index) => {
-    const imageVariantId =
-      variantImages.find((image) => Number(image.variantId) === Number(value.id))?.variantId ||
-      variantImages[index]?.variantId ||
-      null
-    const valueId = Number(value.id) || 0
-
-    return {
-      id: Number(imageVariantId) || valueId,
-      variantCode: value.valueCode,
-      price: basePrice + toNumber(value.priceAdd),
-      stock: baseStock,
-      optionValueCodes: {
-        [groupKey]: value.valueCode,
-      },
-    }
-  })
-}
-
 function normalizeProductImageUrl(value) {
   const url = normalizeText(value)
 
@@ -340,14 +300,9 @@ function normalizeProduct(rawProduct) {
         .filter(Boolean)
         .sort((left, right) => left.sortOrder - right.sortOrder || Number(left.id || 0) - Number(right.id || 0))
     : []
-  const normalizedVariants = Array.isArray(rawProduct?.variants)
-    ? rawProduct.variants
-        .map((variant) => normalizeProductVariant(variant, optionGroups))
-        .filter((variant) => variant.id || variant.variantCode || Object.keys(variant.optionValueCodes).length)
+  const variants = Array.isArray(rawProduct?.variants)
+    ? rawProduct.variants.map((variant) => normalizeProductVariant(variant, optionGroups))
     : []
-  const variants = normalizedVariants.length
-    ? normalizedVariants
-    : buildFallbackVariantsFromOptions(optionGroups, images, rawProduct)
   const primaryImage = images.find((image) => image.isPrimary) || images[0] || null
 
   return {
