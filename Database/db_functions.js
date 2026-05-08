@@ -445,6 +445,9 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
             case 'sales':
                 sql += ' ORDER BY p.sales DESC';
                 break;
+            case 'rating':
+                sql += ' ORDER BY averageRating DESC';
+                break;
             case 'oldest':
                 sql += ' ORDER BY p.created_at ASC';
                 break;
