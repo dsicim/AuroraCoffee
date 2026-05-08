@@ -25,6 +25,16 @@ function keepHyphenatedWordsTogether(value) {
   return String(value || '').replaceAll('-', '\u2011')
 }
 
+function formatProductRating(value) {
+  const rating = Number(value)
+
+  if (!Number.isFinite(rating) || rating <= 0) {
+    return 'No rating'
+  }
+
+  return `${Number.isInteger(rating) ? rating : rating.toFixed(1)} / 5`
+}
+
 export default function ProductCard({ product, compact = false }) {
   const availability = getProductAvailability(product)
   const isOutOfStock = !availability.hasStock
@@ -34,6 +44,7 @@ export default function ProductCard({ product, compact = false }) {
   const typeLabel = getProductTypeLabel(product)
   const categoryLabel = getProductCategoryLabel(product)
   const showCategory = categoryLabel && categoryLabel !== typeLabel
+  const ratingLabel = formatProductRating(product.averageRating)
   const generatedCardImage = getGeneratedProductImageUrl(product)
   const cardImages = generatedCardImage
     ? [
@@ -82,6 +93,9 @@ export default function ProductCard({ product, compact = false }) {
                   {categoryLabel}
                 </span>
               ) : null}
+              <span className="aurora-chip text-[10px] tracking-[0.18em]">
+                {ratingLabel}
+              </span>
             </div>
             <h3 className="aurora-heading mt-1 text-3xl transition hover:text-[var(--aurora-sky-deep)]">
               {product.name}
