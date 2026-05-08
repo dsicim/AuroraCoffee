@@ -17,4 +17,13 @@ describe('pricing helpers', () => {
       discountRate: 25,
     })
   })
+
+  it('caps product discounts at one hundred percent', () => {
+    assert.deepEqual(getDiscountPricing({ price: 80, discountRate: 150 }), {
+      hasDiscount: true,
+      originalPrice: 80,
+      currentPrice: 0,
+      discountRate: 100,
+    })
+  })
 })
