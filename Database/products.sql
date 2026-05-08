@@ -262,9 +262,9 @@ INSERT INTO product_option_values (product_option_group_id, label, value_code, p
 
 -- Insert actual variant combinations
 INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, stock) VALUES
-(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 20),
-(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
-(@eth_weight_group_id, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(1, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 20),
+(1, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(1, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
 (2, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 50),
 (2, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
 (2, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 20),
@@ -286,6 +286,6 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (8, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 15),
 (8, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 10),
 (8, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 5),
-(@thermos_id, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
-(@thermos_id, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
+(11, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
+(11, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
 

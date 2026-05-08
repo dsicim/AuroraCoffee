@@ -344,6 +344,7 @@ func.enrichProductsWithOptions = async function (userId, products) {
             }
         }
         p.variants = Object.values(pVariants);
+        p.variantstest = p.variants; // For testing purposes, can be removed later
 
         // Product level discount
         const pDiscountRate = parseFloat(p.discount_rate || 0);
