@@ -644,6 +644,10 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
                 'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1',
                 [productId]
             );
+            await connection.execute(
+                'UPDATE products SET image_url = ? WHERE id = ?',
+                [imageUrl, productId]
+            );
         }
         const [result] = await connection.execute(
             'INSERT INTO product_images (product_id, image_url, is_primary, sort_order, variant_id) VALUES (?, ?, ?, ?, ?)',
@@ -688,17 +692,24 @@ func.setPrimaryImage = async function (productId, imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
     try {
-        const [result] = await pool.execute(
-            'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1',
-            [productId]
-        );
-        const [result2] = await pool.execute(
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        const [result2] = await connection.execute(
             'UPDATE product_images SET is_primary = 1 WHERE product_id = ? AND image_url = ?',
             [productId, imageUrl]
         );
         if (result2.affectedRows === 0) {
             throw new DBError(404, 'Image or product not found');
         }
+        const [result] = await connection.execute(
+            'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1 AND image_url != ?',
+            [productId, imageUrl]
+        );
+        const [result1] = await connection.execute(
+            'UPDATE products SET image_url = ? WHERE id = ?',
+            [imageUrl, productId]
+        );
+        await connection.commit();
         return { success: true, message: 'Primary image set successfully' };
     } catch (error) {
         console.error('Set primary image error:', error);
@@ -711,10 +722,14 @@ func.removeProductImage = async function (imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
     try {
-        const [result] = await pool.execute('DELETE FROM product_images WHERE image_url = ?', [imageUrl]);
+        const connection = await pool.getConnection();
+        await connection.beginTransaction();
+        const [result] = await connection.execute('DELETE FROM product_images WHERE image_url = ?', [imageUrl]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Image not found');
         }
+        await connection.execute('UPDATE products SET image_url = NULL WHERE image_url = ?', [imageUrl]);
+        await connection.commit();
         return { success: true, message: 'Image removed successfully' };
     } catch (error) {
         console.error('Remove product image error:', error);
@@ -1272,7 +1287,7 @@ func.getCart = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
         const [rows] = await pool.execute(`
-            SELECT c.*, p.name AS product_name, p.price AS product_price, p.image_url, pv.variant_code AS variant_code 
+            SELECT c.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url, pv.variant_code AS variant_code 
             FROM cart c 
             JOIN products p ON c.product_id = p.id 
             LEFT JOIN product_variants pv ON c.variant_id = pv.id AND pv.product_id = c.product_id

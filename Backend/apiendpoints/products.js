@@ -42,8 +42,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "PATCH") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.edits) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (currentUser.role === "Sales Manager") {
+                const allowedEdits = ["price", "discount_rate"];
+                const editKeys = Object.keys(body.data.edits);
+                if (editKeys.length === 0 || editKeys.some(key => !allowedEdits.includes(key))) {
+                    return { s: 403, j: true, d: { e: "Forbidden: Sales Managers can only edit price and discount_rate" } };
+                }
+            }
             return await sql.updateProduct(body.data.id, body.data.edits).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: result.message } };

@@ -426,6 +426,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             let actualCart = await sql.getCart(currentUser.id).then(result => {
                 if (result.success) return {
                     s: true, cart: result.cart.map(item => {
+                        item.discount_rate = parseFloat(item.discount_rate);
                         item.options = item.options ? aes.pjs(item.options) : {};
                         if (item.options.e && item.options.e.startsWith("Failed to parse JSON: ")) item.options = {};
                         return item;
