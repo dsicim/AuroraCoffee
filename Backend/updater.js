@@ -133,24 +133,6 @@ async function runUpdateScript(repoParent) {
     }
 }
 async function RunServerMaintenance() {
-    const server = http.createServer(async function (req, res) {
-        if (req.headers["x-connection"]) {
-            res.writeHead(200, { "Content-Type": "text/plain" });
-            res.end("Updater: OK");
-        }
-        else {
-            fs.readFile(path.join(__dirname, "restartpages/updatingpage.html"), "utf-8", (err, data) => {
-                if (err) {
-                    res.writeHead(500, { "Content-Type": "text/plain" });
-                    res.end("Updater: Internal Server Error");
-                }
-                else {
-                    res.writeHead(200, { "Content-Type": "text/html" });
-                    res.end(data);
-                }
-            });
-        }
-    });
 
 
     const args = process.argv.slice(2);
@@ -174,6 +156,25 @@ async function RunServerMaintenance() {
         else if (action === "update") console.log("GOTIT: No update needed, current version " + (current.s ? current.v : "unknown") + " is up to date. Restarting without updating.");
         else if (action === "reset") console.log("GOTIT: Force reinstall requested. Restarting with updated files. This will take a while.");
         else console.log("GOTIT:Restarting without update");
+        const server = http.createServer(async function (req, res) {
+            if (req.headers["x-connection"]) {
+                res.writeHead(200, { "Content-Type": "text/plain" });
+                res.end("Updater: OK");
+            }
+            else {
+                fs.readFile(path.join(__dirname, "restartpages/updatingpage.html"), "utf-8", (err, data) => {
+                    if (err) {
+                        res.writeHead(500, { "Content-Type": "text/plain" });
+                        res.end("Updater: Internal Server Error");
+                    }
+                    else {
+                        res.writeHead(200, { "Content-Type": "text/html" });
+                        data = data.replace("{{{updating-title}}}", action === "reset" ? "Rebuilding...": (updateneeded ? "Updating..." : "Restarting..."));
+                        res.end(data);
+                    }
+                });
+            }
+        });
         setTimeout(async () => {
             console.log("Under assumption that server has stopped.");
             server.listen(config.port, function (error) {

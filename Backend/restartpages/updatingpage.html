@@ -21,7 +21,7 @@
 
 <div style="text-align:center">
     <div style="margin-top: 30px; max-width: 100%;">
-        <h2 id="updating-title">Updating...</h2>
+        <h2 id="updating-title">{{{updating-title}}}...</h2>
         <p>No need to refresh the page. We'll reload this page when the process is complete.</p>
         <h3 id="updating-description">Connecting...</h3>
     </div>
@@ -68,6 +68,8 @@ if (cssSeemsDisabled) {
 	document.querySelector(".alert").innerHTML = '';
         document.getElementById("explanation").innerHTML = '<strong>Please turn on CSS and <a href="'+window.location.href+'">try again</a>...</strong>';
 }
+
+
 </script>
 </body>
 </html>
