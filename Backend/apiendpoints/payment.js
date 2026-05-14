@@ -180,6 +180,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
     let stotal = 0;
     cart.forEach(item => {
         item.product_price = parseFloat(item.product_price);
+        item.pricededuction = parseFloat(item.pricededuction);
         taxes += item.taxAmount * item.quantity;
         stotal += item.subtotal * item.quantity;
         delete item.general_stock;
@@ -201,6 +202,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
             subtotal: stotal,
             tax: taxes,
             shipping: 0,
+            discount: stotal + taxes - subtotal,
             total: subtotal,
             installment: realPrice - subtotal,
             paid: realPrice,
@@ -427,6 +429,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (result.success) return {
                     s: true, cart: result.cart.map(item => {
                         item.discount_rate = parseFloat(item.discount_rate);
+                        if (isNaN(item.discount_rate)) item.discount_rate = 0;
+                        if (item.discount_rate < 0) item.discount_rate = 0;
+                        if (item.discount_rate > 100) item.discount_rate = 100;
+                        if (item.discount_rate > 0) {
+                            item.pricededuction = Math.round(((item.product_price * item.quantity) * (item.discount_rate / 100)) * 100) / 100;
+                        }
+                        else item.pricededuction = 0;
                         item.options = item.options ? aes.pjs(item.options) : {};
                         if (item.options.e && item.options.e.startsWith("Failed to parse JSON: ")) item.options = {};
                         return item;
@@ -582,7 +591,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             let totalPrice = 0;
             actualCart.forEach(item => {
-                totalPrice += parseFloat(item.product_price) * item.quantity;
+                totalPrice += parseFloat(item.product_price - item.pricededuction) * item.quantity;
             });
             if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
