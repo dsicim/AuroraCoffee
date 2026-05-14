@@ -183,7 +183,6 @@ async function RunServerMaintenance() {
                 }
                 else {
                     console.log("AUCOFFEE-UPDATER > Listening on " + config.port);
-                    api.initDB();
                 }
             })
             const repoParent = path.join(__dirname, "../..");
