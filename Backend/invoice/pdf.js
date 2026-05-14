@@ -121,6 +121,22 @@ async function generatePDF(orderData, print = false) {
             doc.lineWidth(1).moveTo(20, doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
         }
 
+        for (let i = 0; i < orderData.details.products.length; i++) {
+            const p = orderData.details.products[i];
+            p.pricededuction = parseFloat(p.pricededuction);
+            if (p.pricededuction > 0) {
+                const newobj = p;
+                newobj.product_name = "Discount: " + p.product_name;
+                const taxrate = (p.tax / 100);
+                newobj.taxAmount = ((p.pricededuction * taxrate) * -100) / 100;
+                newobj.subtotal = (p.pricededuction+newobj.taxAmount) * -1;
+                newobj.product_price = p.pricededuction * -1;
+                newobj.optionstext = "";
+                orderData.details.products.splice(i+1, 0, newobj);
+                i++;
+            }
+        }
+
         const array = orderData.details.products.map(p => {
             return { n: p.product_name, o: p.optionstext, q: p.quantity, t: p.tax, a: (Math.round(p.taxAmount*100)/100), u: Math.round(p.subtotal*100)/100, p: (Math.round(p.subtotal*100)/100)*p.quantity, ut: p.product_price, pt: p.product_price*p.quantity };
         })
