@@ -1,6 +1,7 @@
 const fetch = require("node-fetch");
 const { spawn, exec } = require("child_process");
 const path = require("path");
+const http = require('http');
 const fs = require("fs");
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
@@ -132,6 +133,26 @@ async function runUpdateScript(repoParent) {
     }
 }
 async function RunServerMaintenance() {
+    const server = http.createServer(async function (req, res) {
+        if (req.headers["x-connection"]) {
+            res.writeHead(200, { "Content-Type": "text/plain" });
+            res.end("Updater: OK");
+        }
+        else {
+            fs.readFile(path.join(__dirname, "restartpages/updatingpage.html"), "utf-8", (err, data) => {
+                if (err) {
+                    res.writeHead(500, { "Content-Type": "text/plain" });
+                    res.end("Updater: Internal Server Error");
+                }
+                else {
+                    res.writeHead(200, { "Content-Type": "text/html" });
+                    res.end(data);
+                }
+            });
+        }
+    });
+
+
     const args = process.argv.slice(2);
     const index = args.indexOf("--action");
     if (index === -1 || index === args.length - 1) {
@@ -155,6 +176,15 @@ async function RunServerMaintenance() {
         else console.log("GOTIT:Restarting without update");
         setTimeout(async () => {
             console.log("Under assumption that server has stopped.");
+            server.listen(config.port, function (error) {
+                if (error) {
+                    console.log("AUCOFFEE-UPDATER > Something went wrong", error);
+                }
+                else {
+                    console.log("AUCOFFEE-UPDATER > Listening on " + config.port);
+                    api.initDB();
+                }
+            })
             const repoParent = path.join(__dirname, "../..");
             process.chdir(repoParent);
             if (updateneeded || action === "reset") {
@@ -168,13 +198,23 @@ async function RunServerMaintenance() {
                     console.log("Updated version in config.json to " + latest.v);
                 }
             }
-            console.log("Starting server...");
+            await new Promise((resolve) => {
+                server.close(() => {
+                    resolve();
+                });
+            });
             const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
-            if (!norestart) spawn("node", ["."], {
-                cwd: backendDir,
-                detached: true,
-                stdio: "ignore",
-            }).unref();
+            if (!norestart) {
+                console.log("Restarting server...");
+                spawn("node", ["."], {
+                    cwd: backendDir,
+                    detached: true,
+                    stdio: "ignore",
+                }).unref();
+            }
+            else {
+                console.log("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
+            }
         }, 3000);
     }
     else console.log("NOWAIT: Invalid action given");

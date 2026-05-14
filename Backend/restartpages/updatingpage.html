@@ -1,0 +1,73 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="tr">
+<title>Updating...</title>
+        <style type="text/css">
+                body {font-family:Arial, Helvetica, sans-serif; }
+                .alert {
+                        border-radius: 10px;
+                        border:1px solid red;
+                        padding: 20px;
+                        background-color: #da453a; /* Red */
+                        color: white;
+                        margin-bottom: 15px;
+                        font-size:24px;
+                }
+        </style>
+</head>
+
+<body>
+
+<div style="text-align:center">
+    <div style="margin-top: 30px; max-width: 100%;">
+        <h2 id="updating-title">Updating...</h2>
+        <p>No need to refresh the page. We'll reload this page when the process is complete.</p>
+        <h3 id="updating-description">Connecting...</h3>
+    </div>
+<div style="margin: auto; max-width: calc(100% - 80px); width: max-content; background-color: #F7F7F7; padding: 40px; border: 1px solid #dedede; border-radius: 10px; margin-top: 30px;">
+                <h2>You are seeing this page, because:</h2>
+                <b id="cssDisabled" style="display:none;">You turned off CSS and... why would you do that? I mean, do you want to have the pure Bannerweb experience?</b>
+        <div class="alert">
+                <b>You turned off JavaScript <span style="color:#cecece; font-weight:normal;">and</span> you can't try again.</b>
+        </div>
+        <div>
+                <p id="explanation">
+                <strong>Unlike Bannerweb, we actually use javascript. Turn it on and then refresh this page...</strong>
+                </p>
+        </div>
+    </div>
+    
+</div>
+
+<script>
+const pain = '<strong>Yeaaahh no. Just <a href="data:text/plain;base64," onclick="window.location.reload()">try again</a>...</strong>';
+const cssSeemsDisabled = window.getComputedStyle(document.getElementById('cssDisabled')).display !== 'none';
+const randomtexts = [
+        // don't take these too seriously, they're just poking fun at how horrible our registration system is.
+        {s:"System is busy",o:"or",e:"out of registration hours", x: 'Please check for <a href="data:text/plain;base64," onclick="document.getElementById(\'explanation\').innerHTML = pain;">registration hours</a> and {{{try again}}}...'},
+        {s:"System is closed",o:"or",e:"trying to update"},
+        {s:"It is add-drop",o:"and",e:"your favourite course is full", x: 'Please ask your favourite public group for someone to drop your course or {{{try again}}}...'},
+        {s:"You couldn't wake up at 10am",o:"and",e:"you extend your college by one more semester", x: 'Please set an alarm for 9am and {{{try again}}}...'},
+        {s:"We found another bug",o:"or",e:"we\'re testing another feature", x: 'Please get used to seeing this page and {{{try again}}}...'},
+        {s:"It is 1pm",o:"and",e:"SR decided to head out", x: 'Please wish them a good lunch and {{{try again}}}...'},
+        {s:"You missed your class",o:"and",e:"you gotta ask your friends\' notes", x: 'Please hope that they took good notes and {{{try again}}}...'},
+        {s:"You accepted cookies",o:"and",e:"you broke your fasting", x: 'Please use localStorage instead of cookies and {{{try again}}}...'},
+        {s:"You tried too hard",o:"and",e:"you dropped TLL", x: 'Please do not use any extensions, bots, scripts or anything that can be considered as "trying too hard" during registration and {{{try again}}}...'},
+        {s:"You used a term you learned on another course",o:"and", e:"you got a zero on the assignment", x: "Please read the fine print on the assignment and {{{try again}}}..."},
+        {s:"You broke backend", o: "or", e: "you found a bug on backend", x: "It's more likely that the backend guy is on his computer. Just wait for a bit and {{{try again}}}..."},
+        {s:"The backend guy is not sleeping", o: "or", e: "he is asleep", x: "Please wait for a bit or a while and {{{try again}}}..."},
+        {s:"System is closed", o: "or", e: "nginx is overwhelmed", x: "I don't know which so uh...maybe {{{try again}}}???"}
+]
+let defaultexplanation = '<strong>Please wait for a bit and <a href="'+window.location.href+'">try again</a>...</strong>';
+const random = randomtexts[Math.floor(Math.random() * randomtexts.length)];
+if (random.x) defaultexplanation = '<strong>'+random.x.replaceAll("{{{", '<a href="'+window.location.href+'">').replaceAll("}}}", '</a>')+'</strong>';
+document.getElementById("explanation").innerHTML = defaultexplanation;
+document.querySelector(".alert").innerHTML = '<b>'+random.s+' <span style="color:#cecece; font-weight:normal;">'+random.o+'</span> '+random.e+'</b>';
+if (cssSeemsDisabled) {
+	document.querySelector(".alert").innerHTML = '';
+        document.getElementById("explanation").innerHTML = '<strong>Please turn on CSS and <a href="'+window.location.href+'">try again</a>...</strong>';
+}
+</script>
+</body>
+</html>
