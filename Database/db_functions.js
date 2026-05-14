@@ -1455,6 +1455,22 @@ func.deleteAddress = async function (userId, addressId) {
     }
 }
 
+func.getUsersWishingForProduct = async function (productId) {
+
+}
+
+func.getWishlists = async function (userId) {
+
+}
+
+func.addToWishlist = async function (userId, productId) {
+
+}
+
+func.removeFromWishlist = async function (userId, productId) {
+    
+}
+
 module.exports = {
     DBError,
     ...func
