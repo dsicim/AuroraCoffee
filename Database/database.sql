@@ -114,7 +114,6 @@ CREATE TABLE IF NOT EXISTS wishlist (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     UNIQUE (user_id, product_id),
-
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
