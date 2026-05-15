@@ -161,18 +161,19 @@ async function runUpdateScript(repoParent) {
 }
 async function waitForPortAvailable(port, maxAttempts = 20, delayMs = 500) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        console.log(`Checking if port ${port} is available (attempt ${attempt + 1}/${maxAttempts})...`);
         logtext(`Checking if port ${port} is available (attempt ${attempt + 1}/${maxAttempts})...`);
         try {
             await new Promise((resolve, reject) => {
                 const testServer = http.createServer();
                 testServer.listen(port, () => {
+                    logtext(`got port ${port}...`);
                     testServer.close(() => resolve());
                 });
                 testServer.on("error", reject);
             });
             return true;
         } catch (err) {
+            logtext(`Port ${port} is not available yet.`);
             if (attempt < maxAttempts - 1) {
                 await new Promise(r => setTimeout(r, delayMs));
             }
@@ -207,7 +208,7 @@ async function RunServerMaintenance() {
         const portAvailable = await waitForPortAvailable(config.port, 40, 500);
         logtext(portAvailable ? "Port is available, proceeding with maintenance." : "Port is still not available after waiting. Stopping under assumption that server has NOT stopped.");
         if (!portAvailable) {
-            console.log("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
+            logtext("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
             return;
         }
         console.log("Under assumption that server has stopped.");
