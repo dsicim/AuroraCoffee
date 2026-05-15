@@ -276,6 +276,7 @@ async function RunServerMaintenance() {
             await fsp.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../updatingpage.html"));
             fdir = path.join(__dirname, "../../updatingpage.html");
         }
+        logtext("Copied page file.");
         const repoParent = path.join(__dirname, "../..");
         process.chdir(repoParent);
         if (updateneeded || action === "reset") {
