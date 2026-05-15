@@ -226,7 +226,7 @@ async function RunServerMaintenance() {
                 }
                 const interval = setInterval(() => {
                     if (stateupdated) {
-                        if (statecleared = true) {
+                        if (statecleared == true) {
                             res.end();
                             clearInterval(interval);
                             return;
