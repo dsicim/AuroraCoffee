@@ -279,7 +279,11 @@ async function RunServerMaintenance() {
             if (norestart) updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
             else updatestate("Restart completed. Refreshing page...");
         }
-        clearstate();
+        await new Promise((resolve) => {
+            setTimeout(() => {
+                clearstate();
+            }, 1000);
+        });
         await new Promise((resolve) => {
             setTimeout(() => {
                 server.close(() => {
