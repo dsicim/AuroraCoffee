@@ -65,24 +65,32 @@ function logtext(text) {
         if (logconsole) console.log(text);
     }
 }
+const stateClients = new Set();
+
+function writeToClient(res, msg) {
+  return new Promise((resolve) => {
+    const wrote = res.write((res.headersSent ? "\n" : "") + msg, "utf8", () => resolve());
+    if (!wrote && res.socket) res.socket.once("drain", resolve);
+  });
+}
 let currentstate = "Starting...";
 let stateupdated = false;
 let statecleared = false;
-async function updatestate(newstate) {
-    currentstate = newstate;
-    stateupdated = true;
-    while (stateupdated) {
-        await new Promise(r => setTimeout(r, 10));
-    }
-    return;
+async function updatestate(newstate, timeoutMs = 5000) {
+  currentstate = newstate;
+  if (stateClients.size === 0) return;
+  const writes = Array.from(stateClients).map(res =>
+    writeToClient(res, currentstate).catch(() => stateClients.delete(res))
+  );
+  await Promise.race([Promise.all(writes), new Promise(r => setTimeout(r, timeoutMs))]);
 }
-async function clearstate() {
-    stateupdated = true;
-    statecleared = true;
-    while (stateupdated) {
-        await new Promise(r => setTimeout(r, 10));
-    }
-    return;
+
+async function clearstate(timeoutMs = 3000) {
+  for (const res of Array.from(stateClients)) {
+    try { res.end(); } catch (e) {}
+    stateClients.delete(res);
+  }
+  await new Promise(r => setTimeout(r, Math.min(200, timeoutMs)));
 }
 async function runResetScript(repoParent,gitrepo) {
     try {
@@ -227,27 +235,10 @@ async function RunServerMaintenance() {
                 res.setHeader("Cache-Control", "no-cache");
                 res.setHeader("X-Accel-Buffering", "no");
                 res.flushHeaders();
-                res.write(currentstate);
-                if (statecleared) {
-                    res.end();
-                    return;
-                }
-                const interval = setInterval(() => {
-                    if (stateupdated) {
-                        if (statecleared == true) {
-                            res.end();
-                            clearInterval(interval);
-                            return;
-                        }
-                        else {
-                            res.write("\n" + currentstate);
-                        }
-                        stateupdated = false;
-                    }
-                }, 10);
-                req.on("close", () => {
-                    clearInterval(interval);
-                });
+                stateClients.add(res);
+                try { res.write(currentstate); } catch (e) { stateClients.delete(res); }
+                req.on("close", () => stateClients.delete(res));
+                return;
             }
             else {
                 fs.readFile(fdir, "utf-8", (err, data) => {
