@@ -212,6 +212,7 @@ async function RunServerMaintenance() {
             return;
         }
         console.log("Under assumption that server has stopped.");
+        let fdir = path.join(__dirname, "restartpages/updatingpage.html");
         const server = http.createServer(async function (req, res) {
             if (req.headers["x-connection"]) {
                 res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -241,7 +242,7 @@ async function RunServerMaintenance() {
                 });
             }
             else {
-                fs.readFile(path.join(__dirname, "restartpages/updatingpage.html"), "utf-8", (err, data) => {
+                fs.readFile(fdir, "utf-8", (err, data) => {
                     if (err) {
                         res.writeHead(500, { "Content-Type": "text/plain" });
                         res.end("Updater: Internal Server Error");
@@ -264,6 +265,10 @@ async function RunServerMaintenance() {
             }
         });
         logtext("Changing working directory to repo parent...");
+        if (action === "reset") {
+            fs.copyFileSync("./restartpages/updatingpage.html", path.join(__dirname, "../../restartpages/updatingpage.html"));
+            fdir = path.join(__dirname, "../../restartpages/updatingpage.html");
+        }
         const repoParent = path.join(__dirname, "../..");
         process.chdir(repoParent);
         if (updateneeded || action === "reset") {
