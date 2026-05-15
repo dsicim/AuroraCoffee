@@ -3,6 +3,7 @@ const { spawn, exec } = require("child_process");
 const path = require("path");
 const http = require('http');
 const fs = require("fs");
+const fsp = require("fs").promises;
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
     if (!github) {
@@ -100,7 +101,7 @@ async function runResetScript(repoParent,gitrepo) {
         if (log) fs.writeFileSync("./resetlog.log", "");
         await updatestate("Removing built folder...");
         try {
-            await fs.promises.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, force: true });
+            await fsp.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, force: true });
             logtext("Removed directory");
         } catch (err) {
             logtext("Failed to remove directory: "+err);
@@ -272,7 +273,7 @@ async function RunServerMaintenance() {
         });
         logtext("Changing working directory to repo parent...");
         if (action === "reset") {
-            await fs.promises.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../updatingpage.html"));
+            await fsp.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../updatingpage.html"));
             fdir = path.join(__dirname, "../../updatingpage.html");
         }
         const repoParent = path.join(__dirname, "../..");
