@@ -159,6 +159,26 @@ async function runUpdateScript(repoParent) {
         return "Error: " + err;
     }
 }
+async function waitForPortAvailable(port, maxAttempts = 20, delayMs = 500) {
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        console.log(`Checking if port ${port} is available (attempt ${attempt + 1}/${maxAttempts})...`);
+        try {
+            await new Promise((resolve, reject) => {
+                const testServer = http.createServer();
+                testServer.listen(port, () => {
+                    testServer.close(() => resolve());
+                });
+                testServer.on("error", reject);
+            });
+            return true;
+        } catch (err) {
+            if (attempt < maxAttempts - 1) {
+                await new Promise(r => setTimeout(r, delayMs));
+            }
+        }
+    }
+    return false;
+}
 async function RunServerMaintenance() {
     const args = process.argv.slice(2);
     const index = args.indexOf("--action");
@@ -223,58 +243,62 @@ async function RunServerMaintenance() {
                 });
             }
         });
-        setTimeout(async () => {
-            console.log("Under assumption that server has stopped.");
-            server.listen(config.port, function (error) {
-                if (error) {
-                    console.log("AUCOFFEE-UPDATER > Something went wrong", error);
-                }
-                else {
-                    console.log("AUCOFFEE-UPDATER > Listening on " + config.port);
-                }
-            })
-            const repoParent = path.join(__dirname, "../..");
-            process.chdir(repoParent);
-            if (updateneeded || action === "reset") {
-                console.log("Running git refresh script...");
-                updatestate("Starting update...");
-                const output = (action === "reset") ? await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err) : await runUpdateScript(repoParent).then(res => res).catch(err => "Error: " + err);
-                console.log(output);
-                if (output.startsWith("Success:")) {
-                    updatestate("Finishing up...");
-                    const cfg = JSON.parse(fs.readFileSync("./AuroraCoffee/Backend/config.json", "utf-8"));
-                    cfg.version = latest.v;
-                    fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
-                    console.log("Updated version in config.json to " + latest.v);
-                    if (action === "reset") updatestate("Rebuild completed. Refreshing page...");
-                    else updatestate("Update completed. Refreshing page...");
-                }
+
+        const portAvailable = await waitForPortAvailable(config.port, 40, 500);
+        if (!portAvailable) {
+            console.log("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
+            return;
+        }
+        console.log("Under assumption that server has stopped.");
+        server.listen(config.port, function (error) {
+            if (error) {
+                console.log("AUCOFFEE-UPDATER > Something went wrong", error);
             }
             else {
-                if (norestart) updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
-                else updatestate("Restart completed. Refreshing page...");
+                console.log("AUCOFFEE-UPDATER > Listening on " + config.port);
             }
-            clearstate();
-            await new Promise((resolve) => {
-                setTimeout(() => {
-                    server.close(() => {
-                        resolve();
-                    });
-                }, 1000);
-            });
-            const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
-            if (!norestart) {
-                console.log("Restarting server...");
-                spawn("node", ["."], {
-                    cwd: backendDir,
-                    detached: true,
-                    stdio: "ignore",
-                }).unref();
+        })
+        const repoParent = path.join(__dirname, "../..");
+        process.chdir(repoParent);
+        if (updateneeded || action === "reset") {
+            console.log("Running git refresh script...");
+            updatestate("Starting update...");
+            const output = (action === "reset") ? await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err) : await runUpdateScript(repoParent).then(res => res).catch(err => "Error: " + err);
+            console.log(output);
+            if (output.startsWith("Success:")) {
+                updatestate("Finishing up...");
+                const cfg = JSON.parse(fs.readFileSync("./AuroraCoffee/Backend/config.json", "utf-8"));
+                cfg.version = latest.v;
+                fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
+                console.log("Updated version in config.json to " + latest.v);
+                if (action === "reset") updatestate("Rebuild completed. Refreshing page...");
+                else updatestate("Update completed. Refreshing page...");
             }
-            else {
-                console.log("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
-            }
-        }, 5000);
+        }
+        else {
+            if (norestart) updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
+            else updatestate("Restart completed. Refreshing page...");
+        }
+        clearstate();
+        await new Promise((resolve) => {
+            setTimeout(() => {
+                server.close(() => {
+                    resolve();
+                });
+            }, 1000);
+        });
+        const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
+        if (!norestart) {
+            console.log("Restarting server...");
+            spawn("node", ["."], {
+                cwd: backendDir,
+                detached: true,
+                stdio: "ignore",
+            }).unref();
+        }
+        else {
+            console.log("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
+        }
     }
     else console.log("NOWAIT: Invalid action given");
 }
