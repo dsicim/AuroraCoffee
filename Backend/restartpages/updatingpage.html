@@ -60,14 +60,18 @@ const randomtexts = [
         {s:"System is closed", o: "or", e: "nginx is overwhelmed", x: "I don't know which so uh...maybe {{{try again}}}???"}
 ]
 let defaultexplanation = '<strong>Please wait for a bit and <a href="'+window.location.href+'">try again</a>...</strong>';
-const random = randomtexts[Math.floor(Math.random() * randomtexts.length)];
-if (random.x) defaultexplanation = '<strong>'+random.x.replaceAll("{{{", '<a href="'+window.location.href+'">').replaceAll("}}}", '</a>')+'</strong>';
-document.getElementById("explanation").innerHTML = defaultexplanation;
-document.querySelector(".alert").innerHTML = '<b>'+random.s+' <span style="color:#cecece; font-weight:normal;">'+random.o+'</span> '+random.e+'</b>';
-if (cssSeemsDisabled) {
-	document.querySelector(".alert").innerHTML = '';
-        document.getElementById("explanation").innerHTML = '<strong>Please turn on CSS and <a href="'+window.location.href+'">try again</a>...</strong>';
+function randomMessage() {
+    const random = randomtexts[Math.floor(Math.random() * randomtexts.length)];
+    if (random.x) defaultexplanation = '<strong>'+random.x.replaceAll("{{{", '<a href="'+window.location.href+'">').replaceAll("}}}", '</a>')+'</strong>';
+    document.getElementById("explanation").innerHTML = defaultexplanation;
+    document.querySelector(".alert").innerHTML = '<b>'+random.s+' <span style="color:#cecece; font-weight:normal;">'+random.o+'</span> '+random.e+'</b>';
+    if (cssSeemsDisabled) {
+        document.querySelector(".alert").innerHTML = '';
+            document.getElementById("explanation").innerHTML = '<strong>Please turn on CSS and <a href="'+window.location.href+'">try again</a>...</strong>';
+    }
 }
+randomMessage();
+setInterval(randomMessage, 7000);
 function updateOutput(text) {
     const desc = document.getElementById("updating-description");
     desc.textContent = text;
