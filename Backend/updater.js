@@ -266,8 +266,8 @@ async function RunServerMaintenance() {
         });
         logtext("Changing working directory to repo parent...");
         if (action === "reset") {
-            await fs.promises.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../restartpages/updatingpage.html"));
-            fdir = path.join(__dirname, "../../restartpages/updatingpage.html");
+            await fs.promises.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../updatingpage.html"));
+            fdir = path.join(__dirname, "../../updatingpage.html");
         }
         const repoParent = path.join(__dirname, "../..");
         process.chdir(repoParent);
