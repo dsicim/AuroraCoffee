@@ -162,6 +162,7 @@ async function runUpdateScript(repoParent) {
 async function waitForPortAvailable(port, maxAttempts = 20, delayMs = 500) {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
         console.log(`Checking if port ${port} is available (attempt ${attempt + 1}/${maxAttempts})...`);
+        logtext(`Checking if port ${port} is available (attempt ${attempt + 1}/${maxAttempts})...`);
         try {
             await new Promise((resolve, reject) => {
                 const testServer = http.createServer();
@@ -201,6 +202,15 @@ async function RunServerMaintenance() {
         else if (action === "update") console.log("GOTIT: No update needed, current version " + (current.s ? current.v : "unknown") + " is up to date. Restarting without updating.");
         else if (action === "reset") console.log("GOTIT: Force reinstall requested. Restarting with updated files. This will take a while.");
         else console.log("GOTIT:Restarting without update");
+        
+
+        const portAvailable = await waitForPortAvailable(config.port, 40, 500);
+        logtext(portAvailable ? "Port is available, proceeding with maintenance." : "Port is still not available after waiting. Stopping under assumption that server has NOT stopped.");
+        if (!portAvailable) {
+            console.log("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
+            return;
+        }
+        console.log("Under assumption that server has stopped.");
         const server = http.createServer(async function (req, res) {
             if (req.headers["x-connection"]) {
                 res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -243,13 +253,6 @@ async function RunServerMaintenance() {
                 });
             }
         });
-
-        const portAvailable = await waitForPortAvailable(config.port, 40, 500);
-        if (!portAvailable) {
-            console.log("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
-            return;
-        }
-        console.log("Under assumption that server has stopped.");
         server.listen(config.port, function (error) {
             if (error) {
                 console.log("AUCOFFEE-UPDATER > Something went wrong", error);
