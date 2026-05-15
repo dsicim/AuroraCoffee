@@ -82,6 +82,16 @@ const server = http.createServer(async function (req, res) {
         if (response.resended) return;
         res.writeHead(response.s, { "Content-Type": (response.j ? "application/json" : (response.h ? (response.h["Content-Type"] || "text/plain") : "text/plain")), ...response.h });
         res.end(response.j ? JSON.stringify(response.d) : response.d);
+        if (response.stopserver) {
+            setTimeout(async () => {
+                await new Promise((resolve) => {
+                    server.close(() => {
+                        resolve();
+                    });
+                });
+                process.exit(0);
+            }, 1000);
+        }
     }
     else if (req.url.startsWith("/assets/")) {
         fs.readFile(fdir + "assets/" + req.url.substring(8), function (error, data) {

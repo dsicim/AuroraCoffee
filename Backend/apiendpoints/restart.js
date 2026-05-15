@@ -58,8 +58,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             const newlineIndex = buffer.indexOf("\n");
                             if (newlineIndex !== -1) {
                                 const firstLine = buffer.slice(0, newlineIndex).trim();
+                                let stopserver = false;
                                 if (firstLine.startsWith("GOTIT:")) {
-                                    setTimeout(() => process.exit(0), 2000);
+                                    stopserver = true;
                                 }
                                 else {
                                     console.error("Unexpected child output:", firstLine);
@@ -69,7 +70,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 child.unref();
                                 if (!firstLine.startsWith("GOTIT:")) resolve({ s: 500, j: false, d: "Failed to initiate server " + body.data.action + ". Child process returned " + firstLine });
                                 const actualoutput = firstLine.substring(6);
-                                resolve({ s: 200, j: false, d: "Server " + body.data.action + " initiated. Server will be unresponsive for a few " + (body.data.action === "update" ? "minutes" : "seconds") + ".\n" + actualoutput });
+                                resolve({ s: 200, j: false, d: "Server " + body.data.action + " initiated. Server will be unresponsive for a few " + (body.data.action === "update" ? "minutes" : "seconds") + ".\n" + actualoutput, stopserver: stopserver });
                             }
                         });
                     }).catch(err => {
@@ -80,8 +81,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     if (currentUser.internal) {
                         return { s: 403, j: false, d: "Forbidden" };
                     }
-                    setTimeout(() => process.exit(0), 2000);
-                    return { s: 200, j: false, d: "Server stop initiated. Server will be unresponsive immediately. Only one person can bring the server back up. Goodbye." };
+                    return { s: 200, j: false, d: "Server stop initiated. Server will be unresponsive immediately. Only one person can bring the server back up. Goodbye.", stopserver: true };
                 }
                 else if (body.data.action === "dumpsql") {
                     streamDump(res, {
