@@ -285,6 +285,7 @@ async function RunServerMaintenance() {
         await new Promise((resolve) => {
             setTimeout(() => {
                 clearstate();
+                resolve();
             }, 1000);
         });
         await new Promise((resolve) => {
