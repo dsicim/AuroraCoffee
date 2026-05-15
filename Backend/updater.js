@@ -67,13 +67,14 @@ function logtext(text) {
 }
 let currentstate = "Starting...";
 let stateupdated = false;
+let statecleared = false;
 function updatestate(newstate) {
     currentstate = newstate;
     stateupdated = true;
 }
 function clearstate() {
-    currentstate = "stateclearedendallconnections";
     stateupdated = true;
+    statecleared = true;
 }
 async function runResetScript(repoParent,gitrepo) {
     try {
@@ -159,8 +160,6 @@ async function runUpdateScript(repoParent) {
     }
 }
 async function RunServerMaintenance() {
-
-
     const args = process.argv.slice(2);
     const index = args.indexOf("--action");
     if (index === -1 || index === args.length - 1) {
@@ -189,9 +188,13 @@ async function RunServerMaintenance() {
                 res.setHeader("X-Accel-Buffering", "no");
                 res.flushHeaders();
                 res.write(currentstate);
+                if (statecleared) {
+                    res.end();
+                    return;
+                }
                 const interval = setInterval(() => {
                     if (stateupdated) {
-                        if (currentstate === "stateclearedendallconnections") {
+                        if (statecleared = true) {
                             res.end();
                             clearInterval(interval);
                             return;
@@ -201,7 +204,7 @@ async function RunServerMaintenance() {
                         }
                         stateupdated = false;
                     }
-                }, 1000);
+                }, 10);
                 req.on("close", () => {
                     clearInterval(interval);
                 });
