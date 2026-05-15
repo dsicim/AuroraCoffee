@@ -212,7 +212,7 @@ async function RunServerMaintenance() {
             return;
         }
         console.log("Under assumption that server has stopped.");
-        let fdir = path.join(__dirname, "restartpages/updatingpage.html");
+        let fdir = path.join(__dirname, "restartpages","updatingpage.html");
         const server = http.createServer(async function (req, res) {
             if (req.headers["x-connection"]) {
                 res.setHeader("Content-Type", "text/plain; charset=utf-8");
@@ -266,7 +266,7 @@ async function RunServerMaintenance() {
         });
         logtext("Changing working directory to repo parent...");
         if (action === "reset") {
-            fs.copyFileSync("./restartpages/updatingpage.html", path.join(__dirname, "../../restartpages/updatingpage.html"));
+            await fs.copyFile(path.join(__dirname, "./restartpages/updatingpage.html"), path.join(__dirname, "../../restartpages/updatingpage.html"));
             fdir = path.join(__dirname, "../../restartpages/updatingpage.html");
         }
         const repoParent = path.join(__dirname, "../..");
