@@ -237,7 +237,7 @@ async function RunServerMaintenance() {
             logtext("Port " + config.port + " is not available after several attempts. Main server may still be running or failed to stop. Please check the server status and restart manually if needed.");
             return;
         }
-        console.log("Under assumption that server has stopped.");
+        logtext("Under assumption that server has stopped.");
         let fdir = path.join(__dirname, "restartpages","updatingpage.html");
         const server = http.createServer(async function (req, res) {
             if (req.headers["x-connection"]) {
@@ -287,16 +287,16 @@ async function RunServerMaintenance() {
         const repoParent = path.join(__dirname, "../..");
         process.chdir(repoParent);
         if (updateneeded || action === "reset") {
-            console.log("Running git refresh script...");
+            logtext("Running git refresh script...");
             await updatestate("Starting update...");
             const output = (action === "reset") ? await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err) : await runUpdateScript(repoParent).then(res => res).catch(err => "Error: " + err);
-            console.log(output);
+            logtext(output);
             if (output.startsWith("Success:")) {
                 await updatestate("Finishing up...");
                 const cfg = JSON.parse(fs.readFileSync("./AuroraCoffee/Backend/config.json", "utf-8"));
                 cfg.version = latest.v;
                 fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
-                console.log("Updated version in config.json to " + latest.v);
+                logtext("Updated version in config.json to " + latest.v);
                 if (action === "reset") await updatestate("Rebuild completed. Refreshing page...");
                 else await updatestate("Update completed. Refreshing page...");
             }
@@ -325,7 +325,7 @@ async function RunServerMaintenance() {
         });
         const backendDir = path.join(repoParent, "AuroraCoffee/Backend");
         if (!norestart) {
-            console.log("Restarting server...");
+            logtext("Restarting server...");
             spawn("node", ["."], {
                 cwd: backendDir,
                 detached: true,
@@ -333,7 +333,7 @@ async function RunServerMaintenance() {
             }).unref();
         }
         else {
-            console.log("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
+            logtext("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
         }
     }
     else console.log("NOWAIT: Invalid action given");
