@@ -82,7 +82,6 @@ function updateOutput(text) {
         const reader = r.body.getReader();
         const dec = new TextDecoder();
         let buf = "";
-        let output = "";
         while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -97,8 +96,7 @@ function updateOutput(text) {
             }
         }
         if (buf.length) {
-            output += buf;
-            updateOutput(output);
+            updateOutput(buf);
         }
     } catch (err) {
         updateOutput("An error occurred during the connection. Please try again later.");

@@ -68,21 +68,21 @@ function logtext(text) {
 }
 const stateClients = new Set();
 
-function writeToClient(res, msg, last = false) {
+function writeToClient(res, msg) {
   return new Promise((resolve) => {
-    const wrote = res.write(msg + (last ? "" : "\n"), "utf8", () => resolve());
+    const wrote = res.write(msg + "\n", "utf8", () => resolve());
     if (!wrote && res.socket) res.socket.once("drain", resolve);
   });
 }
 let currentstate = "Starting...";
 let stateupdated = false;
 let statecleared = false;
-async function updatestate(newstate, timeoutMs = 5000, last = false) {
+async function updatestate(newstate, timeoutMs = 5000) {
   currentstate = newstate;
   logtext("STATE: " + newstate);  
   if (stateClients.size === 0) return;
   const writes = Array.from(stateClients).map(res =>
-    writeToClient(res, currentstate, last).catch(() => stateClients.delete(res))
+    writeToClient(res, currentstate).catch(() => stateClients.delete(res))
   );
   await Promise.race([Promise.all(writes), new Promise(r => setTimeout(r, timeoutMs))]);
 }
@@ -238,7 +238,12 @@ async function RunServerMaintenance() {
                 res.setHeader("X-Accel-Buffering", "no");
                 res.flushHeaders();
                 stateClients.add(res);
-                try { res.write(currentstate); } catch (e) { stateClients.delete(res); }
+                try { res.write(currentstate+ "\n"); } catch (e) { stateClients.delete(res); }
+                if (statecleared) {
+                    res.end();
+                    stateClients.delete(res);
+                    return;
+                }
                 req.on("close", () => stateClients.delete(res));
                 return;
             }
@@ -283,13 +288,13 @@ async function RunServerMaintenance() {
                 cfg.version = latest.v;
                 fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
                 console.log("Updated version in config.json to " + latest.v);
-                if (action === "reset") await updatestate("Rebuild completed. Refreshing page...", undefined, true);
-                else await updatestate("Update completed. Refreshing page...", undefined, true);
+                if (action === "reset") await updatestate("Rebuild completed. Refreshing page...");
+                else await updatestate("Update completed. Refreshing page...");
             }
         }
         else {
             if (norestart) await updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
-            else await updatestate("Restart completed. Refreshing page...", undefined, true);
+            else await updatestate("Restart completed. Refreshing page...");
         }
         await new Promise((resolve) => {
             setTimeout(() => {
