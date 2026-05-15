@@ -68,19 +68,27 @@ function logtext(text) {
 let currentstate = "Starting...";
 let stateupdated = false;
 let statecleared = false;
-function updatestate(newstate) {
+async function updatestate(newstate) {
     currentstate = newstate;
     stateupdated = true;
+    while (stateupdated) {
+        await new Promise(r => setTimeout(r, 10));
+    }
+    return;
 }
-function clearstate() {
+async function clearstate() {
     stateupdated = true;
     statecleared = true;
+    while (stateupdated) {
+        await new Promise(r => setTimeout(r, 10));
+    }
+    return;
 }
 async function runResetScript(repoParent,gitrepo) {
     try {
         const cwd = repoParent;
         if (log) fs.writeFileSync("./resetlog.log", "");
-        updatestate("Removing built folder...");
+        await updatestate("Removing built folder...");
         try {
             await fs.promises.rm(path.join(cwd, "AuroraCoffee"), { recursive: true, force: true });
             logtext("Removed directory");
@@ -89,31 +97,31 @@ async function runResetScript(repoParent,gitrepo) {
             throw err;
         }
         logtext("Removed directory.");
-        updatestate("Cloning repository...");
+        await updatestate("Cloning repository...");
         await execute("git clone -b main "+gitrepo, { cwd: cwd }, "./resetlog.log");
         logtext("Cloned repository.");
-        updatestate("Applying configuration...");
+        await updatestate("Applying configuration...");
         await fs.copyFile("./config.json", path.join(cwd, "AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
         logtext("Updated config.json.");
-        updatestate("Installing backend dependencies...");
+        await updatestate("Installing backend dependencies...");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Backend" }, "./resetlog.log");
-        updatestate("Auditing backend dependencies...");
+        await updatestate("Auditing backend dependencies...");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Backend" }, "./resetlog.log");
         logtext("Updated backend dependencies.");
-        updatestate("Installing frontend dependencies...");
+        await updatestate("Installing frontend dependencies...");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        updatestate("Auditing frontend dependencies...");
+        await updatestate("Auditing frontend dependencies...");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         logtext("Updated frontend dependencies.");
-        updatestate("Building frontend...");
+        await updatestate("Building frontend...");
         await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-        updatestate("Linting ECMAScript...");
+        await updatestate("Linting ECMAScript...");
         await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
         logtext("Built frontend.");
-        updatestate("Installing database dependencies...");
+        await updatestate("Installing database dependencies...");
         await execute("npm i", { cwd: cwd + "/AuroraCoffee/Database" }, "./resetlog.log");
-        updatestate("Auditing database dependencies...");
+        await updatestate("Auditing database dependencies...");
         await execute("npm audit fix", { cwd: cwd + "/AuroraCoffee/Database" }, "./resetlog.log");
         logtext("Updated database dependencies.");
         return "Success: reset completed successfully";
@@ -127,7 +135,7 @@ async function runUpdateScript(repoParent) {
     try {
         const cwd = repoParent;
         if (log) fs.writeFileSync("./resetlog.log", "");
-        updatestate("Fetching latest changes...");
+        await updatestate("Fetching latest changes...");
         await execute("git switch main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         await execute("git fetch origin", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         const { stdout } = await execute("git diff --name-only HEAD..origin/main -- Frontend/",{ cwd: cwd + "/AuroraCoffee" },"./resetlog.log");
@@ -135,19 +143,19 @@ async function runUpdateScript(repoParent) {
         const frontendUpdated = frontendChanges.length > 0;
         if (frontendUpdated) logtext("Frontend changes detected: \n" + frontendChanges.join("\n"));
         else logtext("No frontend changes detected. Skipping frontend build.");
-        updatestate("Applying latest changes...");
+        await updatestate("Applying latest changes...");
         await execute("git reset --hard origin/main", { cwd: path.join(cwd, "/AuroraCoffee") }, "./resetlog.log");
         logtext("Updated git repo.");
-        updatestate("Applying configuration...");
+        await updatestate("Applying configuration...");
         await fs.copyFile("./config.json", path.join(cwd, "/AuroraCoffee/Backend/config.json"), err => { });
         await fs.rm(path.join(cwd, "/AuroraCoffee/Backend/config.json.example"), { force: true }, err => { });
         logtext("Copied config file.");
         if (frontendUpdated) {
-            updatestate("Removing frontend build...");
+            await updatestate("Removing frontend build...");
             await fs.rm(path.join(cwd, "/AuroraCoffee/Frontend/dist"), { force: true }, err => { });
-            updatestate("Building frontend...");
+            await updatestate("Building frontend...");
             await execute("npm run build", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
-            updatestate("Linting ECMAScript...");
+            await updatestate("Linting ECMAScript...");
             await execute("npm run lint", { cwd: cwd + "/AuroraCoffee/Frontend" }, "./resetlog.log");
             logtext("Built frontend.");
         }
@@ -273,22 +281,22 @@ async function RunServerMaintenance() {
         process.chdir(repoParent);
         if (updateneeded || action === "reset") {
             console.log("Running git refresh script...");
-            updatestate("Starting update...");
+            await updatestate("Starting update...");
             const output = (action === "reset") ? await runResetScript(repoParent,config.gitrepo).then(res => res).catch(err => "Error: " + err) : await runUpdateScript(repoParent).then(res => res).catch(err => "Error: " + err);
             console.log(output);
             if (output.startsWith("Success:")) {
-                updatestate("Finishing up...");
+                await updatestate("Finishing up...");
                 const cfg = JSON.parse(fs.readFileSync("./AuroraCoffee/Backend/config.json", "utf-8"));
                 cfg.version = latest.v;
                 fs.writeFileSync("./AuroraCoffee/Backend/config.json", JSON.stringify(cfg, null, 4), "utf-8");
                 console.log("Updated version in config.json to " + latest.v);
-                if (action === "reset") updatestate("Rebuild completed. Refreshing page...");
-                else updatestate("Update completed. Refreshing page...");
+                if (action === "reset") await updatestate("Rebuild completed. Refreshing page...");
+                else await updatestate("Update completed. Refreshing page...");
             }
         }
         else {
-            if (norestart) updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
-            else updatestate("Restart completed. Refreshing page...");
+            if (norestart) await updatestate("Restart skipped due to --norestart flag. Please restart the server manually and refresh the page.");
+            else await updatestate("Restart completed. Refreshing page...");
         }
         await new Promise((resolve) => {
             setTimeout(() => {
