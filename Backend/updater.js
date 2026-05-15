@@ -4,6 +4,13 @@ const path = require("path");
 const http = require('http');
 const fs = require("fs");
 const fsp = require("fs").promises;
+process.on('uncaughtException', (err) => {
+  logtext("UNCAUGHT EXCEPTION: " + (err && err.stack) || String(err));
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  logtext("UNHANDLED REJECTION: " + (reason && reason.stack) || String(reason));
+});""
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
     if (!github) {
