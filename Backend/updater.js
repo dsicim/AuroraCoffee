@@ -271,7 +271,7 @@ async function RunServerMaintenance() {
             else {
                 console.log("Changes applied. Restart skipped due to --norestart flag. Please restart the server manually.");
             }
-        }, 3000);
+        }, 5000);
     }
     else console.log("NOWAIT: Invalid action given");
 }

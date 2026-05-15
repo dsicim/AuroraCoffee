@@ -90,7 +90,7 @@ const server = http.createServer(async function (req, res) {
                     });
                 });
                 process.exit(0);
-            }, 1000);
+            }, 500);
         }
     }
     else if (req.url.startsWith("/assets/")) {
