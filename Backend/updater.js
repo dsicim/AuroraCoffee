@@ -254,14 +254,16 @@ async function RunServerMaintenance() {
                 });
             }
         });
+        logtext("Starting updater server...");
         server.listen(config.port, function (error) {
             if (error) {
-                console.log("AUCOFFEE-UPDATER > Something went wrong", error);
+                logtext("AUCOFFEE-UPDATER > Something went wrong", error);
             }
             else {
-                console.log("AUCOFFEE-UPDATER > Listening on " + config.port);
+                logtext("AUCOFFEE-UPDATER > Listening on " + config.port);
             }
-        })
+        });
+        logtext("Changing working directory to repo parent...");
         const repoParent = path.join(__dirname, "../..");
         process.chdir(repoParent);
         if (updateneeded || action === "reset") {
