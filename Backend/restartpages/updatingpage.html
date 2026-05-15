@@ -102,8 +102,13 @@ function updateOutput(text) {
         }
     } catch (err) {
         updateOutput("An error occurred during the connection. Please try again later.");
-    }}
-)();
+    }
+    if (document.getElementById("updating-description").textContent.endsWith("Refreshing page...")) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 4000);
+    }
+})();
 
 </script>
 </body>
