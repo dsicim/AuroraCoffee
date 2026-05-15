@@ -410,6 +410,40 @@ async function accountSettingsMenu() {
         } else if (choice === '3') break;
     }
 }
+async function wishlistMenu() {
+    if (!sessionToken) { console.log('\x1b[31m%s\x1b[0m', 'Please login first.'); return; }
+    while (true) {
+        console.log('\n--- Wishlist ---');
+        console.log('1. View Wishlist');
+        console.log('2. Add to Wishlist');
+        console.log('3. Remove from Wishlist');
+        console.log('4. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            const res = await apiFetch('wishlist');
+            if (res.ok) {
+                console.log(JSON.stringify(res.data.wishlist, null, 2));
+            } else {
+                console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+            }
+        } else if (choice === '2') {
+            const productId = await question('Product ID: ');
+            const res = await apiFetch('wishlist', 'POST', { id: parseInt(productId) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '3') {
+            const productId = await question('Product ID: ');
+            const res = await apiFetch(`wishlist?id=${productId}`, 'DELETE');
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '4') {
+            break;
+        } else {
+            console.log('Invalid option.');
+        }
+    }
+}
 
 async function mainMenu() {
     console.log('\n' + '='.repeat(30));
@@ -430,7 +464,8 @@ async function mainMenu() {
     console.log('7. Address Management');
     console.log('8. Account Settings');
     console.log('9. Administrative');
-    console.log('10. Exit');
+    console.log('10. Wishlist');
+    console.log('11. Exit');
 
     const choice = await question('\nSelect an option: ');
 
@@ -445,7 +480,8 @@ async function mainMenu() {
             case '7': await addressMenu(); break;
             case '8': await accountSettingsMenu(); break;
             case '9': await adminMenu(); break;
-            case '10':
+            case '10': await wishlistMenu(); break;
+            case '11':
                 console.log('Goodbye!');
                 rl.close();
                 process.exit(0);

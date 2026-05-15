@@ -2,7 +2,6 @@ const sql = require("../../Database/server.js");
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0) {
-        return { s: 500, j: true, d: { e: "Not Implemented" } }; // Remove this when implementing the db_functions
         if (method === "GET") {
             if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
             return await sql.getWishlists(currentUser.id).then(result => {
@@ -55,7 +54,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "users") {
         if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
         if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-        return { s: 501, j: true, d: { e: "Not Implemented" } }; // Remove this when implementing the db_functions
         if (method !== "GET") return { s: 405, j: true, d: { e: "Method Not Allowed" } };
         if (!query || !query.id) return { s: 400, j: true, d: { e: "Product ID is required in query parameters" } };
         return await sql.getUsersWishingForProduct(query.id).then(result => {

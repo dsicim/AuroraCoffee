@@ -1456,19 +1456,60 @@ func.deleteAddress = async function (userId, addressId) {
 }
 
 func.getUsersWishingForProduct = async function (productId) {
-
+    if (!productId) throw new DBError(400, 'Product ID is required');
+    try {
+        const [rows] = await pool.execute('SELECT u.id, u.displayname, u.username, u.nameprivacy FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.product_id = ?', [productId]);
+        return { success: true, users: rows };
+    } catch (error) {
+        console.error('Get users wishing for product error:', error);
+        throw new DBError(500, 'Failed to fetch users');
+    }
 }
 
 func.getWishlists = async function (userId) {
-
+    if (!userId) throw new DBError(400, 'User ID is required');
+    try {
+        const [rows] = await pool.execute(`
+            SELECT w.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url 
+            FROM wishlist w 
+            JOIN products p ON w.product_id = p.id 
+            WHERE w.user_id = ?
+        `, [userId]);
+        return { success: true, wishlist: rows };
+    } catch (error) {
+        console.error('Get wishlists error:', error);
+        throw new DBError(500, 'Failed to fetch wishlists');
+    }
 }
 
 func.addToWishlist = async function (userId, productId) {
-
+    if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    try {
+        const [result] = await pool.execute(
+            'INSERT IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)',
+            [userId, productId]
+        );
+        if (result.affectedRows === 0) {
+            return { success: true, message: 'Product is already in wishlist' };
+        }
+        return { success: true, message: 'Product added to wishlist' };
+    } catch (error) {
+        console.error('Add to wishlist error:', error);
+        throw new DBError(500, 'Failed to add to wishlist');
+    }
 }
 
 func.removeFromWishlist = async function (userId, productId) {
-    
+    if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    try {
+        const [result] = await pool.execute('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?', [userId, productId]);
+        if (result.affectedRows === 0) throw new DBError(404, 'Product not found in wishlist');
+        return { success: true, message: 'Product removed from wishlist' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Remove from wishlist error:', error);
+        throw new DBError(500, 'Failed to remove from wishlist');
+    }
 }
 
 module.exports = {
