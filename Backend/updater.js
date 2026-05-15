@@ -29,6 +29,7 @@ async function getUpToDateVersion() {
     return { s: true, v: latestVersion };
 }
 function execute(command, options = {}, logfile = null) {
+    logtext("RUN: " + command);
     return new Promise((resolve, reject) => {
         const child = exec(command, options, (error, stdout, stderr) => {
             if (error) return reject(error);
@@ -78,6 +79,7 @@ let stateupdated = false;
 let statecleared = false;
 async function updatestate(newstate, timeoutMs = 5000) {
   currentstate = newstate;
+  logtext("STATE: " + newstate);  
   if (stateClients.size === 0) return;
   const writes = Array.from(stateClients).map(res =>
     writeToClient(res, currentstate).catch(() => stateClients.delete(res))
