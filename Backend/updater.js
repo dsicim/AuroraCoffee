@@ -196,7 +196,9 @@ async function RunServerMaintenance() {
                             clearInterval(interval);
                             return;
                         }
-                        res.write("\n" + currentstate);
+                        else {
+                            res.write("\n" + currentstate);
+                        }
                         stateupdated = false;
                     }
                 }, 1000);
@@ -212,7 +214,7 @@ async function RunServerMaintenance() {
                     }
                     else {
                         res.writeHead(200, { "Content-Type": "text/html" });
-                        data = data.replace("{{{updating-title}}}", action === "reset" ? "Rebuilding...": (updateneeded ? "Updating..." : "Restarting..."));
+                        data = data.replace("{{{updating-title}}}", action === "reset" ? "Rebuilding": (updateneeded ? "Updating" : "Restarting"));
                         res.end(data);
                     }
                 });
