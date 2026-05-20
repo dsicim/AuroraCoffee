@@ -367,16 +367,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (authChecker.status === "success") {
                                 if (authChecker.paymentStatus === "SUCCESS") {
                                     console.log(`Payment successful for ${currs[i]}`);
-                                    currenciesThatWorked.push(currs[i]);
                                 }
                                 else {
                                     console.log(`Payment failed for ${currs[i]}:`, authChecker);
-                                    failed = true;
+                                    if (authChecker.errorMessage == "Currency code is not found") failed = true;
                                 }
                             }
                             else {
                                 console.log(`Payment failed for ${currs[i]}`, authChecker);
-                                failed = true;
+                                if (authChecker.errorMessage == "Currency code is not found") failed = true;
                             }
                         }
                         else {
@@ -385,13 +384,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         }
                     }
                     else {
-                        failed = true;
+                        if (response.errorMessage == "Currency code is not found") failed = true;
                         console.log(`Payment failed for ${currs[i]}`, response);
                     }
                 }
                 else {
                     console.log(`Payment failed for ${currs[i]}, response doesn't exist`);
                     failed = true;
+                }
+                if (!failed) {
+                    currenciesThatWorked.push(currs[i]);
                 }
                 await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second between requests to avoid hitting rate limits
             };
