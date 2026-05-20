@@ -291,7 +291,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "testcurrencies") {
         if (method === "GET") {
-            setTimeout(() => {
+            setTimeout(async () => {
             const currencies = currency.GetCurrencies().currencies;
             const currenciesThatWorked = [];
             const currs = Object.keys(currencies);
