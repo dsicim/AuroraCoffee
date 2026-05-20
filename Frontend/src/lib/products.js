@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { authChangeEvent, getAuthSession } from './auth'
 import { fetchAuthJson, fetchAuthResponse, readJsonResponse } from './authRequest'
 import { getGeneratedProductImageUrl } from '../features/products/domain/generatedProductImages'
+import {
+  mergeUploadedProductImage,
+  normalizeProductImage,
+  normalizeProductImageUrl,
+} from '../features/products/domain/productImageCache'
 
 export const productCatalogChangeEvent = 'aurora-product-catalog-change'
 
@@ -213,62 +218,6 @@ function normalizeProductVariant(rawVariant, optionGroups) {
   }
 }
 
-function normalizeProductImageUrl(value) {
-  const url = normalizeText(value)
-
-  if (!url) {
-    return ''
-  }
-
-  if (/^(?:https?:|data:|blob:|\/)/i.test(url)) {
-    return url
-  }
-
-  return `/uploads/${encodeURIComponent(url)}`
-}
-
-function normalizeProductImage(rawImage, index) {
-  if (!rawImage) {
-    return null
-  }
-
-  if (typeof rawImage === 'string') {
-    const url = normalizeText(rawImage)
-
-    if (!url) {
-      return null
-    }
-
-    return {
-      id: null,
-      url,
-      src: normalizeProductImageUrl(url),
-      isPrimary: index === 0,
-      variantId: null,
-      sortOrder: index,
-    }
-  }
-
-  if (typeof rawImage !== 'object') {
-    return null
-  }
-
-  const url = normalizeText(rawImage.url || rawImage.image_url || rawImage.imageUrl)
-
-  if (!url) {
-    return null
-  }
-
-  return {
-    id: Number(rawImage.id) || null,
-    url,
-    src: normalizeProductImageUrl(url),
-    isPrimary: toBoolean(rawImage.is_primary ?? rawImage.isPrimary),
-    variantId: Number(rawImage.variant_id ?? rawImage.variantId) || null,
-    sortOrder: Number(rawImage.sort_order ?? rawImage.sortOrder ?? index) || 0,
-  }
-}
-
 function buildSlugMap(rawProducts) {
   const baseSlugCounts = new Map()
 
@@ -420,6 +369,44 @@ function storeCatalogProducts(products, scope = catalogScope) {
   dispatchProductCatalogChange('list')
 
   return normalizedProducts
+}
+
+function updateCachedProduct(productId, updater) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    return false
+  }
+
+  let updated = false
+
+  if (catalogProducts.length) {
+    catalogProducts = catalogProducts.map((product) => {
+      if (Number(product.id) !== normalizedProductId) {
+        return product
+      }
+
+      const nextProduct = updater(product)
+      productLookupById.set(normalizedProductId, nextProduct)
+      updated = true
+      return nextProduct
+    })
+  }
+
+  if (!updated) {
+    const existingProduct = productLookupById.get(normalizedProductId)
+
+    if (existingProduct) {
+      productLookupById.set(normalizedProductId, updater(existingProduct))
+      updated = true
+    }
+  }
+
+  if (updated) {
+    dispatchProductCatalogChange('list')
+  }
+
+  return updated
 }
 
 function hydrateWithKnownSlugs(rawProducts) {
@@ -706,8 +693,22 @@ export async function uploadProductImage({
     body: file,
   })
   const data = await readProductImageResponse(response, 'Could not upload product image.')
+  const uploadedUrl = normalizeText(data?.url)
 
-  await refreshProductsAfterImageChange()
+  if (
+    !uploadedUrl ||
+    !updateCachedProduct(normalizedProductId, (product) =>
+      mergeUploadedProductImage(product, {
+        url: uploadedUrl,
+        sortOrder: Math.floor(normalizedSortOrder),
+        variantId: normalizedVariantId,
+        primary,
+      }),
+    )
+  ) {
+    await refreshProductsAfterImageChange()
+  }
+
   return data
 }
 
