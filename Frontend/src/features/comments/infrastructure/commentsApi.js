@@ -271,21 +271,31 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
       return null
     }
 
-    const existing = toPublicComment(
-      normalizeCommentRecord(record?.c || record, index, 'approved'),
+    const existingSnapshot = normalizeManagerCommentSnapshot(
+      record?.c || record,
+      index,
+      'approved',
     )
+    const existing = toPublicComment(existingSnapshot)
 
     if (!existing) {
       return null
     }
 
+    const id = Number(record?.id) || null
+    const userId = Number(record?.user_id) || null
+    const userName =
+      normalizeText(record?.user_name) ||
+      existing.author ||
+      'Anonymous'
+
     return {
-      id: existing.id,
+      id: String(id || existing.id),
       meta: {
-        id: null,
-        userId: null,
-        userName: existing.author,
-        status: 'approved',
+        id,
+        userId,
+        userName,
+        status: normalizeText(record?.status) || 'approved',
       },
       existing,
       upcoming: null,
