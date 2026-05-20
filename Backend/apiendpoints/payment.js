@@ -382,7 +382,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                     else {
                         failed = true;
-                        console.log(`Payment failed for ${currs[i]}`, authChecker);
+                        console.log(`Payment failed for ${currs[i]}`, response);
                     }
                 }
                 else {
