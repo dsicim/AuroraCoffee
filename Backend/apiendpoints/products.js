@@ -18,12 +18,13 @@ function sanitizeProductForResponse(product) {
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     const userId = currentUser && !currentUser.e && currentUser.id ? currentUser.id : null;
+    const isManager = currentUser && !currentUser.e && ["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role);
     if (endpoint.length === 0) {
         if (method === "GET") {
             if (query.ids || query.urls) {
                 const ids = query.ids ? query.ids.split(",").map(x => parseInt(x)).filter(x => !isNaN(x)) : query.urls.split(",").map(x => x.trim()).filter(x => x.length > 0);
                 if (ids.length > 0) {
-                    return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids)).then(async result => {
+                    return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids), isManager).then(async result => {
                         if (result.success) {
                             return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse), idsnotfound: result.idsnotfound } };
                         }
@@ -42,7 +43,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else if (method === "PATCH") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!isManager) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.edits) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if (currentUser.role === "Sales Manager") {
                 const allowedEdits = ["price", "discount_rate"];
@@ -68,7 +69,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "all") {
         if (method === "GET") {
-            return await sql.getAllProducts(userId).then(async result => {
+            return await sql.getAllProducts(userId,isManager).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
                 }
@@ -87,7 +88,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             if (query.q && query.q.trim().length > 0) {
                 query.q = query.q.replaceAll("%20", " ").trim();
-                return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc", "sales", "rating"].includes(query.s.trim())) ? query.s : "newest" : "newest").then(async result => {
+                return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc", "sales", "rating"].includes(query.s.trim())) ? query.s : "newest" : "newest", isManager).then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
                     }

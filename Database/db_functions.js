@@ -353,13 +353,17 @@ func.enrichProductsWithOptions = async function (userId, products) {
     }
     return products;
 };
-func.getAllProducts = async function (userId) {
+func.getAllProducts = async function (userId,isManager = false) {
     try {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
         let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
+        if (userId && isManager) {
+            w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
+            ww += ", ww.users_wishing_for_product AS users_wishing_for_product";
+        }
         let [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating${ww}
             FROM products p
@@ -392,7 +396,7 @@ func.getAllImageURLs = async function () {
         throw new DBError(500, 'Failed to fetch image URLs: ' + error.message);
     }
 };
-func.getProductsByIds = async function (userId, productId, isUrl = false) {
+func.getProductsByIds = async function (userId, productId, isUrl = false, isManager = false) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
@@ -402,6 +406,10 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
         let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
+        if (userId && isManager) {
+            w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
+            ww += ", ww.users_wishing_for_product AS users_wishing_for_product";
+        }
         productId = Array.isArray(productId) ? productId : [productId];
         let [rows] = await pool.query(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating${ww}
@@ -438,6 +446,10 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
         let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
+        if (userId && isManager) {
+            w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
+            ww += ", ww.users_wishing_for_product AS users_wishing_for_product";
+        }
         let sql = `
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating${ww}
             FROM products p
