@@ -295,6 +295,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const currencies = currency.GetCurrencies().currencies;
             const currenciesThatWorked = [];
             const currs = Object.keys(currencies);
+
+            // IMPORTANT NOTE: Turkish cards are not allowed to pay in foreign currencies!
+
             for (let i = 0; i < currs.length; i++) {
                 const price = 100000 * currencies[currs[i]];
                 const payload = {
@@ -309,7 +312,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     "installment": 1,
                     "paymentCard":{
                         "cardHolderName":"John Doe",
-                        "cardNumber":"5528790000000008",
+                        "cardNumber":"5400010000000004",
                         "expireMonth":"12",
                         "expireYear":"2030",
                         "cvc":"123",
