@@ -1074,7 +1074,21 @@ func.createOrder = async function (userId, items) {
         connection.release();
     }
 };
-
+func.updateOrderDetails = async function (orderId, details) {
+    if (!orderId || !details) {
+        throw new DBError(400, 'Order ID and details are required');
+    }
+    try {
+        const [result] = await pool.execute('UPDATE orders SET details = ? WHERE id = ?', [details, orderId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Order not found');
+        }
+        return { success: true, message: 'Order details updated successfully' };
+    } catch (error) {
+        console.error('Update order details error:', error);
+        throw new DBError(500, 'Failed to update order details');
+    }
+};
 func.updateOrderStatus = async function (orderId, status, paymentId = null) {
     if (!orderId || !status) {
         throw new DBError(400, 'Order ID and status are required');

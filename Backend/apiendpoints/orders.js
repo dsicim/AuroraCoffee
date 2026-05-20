@@ -83,6 +83,60 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method not allowed" } };
     }
+    else if (endpoint[0] === "refund") {
+        if (method === "POST") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId || !body.data.message) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const orderId = body.data.id;
+            const cartId = body.data.cartId;
+            const message = body.data.message;
+            const result = await sql.getUserOrders(currentUser.id, orderId).then(result => {
+                if (result.success) {
+                    const errors = [];
+                    const orders = result.orders.map(ordr => {
+                        try {
+                            if (orderId && orderId != ordr.id) return undefined;
+                            ordr.details = aes.pjs(ordr.details);
+                            if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                            const decrypted = aes.decrypt(ordr.details, currentUser.id);
+                            if (!decrypted.s) throw new Error("Decryption failed");
+                            const order = aes.pjs(decrypted.value);
+                            if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                            ordr.details = order;
+                            return { order: ordr };
+                        } catch (err) {
+                            console.error("Decrypt order error:", err);
+                            errors.push({ id: ordr.id, e: err.toString() });
+                            return { order: undefined, e: err.toString() };
+                        }
+                    }).filter(ordr => ordr !== undefined);
+                    if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
+                    return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
+                }
+                else return { s: 400, e: result.message || "An unknown error occurred"};
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, e: err.error || "An unknown error occurred"};
+                else return { s: 500, e: "An unknown error occurred"};
+            });
+            if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
+            if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
+            let product = -1 
+            result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
+            if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
+            if (result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "Refund for this product has already been requested" } };
+            result.d.order.order.details.products[product].refundRequested = true;
+            result.d.order.order.details.products[product].refundMessage = message;
+            const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
+            return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails)).then(res => {
+                if (res.success) return { s: 200, j: true, d: { message: "Refund request submitted successfully", refundNumber: orderId+"-"+result.d.order.order.details.products[product].id } };
+                else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method not allowed" } };
+    }
     else if (endpoint[0] === "cancel") {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
@@ -172,6 +226,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 });
             }
         }
+        else return { s: 405, j: true, d: { e: "Method not allowed" } };
     }
     else if (endpoint[0] === "pdf") {
         if (method === "GET") {
