@@ -5,6 +5,7 @@ const aes = require("../components/aes256.js");
 const fs = require("fs");
 const mailer = require("../components/email.js");
 const pdf = require("../invoice/pdf.js");
+const currency = require("../components/currency.js");
 async function IyzipayAPI(config, method, url, headers, body) {
     // console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
@@ -282,7 +283,13 @@ function PaymentError(err, errorMsg, tvoyBank = "your bank") {
     }[err] || { why: errorMsg || "Unknown error", resolution: "Please try again later or contact the developers" };
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
-    if (endpoint[0] === "installments") {
+    if (endpoint[0] === "currencies") {
+        if (method === "GET") {
+            return { s: 200, j: true, d: currency.getSupportedCurrencies() };
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "installments") {
         if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || (!body.data.bin && !body.data.token)) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if (body.data.token) {
