@@ -354,6 +354,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     "paymentSource": "TEST"
                 };
                 console.log(`Testing payment for ${currs[i]} with price ${price}`);
+                console.log(i + 1, "/", currs.length);
                 const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
                 let failed = false;
                 if (response) {
@@ -389,7 +390,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     console.log(`Payment failed for ${currs[i]}, response doesn't exist`);
                     failed = true;
                 }
-                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 1 second between requests to avoid hitting rate limits
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second between requests to avoid hitting rate limits
             };
             console.log("Currencies that worked:", currenciesThatWorked);}, 1000);
             return { s: 200, j: true, d: "yes. wait now" };
