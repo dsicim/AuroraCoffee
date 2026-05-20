@@ -242,6 +242,7 @@ func.enrichProductsWithOptions = async function (userId, products) {
     // Map to products
     let brewMethods = null;
     for (let p of products) {
+        p.is_wishlisted = p.w_product_id !== null;
         const originalPrice = parseFloat(p.price);
         if (p.averageRating) p.averageRating = parseFloat(p.averageRating);
         p.options = [];
@@ -354,6 +355,10 @@ func.enrichProductsWithOptions = async function (userId, products) {
 };
 func.getAllProducts = async function (userId) {
     try {
+        let q = [];
+        let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
+        if (userId) q.push(userId);
+        else w = "";
         let [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
             FROM products p
@@ -365,7 +370,8 @@ func.getAllProducts = async function (userId) {
                 WHERE rating IS NOT NULL
                 GROUP BY product_id
             ) r ON r.product_id = p.id
-        `);
+            ${w}
+        `, q);
         rows = await func.enrichProductsWithOptions(userId, rows);
         return { success: true, products: rows };
     } catch (error) {
@@ -390,6 +396,10 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
         throw new DBError(400, 'Product ID is required');
     }
     try {
+        let q = [];
+        let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
+        if (userId) q.push(userId);
+        else w = "";
         productId = Array.isArray(productId) ? productId : [productId];
         let [rows] = await pool.query(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
@@ -402,8 +412,9 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
                 WHERE rating IS NOT NULL
                 GROUP BY product_id
             ) r ON r.product_id = p.id
+            ${w}
             WHERE p.${isUrl ? 'product_code' : 'id'} IN (?)
-        `, [productId]);
+        `, [...q, productId]);
         if (rows.length === 0) {
             throw new DBError(404, 'No products found');
         }
@@ -420,6 +431,10 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
 
 func.searchProducts = async function (userId, query, sortBy = 'newest') {
     try {
+        let q = [];
+        let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
+        if (userId) q.push(userId);
+        else w = "";
         let sql = `
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating
             FROM products p
@@ -431,9 +446,10 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
                 WHERE rating IS NOT NULL
                 GROUP BY product_id
             ) r ON r.product_id = p.id
+            ${w}
             WHERE p.name LIKE ? OR p.description LIKE ?
         `;
-        const params = [`%${query}%`, `%${query}%` || ''];
+        const params = [...q, `%${query}%`, `%${query}%` || ''];
 
         switch (sortBy) {
             case 'price_asc':
