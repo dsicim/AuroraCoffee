@@ -237,8 +237,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error } };
                 return { s: 500, j: true, d: { e: "Internal server error" } };
             });
-            if (result.s === 200 && fs.existsSync(path.join(__dirname, "..", "..", "Database", "uploads", query.url))) {
-                fs.unlinkSync(path.join(__dirname, "..", "..", "Database", "uploads", query.url));
+            if (result.s === 200 && fs.existsSync(path.join(__dirname, "..", "..", "..", "uploads", query.url))) {
+                fs.unlinkSync(path.join(__dirname, "..", "..", "..", "uploads", query.url));
             }
             return result;
         }
