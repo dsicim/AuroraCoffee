@@ -299,7 +299,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             // IMPORTANT NOTE: Turkish cards are not allowed to pay in foreign currencies!
 
             for (let i = 0; i < currs.length; i++) {
-                const price = 100000 * currencies[currs[i]];
+                const price = 999999999999 * currencies[currs[i]];
                 const payload = {
                     "conversationId":"conversationId"+i,
                     "locale":"en",
