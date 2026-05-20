@@ -24,9 +24,14 @@ setInterval(SetCurrencies, 60 * 60 * 1000);
 function GetCurrencies() {
     const obj = {
         currencies: {},
+        max: {},
         lastUpdated: lastUpdate
     }
-    currencies.forEach((value, key) => { obj.currencies[key] = value; });
+    currencies.forEach((value, key) => {
+        obj.currencies[key] = value;
+        const max = key == "IRR" ? 500000000: 100000;
+        obj.max[key] = max / value;
+    });
     return obj;
 }
 module.exports = { GetCurrencies };
