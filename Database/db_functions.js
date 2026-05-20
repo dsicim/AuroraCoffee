@@ -1306,12 +1306,20 @@ func.getCart = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
         const [rows] = await pool.execute(`
-            SELECT c.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url, pv.variant_code AS variant_code 
+            SELECT c.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url, pv.variant_code AS variant_code, pv.price_add AS variant_price_add, pv.price_mult AS variant_price_mult
             FROM cart c 
             JOIN products p ON c.product_id = p.id 
             LEFT JOIN product_variants pv ON c.variant_id = pv.id AND pv.product_id = c.product_id
             WHERE c.user_id = ?
         `, [userId]);
+        for (const row of rows) {
+            row.product_price = parseFloat(row.product_price);
+            row.discount_rate = parseFloat(row.discount_rate);
+            if (row.variant_id) {
+                row.variant_price = (Math.round(((row.product_price + (row.variant_price_add || 0)) * (row.variant_price_mult || 1)) * 100) / 100);
+            }
+            row.final_price = (Math.round(((row.variant_id ? row.variant_price : row.product_price) * ((100 - (row.discount_rate || 0)) / 100)) * 100) / 100);
+        }
         return { success: true, cart: rows };
     } catch (error) {
         console.error('Get cart error:', error);
