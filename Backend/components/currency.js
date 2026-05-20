@@ -1,15 +1,14 @@
 const currencies = new Map();
 let lastUpdate = 0;
-const supportedCurrencies = [];
+const supportedCurrencies = ['TRY','CHF','EUR','GBP','IRR','NOK','RUB','SEK','USD'];
 currencies.set("TRY", 1);
 async function SetCurrencies() {
     try {
-    const res = await fetch('https://api.frankfurter.dev/v2/rates?base=TRY');
+    const res = await fetch('https://api.frankfurter.dev/v2/rates?base=TRY&quotes=' + supportedCurrencies.join(","));
     const data = await res.json();
-    const supported = ['TRY', 'CHF','EUR', 'GBP','IRR', 'NOK','RUB', 'SEK','USD'];
     if (Array.isArray(data)) {
       const map = {};
-      data.forEach(item => { if (item && item.quote && supported.includes(item.quote)) currencies.set(item.quote, item.rate); });
+      data.forEach(item => { if (item && item.quote && supportedCurrencies.includes(item.quote)) currencies.set(item.quote, item.rate); });
     } else {
       console.error('Unexpected currency response format:', data);
       return;

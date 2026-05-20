@@ -7,8 +7,8 @@ const logoHeight = 400;
 const logoWidth = 803;
 
 function currencyToDecimal(currency, price) {
-    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "RUB": "", "CHF": "," }[currency] || ",");
-    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "RUB": ".", "CHF": "." }[currency] || ".");
+    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "SEK": "", "IRR": "", "RUB": "", "CHF": "," }[currency] || ",");
+    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "SEK": ".", "IRR": ".", "RUB": ".", "CHF": "." }[currency] || ".");
     // mille should be printed on every thousand, and punctuation should be printed on every decimal
     let priceStr = price.toFixed(2).replace(".", punctuation);
     let priceidx = priceStr.length - 3;
@@ -20,9 +20,9 @@ function currencyToDecimal(currency, price) {
     return priceStr;
 }
 function currencyToSymbol(currency, price, negative = false) {
-    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["CHF", "RUB"].includes(currency)) return (negative?"-":"")+currencyToDecimal(currency, price) + symbol;
-    else return symbol + (negative?"-":"")+currencyToDecimal(currency, price);
+    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
+    if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
+    else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
 }
 async function generatePDF(orderData, print = false) {
     const document = await new Promise((resolve, reject) => {

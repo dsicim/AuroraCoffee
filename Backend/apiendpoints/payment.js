@@ -93,8 +93,8 @@ async function getCardToken(userId) {
     });
 }
 function currencyToDecimal(currency, price) {
-    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "RUB": "", "CHF": "," }[currency] || ",");
-    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "RUB": ".", "CHF": "." }[currency] || ".");
+    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "SEK": "", "IRR": "", "RUB": "", "CHF": "," }[currency] || ",");
+    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "SEK": ".", "IRR": ".", "RUB": ".", "CHF": "." }[currency] || ".");
     // mille should be printed on every thousand, and punctuation should be printed on every decimal
     let priceStr = price.toFixed(2).replace(".", punctuation);
     let priceidx = priceStr.length - 3;
@@ -107,7 +107,7 @@ function currencyToDecimal(currency, price) {
 }
 function currencyToSymbol(currency, price, negative = false) {
     price = parseFloat(price);
-    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
+    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
     if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
     else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
 }
@@ -299,7 +299,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             // IMPORTANT NOTE: Turkish cards are not allowed to pay in foreign currencies!
 
             for (let i = 0; i < currs.length; i++) {
-                const price = 999999999999 * currencies[currs[i]];
+                const price = 100 * currencies[currs[i]];
                 const payload = {
                     "conversationId":"conversationId"+i,
                     "locale":"en",
