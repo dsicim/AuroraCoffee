@@ -285,7 +285,7 @@ function PaymentError(err, errorMsg, tvoyBank = "your bank") {
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "currencies") {
         if (method === "GET") {
-            return { s: 200, j: true, d: currency.getSupportedCurrencies() };
+            return { s: 200, j: true, d: currency.GetCurrencies() };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
