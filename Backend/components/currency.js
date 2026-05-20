@@ -30,9 +30,7 @@ function GetCurrencies() {
         currencies: {},
         lastUpdated: lastUpdate
     }
-    currencies.keys().forEach(key => {
-        obj.currencies[key] = currencies.get(key);
-    });
+    currencies.forEach((value, key) => { obj.currencies[key] = value; });
     return obj;
 }
 module.exports = { GetCurrencies };
