@@ -291,6 +291,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "testcurrencies") {
         if (method === "GET") {
+            setTimeout(() => {
             const currencies = currency.GetCurrencies().currencies;
             const currenciesThatWorked = [];
             const currs = Object.keys(currencies);
@@ -390,7 +391,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
                 await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 1 second between requests to avoid hitting rate limits
             };
-            return { s: 200, j: true, d: currenciesThatWorked };
+            console.log("Currencies that worked:", currenciesThatWorked);}, 1000);
+            return { s: 200, j: true, d: "yes. wait now" };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
