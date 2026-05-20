@@ -168,7 +168,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
         console.error("Email sending error:", err);
     });
 }
-async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY") {
+async function createOrder(config, currentUser, cart, basket, subtotal, shippingAddress, billingAddress, card, cardDetails, installment = 1, currency = "TRY", exchangeRate = 1) {
     let realPrice = subtotal;
     if (installment && installment > 1) {
         const actualInstallment = cardDetails.installments.find(ins => ins.months === parseInt(installment));
@@ -440,10 +440,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (isNaN(item.discount_rate)) item.discount_rate = 0;
                         if (item.discount_rate < 0) item.discount_rate = 0;
                         if (item.discount_rate > 100) item.discount_rate = 100;
-                        if (item.discount_rate > 0) {
-                            item.pricededuction = Math.round(((item.product_price * item.quantity) * (item.discount_rate / 100)) * 100) / 100;
-                        }
-                        else item.pricededuction = 0;
                         item.options = item.options ? aes.pjs(item.options) : {};
                         if (item.options.e && item.options.e.startsWith("Failed to parse JSON: ")) item.options = {};
                         return item;
@@ -579,6 +575,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                     else variantnonexistent = true;
                 }
+                if (item.discount_rate > 0) {
+                    item.pricededuction = Math.round(((item.product_price * item.quantity) * (item.discount_rate / 100)) * 100) / 100;
+                }
+                else item.pricededuction = 0;
+                item.pricededuction = Math.round(item.pricededuction * exchangeRate * 100) / 100;
                 item.product_price = Math.round((item.product_price * exchangeRate) * 100) / 100;
                 item.subtotal = Math.round((item.product_price) / (1 + (parseInt(item.tax) / 100)) * 100) / 100;
                 item.taxAmount = item.product_price - (Math.round(item.subtotal * 100) / 100);
@@ -731,7 +732,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             if (body.data.installments && (!cardDetails.installments || !cardDetails.installments.find(ins => ins.months === parseInt(body.data.installments)))) return { s: 400, j: true, d: { success: false, e: { what: "Installments", why: "Selected installment option is not available for this card", resolution: "Please select a valid installment option or pay in full if not applicable" } } };
             // All validations passed, create order and initiate payment
-            const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency);
+            const payload = await createOrder(config, currentUser, actualCart, basketItems, totalPrice, shippingAddress, billingAddress, card, cardDetails, body.data.installments, body.data.currency, exchangeRate);
 
             if (!payload.s) return { s: 500, j: true, d: { success: false, e: { what: "Order Creation", why: "Failed to create order", resolution: "Please try again later or contact the developers" } } };
             const tvoyBank = cardDetails.bank || "your bank";

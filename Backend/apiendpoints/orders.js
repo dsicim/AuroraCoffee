@@ -84,60 +84,135 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method not allowed" } };
     }
     else if (endpoint[0] === "refund") {
-        if (method === "POST") {
-            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId || !body.data.message) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const orderId = body.data.id;
-            const cartId = body.data.cartId;
-            const message = body.data.message;
-            const result = await sql.getUserOrders(currentUser.id, orderId).then(result => {
-                if (result.success) {
-                    const errors = [];
-                    const orders = result.orders.map(ordr => {
-                        try {
-                            if (orderId && orderId != ordr.id) return undefined;
-                            ordr.details = aes.pjs(ordr.details);
-                            if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
-                            const decrypted = aes.decrypt(ordr.details, currentUser.id);
-                            if (!decrypted.s) throw new Error("Decryption failed");
-                            const order = aes.pjs(decrypted.value);
-                            if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
-                            ordr.details = order;
-                            return { order: ordr };
-                        } catch (err) {
-                            console.error("Decrypt order error:", err);
-                            errors.push({ id: ordr.id, e: err.toString() });
-                            return { order: undefined, e: err.toString() };
-                        }
-                    }).filter(ordr => ordr !== undefined);
-                    if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
-                    return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
-                }
-                else return { s: 400, e: result.message || "An unknown error occurred"};
-            }).catch(err => {
-                if (err instanceof sql.DBError) return { s: err.status, e: err.error || "An unknown error occurred"};
-                else return { s: 500, e: "An unknown error occurred"};
-            });
-            if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
-            if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
-            const thirtyDaysAgo = new Date().getTime() - 30*24*60*60*1000;
-            if (result.d.order.order.created_at < thirtyDaysAgo) return { s: 400, j: true, d: { e: "Refund can only be requested within 30 days of purchase" } };
-            let product = -1 
-            result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
-            if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
-            if (result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "Refund for this product has already been requested" } };
-            result.d.order.order.details.products[product].refundRequested = true;
-            result.d.order.order.details.products[product].refundMessage = message;
-            const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
-            return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails)).then(res => {
-                if (res.success) return { s: 200, j: true, d: { message: "Refund request submitted successfully", refundNumber: orderId+"-"+result.d.order.order.details.products[product].id } };
-                else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
-            }).catch(err => {
-                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-            });
+        if (endpoint.length === 1) {
+            if (method === "POST") {
+                if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId || !body.data.message) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                const orderId = body.data.id;
+                const cartId = body.data.cartId;
+                const message = body.data.message;
+                const result = await sql.getUserOrders(currentUser.id, orderId).then(result => {
+                    if (result.success) {
+                        const errors = [];
+                        const orders = result.orders.map(ordr => {
+                            try {
+                                if (orderId && orderId != ordr.id) return undefined;
+                                ordr.details = aes.pjs(ordr.details);
+                                if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                                const decrypted = aes.decrypt(ordr.details, currentUser.id);
+                                if (!decrypted.s) throw new Error("Decryption failed");
+                                const order = aes.pjs(decrypted.value);
+                                if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                                ordr.details = order;
+                                return { order: ordr };
+                            } catch (err) {
+                                console.error("Decrypt order error:", err);
+                                errors.push({ id: ordr.id, e: err.toString() });
+                                return { order: undefined, e: err.toString() };
+                            }
+                        }).filter(ordr => ordr !== undefined);
+                        if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
+                        return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
+                    }
+                    else return { s: 400, e: result.message || "An unknown error occurred"};
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, e: err.error || "An unknown error occurred"};
+                    else return { s: 500, e: "An unknown error occurred"};
+                });
+                if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
+                if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
+                const thirtyDaysAgo = new Date().getTime() - 30*24*60*60*1000;
+                if (result.d.order.order.created_at < thirtyDaysAgo) return { s: 400, j: true, d: { e: "Refund can only be requested within 30 days of purchase" } };
+                let product = -1 
+                result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
+                if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
+                if (result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "Refund for this product has already been requested" } };
+                result.d.order.order.details.products[product].refundRequested = true;
+                result.d.order.order.details.products[product].refundMessage = message;
+                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
+                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails)).then(res => {
+                    if (res.success) return { s: 200, j: true, d: { message: "Refund request submitted successfully", refundNumber: orderId+"-"+result.d.order.order.details.products[product].id } };
+                    else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
+            }
+            else return { s: 405, j: true, d: { e: "Method not allowed" } };
         }
-        else return { s: 405, j: true, d: { e: "Method not allowed" } };
+        else if (endpoint[1] === "approve" || endpoint[1] === "reject") {
+            if (method === "POST") {
+                if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+                if (!["Admin","Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                
+                const result = await sql.getAllOrders(orderId).then(result => {
+                    if (result.success) {
+                        const errors = [];
+                        const orders = result.orders.map(ordr => {
+                            try {
+                                if (orderId && orderId != ordr.id) return undefined;
+                                ordr.details = aes.pjs(ordr.details);
+                                if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                                const decrypted = aes.decrypt(ordr.details, ordr.user_id);
+                                if (!decrypted.s) throw new Error("Decryption failed");
+                                const order = aes.pjs(decrypted.value);
+                                if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                                ordr.details = order;
+                                return { order: ordr };
+                            } catch (err) {
+                                console.error("Decrypt order error:", err);
+                                errors.push({ id: ordr.id, e: err.toString() });
+                                return { order: undefined, e: err.toString() };
+                            }
+                        }).filter(ordr => ordr !== undefined);
+                        if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
+                        return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
+                    }
+                    else return { s: 400, e: result.message || "An unknown error occurred"};
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, e: err.error || "An unknown error occurred"};
+                    else return { s: 500, e: "An unknown error occurred"};
+                });
+                if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
+                if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
+                const thirtyDaysAgo = new Date().getTime() - 30*24*60*60*1000;
+                if (result.d.order.order.created_at < thirtyDaysAgo) return { s: 400, j: true, d: { e: "Refund can only be requested within 30 days of purchase" } };
+                let product = -1 
+                result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
+                if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
+                if (result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "Refund for this product has already been requested" } };
+                if (endpoint[1] === "approve") {
+                    result.d.order.order.details.products[product].refunded = true;
+                    const full = result.d.order.order.details.products[product].product_price;
+                    const deduction = result.d.order.order.details.products[product].pricededuction;
+                    const refundResult = await payments.IyzipayAPI(config, "POST", "v2/payment/refund", {}, {"locale": "en", "price": full-deduction, "paymentId": result.d.order.order.payment_id,"currency": result.d.order.order.details.currency}).then(res => {
+                        if (res.status == "success") return { success: true, message: "Payment refunded successfully" };
+                        else return { success: false, message: "Failed to refund payment: "+res.errorMessage };
+                    }).catch(err => {
+                        console.error("Payment cancellation error:", err);
+                        return { success: false, message: "Failed to refund payment: "+err.toString() };
+                    });
+                    if (!refundResult.success) {
+                        return { s: 400, j: true, d: { e: refundResult.message } };
+                    }
+                }
+                else {
+                    result.d.order.order.details.products[product].refundRequested = false;
+                    result.d.order.order.details.products[product].refundRejected = true;
+                }
+                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
+                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails)).then(res => {
+                    if (res.success) return { s: 200, j: true, d: { message: (endpoint[1] === "approve") ? "Refund processed successfully" : "Refund request rejected successfully" } };
+                    else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
+            }
+            else return { s: 405, j: true, d: { e: "Method not allowed" } };
+        }
+        else return { s: 404, j: true, d: { e: "Not Found" } };
     }
     else if (endpoint[0] === "cancel") {
         if (method === "POST") {
