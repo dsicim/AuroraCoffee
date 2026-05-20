@@ -1215,7 +1215,7 @@ func.cancelOrder = async function (orderId, userId, products) {
         await connection.rollback();
         if (error instanceof DBError) throw error;
         console.error('Cancel order error:', error);
-        throw new DBError(500, 'Failed to cancel order');
+        throw new DBError(500, error);
     } finally {
         connection.release();
     }
