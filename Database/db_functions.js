@@ -242,7 +242,6 @@ func.enrichProductsWithOptions = async function (userId, products) {
     // Map to products
     let brewMethods = null;
     for (let p of products) {
-        p.is_wishlisted = p.w_product_id !== null || p.w_product_id !== undefined;
         const originalPrice = parseFloat(p.price);
         if (p.averageRating) p.averageRating = parseFloat(p.averageRating);
         p.options = [];
@@ -357,7 +356,7 @@ func.getAllProducts = async function (userId) {
     try {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
-        let ww = ", w.id as w_product_id";
+        let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
         let [rows] = await pool.execute(`
@@ -399,7 +398,7 @@ func.getProductsByIds = async function (userId, productId, isUrl = false) {
     try {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
-        let ww = ", w.id as w_product_id";
+        let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
         productId = Array.isArray(productId) ? productId : [productId];
@@ -435,7 +434,7 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
     try {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
-        let ww = ", w.id as w_product_id";
+        let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         if (userId) q.push(userId);
         else {w = "";ww = "";}
         let sql = `
