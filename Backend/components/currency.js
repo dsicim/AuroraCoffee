@@ -4,7 +4,7 @@ const supportedCurrencies = [];
 currencies.set("TRY", 1);
 async function SetCurrencies() {
     try {
-    const res = await fetch('https://api.frankfurter.app/v2/rates?base=TRY');
+    const res = await fetch('https://api.frankfurter.dev/v2/rates?base=TRY');
     const data = await res.json();
     // frankfurter may return an array of {date, base, quote, rate} or an object {rates: {...}}
     if (Array.isArray(data)) {
