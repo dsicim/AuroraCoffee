@@ -1316,6 +1316,8 @@ func.getCart = async function (userId) {
             row.product_price = parseFloat(row.product_price);
             row.discount_rate = parseFloat(row.discount_rate);
             if (row.variant_id) {
+                row.variant_price_add = parseFloat(row.variant_price_add);
+                row.variant_price_mult = parseFloat(row.variant_price_mult);
                 row.variant_price = (Math.round(((row.product_price + (row.variant_price_add || 0)) * (row.variant_price_mult || 1)) * 100) / 100);
                 delete row.variant_price_add;
                 delete row.variant_price_mult;
