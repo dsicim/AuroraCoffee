@@ -162,7 +162,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { s: 500, j: true, d: { e: "Failed to cancel payment: "+refundResult.errorMessage } };
             }
             else {
-                return await sql.cancelOrder(orderId, admin?result.user_id:currentUser.id).then(res => {
+                return await sql.cancelOrder(orderId, admin?result.user_id:currentUser.id, result.d.order.order.details.products).then(res => {
                     if (res.success) return { s: 200, j: true, d: { message: res.message } };
                     else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
                 }).catch(err => {

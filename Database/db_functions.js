@@ -1176,7 +1176,7 @@ func.getUserOrders = async function (userId, orderId = null) {
 
 func.getOrderHistory = func.getUserOrders;
 
-func.cancelOrder = async function (orderId, userId) {
+func.cancelOrder = async function (orderId, userId, products) {
     if (!orderId && !userId) {
         throw new DBError(400, 'Order ID and User ID are required');
     }
@@ -1202,6 +1202,13 @@ func.cancelOrder = async function (orderId, userId) {
         // 2. Update status
         await connection.execute('UPDATE orders SET status = ? WHERE id = ?', ['cancelled', orderId]);
 
+        // 3. Restore stock
+        for (const item of products) {
+            await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.stock, item.product_id]);
+            if (item.variant_id) {
+                await connection.execute('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [item.stock, item.variant_id]);
+            }
+        }
         await connection.commit();
         return { success: true, message: 'Order cancelled' };
     } catch (error) {
