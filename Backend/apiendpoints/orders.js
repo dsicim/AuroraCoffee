@@ -20,11 +20,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (specificorder && specificorder != ordr.id) return undefined;
                             if (specificorder) {
                                 ordr.details = aes.pjs(ordr.details);
-                                if (ordr.details.e || ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                                if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
                                 const decrypted = aes.decrypt(ordr.details, ordr.user_id);
                                 if (!decrypted.s) throw new Error("Decryption failed");
                                 const order = aes.pjs(decrypted.value);
-                                if (order.e || order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                                if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                                 ordr.details = order;
                             }
                             else delete ordr.details;
@@ -96,11 +96,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         try {
                             if (orderId && orderId != ordr.id) return undefined;
                             ordr.details = aes.pjs(ordr.details);
-                            if (ordr.details.e || ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                            if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
                             const decrypted = aes.decrypt(ordr.details, ordr.user_id);
                             if (!decrypted.s) throw new Error("Decryption failed");
                             const order = aes.pjs(decrypted.value);
-                            if (order.e || order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                            if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                             ordr.details = order;
                             return { order: ordr };
                         } catch (err) {
