@@ -1317,6 +1317,8 @@ func.getCart = async function (userId) {
             row.discount_rate = parseFloat(row.discount_rate);
             if (row.variant_id) {
                 row.variant_price = (Math.round(((row.product_price + (row.variant_price_add || 0)) * (row.variant_price_mult || 1)) * 100) / 100);
+                delete row.variant_price_add;
+                delete row.variant_price_mult;
             }
             row.final_price = (Math.round(((row.variant_id ? row.variant_price : row.product_price) * ((100 - (row.discount_rate || 0)) / 100)) * 100) / 100);
         }
