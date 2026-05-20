@@ -289,6 +289,111 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
+    else if (endpoint[0] === "testcurrencies") {
+        if (method === "GET") {
+            const currencies = currency.GetCurrencies().currencies;
+            const currenciesThatWorked = [];
+            const currs = Object.keys(currencies);
+            for (let i = 0; i < currs.length; i++) {
+                const price = 100000 * currencies[currs[i]];
+                const payload = {
+                    "conversationId":"conversationId"+i,
+                    "locale":"en",
+                    "paidPrice":price,
+                    "price":price,
+                    "paymentGroup":"PRODUCT",
+                    "currency":currs[i],
+                    "basketId":"B67832",
+                    "paymentChannel":"WEB",
+                    "installment": 1,
+                    "paymentCard":{
+                        "cardHolderName":"John Doe",
+                        "cardNumber":"5528790000000008",
+                        "expireMonth":"12",
+                        "expireYear":"2030",
+                        "cvc":"123",
+                        "registerCard":0
+                    },
+                    "buyer":{
+                        "id":"BY789",
+                        "name":"John",
+                        "surname":"Doe",
+                        "identityNumber":"74300864791",
+                        "email":"john.doe@email.com",
+                        "gsmNumber":"+905350000000",
+                        "registrationAddress":"Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                        "city":"Istanbul",
+                        "country":"Turkey",
+                        "zipCode":"34732"
+                    },
+                    "shippingAddress":{
+                        "address":"Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                        "zipCode":"34742",
+                        "contactName":"Jane Doe",
+                        "city":"Istanbul",
+                        "country":"Turkey"
+                    },
+                    "billingAddress":{
+                        "address":"Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                        "zipCode":"34742",
+                        "contactName":"Jane Doe",
+                        "city":"Istanbul",
+                        "country":"Turkey"
+                    },
+                    "basketItems":[
+                        {
+                        "id":"BI101",
+                        "price":1.0,
+                        "name":"Binocular",
+                        "category1":"Collectibles",
+                        "category2":"Accessories",
+                        "itemType":"PHYSICAL"
+                        }
+                    ],
+                    "paymentSource": "TEST"
+                };
+                console.log(`Testing payment for ${currs[i]} with price ${price}`);
+                const response = await IyzipayAPI(config, "POST", "payment/auth", {}, payload);
+                let failed = false;
+                if (response) {
+                    if (response.status === "success") {
+                        const authChecker = await IyzipayAPI(config, "POST", "payment/detail", {}, { locale: "en", paymentId: response.paymentId });
+                        if (authChecker) {
+                            if (authChecker.status === "success") {
+                                if (authChecker.paymentStatus === "SUCCESS") {
+                                    console.log(`Payment successful for ${currs[i]}`);
+                                    currenciesThatWorked.push(currs[i]);
+                                }
+                                else {
+                                    console.log(`Payment failed for ${currs[i]}:`, authChecker);
+                                    failed = true;
+                                }
+                            }
+                            else {
+                                console.log(`Payment failed for ${currs[i]}`, authChecker);
+                                failed = true;
+                            }
+                        }
+                        else {
+                            console.log(`Payment failed for ${currs[i]}, authChecker doesn't exist`);
+                            failed = true;
+                        }
+                    }
+                    else {
+                        failed = true;
+                        console.log(`Payment failed for ${currs[i]}`, authChecker);
+                    }
+                }
+                else {
+                    console.log(`Payment failed for ${currs[i]}, response doesn't exist`);
+                    failed = true;
+                }
+                await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 1 second between requests to avoid hitting rate limits
+            };
+            return { s: 200, j: true, d: currenciesThatWorked };
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
     else if (endpoint[0] === "installments") {
         if (method === "POST") {
             if (!body || !body.exists || body.err || !body.json || !body.data || (!body.data.bin && !body.data.token)) return { s: 400, j: true, d: { e: "Invalid request body" } };
