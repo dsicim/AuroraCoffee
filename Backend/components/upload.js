@@ -47,7 +47,7 @@ async function createUpload(user, prefName, restrictions, req, headers) {
                 converting = sharp().toFormat(format, { quality: 100 });
             }
             let actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);
-            const uploadsDir = path.join(__dirname, "..", "..", "Database", "uploads");
+            const uploadsDir = path.join(__dirname, "..", "..", "..", "uploads");
             if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
             while (fs.existsSync(path.join(uploadsDir, actualname + "." + format))) {
                 actualname = prefName + crypto.randomBytes(16).toString("hex").substring(0, 32);

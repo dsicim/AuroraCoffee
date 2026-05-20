@@ -6,6 +6,7 @@ const api = require("./components/api.js");
 const crypto = require('crypto');
 const fdir = "../Frontend/dist/";
 const ddir = "../Database/";
+const udir = "../../uploads/";
 const config = JSON.parse(fs.readFileSync("./config.json", "utf-8"));
 const mimes = {
     "html": "text/html",
@@ -112,7 +113,7 @@ const server = http.createServer(async function (req, res) {
             res.end("Forbidden");
             return;
         }
-        fs.readFile(ddir + "uploads/" + uploadedpath, function (error, data) {
+        fs.readFile(udir + uploadedpath, function (error, data) {
             if (error) {
                 res.writeHead(404, { "Content-Type": "text/plain" });
                 res.end("File not found");
