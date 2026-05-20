@@ -148,9 +148,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, e: "An unknown error occurred"};
             });
             if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
+            console.log("Attempting to cancel order:", result.d.order);
             if (result.d.order.status === "cancelled") return { s: 400, j: true, d: { e: "Order is already cancelled" } };
             if (["shipped", "delivered"].includes(result.d.order.status)) return { s: 400, j: true, d: { e: `Cannot cancel order in ${result.d.order.status} status` } };
-            const refundResult = await payments.IyzipayAPI(config, "POST", "payment/cancel", {}, { locale: "en", paymentId: result.purchaseId}).then(res => {
+            const refundResult = await payments.IyzipayAPI(config, "POST", "payment/cancel", {}, { locale: "en", paymentId: result.d.order.purchaseId}).then(res => {
                 if (res.status == "success") return { success: true, message: "Order cancelled and payment refunded successfully" };
                 else return { success: false, message: "Order cancelled but failed to refund payment: "+res.errorMessage };
             }).catch(err => {
