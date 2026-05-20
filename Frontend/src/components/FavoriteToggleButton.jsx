@@ -11,6 +11,10 @@ import {
   currentUserChangeEvent,
   getAuthStateSnapshot,
 } from '../lib/auth'
+import {
+  addProductToWishlist,
+  removeProductFromWishlist,
+} from '../lib/wishlist'
 import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/ui/LiquidGlassButton'
 
 export default function FavoriteToggleButton({
@@ -22,6 +26,7 @@ export default function FavoriteToggleButton({
   const navigate = useNavigate()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
   const [isFavorite, setIsFavorite] = useState(() => isFavoriteProduct(productId))
+  const [isSyncing, setIsSyncing] = useState(false)
   const canToggleFavorite = authState.hasUsableSession
   const displayIsFavorite = canToggleFavorite && isFavorite
 
@@ -57,9 +62,13 @@ export default function FavoriteToggleButton({
     }
   }, [productId])
 
-  const handleClick = (event) => {
+  const handleClick = async (event) => {
     event.preventDefault()
     event.stopPropagation()
+
+    if (isSyncing) {
+      return
+    }
 
     const nextAuthState = getAuthStateSnapshot()
     setAuthState(nextAuthState)
@@ -72,8 +81,24 @@ export default function FavoriteToggleButton({
       return
     }
 
+    setIsSyncing(true)
     const nextFavorites = toggleFavoriteProduct(productId)
-    setIsFavorite(nextFavorites.includes(productId))
+    const nextFavoriteState = nextFavorites.includes(productId)
+    setIsFavorite(nextFavoriteState)
+
+    try {
+      if (nextFavoriteState) {
+        await addProductToWishlist(productId)
+      } else {
+        await removeProductFromWishlist(productId)
+      }
+    } catch (error) {
+      console.error('Wishlist sync error:', error)
+      const revertedFavorites = toggleFavoriteProduct(productId)
+      setIsFavorite(revertedFavorites.includes(productId))
+    } finally {
+      setIsSyncing(false)
+    }
   }
 
   const label = displayIsFavorite
@@ -103,6 +128,8 @@ export default function FavoriteToggleButton({
         aria-pressed={displayIsFavorite}
         aria-label={label}
         selected={displayIsFavorite}
+        disabled={isSyncing}
+        loading={isSyncing}
       >
         {icon}
       </LiquidGlassIconButton>
@@ -118,6 +145,8 @@ export default function FavoriteToggleButton({
       aria-pressed={displayIsFavorite}
       aria-label={label}
       selected={displayIsFavorite}
+      disabled={isSyncing}
+      loading={isSyncing}
     >
       {icon}
       <span>{displayIsFavorite ? 'Saved' : 'Favorite'}</span>
