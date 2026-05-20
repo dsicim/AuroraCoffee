@@ -1204,9 +1204,9 @@ func.cancelOrder = async function (orderId, userId, products) {
 
         // 3. Restore stock
         for (const item of products) {
-            await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.stock, item.product_id]);
+            await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
             if (item.variant_id) {
-                await connection.execute('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [item.stock, item.variant_id]);
+                await connection.execute('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [item.quantity, item.variant_id]);
             }
         }
         await connection.commit();
