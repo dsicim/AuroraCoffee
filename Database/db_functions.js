@@ -1176,9 +1176,9 @@ func.getUserOrders = async function (userId, orderId = null) {
 
 func.getOrderHistory = func.getUserOrders;
 
-func.cancelOrder = async function (orderId) {
-    if (!orderId) {
-        throw new DBError(400, 'Order ID is required');
+func.cancelOrder = async function (orderId, userId) {
+    if (!orderId && !userId) {
+        throw new DBError(400, 'Order ID and User ID are required');
     }
     const connection = await pool.getConnection();
     try {
@@ -1195,21 +1195,15 @@ func.cancelOrder = async function (orderId) {
         if (orders[0].status === 'shipped' || orders[0].status === 'delivered') {
             throw new DBError(400, `Cannot cancel order in ${orders[0].status} status`);
         }
-
-        const [items] = await connection.execute('SELECT product_id, quantity FROM order_items WHERE order_id = ?', [orderId]);
+        if (orders[0].user_id !== userId) {
+            throw new DBError(403, 'You do not have permission to cancel this order');
+        }
 
         // 2. Update status
         await connection.execute('UPDATE orders SET status = ? WHERE id = ?', ['cancelled', orderId]);
 
-        // 3. Restore stock
-        for (const item of items) {
-            if (item.product_id) {
-                await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [item.quantity, item.product_id]);
-            }
-        }
-
         await connection.commit();
-        return { success: true, message: 'Order cancelled and stock restored' };
+        return { success: true, message: 'Order cancelled' };
     } catch (error) {
         await connection.rollback();
         if (error instanceof DBError) throw error;

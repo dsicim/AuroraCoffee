@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const fetch = require("node-fetch");
 const aes = require("../components/aes256.js");
 const pdf = require("../invoice/pdf.js");
+const payments = require("./payment.js");
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0) {
@@ -19,11 +20,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                             if (specificorder && specificorder != ordr.id) return undefined;
                             if (specificorder) {
                                 ordr.details = aes.pjs(ordr.details);
-                                if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                                if (ordr.details.e || ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
                                 const decrypted = aes.decrypt(ordr.details, ordr.user_id);
                                 if (!decrypted.s) throw new Error("Decryption failed");
                                 const order = aes.pjs(decrypted.value);
-                                if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                                if (order.e || order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                                 ordr.details = order;
                             }
                             else delete ordr.details;
@@ -81,6 +82,94 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
         }
         else return { s: 405, j: true, d: { e: "Method not allowed" } };
+    }
+    else if (endpoint[0] === "cancel") {
+        if (method === "POST") {
+            if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const admin = (["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role));
+            const orderId = body.data.id;
+            const result = admin ? await sql.getAllOrders(orderId).then(async result => {
+                if (result.success) {
+                    const errors = [];
+                    const orders = result.orders.map(ordr => {
+                        try {
+                            if (orderId && orderId != ordr.id) return undefined;
+                            ordr.details = aes.pjs(ordr.details);
+                            if (ordr.details.e || ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                            const decrypted = aes.decrypt(ordr.details, ordr.user_id);
+                            if (!decrypted.s) throw new Error("Decryption failed");
+                            const order = aes.pjs(decrypted.value);
+                            if (order.e || order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                            ordr.details = order;
+                            return { order: ordr };
+                        } catch (err) {
+                            console.error("Decrypt order error:", err);
+                            errors.push({ id: ordr.id, e: err.toString() });
+                            return { order: undefined, e: err.toString() };
+                        }
+                    }).filter(ordr => ordr !== undefined);
+                    if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
+                    return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get orders error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            }) : await sql.getUserOrders(currentUser.id, orderId).then(result => {
+                if (result.success) {
+                    const errors = [];
+                    const orders = result.orders.map(ordr => {
+                        try {
+                            if (orderId && orderId != ordr.id) return undefined;
+                            ordr.details = aes.pjs(ordr.details);
+                            if (ordr.details.e && ordr.details.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on database");
+                            const decrypted = aes.decrypt(ordr.details, currentUser.id);
+                            if (!decrypted.s) throw new Error("Decryption failed");
+                            const order = aes.pjs(decrypted.value);
+                            if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
+                            ordr.details = order;
+                            return { order: ordr };
+                        } catch (err) {
+                            console.error("Decrypt order error:", err);
+                            errors.push({ id: ordr.id, e: err.toString() });
+                            return { order: undefined, e: err.toString() };
+                        }
+                    }).filter(ordr => ordr !== undefined);
+                    if (orders.length === 0 && orderId) return { s: 404, j: true, d: { e: "Order not found" } };
+                    return orderId ? { s: 200, j: true, d: { order: orders[0] } } : { s: 200, j: true, d: { orders, errors } };
+                }
+                else return { s: 400, e: result.message || "An unknown error occurred"};
+            }).catch(err => {
+                if (err instanceof sql.DBError) return { s: err.status, e: err.error || "An unknown error occurred"};
+                else return { s: 500, e: "An unknown error occurred"};
+            });
+            if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
+            if (result.d.order.status === "cancelled") return { s: 400, j: true, d: { e: "Order is already cancelled" } };
+            if (["shipped", "delivered"].includes(result.d.order.status)) return { s: 400, j: true, d: { e: `Cannot cancel order in ${result.d.order.status} status` } };
+            const refundResult = await payments.IyzipayAPI(config, "POST", "payment/cancel", {}, { locale: "en", paymentId: result.purchaseId}).then(res => {
+                if (res.status == "success") return { success: true, message: "Order cancelled and payment refunded successfully" };
+                else return { success: false, message: "Order cancelled but failed to refund payment: "+res.errorMessage };
+            }).catch(err => {
+                console.error("Payment cancellation error:", err);
+                return { success: false, message: "Order cancelled but failed to refund payment: "+err.toString() };
+            });
+            if (!refundResult.success) {
+                return { s: 500, j: true, d: { e: "Failed to cancel payment: "+refundResult.errorMessage } };
+            }
+            else {
+                return await sql.cancelOrder(orderId, admin?result.user_id:currentUser.id).then(res => {
+                    if (res.success) return { s: 200, j: true, d: { message: res.message } };
+                    else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
+                }).catch(err => {
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+                });
+            }
+        }
     }
     else if (endpoint[0] === "pdf") {
         if (method === "GET") {
