@@ -159,7 +159,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return { success: false, message: "Order cancelled but failed to refund payment: "+err.toString() };
             });
             if (!refundResult.success) {
-                return { s: 500, j: true, d: { e: "Failed to cancel payment: "+refundResult.errorMessage } };
+                return { s: 500, j: true, d: { e: "Failed to cancel payment: ", details: refundResult } };
             }
             else {
                 return await sql.cancelOrder(orderId, admin?result.user_id:currentUser.id, result.d.order.order.details.products).then(res => {
