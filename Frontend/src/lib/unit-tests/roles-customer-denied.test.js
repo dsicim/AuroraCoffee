@@ -7,21 +7,24 @@ test('canAccessRole keeps customers out of sales manager pages', () => {
   assert.equal(canAccessRole(userRoles.customer, userRoles.salesManager), false)
 })
 
-test('canAccessRole keeps managers out of other role pages', () => {
-  assert.equal(canAccessRole(userRoles.productManager, userRoles.customer), false)
+test('canAccessRole lets managers use customer account pages', () => {
+  assert.equal(canAccessRole(userRoles.productManager, userRoles.customer), true)
+  assert.equal(canAccessRole(userRoles.salesManager, userRoles.customer), true)
+})
+
+test('canAccessRole keeps managers out of other manager pages', () => {
   assert.equal(canAccessRole(userRoles.productManager, userRoles.salesManager), false)
-  assert.equal(canAccessRole(userRoles.salesManager, userRoles.customer), false)
   assert.equal(canAccessRole(userRoles.salesManager, userRoles.productManager), false)
 })
 
-test('getAccessibleRoleLevels returns only the matching non-admin role', () => {
+test('getAccessibleRoleLevels returns customer plus the matching manager role', () => {
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.productManager).map(({ role }) => role),
-    [userRoles.productManager],
+    [userRoles.customer, userRoles.productManager],
   )
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.salesManager).map(({ role }) => role),
-    [userRoles.salesManager],
+    [userRoles.customer, userRoles.salesManager],
   )
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.customer).map(({ role }) => role),
