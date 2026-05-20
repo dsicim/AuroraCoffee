@@ -10,16 +10,7 @@ async function SetCurrencies() {
     if (Array.isArray(data)) {
       // convert array to map-like for supported currencies
       const map = {};
-      data.forEach(item => { if (item && item.quote) map[item.quote] = item.rate; });
-      supportedCurrencies.forEach(cur => {
-        if (cur === 'TRY') currencies.set('TRY', 1);
-        else if (map[cur] !== undefined) currencies.set(cur, map[cur]);
-      });
-    } else if (data && typeof data === 'object' && data.rates) {
-      supportedCurrencies.forEach(cur => {
-        if (cur === 'TRY') currencies.set('TRY', 1);
-        else if (data.rates[cur] !== undefined) currencies.set(cur, data.rates[cur]);
-      });
+      data.forEach(item => { if (item && item.quote) currencies.set(item.quote, item.rate); });
     } else {
       console.error('Unexpected currency response format:', data);
       return;
