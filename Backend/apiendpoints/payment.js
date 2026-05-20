@@ -591,7 +591,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
             let totalPrice = 0;
             actualCart.forEach(item => {
-                totalPrice += parseFloat(item.product_price - item.pricededuction) * item.quantity;
+                totalPrice += item.final_price * item.quantity;
             });
             if (totalPrice !== parseFloat(expectedPrice)) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart could be modified by the same user from another device", resolution: "Please confirm your up-to date cart contents with possible price changes before confirming your order." } } };
             if (outofstock) return { s: 409, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Some products in the cart are out of stock", resolution: "Please confirm your cart contents and then try again." } } };
