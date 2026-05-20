@@ -243,6 +243,9 @@ func.enrichProductsWithOptions = async function (userId, products) {
     let brewMethods = null;
     for (let p of products) {
         p.is_wishlisted = !!p.is_wishlisted;
+        if (p.users_wishing_for_product !== undefined && p.users_wishing_for_product === null) {
+            p.users_wishing_for_product = 0;
+        }
         const originalPrice = parseFloat(p.price);
         if (p.averageRating) p.averageRating = parseFloat(p.averageRating);
         p.options = [];
