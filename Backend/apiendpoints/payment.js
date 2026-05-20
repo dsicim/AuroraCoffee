@@ -344,7 +344,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     "basketItems":[
                         {
                         "id":"BI101",
-                        "price":1.0,
+                        "price":price,
                         "name":"Binocular",
                         "category1":"Collectibles",
                         "category2":"Accessories",
