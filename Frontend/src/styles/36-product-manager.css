@@ -19,6 +19,153 @@
     line-height: 1.85;
   }
 
+  .aurora-category-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 2.35rem;
+    border: 1px solid rgba(126, 159, 135, 0.24);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    color: var(--aurora-text);
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .aurora-category-manager {
+    display: grid;
+    gap: 1.25rem;
+    padding: clamp(1.15rem, 0.9rem + 1vw, 1.65rem);
+  }
+
+  .aurora-category-form,
+  .aurora-category-list {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
+    border: 1px solid rgba(255, 248, 241, 0.26);
+    border-radius: 1.4rem;
+    padding: 1rem;
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.07)),
+      rgba(255, 252, 248, 0.12);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 16px 30px rgba(29, 20, 15, 0.07);
+  }
+
+  .aurora-category-form h3 {
+    margin-top: 0.35rem;
+    color: var(--aurora-text-strong);
+    font-family: var(--font-display);
+    font-size: 1.45rem;
+    line-height: 1.15;
+  }
+
+  .aurora-category-grid,
+  .aurora-category-tree,
+  .aurora-category-branch,
+  .aurora-category-children {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-category-list-header,
+  .aurora-category-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+  }
+
+  .aurora-category-refresh {
+    border: 1px solid rgba(126, 159, 135, 0.24);
+    border-radius: 999px;
+    padding: 0.5rem 0.8rem;
+    background: rgba(255, 252, 248, 0.28);
+    color: var(--aurora-sky-deep);
+    font-size: 0.8rem;
+    font-weight: 800;
+    transition:
+      border-color 160ms ease,
+      color 160ms ease,
+      background 160ms ease;
+  }
+
+  .aurora-category-refresh:hover,
+  .aurora-category-refresh:focus-visible {
+    border-color: rgba(126, 159, 135, 0.42);
+    background: rgba(255, 252, 248, 0.44);
+    color: var(--aurora-text-strong);
+  }
+
+  .aurora-category-refresh:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
+  }
+
+  .aurora-category-tree,
+  .aurora-category-branch,
+  .aurora-category-children {
+    gap: 0.55rem;
+  }
+
+  .aurora-category-children {
+    margin-left: 1rem;
+    padding-left: 0.8rem;
+    border-left: 1px solid rgba(126, 159, 135, 0.22);
+  }
+
+  .aurora-category-row {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    border: 1px solid rgba(255, 248, 241, 0.22);
+    border-radius: 1rem;
+    padding: 0.75rem 0.9rem;
+    background: rgba(255, 252, 248, 0.18);
+    color: var(--aurora-text-strong);
+    text-align: left;
+    transition:
+      border-color 160ms ease,
+      background 160ms ease,
+      transform 160ms ease;
+  }
+
+  .aurora-category-row:hover,
+  .aurora-category-row:focus-visible,
+  .aurora-category-row-active {
+    border-color: rgba(126, 159, 135, 0.42);
+    background: rgba(255, 252, 248, 0.34);
+    transform: translateY(-1px);
+  }
+
+  .aurora-category-row span,
+  .aurora-category-row small {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .aurora-category-row span {
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .aurora-category-row small,
+  .aurora-category-impact {
+    color: var(--aurora-text);
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1.55;
+  }
+
+  .aurora-category-actions {
+    justify-content: flex-start;
+  }
+
   .aurora-product-edit-live-link {
     display: inline-flex;
     align-items: center;
@@ -333,6 +480,51 @@
     gap: 0.5rem;
   }
 
+  .aurora-product-variant-manager {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .aurora-product-variant-toolbar,
+  .aurora-product-variant-form {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .aurora-product-variant-mode,
+  .aurora-product-variant-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+  }
+
+  .aurora-product-variant-list {
+    display: grid;
+    gap: 0.65rem;
+  }
+
+  .aurora-product-variant-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.9rem;
+    border: 1px solid rgba(255, 248, 241, 0.22);
+    border-radius: 1rem;
+    padding: 0.85rem;
+    background: rgba(255, 252, 248, 0.16);
+  }
+
+  .aurora-product-variant-row.is-selected {
+    border-color: rgba(126, 159, 135, 0.44);
+    background: rgba(236, 245, 241, 0.34);
+  }
+
+  .aurora-product-variant-row strong {
+    flex: 0 0 auto;
+    color: var(--aurora-text-strong);
+    font-size: 0.95rem;
+  }
+
   .aurora-product-image-empty {
     border: 1px dashed rgba(126, 159, 135, 0.26);
     border-radius: 1rem;
@@ -393,6 +585,8 @@
   }
 
   [data-theme='dark'] .aurora-product-edit-hero,
+  [data-theme='dark'] .aurora-category-form,
+  [data-theme='dark'] .aurora-category-list,
   [data-theme='dark'] .aurora-product-edit-picker,
   [data-theme='dark'] .aurora-product-edit-snapshot,
   [data-theme='dark'] .aurora-product-edit-group,
@@ -407,10 +601,19 @@
   }
 
   [data-theme='dark'] .aurora-product-edit-live-link,
+  [data-theme='dark'] .aurora-category-count,
+  [data-theme='dark'] .aurora-category-refresh,
+  [data-theme='dark'] .aurora-category-row,
   [data-theme='dark'] .aurora-product-edit-stats div,
-  [data-theme='dark'] .aurora-product-image-row {
+  [data-theme='dark'] .aurora-product-image-row,
+  [data-theme='dark'] .aurora-product-variant-row {
     border-color: rgba(211, 227, 216, 0.13);
     background: rgba(17, 27, 24, 0.46);
+  }
+
+  [data-theme='dark'] .aurora-product-variant-row.is-selected {
+    border-color: rgba(143, 182, 167, 0.34);
+    background: rgba(29, 53, 48, 0.48);
   }
 
   [data-theme='dark'] .aurora-product-edit-image-shell {
@@ -432,9 +635,32 @@
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .aurora-category-form {
+      grid-template-columns: minmax(12rem, 0.8fr) minmax(0, 1fr) minmax(12rem, 0.8fr) auto;
+      align-items: end;
+    }
+
+    .aurora-category-grid {
+      grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+      align-items: start;
+    }
+
+    .aurora-category-grid .aurora-category-form {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
     .aurora-product-image-upload {
       grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.7fr) auto auto;
       align-items: end;
+    }
+
+    .aurora-product-variant-toolbar {
+      grid-template-columns: auto minmax(12rem, 1fr);
+      align-items: end;
+    }
+
+    .aurora-product-variant-form {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .aurora-product-image-row {

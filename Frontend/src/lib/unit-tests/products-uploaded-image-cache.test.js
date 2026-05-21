@@ -220,6 +220,21 @@ test('mergeUploadedProductImage sorts uploaded images by sort order', () => {
   assert.deepEqual(nextProduct.images.map((image) => image.url), ['new.webp', 'old.webp'])
 })
 
+test('mergeUploadedProductImage supports three sequential uploads without losing local state', () => {
+  const uploads = ['one.webp', 'two.webp', 'three.webp']
+  const product = uploads.reduce((currentProduct, url, index) =>
+    mergeUploadedProductImage(currentProduct, {
+      url,
+      sortOrder: index,
+      primary: false,
+    }), { imageUrl: '', images: [] })
+
+  assert.deepEqual(product.images.map((image) => image.url), uploads)
+  assert.deepEqual(product.images.map((image) => image.sortOrder), [0, 1, 2])
+  assert.deepEqual(product.images.map((image) => image.isPrimary), [true, false, false])
+  assert.equal(product.imageUrl, '/uploads/one.webp')
+})
+
 test('mergeUploadedProductImage preserves unrelated product fields', () => {
   const nextProduct = mergeUploadedProductImage({ id: 7, name: 'Brazil Santos', images: [] }, {
     url: 'first.webp',

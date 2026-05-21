@@ -19,6 +19,7 @@ import {
   getOrderStatusPresentation,
   orderProgressSteps,
   ordersChangeEvent,
+  requestOrderRefund,
 } from '../application/orders'
 import { getLinePriceBreakdown } from '../../../lib/tax'
 
@@ -64,6 +65,38 @@ function getProgressMessage(progressState) {
   return `${progressState.label} is the latest backend status on this order.`
 }
 
+function getItemActionKey(item) {
+  return String(item?.cartId ?? item?.lineItemId ?? item?.id ?? item?.name ?? 'unknown')
+}
+
+function getRestoreActionKey(item) {
+  return `item-${getItemActionKey(item)}`
+}
+
+function getRefundActionKey(item) {
+  return `refund-${getItemActionKey(item)}`
+}
+
+function getRefundFieldId(item) {
+  return `refund-message-${getItemActionKey(item).replace(/[^A-Za-z0-9_-]/g, '-')}`
+}
+
+function getRefundStatusMessage(item) {
+  if (item.refunded) {
+    return 'Refund completed for this item.'
+  }
+
+  if (item.refundRejected) {
+    return 'Refund request was rejected.'
+  }
+
+  if (item.refundRequested) {
+    return 'Refund request is waiting for review.'
+  }
+
+  return ''
+}
+
 function getInstallmentSummary(payment, total) {
   const installmentCount = Math.max(1, Number(payment?.installmentCount) || 1)
 
@@ -94,6 +127,9 @@ export default function OrderDetailPage() {
   const [feedback, setFeedback] = useState('')
   const [feedbackType, setFeedbackType] = useState('success')
   const [restoringAction, setRestoringAction] = useState('')
+  const [refundMessages, setRefundMessages] = useState({})
+  const [refundErrors, setRefundErrors] = useState({})
+  const [refundBusyKey, setRefundBusyKey] = useState('')
 
   useEffect(() => {
     let active = true
@@ -152,6 +188,12 @@ export default function OrderDetailPage() {
   }, [orderId])
 
   useEffect(() => {
+    setRefundMessages({})
+    setRefundErrors({})
+    setRefundBusyKey('')
+  }, [orderId])
+
+  useEffect(() => {
     if (!feedback) {
       return undefined
     }
@@ -195,7 +237,7 @@ export default function OrderDetailPage() {
   }
 
   const handleRestoreItem = async (item) => {
-    const actionKey = `item-${item.lineItemId || item.id || item.name || 'unknown'}`
+    const actionKey = getRestoreActionKey(item)
 
     if (restoringAction) {
       return
@@ -216,6 +258,77 @@ export default function OrderDetailPage() {
       )
     } finally {
       setRestoringAction('')
+    }
+  }
+
+  const handleRefundMessageChange = (item, value) => {
+    const itemKey = getItemActionKey(item)
+
+    setRefundMessages((currentMessages) => ({
+      ...currentMessages,
+      [itemKey]: value,
+    }))
+    setRefundErrors((currentErrors) => {
+      if (!currentErrors[itemKey]) {
+        return currentErrors
+      }
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[itemKey]
+      return nextErrors
+    })
+  }
+
+  const handleRequestRefund = async (item) => {
+    const itemKey = getItemActionKey(item)
+    const actionKey = getRefundActionKey(item)
+    const message = String(refundMessages[itemKey] || '').trim()
+
+    if (refundBusyKey) {
+      return
+    }
+
+    if (!message) {
+      setRefundErrors((currentErrors) => ({
+        ...currentErrors,
+        [itemKey]: 'Add a short reason before requesting a refund.',
+      }))
+      return
+    }
+
+    setRefundBusyKey(actionKey)
+    setFeedback('')
+    setRefundErrors((currentErrors) => {
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[itemKey]
+      return nextErrors
+    })
+
+    try {
+      const result = await requestOrderRefund(order.id, item.cartId, message)
+      const nextOrder = await fetchOrderById(order.id, { force: true })
+
+      setOrder(nextOrder)
+      setRefundMessages((currentMessages) => {
+        const nextMessages = { ...currentMessages }
+        delete nextMessages[itemKey]
+        return nextMessages
+      })
+      setFeedbackType('success')
+      setFeedback(
+        result?.message ||
+          result?.msg ||
+          `Refund request submitted for ${item.name || 'this item'}.`,
+      )
+    } catch (refundError) {
+      setRefundErrors((currentErrors) => ({
+        ...currentErrors,
+        [itemKey]: refundError instanceof Error
+          ? refundError.message
+          : 'Could not submit refund request.',
+      }))
+    } finally {
+      setRefundBusyKey('')
     }
   }
 
@@ -381,44 +494,118 @@ export default function OrderDetailPage() {
                 <div className="mt-6 space-y-4">
                   {order.items.map((item) => {
                     const linePricing = getLinePriceBreakdown(item)
+                    const itemKey = getItemActionKey(item)
+                    const restoreActionKey = getRestoreActionKey(item)
+                    const refundActionKey = getRefundActionKey(item)
+                    const refundFieldId = getRefundFieldId(item)
+                    const refundStatusMessage = getRefundStatusMessage(item)
+                    const missingRefundItemId =
+                      item.cartId === null || item.cartId === undefined || item.cartId === ''
+                    const canRequestRefund =
+                      status.key === 'delivered' &&
+                      !item.refundRequested &&
+                      !item.refunded &&
+                      !item.refundRejected
+                    const refundError = refundErrors[itemKey] || ''
 
                     return (
-                    <div key={`${order.id}-${item.lineItemId || item.id}`} className="aurora-ops-card px-5 py-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <p className="font-semibold text-[var(--aurora-text-strong)]">
-                            {item.name}
-                          </p>
-                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            {item.metaLine || item.category || 'Product'}
-                          </p>
-                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            Qty {item.quantity}
-                          </p>
-                          <p className="mt-1 text-sm text-[var(--aurora-text)]">
-                            Included VAT {formatCurrency(linePricing.lineTax)}
-                          </p>
-                          {renderOrderItemOptions(item)}
-	                          <LiquidGlassButton
-	                            type="button"
-	                            variant="quiet"
-	                            size="compact"
-	                            onClick={() => handleRestoreItem(item)}
-	                            loading={restoringAction === `item-${item.lineItemId || item.id || item.name || 'unknown'}`}
-	                            disabled={Boolean(restoringAction)}
-	                            className="mt-4"
-	                          >
-	                            {restoringAction === `item-${item.lineItemId || item.id || item.name || 'unknown'}`
-	                              ? 'Adding...'
-	                              : 'Add again'}
-	                          </LiquidGlassButton>
-                        </div>
+                      <div key={`${order.id}-${item.lineItemId || item.id}`} className="aurora-ops-card px-5 py-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="min-w-0">
+                            <p className="font-semibold text-[var(--aurora-text-strong)]">
+                              {item.name}
+                            </p>
+                            <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                              {item.metaLine || item.category || 'Product'}
+                            </p>
+                            <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                              Qty {item.quantity}
+                            </p>
+                            <p className="mt-1 text-sm text-[var(--aurora-text)]">
+                              Included VAT {formatCurrency(linePricing.lineTax)}
+                            </p>
+                            {renderOrderItemOptions(item)}
+                            {refundStatusMessage ? (
+                              <p className="mt-4 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                                {refundStatusMessage}
+                              </p>
+                            ) : null}
+                            {item.refundMessage ? (
+                              <p className="mt-2 text-sm leading-6 text-[var(--aurora-text)]">
+                                Request note: {item.refundMessage}
+                              </p>
+                            ) : null}
+                            <div className="mt-4 flex flex-wrap gap-3">
+                              <LiquidGlassButton
+                                type="button"
+                                variant="quiet"
+                                size="compact"
+                                onClick={() => handleRestoreItem(item)}
+                                loading={restoringAction === restoreActionKey}
+                                disabled={Boolean(restoringAction)}
+                              >
+                                {restoringAction === restoreActionKey ? 'Adding...' : 'Add again'}
+                              </LiquidGlassButton>
+                            </div>
+                            {canRequestRefund ? (
+                              <form
+                                className="mt-4 space-y-3"
+                                onSubmit={(event) => {
+                                  event.preventDefault()
+                                  void handleRequestRefund(item)
+                                }}
+                                noValidate
+                              >
+                                <label className="block" htmlFor={refundFieldId}>
+                                  <span className="aurora-field-label">
+                                    Refund reason
+                                  </span>
+                                  <textarea
+                                    id={refundFieldId}
+                                    value={refundMessages[itemKey] || ''}
+                                    onChange={(event) =>
+                                      handleRefundMessageChange(item, event.target.value)
+                                    }
+                                    rows={3}
+                                    maxLength={500}
+                                    className="aurora-textarea"
+                                    placeholder="Tell us what went wrong with this item."
+                                    disabled={refundBusyKey === refundActionKey}
+                                  />
+                                </label>
+                                <LiquidGlassButton
+                                  type="submit"
+                                  variant="secondary"
+                                  size="compact"
+                                  loading={refundBusyKey === refundActionKey}
+                                  disabled={Boolean(refundBusyKey) || missingRefundItemId}
+                                >
+                                  {refundBusyKey === refundActionKey
+                                    ? 'Submitting...'
+                                    : 'Request refund'}
+                                </LiquidGlassButton>
+                                {missingRefundItemId ? (
+                                  <p className="text-sm font-medium text-[var(--aurora-text-strong)]">
+                                    This item is missing the refund identifier required by the backend.
+                                  </p>
+                                ) : null}
+                                {refundError ? (
+                                  <p
+                                    className="text-sm font-medium text-[var(--aurora-text-strong)]"
+                                    role="alert"
+                                  >
+                                    {refundError}
+                                  </p>
+                                ) : null}
+                              </form>
+                            ) : null}
+                          </div>
 
-                        <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">
-                          {formatCurrency(item.price * item.quantity)}
-                        </p>
+                          <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">
+                            {formatCurrency(item.price * item.quantity)}
+                          </p>
+                        </div>
                       </div>
-                    </div>
                     )
                   })}
                 </div>

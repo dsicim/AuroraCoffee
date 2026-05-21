@@ -8,6 +8,7 @@ import {
   fetchAdminOrders,
   getOrderStatusPresentation,
   orderStatusOptions,
+  processOrderRefund,
   updateOrderStatus,
 } from '../features/orders/application/orders'
 import OrderPdfDownloadButton from '../features/invoices/presentation/OrderPdfDownloadButton'
@@ -63,6 +64,22 @@ function getOrderLocation(order) {
   ].filter(Boolean).join(', ') || 'Address unavailable'
 }
 
+function getRefundStatus(item) {
+  if (item.refunded) {
+    return { key: 'refunded', label: 'Refunded', chipClass: 'is-delivered' }
+  }
+
+  if (item.refundRejected) {
+    return { key: 'rejected', label: 'Rejected', chipClass: 'is-cancelled' }
+  }
+
+  if (item.refundRequested) {
+    return { key: 'requested', label: 'Refund requested', chipClass: 'is-processing' }
+  }
+
+  return null
+}
+
 function MetricTile({ label, value, description }) {
   return (
     <div className="aurora-summary-card p-5">
@@ -92,6 +109,7 @@ export default function SalesManagerPage() {
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [statusBusy, setStatusBusy] = useState(false)
+  const [refundBusyKey, setRefundBusyKey] = useState('')
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [pendingDeliveredStatus, setPendingDeliveredStatus] = useState('')
@@ -205,6 +223,15 @@ export default function SalesManagerPage() {
   const selectedOrderIndex = filteredOrders.findIndex((order) => order.id === selectedOrderId)
   const selectedStatus = selectedOrder?.statusKey || selectedOrder?.status || ''
   const selectedSummary = orders.find((order) => order.id === selectedOrderId) || null
+  const selectedRefundItems = useMemo(
+    () => (selectedOrder?.items || []).filter((item) => (
+      item.refundRequested || item.refunded || item.refundRejected
+    )),
+    [selectedOrder],
+  )
+  const pendingRefundCount = selectedRefundItems.filter((item) => (
+    item.refundRequested && !item.refunded && !item.refundRejected
+  )).length
 
   const handleRefresh = async () => {
     setOrdersLoading(true)
@@ -224,6 +251,36 @@ export default function SalesManagerPage() {
       setError(refreshError?.message || 'Could not refresh orders.')
     } finally {
       setOrdersLoading(false)
+    }
+  }
+
+  const handleRefundDecision = async (item, action) => {
+    const busyKey = `${selectedOrderId}:${item.cartId}:${action}`
+
+    setRefundBusyKey(busyKey)
+    setFeedback('')
+    setError('')
+
+    try {
+      const result = await processOrderRefund(selectedOrderId, item.cartId, action)
+      const [nextOrders, nextOrder] = await Promise.all([
+        fetchAdminOrders(),
+        fetchAdminOrderById(selectedOrderId),
+      ])
+
+      setOrders(nextOrders)
+      setSelectedOrder(nextOrder)
+      setFeedback(
+        result?.message ||
+          result?.msg ||
+          (action === 'approve'
+            ? 'Refund processed successfully.'
+            : 'Refund request rejected successfully.'),
+      )
+    } catch (refundError) {
+      setError(refundError?.message || 'Could not process refund request.')
+    } finally {
+      setRefundBusyKey('')
     }
   }
 
@@ -572,6 +629,24 @@ export default function SalesManagerPage() {
                     </div>
                   </div>
 
+                  {selectedRefundItems.length ? (
+                    <div className="aurora-widget-subsurface p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <p className="aurora-kicker">Refund review</p>
+                          <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                            {pendingRefundCount
+                              ? `${pendingRefundCount} item${pendingRefundCount === 1 ? '' : 's'} awaiting a manager decision.`
+                              : 'No pending refund decisions remain for this order.'}
+                          </p>
+                        </div>
+                        <span className={`aurora-order-status-chip ${pendingRefundCount ? 'is-processing' : 'is-delivered'} inline-flex`}>
+                          {pendingRefundCount ? 'Pending' : 'Reviewed'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : null}
+
                   <div className="aurora-widget-subsurface p-5">
                     <div className="flex items-center justify-between gap-4">
                       <p className="aurora-kicker">Items</p>
@@ -580,19 +655,82 @@ export default function SalesManagerPage() {
                       </p>
                     </div>
                     <div className="mt-4 divide-y divide-[rgba(73,92,65,0.12)]">
-                      {selectedOrder.items.map((item) => (
-                        <div key={`${item.lineItemId || item.productId}:${item.variantId || item.variantCode || item.name}`} className="flex items-start justify-between gap-4 py-3 text-sm">
-                          <div>
-                            <p className="font-semibold text-[var(--aurora-text-strong)]">{item.name}</p>
-                            <p className="mt-1 text-[var(--aurora-text)]">
-                              {item.quantity} × {formatCurrency(item.price)}
-                            </p>
+                      {selectedOrder.items.map((item) => {
+                        const refundStatus = getRefundStatus(item)
+                        const hasPendingRefund = refundStatus?.key === 'requested'
+                        const approveBusyKey = `${selectedOrderId}:${item.cartId}:approve`
+                        const rejectBusyKey = `${selectedOrderId}:${item.cartId}:reject`
+                        const missingRefundItemId = item.cartId === null || item.cartId === undefined || item.cartId === ''
+
+                        return (
+                          <div key={`${item.lineItemId || item.productId}:${item.variantId || item.variantCode || item.name}`} className="py-3 text-sm">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="font-semibold text-[var(--aurora-text-strong)]">{item.name}</p>
+                                <p className="mt-1 text-[var(--aurora-text)]">
+                                  {item.quantity} × {formatCurrency(item.price)}
+                                </p>
+                              </div>
+                              <p className="font-semibold text-[var(--aurora-text-strong)]">
+                                {formatCurrency(item.price * item.quantity)}
+                              </p>
+                            </div>
+
+                            {refundStatus ? (
+                              <div className="mt-4 rounded-[1rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.34)] p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <span className={`aurora-order-status-chip ${refundStatus.chipClass} inline-flex`}>
+                                      {refundStatus.label}
+                                    </span>
+                                    {item.refundMessage ? (
+                                      <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                                        {item.refundMessage}
+                                      </p>
+                                    ) : null}
+                                    {missingRefundItemId && hasPendingRefund ? (
+                                      <p className="aurora-message aurora-message-error mt-3" role="alert">
+                                        This refund request is missing the item identifier required by the backend.
+                                      </p>
+                                    ) : null}
+                                  </div>
+
+                                  {hasPendingRefund ? (
+                                    <div className="aurora-widget-actions justify-end">
+                                      <LiquidGlassButton
+                                        type="button"
+                                        variant="danger"
+                                        size="compact"
+                                        aria-label={`Reject refund for ${item.name}`}
+                                        loading={refundBusyKey === rejectBusyKey}
+                                        disabled={Boolean(refundBusyKey) || missingRefundItemId}
+                                        onClick={() => {
+                                          void handleRefundDecision(item, 'reject')
+                                        }}
+                                      >
+                                        Reject
+                                      </LiquidGlassButton>
+                                      <LiquidGlassButton
+                                        type="button"
+                                        variant="secondary"
+                                        size="compact"
+                                        aria-label={`Approve refund for ${item.name}`}
+                                        loading={refundBusyKey === approveBusyKey}
+                                        disabled={Boolean(refundBusyKey) || missingRefundItemId}
+                                        onClick={() => {
+                                          void handleRefundDecision(item, 'approve')
+                                        }}
+                                      >
+                                        Approve refund
+                                      </LiquidGlassButton>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
                           </div>
-                          <p className="font-semibold text-[var(--aurora-text-strong)]">
-                            {formatCurrency(item.price * item.quantity)}
-                          </p>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   </div>
                 </>

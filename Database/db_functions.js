@@ -1346,19 +1346,31 @@ func.createOrder = async function (userId, items) {
         connection.release();
     }
 };
-func.updateOrderDetails = async function (orderId, details) {
+func.updateOrderDetails = async function (orderId, details, restock = null) {
     if (!orderId || !details) {
         throw new DBError(400, 'Order ID and details are required');
     }
+    const connection = await pool.getConnection();
     try {
-        const [result] = await pool.execute('UPDATE orders SET details = ? WHERE id = ?', [details, orderId]);
+        await connection.beginTransaction();
+        const [result] = await connection.execute('UPDATE orders SET details = ? WHERE id = ?', [details, orderId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Order not found');
         }
+        if (restock !== null) {
+            await connection.execute('UPDATE products p SET p.stock = p.stock + ? WHERE p.id = ?', [restock.quantity, restock.productId]);
+            if (restock.variantId) {
+                await connection.execute('UPDATE product_variants pv SET pv.stock = pv.stock + ? WHERE pv.id = ?', [restock.quantity, restock.variantId]);
+            }
+        }
+        await connection.commit();
         return { success: true, message: 'Order details updated successfully' };
     } catch (error) {
+        await connection.rollback();
         console.error('Update order details error:', error);
         throw new DBError(500, 'Failed to update order details');
+    } finally {
+        connection.release();
     }
 };
 func.updateOrderStatus = async function (orderId, status, paymentId = null, restock = null) {
@@ -2016,6 +2028,5 @@ module.exports = {
     DBError,
     ...func
 };
-
 
 
