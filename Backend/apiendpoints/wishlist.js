@@ -94,7 +94,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         });
     }
     else if (endpoint[0] === "notifyqueue") {
-        if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
         if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
         if (method === "GET") {
             return await sql.getNotifyQueue().then(result => {
