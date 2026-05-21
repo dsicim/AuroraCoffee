@@ -2,6 +2,17 @@
   [data-theme='dark'] .aurora-operational-card,
   [data-theme='dark'] .aurora-summary-card,
   [data-theme='dark'] .aurora-summary-lead,
+  [data-theme='dark'] .aurora-form-surface,
+  [data-theme='dark'] .aurora-form-helper,
+  [data-theme='dark'] .aurora-empty,
+  [data-theme='dark'] .aurora-message,
+  [data-theme='dark'] .aurora-category-form,
+  [data-theme='dark'] .aurora-category-list,
+  [data-theme='dark'] .aurora-category-row,
+  [data-theme='dark'] .aurora-product-edit-picker,
+  [data-theme='dark'] .aurora-product-edit-snapshot,
+  [data-theme='dark'] .aurora-product-edit-group,
+  [data-theme='dark'] .aurora-product-edit-action-bar,
   [data-theme='dark'] .aurora-ops-card,
   [data-theme='dark'] .aurora-ops-panel,
   [data-theme='dark'] .aurora-showroom-subpanel,
@@ -30,6 +41,21 @@
   [data-theme='dark'] .aurora-operational-card::before,
   [data-theme='dark'] .aurora-summary-card::before,
   [data-theme='dark'] .aurora-summary-lead::before,
+  [data-theme='dark'] .aurora-card::before,
+  [data-theme='dark'] .aurora-stat::before,
+  [data-theme='dark'] .aurora-step-card::before,
+  [data-theme='dark'] .aurora-order-row::before,
+  [data-theme='dark'] .aurora-form-surface::before,
+  [data-theme='dark'] .aurora-form-helper::before,
+  [data-theme='dark'] .aurora-empty::before,
+  [data-theme='dark'] .aurora-message::before,
+  [data-theme='dark'] .aurora-category-form::before,
+  [data-theme='dark'] .aurora-category-list::before,
+  [data-theme='dark'] .aurora-category-row::before,
+  [data-theme='dark'] .aurora-product-edit-picker::before,
+  [data-theme='dark'] .aurora-product-edit-snapshot::before,
+  [data-theme='dark'] .aurora-product-edit-group::before,
+  [data-theme='dark'] .aurora-product-edit-action-bar::before,
   [data-theme='dark'] .aurora-ops-card::before,
   [data-theme='dark'] .aurora-ops-panel::before,
   [data-theme='dark'] .aurora-showroom-subpanel::before,
@@ -51,6 +77,21 @@
   [data-theme='dark'] .aurora-operational-card::after,
   [data-theme='dark'] .aurora-summary-card::after,
   [data-theme='dark'] .aurora-summary-lead::after,
+  [data-theme='dark'] .aurora-card::after,
+  [data-theme='dark'] .aurora-stat::after,
+  [data-theme='dark'] .aurora-step-card::after,
+  [data-theme='dark'] .aurora-order-row::after,
+  [data-theme='dark'] .aurora-form-surface::after,
+  [data-theme='dark'] .aurora-form-helper::after,
+  [data-theme='dark'] .aurora-empty::after,
+  [data-theme='dark'] .aurora-message::after,
+  [data-theme='dark'] .aurora-category-form::after,
+  [data-theme='dark'] .aurora-category-list::after,
+  [data-theme='dark'] .aurora-category-row::after,
+  [data-theme='dark'] .aurora-product-edit-picker::after,
+  [data-theme='dark'] .aurora-product-edit-snapshot::after,
+  [data-theme='dark'] .aurora-product-edit-group::after,
+  [data-theme='dark'] .aurora-product-edit-action-bar::after,
   [data-theme='dark'] .aurora-ops-card::after,
   [data-theme='dark'] .aurora-ops-panel::after,
   [data-theme='dark'] .aurora-showroom-subpanel::after,
@@ -244,6 +285,18 @@
 
   [data-theme='dark'] .aurora-shell::before {
     border-color: rgba(232, 242, 252, 0.08);
+    background:
+      linear-gradient(180deg, rgba(238, 246, 255, 0.07), transparent 44%),
+      radial-gradient(circle at 24% 20%, rgba(228, 240, 253, 0.06), transparent 20%);
+  }
+
+  [data-theme='dark'] .aurora-widget-subsurface::after,
+  [data-theme='dark'] .aurora-shell::after {
+    background:
+      radial-gradient(circle at 28% 22%, rgba(236, 244, 252, 0.08), transparent 18%),
+      radial-gradient(circle at 72% 20%, rgba(118, 158, 127, 0.12), transparent 22%),
+      radial-gradient(circle at 34% 84%, rgba(190, 152, 123, 0.07), transparent 26%);
+    opacity: 0.54;
   }
 
   [data-theme='dark'] .aurora-shell-soft {

@@ -144,6 +144,21 @@
   .aurora-operational-card,
   .aurora-summary-card,
   .aurora-summary-lead,
+  .aurora-card,
+  .aurora-stat,
+  .aurora-step-card,
+  .aurora-order-row,
+  .aurora-form-surface,
+  .aurora-form-helper,
+  .aurora-empty,
+  .aurora-message,
+  .aurora-category-form,
+  .aurora-category-list,
+  .aurora-category-row,
+  .aurora-product-edit-picker,
+  .aurora-product-edit-snapshot,
+  .aurora-product-edit-group,
+  .aurora-product-edit-action-bar,
   .aurora-ops-card,
   .aurora-ops-panel,
   .aurora-showroom-subpanel,
@@ -159,6 +174,21 @@
   .aurora-operational-card,
   .aurora-summary-card,
   .aurora-summary-lead,
+  .aurora-card,
+  .aurora-stat,
+  .aurora-step-card,
+  .aurora-order-row,
+  .aurora-form-surface,
+  .aurora-form-helper,
+  .aurora-empty,
+  .aurora-message,
+  .aurora-category-form,
+  .aurora-category-list,
+  .aurora-category-row,
+  .aurora-product-edit-picker,
+  .aurora-product-edit-snapshot,
+  .aurora-product-edit-group,
+  .aurora-product-edit-action-bar,
   .aurora-ops-card,
   .aurora-ops-panel,
   .aurora-showroom-subpanel,
@@ -166,14 +196,14 @@
   .aurora-bento-card,
   .aurora-showroom-panel,
   .aurora-showcase-band {
-    --aurora-liquid-tint: rgba(243, 236, 231, 0.08);
-    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.14);
-    --aurora-liquid-fill-bottom: rgba(246, 236, 228, 0.04);
-    --aurora-liquid-border: rgba(250, 242, 236, 0.28);
-    --aurora-liquid-shadow: 0 16px 36px rgba(29, 20, 15, 0.1);
+    --aurora-liquid-tint: rgba(243, 236, 231, 0.1);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.22);
+    --aurora-liquid-fill-bottom: rgba(246, 236, 228, 0.07);
+    --aurora-liquid-border: rgba(250, 242, 236, 0.34);
+    --aurora-liquid-shadow: 0 18px 42px rgba(29, 20, 15, 0.11);
     --aurora-liquid-inner: inset 0 1px 0 rgba(255, 255, 255, 0.42),
       inset 0 -1px 0 rgba(255, 255, 255, 0.08);
-    --aurora-liquid-blur: 8px;
+    --aurora-liquid-blur: 10px;
     border: 1px solid var(--aurora-liquid-border);
     background:
       linear-gradient(180deg, var(--aurora-liquid-fill-top) 0%, rgba(255, 255, 255, 0.16) 22%, var(--aurora-liquid-fill-bottom) 100%),
@@ -206,6 +236,21 @@
   .aurora-operational-card::before,
   .aurora-summary-card::before,
   .aurora-summary-lead::before,
+  .aurora-card::before,
+  .aurora-stat::before,
+  .aurora-step-card::before,
+  .aurora-order-row::before,
+  .aurora-form-surface::before,
+  .aurora-form-helper::before,
+  .aurora-empty::before,
+  .aurora-message::before,
+  .aurora-category-form::before,
+  .aurora-category-list::before,
+  .aurora-category-row::before,
+  .aurora-product-edit-picker::before,
+  .aurora-product-edit-snapshot::before,
+  .aurora-product-edit-group::before,
+  .aurora-product-edit-action-bar::before,
   .aurora-ops-card::before,
   .aurora-ops-panel::before,
   .aurora-showroom-subpanel::before,
@@ -220,19 +265,34 @@
     z-index: 0;
     border-radius: inherit;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 36%, transparent 72%),
-      radial-gradient(circle at 15% 14%, rgba(255, 255, 255, 0.16), transparent 22%),
-      radial-gradient(circle at 85% 22%, rgba(255, 255, 255, 0.1), transparent 20%),
-      linear-gradient(135deg, rgba(255,255,255,0.06), transparent 45%);
+      linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.06) 36%, transparent 72%),
+      radial-gradient(circle at 15% 14%, rgba(255, 255, 255, 0.22), transparent 22%),
+      radial-gradient(circle at 85% 22%, rgba(255, 255, 255, 0.14), transparent 20%),
+      linear-gradient(135deg, rgba(255,255,255,0.08), transparent 45%);
     box-shadow:
       inset -8px -6px 0 -10px rgba(255, 255, 255, 0.46),
       inset 0 -6px 0 -6px rgba(255, 255, 255, 0.28);
-    opacity: 0.72;
+    opacity: 0.82;
   }
 
   .aurora-operational-card::after,
   .aurora-summary-card::after,
   .aurora-summary-lead::after,
+  .aurora-card::after,
+  .aurora-stat::after,
+  .aurora-step-card::after,
+  .aurora-order-row::after,
+  .aurora-form-surface::after,
+  .aurora-form-helper::after,
+  .aurora-empty::after,
+  .aurora-message::after,
+  .aurora-category-form::after,
+  .aurora-category-list::after,
+  .aurora-category-row::after,
+  .aurora-product-edit-picker::after,
+  .aurora-product-edit-snapshot::after,
+  .aurora-product-edit-group::after,
+  .aurora-product-edit-action-bar::after,
   .aurora-ops-card::after,
   .aurora-ops-panel::after,
   .aurora-showroom-subpanel::after,
@@ -248,12 +308,27 @@
     background:
       radial-gradient(circle at 28% 22%, rgba(255,255,255,0.1), transparent 18%),
       radial-gradient(circle at 72% 20%, rgba(137,171,196,0.07), transparent 22%);
-    opacity: 0.34;
+    opacity: 0.44;
   }
 
   .aurora-operational-card > *,
   .aurora-summary-card > *,
   .aurora-summary-lead > *,
+  .aurora-card > *,
+  .aurora-stat > *,
+  .aurora-step-card > *,
+  .aurora-order-row > *,
+  .aurora-form-surface > *,
+  .aurora-form-helper > *,
+  .aurora-empty > *,
+  .aurora-message > *,
+  .aurora-category-form > *,
+  .aurora-category-list > *,
+  .aurora-category-row > *,
+  .aurora-product-edit-picker > *,
+  .aurora-product-edit-snapshot > *,
+  .aurora-product-edit-group > *,
+  .aurora-product-edit-action-bar > *,
   .aurora-ops-card > *,
   .aurora-ops-panel > *,
   .aurora-showroom-subpanel > *,
@@ -363,18 +438,24 @@
 
   .aurora-widget-subsurface {
     position: relative;
+    isolation: isolate;
     overflow: hidden;
     border-radius: 1.45rem;
-    border: 1px solid rgba(248, 239, 233, 0.2);
+    --aurora-liquid-tint: rgba(244, 237, 231, 0.07);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.18);
+    --aurora-liquid-fill-bottom: rgba(246, 238, 232, 0.07);
+    --aurora-liquid-border: rgba(248, 239, 233, 0.2);
+    --aurora-liquid-shadow: 0 8px 20px rgba(29, 20, 15, 0.07);
+    --aurora-liquid-inner: inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    --aurora-liquid-blur: 6px;
+    border: 1px solid var(--aurora-liquid-border);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(246, 238, 232, 0.07) 100%),
+      linear-gradient(180deg, var(--aurora-liquid-fill-top) 0%, var(--aurora-liquid-fill-bottom) 100%),
       radial-gradient(circle at 18% 18%, rgba(255,255,255,0.22), transparent 24%),
-      rgba(244, 237, 231, 0.07);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.3),
-      0 8px 20px rgba(29, 20, 15, 0.07);
-    backdrop-filter: blur(6px) saturate(118%);
-    -webkit-backdrop-filter: blur(6px) saturate(118%);
+      var(--aurora-liquid-tint);
+    box-shadow: var(--aurora-liquid-shadow), var(--aurora-liquid-inner);
+    backdrop-filter: blur(var(--aurora-liquid-blur)) saturate(118%);
+    -webkit-backdrop-filter: blur(var(--aurora-liquid-blur)) saturate(118%);
   }
 
   .aurora-widget-subsurface::before {
@@ -382,11 +463,25 @@
     pointer-events: none;
     position: absolute;
     inset: 0;
+    z-index: 0;
     border-radius: inherit;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 42%),
       radial-gradient(circle at 24% 20%, rgba(255,255,255,0.12), transparent 18%);
     opacity: 0.7;
+  }
+
+  .aurora-widget-subsurface::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: -12%;
+    z-index: 0;
+    background:
+      radial-gradient(circle at 30% 26%, rgba(255, 255, 255, 0.12), transparent 20%),
+      radial-gradient(circle at 78% 24%, rgba(144, 182, 151, 0.1), transparent 24%),
+      radial-gradient(circle at 42% 86%, rgba(235, 207, 159, 0.08), transparent 28%);
+    opacity: 0.42;
   }
 
   .aurora-widget-subsurface > * {
@@ -396,16 +491,24 @@
 
   .aurora-shell {
     position: relative;
+    isolation: isolate;
     overflow: hidden;
-    border: 1px solid rgba(248, 239, 233, 0.24);
+    --aurora-liquid-tint: rgba(242, 234, 229, 0.08);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.13);
+    --aurora-liquid-fill-bottom: rgba(243, 235, 229, 0.04);
+    --aurora-liquid-border: rgba(248, 239, 233, 0.24);
+    --aurora-liquid-shadow: var(--aurora-shadow-soft);
+    --aurora-liquid-inner: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    --aurora-liquid-blur: 8px;
+    border: 1px solid var(--aurora-liquid-border);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.04) 18%, transparent 100%),
-      linear-gradient(145deg, rgba(247, 240, 234, 0.14) 0%, rgba(243, 235, 229, 0.04) 100%),
-      rgba(242, 234, 229, 0.08);
+      linear-gradient(180deg, var(--aurora-liquid-fill-top) 0%, rgba(255, 255, 255, 0.04) 18%, transparent 100%),
+      linear-gradient(145deg, rgba(247, 240, 234, 0.14) 0%, var(--aurora-liquid-fill-bottom) 100%),
+      var(--aurora-liquid-tint);
     border-radius: 2.1rem;
-    box-shadow: var(--aurora-shadow-soft);
-    backdrop-filter: blur(8px) saturate(116%);
-    -webkit-backdrop-filter: blur(8px) saturate(116%);
+    box-shadow: var(--aurora-liquid-shadow), var(--aurora-liquid-inner);
+    backdrop-filter: blur(var(--aurora-liquid-blur)) saturate(116%);
+    -webkit-backdrop-filter: blur(var(--aurora-liquid-blur)) saturate(116%);
   }
 
   .aurora-shell::before {
@@ -413,27 +516,45 @@
     pointer-events: none;
     position: absolute;
     inset: 1px;
+    z-index: 0;
     border-radius: inherit;
     border: 1px solid rgba(255, 255, 255, 0.24);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 44%),
+      radial-gradient(circle at 24% 20%, rgba(255, 255, 255, 0.12), transparent 20%);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     opacity: 0.65;
   }
 
-  .aurora-shell-soft {
-    border-color: rgba(255, 248, 241, 0.24);
+  .aurora-shell::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: -12%;
+    z-index: 0;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(244, 238, 233, 0.04) 100%),
-      rgba(243, 236, 231, 0.1);
+      radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.1), transparent 18%),
+      radial-gradient(circle at 72% 20%, rgba(137, 171, 196, 0.07), transparent 22%);
+    opacity: 0.36;
+  }
+
+  .aurora-shell > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .aurora-shell-soft {
+    --aurora-liquid-tint: rgba(243, 236, 231, 0.1);
+    --aurora-liquid-fill-bottom: rgba(244, 238, 233, 0.04);
+    --aurora-liquid-border: rgba(255, 248, 241, 0.24);
   }
 
   .aurora-shell-operational {
-    border-color: rgba(255, 248, 241, 0.22);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.1) 0%, rgba(242, 235, 230, 0.04) 100%),
-      rgba(239, 232, 227, 0.08);
-    box-shadow: 0 14px 30px rgba(29, 20, 15, 0.1);
-    backdrop-filter: blur(8px) saturate(116%);
-    -webkit-backdrop-filter: blur(8px) saturate(116%);
+    --aurora-liquid-tint: rgba(239, 232, 227, 0.08);
+    --aurora-liquid-fill-top: rgba(255, 255, 255, 0.1);
+    --aurora-liquid-fill-bottom: rgba(242, 235, 230, 0.04);
+    --aurora-liquid-border: rgba(255, 248, 241, 0.22);
+    --aurora-liquid-shadow: 0 14px 30px rgba(29, 20, 15, 0.1);
   }
 
   .aurora-hero-card {

@@ -5,6 +5,7 @@ import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
 import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
 import { authChangeEvent } from '../../auth/application/auth'
 import {
+  cancelOrder,
   fetchOrders,
   getOrdersSnapshot,
   getOrderStatusPresentation,
@@ -29,6 +30,7 @@ export default function OrdersPage() {
   const [loading, setLoading] = useState(() => !getOrdersSnapshot().loaded)
   const [error, setError] = useState('')
   const [pdfFeedback, setPdfFeedback] = useState(null)
+  const [cancelBusyOrderId, setCancelBusyOrderId] = useState('')
 
   useEffect(() => {
     let active = true
@@ -119,6 +121,47 @@ export default function OrdersPage() {
     })
   }
 
+  const handleCancelOrder = async (order) => {
+    const orderId = String(order?.id || '').trim()
+
+    if (!orderId || cancelBusyOrderId) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel order ${orderId}? This will attempt to cancel the payment and cannot be undone.`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setCancelBusyOrderId(orderId)
+    setPdfFeedback(null)
+    setError('')
+
+    try {
+      const result = await cancelOrder(orderId)
+      const nextOrders = await fetchOrders({ force: true })
+
+      setOrders(nextOrders)
+      setOrdersLoaded(true)
+      setPdfFeedback({
+        type: 'success',
+        message: result?.message || result?.msg || `Order ${orderId} was cancelled.`,
+      })
+    } catch (cancelError) {
+      setPdfFeedback({
+        type: 'error',
+        message: cancelError instanceof Error
+          ? cancelError.message
+          : `Order ${orderId} could not be cancelled.`,
+      })
+    } finally {
+      setCancelBusyOrderId('')
+    }
+  }
+
   return (
     <AccountLayout
       eyebrow="Account orders"
@@ -173,6 +216,7 @@ export default function OrdersPage() {
           {orders.map((order) => {
             const status = getOrderStatusPresentation(order)
             const orderPath = `/account/orders/${encodeURIComponent(order.id)}`
+            const canCancelOrder = !['shipped', 'delivered', 'cancelled'].includes(status.key)
 
             return (
               <article
@@ -214,6 +258,20 @@ export default function OrdersPage() {
                       onSuccess={showPdfSuccess}
                       onError={showPdfError}
                     />
+                    {canCancelOrder ? (
+                      <LiquidGlassButton
+                        type="button"
+                        variant="danger"
+                        size="compact"
+                        onClick={() => {
+                          void handleCancelOrder(order)
+                        }}
+                        loading={cancelBusyOrderId === order.id}
+                        disabled={Boolean(cancelBusyOrderId)}
+                      >
+                        {cancelBusyOrderId === order.id ? 'Cancelling...' : 'Cancel order'}
+                      </LiquidGlassButton>
+                    ) : null}
                   </div>
                 </div>
               </article>
