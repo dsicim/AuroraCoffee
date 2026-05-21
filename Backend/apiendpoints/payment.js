@@ -227,6 +227,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
         },
         basketItems: basket
     }
+    console.log(details, payload);
     return { s: true, p: payload, o: { user: currentUser.id, details: JSON.stringify(aes.encrypt(JSON.stringify(details), currentUser.id)), detailsOpen: details } };
 }
 async function completeCart(products) {
