@@ -172,7 +172,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
         });
         delete emailqueue;
-        await emailPromises.forEach(async emailData => {
+        for (let i = 0; i < emailPromises.length; i++) {
+            const emailData = emailPromises[i];
             if (!emailData.emailblocked) {
                 const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => res).catch(err => {
                     res.write(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err + "\n");
@@ -188,7 +189,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             // await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
             //     console.error(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
             // });
-        });
+        };
         console.log("Finished processing notify queue");
         //res.write(JSON.stringify(emailPromises));
         res.end();
