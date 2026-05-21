@@ -1803,8 +1803,8 @@ func.getUsersWishingForProduct = async function (productId) {
 }
 func.getNotifyQueue = async function () {
     try {
-        const [discount] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.product_code, p.name AS product_name, p.price AS product_price, p.discount_rate, p.stock, c.* FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id JOIN product_categories c ON p.category_id = c.id WHERE w.is_notified_about_discount = "pending"');
-        const [stock] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.product_code, p.name AS product_name, p.price AS product_price, p.discount_rate, p.stock, c.* FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id JOIN product_categories c ON p.category_id = c.id WHERE w.is_notified_about_stock = "pending"');
+        const [discount] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.product_code, p.name AS product_name, p.price AS product_price, p.discount_rate, p.stock, c.name AS category_name, pi.image_url FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id JOIN categories c ON p.category_id = c.id LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 WHERE w.is_notified_about_discount = "pending"');
+        const [stock] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.product_code, p.name AS product_name, p.price AS product_price, p.discount_rate, p.stock, c.name AS category_name, pi.image_url FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id JOIN categories c ON p.category_id = c.id LEFT JOIN product_images pi ON p.id = pi.product_id AND pi.is_primary = 1 WHERE w.is_notified_about_stock = "pending"');
         discount.forEach(item => {
             item.price = parseFloat(item.price);
             item.discount_rate = parseFloat(item.discount_rate);
