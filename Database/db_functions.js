@@ -1821,14 +1821,14 @@ func.getNotifyQueue = async function () {
         throw new DBError(500, 'Failed to fetch notify queue');
     }
 }
-func.setNotified = async function (userId, type) {
+func.setNotified = async function (userId, type, setToWaiting = false) {
     if (!userId || !type) throw new DBError(400, 'User ID, Product ID and type are required');
     try {
         let field = null;
         if (type === 'discount') field = 'is_notified_about_discount';
         else if (type === 'stock') field = 'is_notified_about_stock';
         else throw new DBError(400, 'Invalid notification type');
-        const [result] = await pool.execute(`UPDATE wishlist SET ${field} = "notified" WHERE user_id = ?`, [userId]);
+        const [result] = await pool.execute(`UPDATE wishlist SET ${field} = ? WHERE user_id = ?`, [setToWaiting ? "waiting" : "notified", userId]);
         return { success: true, message: 'Notification status updated', affectedRows: result.affectedRows };
     } catch (error) {
         if (error instanceof DBError) throw error;

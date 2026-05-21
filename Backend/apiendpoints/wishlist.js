@@ -17,11 +17,12 @@ async function emailDiscount(config, email, details) {
     if (details.length == 2) items += " and one other item";
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
     const template = fs.readFileSync("./emails/discountemail.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
-    await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, pdfResult ? [pdfResult] : []).then(res => {
-        console.log("Email sent:", res);
-    }).catch(err => {
-        console.error("Email sending error:", err);
-    });
+    return {html:template, title: items + " from your wishlist " + (details.length > 1 ? "are" : "is") + " now on sale!"};
+    // await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, []).then(res => {
+    //     console.log("Email sent:", res);
+    // }).catch(err => {
+    //     console.error("Email sending error:", err);
+    // });
 }
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser, res) {
@@ -165,7 +166,24 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
         });
         delete emailqueue;
-        res.write(JSON.stringify(emailPromises));
+        emailPromises.forEach(async emailData => {
+            if (!emailData.emailblocked) {
+                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => res).catch(err => {
+                    console.error(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err);
+                    return null;
+                });
+                res.write(emailResult.title);
+                res.write("\n\n");
+                res.write(emailResult.html);
+                res.write("\n\n");
+                res.write("----------------\n\n");
+            }
+            else console.log(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
+            // await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
+            //     console.error(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
+            // });
+        });
+        //res.write(JSON.stringify(emailPromises));
         res.end();
 
         return { s: 200, j: false, d: null, resended: true };
