@@ -6,6 +6,7 @@ async function emailDiscount(config, email, details) {
     const itemstemplate = fs.readFileSync("./emails/discountemailitems.html", "utf-8");
     let itemshtml = "";
     let items = "";
+    console.log(details);
     details.forEach(product => {
         if (items == "") items = product.product_name;
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
