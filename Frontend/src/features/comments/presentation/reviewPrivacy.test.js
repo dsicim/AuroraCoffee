@@ -35,3 +35,11 @@ test('buildReviewPrivacySelectionFromCode maps stored privacy codes per display-
     'initials',
   ])
 })
+
+test('buildReviewPrivacySelectionFromCode repeats the first code for missing word codes', () => {
+  assert.deepEqual(buildReviewPrivacySelectionFromCode('s', 'Ege Can Bulutoglu'), [
+    'full',
+    'full',
+    'full',
+  ])
+})
