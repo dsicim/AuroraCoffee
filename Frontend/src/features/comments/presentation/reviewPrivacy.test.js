@@ -22,3 +22,7 @@ test('buildReviewPrivacyWordPreview shows full words when full privacy is select
 test('buildReviewPrivacyWordPreview hides words when anonymous privacy is selected', () => {
   assert.equal(buildReviewPrivacyWordPreview('Ege', 'anonymous'), '-')
 })
+
+test('buildReviewPrivacyWordPreview renders initials for initial privacy mode', () => {
+  assert.equal(buildReviewPrivacyWordPreview('Bulutoglu', 'initials'), 'B.')
+})
