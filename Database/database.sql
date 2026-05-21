@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
     nameprivacy VARCHAR(255) NOT NULL,
     tax_id VARCHAR(50) DEFAULT NULL,
     cctoken JSON DEFAULT NULL,
+    emailblocked BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

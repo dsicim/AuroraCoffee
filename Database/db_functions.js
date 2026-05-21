@@ -91,7 +91,7 @@ func.loginUser = async function (username, password) {
     }
 };
 
-func.editUser = async function (userId, newDisplayName, newNamePrivacy) {
+func.editUser = async function (userId, newDisplayName, newNamePrivacy, newEmailBlock) {
     if (!userId || !newDisplayName || !newNamePrivacy) {
         throw new DBError(400, 'User ID, display name, and name privacy are required');
     }
@@ -137,7 +137,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, role, nameprivacy, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
+            'SELECT id, displayname, username, verified, role, nameprivacy, emailblock, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {
@@ -1564,8 +1564,8 @@ func.getUsersWishingForProduct = async function (productId) {
 }
 func.getNotifyQueue = async function () {
     try {
-        const [discount] = await pool.execute('SELECT w.*, u.username, u.displayname FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_discount = "pending"');
-        const [stock] = await pool.execute('SELECT w.*, u.username, u.displayname FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_stock = "pending"');
+        const [discount] = await pool.execute('SELECT w.*, u.username, u.displayname, u.emailblocked FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_discount = "pending"');
+        const [stock] = await pool.execute('SELECT w.*, u.username, u.displayname, u.emailblocked FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_stock = "pending"');
         return { success: true, discount: discount, stock: stock };
     } catch (error) {
         console.error('Get notify queue error:', error);
