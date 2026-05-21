@@ -458,7 +458,7 @@ export default function SalesManagerPage() {
                 </p>
               </div>
             ) : (
-              <div className="mt-8 overflow-hidden rounded-[1.4rem] border border-[rgba(73,92,65,0.14)] bg-[rgba(255,255,255,0.34)]">
+              <div className="aurora-widget-subsurface mt-8">
                 <div className="grid grid-cols-[minmax(0,1.2fr)_140px_120px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)] max-md:hidden">
                   <span>Order</span>
                   <span>Date</span>
@@ -677,7 +677,7 @@ export default function SalesManagerPage() {
                             </div>
 
                             {refundStatus ? (
-                              <div className="mt-4 rounded-[1rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.34)] p-4">
+                              <div className="aurora-widget-subsurface mt-4 p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div>
                                     <span className={`aurora-order-status-chip ${refundStatus.chipClass} inline-flex`}>

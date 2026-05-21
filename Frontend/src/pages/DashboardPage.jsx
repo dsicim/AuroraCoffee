@@ -87,7 +87,7 @@ export default function DashboardPage() {
         </div>
 
         <div className="relative z-10 mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl flex-col justify-center">
-          <div className="rounded-[2.5rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] p-8 text-center shadow-[0_30px_80px_rgba(108,69,51,0.12)] backdrop-blur sm:p-10">
+          <div className="aurora-summary-lead p-8 text-center sm:p-10">
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[var(--aurora-olive-deep)]">
               Dashboard unavailable
             </p>
@@ -143,7 +143,7 @@ export default function DashboardPage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <span className="rounded-full border border-[rgba(255,247,242,0.24)] bg-[rgba(255,247,242,0.12)] px-4 py-2 text-sm font-semibold text-[var(--aurora-cream)]">
+            <span className="aurora-pill px-4 py-2 text-sm font-semibold !text-[var(--aurora-cream)]">
               {displayName}
             </span>
             <LiquidGlassButton
@@ -157,7 +157,7 @@ export default function DashboardPage() {
         </header>
 
         <main className="mt-12 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-          <section className="overflow-hidden rounded-[2.75rem] border border-[rgba(255,247,242,0.5)] bg-[linear-gradient(160deg,rgba(79,47,36,0.96)_0%,rgba(112,72,55,0.94)_100%)] p-10 text-[var(--aurora-cream)] shadow-[0_35px_100px_rgba(98,58,42,0.22)]">
+          <section className="aurora-hero-card p-10 text-[var(--aurora-cream)]">
             <p className="text-sm font-semibold uppercase tracking-[0.32em] text-[rgba(255,247,242,0.68)]">
               Welcome in
             </p>
@@ -173,7 +173,7 @@ export default function DashboardPage() {
             </p>
 
             <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-[1.75rem] bg-[rgba(255,247,242,0.08)] p-5">
+              <div className="aurora-widget-subsurface p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,247,242,0.6)]">
                   Session
                 </p>
@@ -181,7 +181,7 @@ export default function DashboardPage() {
                   Active
                 </p>
               </div>
-              <div className="rounded-[1.75rem] bg-[rgba(255,247,242,0.08)] p-5">
+              <div className="aurora-widget-subsurface p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,247,242,0.6)]">
                   Token expiry
                 </p>
@@ -194,7 +194,7 @@ export default function DashboardPage() {
                   })}
                 </p>
               </div>
-              <div className="rounded-[1.75rem] bg-[rgba(255,247,242,0.08)] p-5">
+              <div className="aurora-widget-subsurface p-5">
                 <p className="text-xs uppercase tracking-[0.24em] text-[rgba(255,247,242,0.6)]">
                   Email
                 </p>
@@ -206,7 +206,7 @@ export default function DashboardPage() {
           </section>
 
           <section className="space-y-6">
-            <div className="rounded-[2.25rem] border border-[var(--aurora-border)] bg-[rgba(255,247,242,0.86)] p-7 shadow-[0_24px_70px_rgba(108,69,51,0.12)] backdrop-blur">
+            <div className="aurora-summary-card p-7">
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
                 Roast room
               </p>
@@ -220,7 +220,7 @@ export default function DashboardPage() {
               </p>
             </div>
 
-            <div className="rounded-[2.25rem] border border-[rgba(138,144,119,0.24)] bg-[rgba(230,232,222,0.52)] p-7 shadow-[0_18px_48px_rgba(138,144,119,0.12)]">
+            <div className="aurora-summary-card p-7">
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[var(--aurora-olive-deep)]">
                 Next
               </p>
