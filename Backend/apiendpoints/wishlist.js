@@ -127,10 +127,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 return type === "discount" ? result.discount : result.stock;
             }
         }).catch(err => {
-            res.end("ERROR: Issue with pulling notify queue: " + err);
-            console.error("Get notify queue error:", err);
-            return null;
+            console.error("Get users wishing for product error:", err);
+            if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+            else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
         });
+        if (queue === null) {
+            res.write("ERROR: " + queue.d.e);
+            res.end();
+            return { s: 200, j: false, d: null, resended: true };
+        }
         const emailqueue = {};
         queue.forEach(q => {
             if (emailqueue[q.user_id]) {
