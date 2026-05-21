@@ -41,6 +41,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else return { s: 400, j: true, d: { e: "Missing ids query parameter" } };
         }
+        else if (method === "POST") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.addProduct(body.data).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message, productId: result.productId } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Add product error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
         else if (method === "PATCH") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!isManager) return { s: 403, j: true, d: { e: "Forbidden" } };
@@ -61,6 +78,24 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
             }).catch(err => {
                 console.error("Get products by IDs error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "DELETE") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            const id = query.id || (body && body.data && body.data.id);
+            if (!id) return { s: 400, j: true, d: { e: "Product ID is required" } };
+            return await sql.removeProduct(id).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Remove product error:", err);
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });
@@ -106,18 +141,124 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else if (endpoint[0] === "categories") {
-        endpoint.shift();
-        const parent = endpoint.length > 0 ? endpoint[0] : null;
         if (method === "GET") {
+            endpoint.shift();
+            const parent = endpoint.length > 0 ? endpoint[0] : null;
             return await sql.getCategories(parent).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { categories: result.categories, products: result.products.map(sanitizeProductForResponse) } };
+                    return { s: 200, j: true, d: { categories: result.categories, products: result.products ? result.products.map(sanitizeProductForResponse) : [] } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
                 }
             }).catch(err => {
                 console.error("Get categories error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "POST") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.name) return { s: 400, j: true, d: { e: "Category name is required" } };
+            return await sql.addCategory(body.data.name, body.data.parent_id).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message, categoryId: result.categoryId } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Add category error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "PATCH") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Category ID is required" } };
+            const name = body.data.name !== undefined ? body.data.name : (body.data.edits ? body.data.edits.name : null);
+            const parent_id = body.data.parent_id !== undefined ? body.data.parent_id : (body.data.edits ? body.data.edits.parent_id : null);
+            return await sql.updateCategory(body.data.id, name, parent_id).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Update category error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "DELETE") {
+            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+            if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            const id = query.id || (body && body.data && body.data.id);
+            if (!id) return { s: 400, j: true, d: { e: "Category ID is required" } };
+            return await sql.deleteCategory(id).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Delete category error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "variants") {
+        if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+        if (method === "POST") {
+            if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.addVariant(body.data).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message, variantId: result.variantId } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Add variant error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "PATCH") {
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Variant ID is required" } };
+            const edits = body.data.edits || body.data;
+            return await sql.updateVariant(body.data.id, edits).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Update variant error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else if (method === "DELETE") {
+            const id = query.id || (body && body.data && body.data.id);
+            if (!id) return { s: 400, j: true, d: { e: "Variant ID is required" } };
+            return await sql.deleteVariant(id).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Delete variant error:", err);
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });

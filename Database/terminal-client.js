@@ -66,6 +66,91 @@ async function login() {
 
 // --- Products Menu ---
 
+async function manageVariantsMenu() {
+    if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+        console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+        return;
+    }
+    while (true) {
+        console.log('\n--- Manage Variants ---');
+        console.log('1. Add Variant');
+        console.log('2. Update Variant');
+        console.log('3. Delete Variant');
+        console.log('4. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            const product_id = parseInt(await question('Product ID: '));
+            if (isNaN(product_id)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid Product ID.');
+                continue;
+            }
+            const price_add = parseFloat(await question('Price Add (extra price, e.g. 10.00): ')) || 0.00;
+            const price_mult = parseFloat(await question('Price Multiplier (e.g. 1.0): ')) || 1.0000;
+            const cost = parseFloat(await question('Cost (e.g. 5.00): ')) || 0.00;
+            const stock = parseInt(await question('Stock: ')) || 0;
+            const discount_rate = parseFloat(await question('Discount Rate (%): ')) || 0.00;
+            
+            const option_value_ids_str = await question('Option Value IDs (comma-separated, e.g. 1,2 or enter to skip): ');
+            const option_value_ids = option_value_ids_str.trim() 
+                ? option_value_ids_str.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x))
+                : [];
+            
+            const variantData = {
+                product_id,
+                price_add,
+                price_mult,
+                cost,
+                stock,
+                discount_rate,
+                option_value_ids
+            };
+            
+            const res = await apiFetch('products/variants', 'POST', variantData);
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', `Variant created successfully! ID: ${res.data.variantId}`);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '2') {
+            const id = parseInt(await question('Variant ID to update: '));
+            if (isNaN(id)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid Variant ID.');
+                continue;
+            }
+            console.log('Leave field empty to keep current value.');
+            const price_add_input = await question('New Price Add: ');
+            const price_mult_input = await question('New Price Multiplier: ');
+            const cost_input = await question('New Cost: ');
+            const stock_input = await question('New Stock: ');
+            const discount_rate_input = await question('New Discount Rate (%): ');
+            const option_value_ids_str = await question('New Option Value IDs (comma-separated, enter to keep current): ');
+
+            const edits = {};
+            if (price_add_input.trim()) edits.price_add = parseFloat(price_add_input);
+            if (price_mult_input.trim()) edits.price_mult = parseFloat(price_mult_input);
+            if (cost_input.trim()) edits.cost = parseFloat(cost_input);
+            if (stock_input.trim()) edits.stock = parseInt(stock_input);
+            if (discount_rate_input.trim()) edits.discount_rate = parseFloat(discount_rate_input);
+            if (option_value_ids_str.trim()) {
+                edits.option_value_ids = option_value_ids_str.split(',').map(x => parseInt(x.trim())).filter(x => !isNaN(x));
+            }
+
+            const res = await apiFetch('products/variants', 'PATCH', { id, edits });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', 'Variant updated successfully!');
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '3') {
+            const id = parseInt(await question('Variant ID to delete: '));
+            if (isNaN(id)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid Variant ID.');
+                continue;
+            }
+            const res = await apiFetch('products/variants', 'DELETE', { id });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', 'Variant deleted successfully!');
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '4') {
+            break;
+        }
+    }
+}
+
 async function productsMenu() {
     while (true) {
         console.log('\n--- Products ---');
@@ -76,7 +161,9 @@ async function productsMenu() {
         console.log('5. View Brew Methods');
         console.log('6. Manage Discounts (Admin/Manager)');
         console.log('7. Manage Images (Admin/Manager)');
-        console.log('8. Back');
+        console.log('8. Manage Variants (Admin/Manager)');
+        console.log('9. Delete Product (Admin/Manager)');
+        console.log('10. Back');
 
         const choice = await question('Select: ');
         if (choice === '1') {
@@ -104,6 +191,72 @@ async function productsMenu() {
             const res = await apiFetch(`products?ids=${id}`);
             if (res.ok && res.data.products.length > 0) console.log(JSON.stringify(res.data.products[0], null, 2));
             else console.log('Product not found or error:', res.data);
+        } else if (choice === '4') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            console.log('\n--- Add Product ---');
+            const name = await question('Product Name (Required): ');
+            if (!name.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Product Name is required.');
+                continue;
+            }
+            const priceInput = await question('Price (Required): ');
+            const price = parseFloat(priceInput);
+            if (isNaN(price)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid price.');
+                continue;
+            }
+            const description = await question('Description: ');
+            const costInput = await question('Cost (Default 0): ');
+            const cost = parseFloat(costInput) || 0;
+            const stockInput = await question('Stock (Default 0): ');
+            const stock = parseInt(stockInput) || 0;
+            const hasVariants = (await question('Has Variants? (y/n): ')).toLowerCase() === 'y';
+            const categoryIdInput = await question('Category ID (optional, Enter to skip): ');
+            const category_id = categoryIdInput.trim() ? parseInt(categoryIdInput) : null;
+            const weightInput = await question('Weight (optional, Enter to skip): ');
+            const weight = weightInput.trim() ? parseFloat(weightInput) : null;
+            const taxInput = await question('Tax (Default 0): ');
+            const tax = taxInput.trim() ? parseFloat(taxInput) : 0;
+            const origin = await question('Origin: ');
+            const roast_level = await question('Roast Level: ');
+            const acidity = await question('Acidity: ');
+            const flavor_notes = await question('Flavor Notes: ');
+            const material = await question('Material: ');
+            const capacity = await question('Capacity: ');
+            const image_url = await question('Primary Image URL: ');
+            const discountRateInput = await question('Discount Rate (%): ');
+            const discount_rate = discountRateInput.trim() ? parseFloat(discountRateInput) : 0;
+            const warranty_status = await question('Warranty Status: ');
+            const distributor_information = await question('Distributor Information: ');
+
+            const productData = {
+                name,
+                price,
+                description: description.trim() || null,
+                cost,
+                stock,
+                has_variants: hasVariants,
+                category_id,
+                weight,
+                tax,
+                origin: origin.trim() || null,
+                roast_level: roast_level.trim() || null,
+                acidity: acidity.trim() || null,
+                flavor_notes: flavor_notes.trim() || null,
+                material: material.trim() || null,
+                capacity: capacity.trim() || null,
+                image_url: image_url.trim() || null,
+                discount_rate,
+                warranty_status: warranty_status.trim() || null,
+                distributor_information: distributor_information.trim() || null
+            };
+
+            const res = await apiFetch('products', 'POST', productData);
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', `Product created successfully! ID: ${res.data.productId}`);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
         } else if (choice === '5') {
             const res = await apiFetch('products/brew-methods');
             if (res.ok) {
@@ -143,7 +296,19 @@ async function productsMenu() {
                 if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
                 else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
             }
-        } else if (choice === '8') break;
+        } else if (choice === '8') {
+            await manageVariantsMenu();
+        } else if (choice === '9') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            console.log('\n--- Delete Product ---');
+            const id = await question('Product ID to delete: ');
+            const res = await apiFetch('products', 'DELETE', { id: parseInt(id) });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.msg);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '10') break;
     }
 }
 
@@ -251,11 +416,150 @@ async function commentsMenu() {
 
 // --- Admin Menu ---
 
+async function manageCategoriesMenu() {
+    while (true) {
+        console.log('\n--- Manage Categories ---');
+        console.log('1. List Categories');
+        console.log('2. Add Category (Admin/Manager)');
+        console.log('3. Update Category (Admin/Manager)');
+        console.log('4. Delete Category (Admin/Manager)');
+        console.log('5. Back');
+
+        const choice = await question('Select: ');
+        if (choice === '1') {
+            const parentInput = await question('Parent Category ID (optional, Enter for root): ');
+            const endpoint = parentInput.trim() ? `products/categories/${parentInput.trim()}` : 'products/categories';
+            const res = await apiFetch(endpoint, 'GET');
+            if (res.ok) {
+                console.log('\n--- Categories ---');
+                res.data.categories.forEach(c => {
+                    console.log(`[ID: ${c.id}] ${c.name} ${c.parent_id ? `(Parent ID: ${c.parent_id})` : '(Root)'}`);
+                });
+                if (res.data.products && res.data.products.length > 0) {
+                    console.log('\n--- Products in Category ---');
+                    res.data.products.forEach(p => {
+                        console.log(`[ID: ${p.id}] ${p.name} - ${p.price} TL`);
+                    });
+                }
+            } else {
+                console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+            }
+        } else if (choice === '2') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            const name = await question('Category Name: ');
+            if (!name.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Name is required.');
+                continue;
+            }
+            const parentInput = await question('Parent Category ID (optional, Enter for root): ');
+            const parent_id = parentInput.trim() ? parseInt(parentInput) : null;
+            const res = await apiFetch('products/categories', 'POST', { name, parent_id });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', `Category created! ID: ${res.data.categoryId}`);
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '3') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            const id = parseInt(await question('Category ID to update: '));
+            if (isNaN(id)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid ID.');
+                continue;
+            }
+            const name = await question('New Category Name (optional, Enter to skip): ');
+            const parentInput = await question('New Parent ID (optional, Enter to skip): ');
+            const edits = {};
+            if (name.trim()) edits.name = name;
+            if (parentInput.trim()) edits.parent_id = parseInt(parentInput);
+
+            const res = await apiFetch('products/categories', 'PATCH', { id, edits });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', 'Category updated successfully!');
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '4') {
+            if (!currentUser || !["Admin", "Product Manager"].includes(currentUser.role)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+                continue;
+            }
+            const id = parseInt(await question('Category ID to delete: '));
+            if (isNaN(id)) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid ID.');
+                continue;
+            }
+            const res = await apiFetch('products/categories', 'DELETE', { id });
+            if (res.ok) console.log('\x1b[32m%s\x1b[0m', 'Category deleted successfully!');
+            else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+        } else if (choice === '5') {
+            break;
+        }
+    }
+}
+
+async function viewAnalytics() {
+    if (!currentUser || !["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) {
+        console.log('\x1b[31m%s\x1b[0m', 'Unauthorized.');
+        return;
+    }
+    console.log('\n--- View Analytics ---');
+    const startDate = await question('Start Date (YYYY-MM-DD, optional): ');
+    const endDate = await question('End Date (YYYY-MM-DD, optional): ');
+
+    let endpoint = 'analytics';
+    const params = [];
+    if (startDate.trim()) params.push(`startDate=${startDate.trim()}`);
+    if (endDate.trim()) params.push(`endDate=${endDate.trim()}`);
+    if (params.length > 0) endpoint += `?${params.join('&')}`;
+
+    const res = await apiFetch(endpoint, 'GET');
+    if (res.ok) {
+        const { summary, timeseries } = res.data;
+        const totalSalesStr = (summary.totalSales || 0).toFixed(2) + ' TL';
+        const totalCostStr = (summary.totalCost || 0).toFixed(2) + ' TL';
+        const totalRefundsStr = (summary.totalRefunds || 0).toFixed(2) + ' TL';
+        const netProfit = summary.netProfit || 0;
+        const netProfitStr = netProfit.toFixed(2) + ' TL';
+        
+        const profitColor = netProfit >= 0 ? '\x1b[32m' : '\x1b[31m';
+
+        console.log('\n┌────────────────────────────────────────────────────────┐');
+        console.log('│' + '\x1b[36m' + '               AURORA COFFEE SALES ANALYTICS            ' + '\x1b[0m│');
+        console.log('├────────────────────────────────────────────────────────┤');
+        console.log('│  Total Sales:   ' + totalSalesStr.padEnd(38) + ' │');
+        console.log('│  Total Cost:    ' + totalCostStr.padEnd(38) + ' │');
+        console.log('│  Total Refunds: ' + totalRefundsStr.padEnd(38) + ' │');
+        console.log('│  Net Profit:    ' + `${profitColor}${netProfitStr.padEnd(38)}\x1b[0m │`);
+        console.log('└────────────────────────────────────────────────────────┘');
+
+        if (timeseries && timeseries.length > 0) {
+            console.log('\n--- Timeseries Data ---');
+            console.log('Date        │ Sales (TL) │ Cost (TL)  │ Refunds (TL) │ Net Profit (TL)');
+            console.log('────────────┼────────────┼────────────┼──────────────┼────────────────');
+            timeseries.forEach(t => {
+                const date = t.date ? t.date.substring(0, 10) : 'N/A';
+                const sVal = (t.sales || 0).toFixed(2);
+                const cVal = (t.cost || 0).toFixed(2);
+                const rVal = (t.refunds || 0).toFixed(2);
+                const pVal = (t.profit || 0).toFixed(2);
+                const pColor = t.profit >= 0 ? '\x1b[32m' : '\x1b[31m';
+                console.log(`${date.padEnd(11)}│ ${sVal.padEnd(10)} │ ${cVal.padEnd(10)} │ ${rVal.padEnd(12)} │ ${pColor}${pVal.padEnd(14)}\x1b[0m`);
+            });
+        } else {
+            console.log('No timeseries data available for this range.');
+        }
+    } else {
+        console.log('\x1b[31m%s\x1b[0m', 'Error: ' + (res.data.e || 'Failed to fetch analytics'));
+    }
+}
+
 async function adminMenu() {
     while (true) {
         console.log('\n--- Administrative ---');
         console.log('1. Change User Role');
-        console.log('2. Back');
+        console.log('2. Manage Categories');
+        console.log('3. View Analytics');
+        console.log('4. Back');
 
         const choice = await question('Select: ');
         if (choice === '1') {
@@ -264,7 +568,11 @@ async function adminMenu() {
             const res = await apiFetch('users/role', 'PATCH', { userId, role });
             if (res.ok) console.log('\x1b[32m%s\x1b[0m', res.data.m);
             else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
-        } else if (choice === '2') break;
+        } else if (choice === '2') {
+            await manageCategoriesMenu();
+        } else if (choice === '3') {
+            await viewAnalytics();
+        } else if (choice === '4') break;
     }
 }
 

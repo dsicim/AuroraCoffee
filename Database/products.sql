@@ -1,3 +1,4 @@
+SET FOREIGN_KEY_CHECKS=0;
 USE 308_db;
 
 -- 1. Table for Categories (Support for Main and Subcategories)
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS products (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
+    cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     stock INT DEFAULT 0,
     has_variants BOOLEAN DEFAULT FALSE,
     category_id BIGINT UNSIGNED,
@@ -102,6 +104,7 @@ CREATE TABLE IF NOT EXISTS product_variants (
     variant_code VARCHAR(255),
     price_add DECIMAL(10, 2) UNSIGNED DEFAULT 0,
     price_mult DECIMAL(10, 4) UNSIGNED DEFAULT 1,
+    cost DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
     stock INT DEFAULT 0,
     sales INT DEFAULT 0,
     discount_rate DECIMAL(5, 2) DEFAULT 0.00,
@@ -288,4 +291,6 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (8, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 5),
 (11, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
 (11, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
+
+SET FOREIGN_KEY_CHECKS=1;
 
