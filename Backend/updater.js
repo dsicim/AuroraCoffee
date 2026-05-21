@@ -10,7 +10,8 @@ process.on('uncaughtException', (err) => {
 });
 process.on('unhandledRejection', (reason) => {
   logtext("UNHANDLED REJECTION: " + (reason && reason.stack) || String(reason));
-});""
+  process.exit(1);
+});
 async function getUpToDateVersion() {
     const github = await fetch("https://api.github.com/repos/dsicim/AuroraCoffee/commits?per_page=1&sha=main").then(res => res.headers.get("link")).catch(err => null);
     if (!github) {
