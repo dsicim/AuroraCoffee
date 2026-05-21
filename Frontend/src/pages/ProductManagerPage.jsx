@@ -1403,9 +1403,13 @@ function ProductImageManager({ product }) {
           { ...product, images: currentImages },
           {
             url: result?.url,
-            sortOrder: uploadSortOrder,
-            variantId: uploadVariantId,
-            primary: uploadPrimary,
+            sortOrder: Number.isFinite(Number(result?.sortOrder ?? result?.sort_order))
+              ? Number(result?.sortOrder ?? result?.sort_order)
+              : uploadSortOrder,
+            variantId: Number.isFinite(Number(result?.variantId ?? result?.variant_id))
+              ? Number(result?.variantId ?? result?.variant_id)
+              : uploadVariantId,
+            primary: typeof result?.isPrimary === 'boolean' ? result.isPrimary : uploadPrimary,
           },
         )
 
