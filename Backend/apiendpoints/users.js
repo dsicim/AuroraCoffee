@@ -14,7 +14,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
             else {
                 if (body.data.name.trim().split(" ").length < 2) return { s: 400, j: true, d: { e: "Please enter your name and surname" } };
-                const userwords = currentUser.displayname.split(" ").map(s => s.trim()).filter(s => s.length > 0);
+                const userwords = body.data.name.split(" ").map(s => s.trim()).filter(s => s.length > 0);
                 let privacyinvalid = false;
                 const userprivacy = body.data.privacy.split("").map(s => {
                     if (!["s","h","i"].includes(s)) privacyinvalid = true;
