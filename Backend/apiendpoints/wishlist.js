@@ -1,5 +1,5 @@
 const sql = require("../../Database/server.js");
-const currencymodule = require("../components/currency.json");
+const currencymodule = require("../components/currency.js");
 const mailer = require("../components/email.js");
 async function emailDiscount(config, email, details) {
     const itemstemplate = fs.readFileSync("./emails/discountemailitems.html", "utf-8");
