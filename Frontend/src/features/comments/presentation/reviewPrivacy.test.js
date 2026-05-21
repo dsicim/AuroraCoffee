@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  buildReviewPrivacySelectionFromCode,
   buildReviewPrivacyWordPreview,
   getDisplayNameWords,
   normalizeReviewPrivacyMode,
@@ -25,4 +26,12 @@ test('buildReviewPrivacyWordPreview hides words when anonymous privacy is select
 
 test('buildReviewPrivacyWordPreview renders initials for initial privacy mode', () => {
   assert.equal(buildReviewPrivacyWordPreview('Bulutoglu', 'initials'), 'B.')
+})
+
+test('buildReviewPrivacySelectionFromCode maps stored privacy codes per display-name word', () => {
+  assert.deepEqual(buildReviewPrivacySelectionFromCode('shi', 'Ege Can Bulutoglu'), [
+    'full',
+    'anonymous',
+    'initials',
+  ])
 })
