@@ -15,7 +15,7 @@ async function emailDiscount(config, email, details, type = "discount") {
             .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol("TRY", product.final_price))
             .replaceAll("{{ITEM_STOCK}}", product.stock)
             .replaceAll("{{BORDERBOTTOM}}", i < details.length - 1 ? 'border-bottom:1px solid #e7eee6;' : '')
-            .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol("TRY", product.product_price) + '</span><br><span style="font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
+            .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol("TRY", product.product_price) + '</span><br><span style="display:inline-block;font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
     });
     if (type === "stock") {
         itemshtml = itemshtml.replaceAll("#464760", "#4e6046").replaceAll("#252435", "#243524").replaceAll("#464860", "#466046").replaceAll("#252435","#243526").replaceAll("#d8d8e3", "#d9e3d8").replaceAll("#9191c0","#738a6f");
