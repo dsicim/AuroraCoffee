@@ -110,9 +110,9 @@ CREATE TABLE IF NOT EXISTS wishlist (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     user_id BIGINT UNSIGNED NOT NULL,
     product_id BIGINT UNSIGNED NOT NULL,
-    is_notified_about_discount BOOLEAN DEFAULT FALSE,
+    is_notified_about_discount ENUM('waiting', 'pending', 'notified') DEFAULT 'waiting',
+    is_notified_about_stock ENUM('waiting', 'pending', 'notified') DEFAULT 'waiting',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
     UNIQUE (user_id, product_id),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE

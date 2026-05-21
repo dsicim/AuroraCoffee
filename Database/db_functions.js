@@ -583,22 +583,45 @@ func.addProduct = async function (data) {
 };
 
 func.updateProduct = async function (productId, data) {
+    const connection = await pool.getConnection();
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
     try {
+        await connection.beginTransaction();
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = Object.values(data);
         values.push(productId);
-
-        const [result] = await pool.execute(`UPDATE products SET ${fields} WHERE id = ?`, values);
+        if (Object.keys(data).includes("discount_rate") || Object.keys(data).includes("stock")) {
+            const [old] = await connection.execute('SELECT stock, discount_rate FROM products WHERE id = ? FOR UPDATE', [productId]);
+            if (old.length === 0) throw new DBError(404, 'Product not found');
+            const previousStock = old[0].stock;
+            const previousDiscount = old[0].discount_rate;
+            if (previousStock === 0 && data.stock > 0) {
+                await connection.execute("UPDATE wishlist w SET w.is_notified_about_stock = 'pending' WHERE w.product_id = ? AND w.is_notified_about_stock = 'waiting'", [productId]);
+            }
+            if (previousDiscount == 0 && data.discount_rate > 0) {
+                await connection.execute("UPDATE wishlist w SET w.is_notified_about_discount = 'pending' WHERE w.product_id = ? AND w.is_notified_about_discount = 'waiting'", [productId]);
+            }
+            if (previousStock > 0 && data.stock == 0) {
+                await connection.execute("UPDATE wishlist w SET w.is_notified_about_stock = 'waiting' WHERE w.product_id = ?", [productId]);
+            }
+            if (previousDiscount > 0 && data.discount_rate == 0) {
+                await connection.execute("UPDATE wishlist w SET w.is_notified_about_discount = 'waiting' WHERE w.product_id = ?", [productId]);
+            }
+        }
+        const [result] = await connection.execute(`UPDATE products SET ${fields} WHERE id = ?`, values);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
         }
+        await connection.commit();
         return { success: true, message: 'Product updated successfully' };
     } catch (error) {
+        await connection.rollback();
         console.error('Update product error:', error);
         throw new DBError(500, 'Failed to update product');
+    } finally {
+        connection.release();
     }
 };
 
@@ -635,18 +658,31 @@ func.setProductPrice = async function (productId, price) {
 };
 
 func.applyDiscount = async function (productId, rate) {
+    const connection = await pool.getConnection();
     if (!productId || rate === undefined) {
         throw new DBError(400, 'Product ID and discount rate are required');
     }
     try {
-        const [result] = await pool.execute('UPDATE products SET discount_rate = ? WHERE id = ?', [rate, productId]);
+        await connection.beginTransaction();
+        const [old] = await connection.execute('SELECT price FROM products WHERE id = ? FOR UPDATE', [productId]);
+        if (old.length === 0) throw new DBError(404, 'Product not found');
+        const previous = old[0].discount_rate;
+        const [result] = await connection.execute('UPDATE products SET discount_rate = ? WHERE id = ?', [rate, productId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
         }
+        if (previous === 0 && rate > 0) {
+            // New discount applied, time to queue wishlisters!
+            await connection.execute("UPDATE wishlist w SET w.is_notified_about_discount = 'pending' WHERE w.product_id = ? AND w.is_notified_about_discount = 'waiting'", [productId]);
+        }
+        await connection.commit();
         return { success: true, message: 'Discount applied successfully' };
     } catch (error) {
+        await connection.rollback();
         console.error('Apply discount error:', error);
         throw new DBError(500, 'Failed to apply discount');
+    } finally {
+        connection.release();
     }
 };
 
@@ -1526,7 +1562,31 @@ func.getUsersWishingForProduct = async function (productId) {
         throw new DBError(500, 'Failed to fetch users');
     }
 }
-
+func.getNotifyQueue = async function () {
+    try {
+        const [discount] = await pool.execute('SELECT w.*, u.username, u.displayname FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_discount = "pending"');
+        const [stock] = await pool.execute('SELECT w.*, u.username, u.displayname FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_stock = "pending"');
+        return { success: true, discount: discount, stock: stock };
+    } catch (error) {
+        console.error('Get notify queue error:', error);
+        throw new DBError(500, 'Failed to fetch notify queue');
+    }
+}
+func.setNotified = async function (userId, type) {
+    if (!userId || !type) throw new DBError(400, 'User ID, Product ID and type are required');
+    try {
+        let field = null;
+        if (type === 'discount') field = 'is_notified_about_discount';
+        else if (type === 'stock') field = 'is_notified_about_stock';
+        else throw new DBError(400, 'Invalid notification type');
+        const [result] = await pool.execute(`UPDATE wishlist SET ${field} = "notified" WHERE user_id = ?`, [userId]);
+        return { success: true, message: 'Notification status updated', affectedRows: result.affectedRows };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Set notified error:', error);
+        throw new DBError(500, 'Failed to update notification status');
+    }
+}
 func.getWishlists = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
