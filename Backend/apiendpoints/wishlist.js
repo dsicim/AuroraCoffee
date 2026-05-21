@@ -172,7 +172,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
         });
         delete emailqueue;
-        emailPromises.forEach(async emailData => {
+        await emailPromises.forEach(async emailData => {
             if (!emailData.emailblocked) {
                 const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => res).catch(err => {
                     res.write(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err + "\n");
