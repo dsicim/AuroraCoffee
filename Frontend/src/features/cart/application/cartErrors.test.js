@@ -10,3 +10,14 @@ test('buildCartErrorMessage trims direct backend error strings before showing th
 test('buildCartErrorMessage unwraps nested backend e payloads', () => {
   assert.equal(buildCartErrorMessage({ e: { msg: 'Choose a size first.' } }), 'Choose a size first.')
 })
+
+test('buildCartErrorMessage combines structured what why and resolution fields', () => {
+  assert.equal(
+    buildCartErrorMessage({
+      what: 'Variant unavailable',
+      why: 'Only two bags remain',
+      resolution: 'Reduce quantity',
+    }),
+    'Variant unavailable - Only two bags remain - Reduce quantity',
+  )
+})
