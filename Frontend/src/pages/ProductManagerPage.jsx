@@ -1381,6 +1381,15 @@ export default function ProductManagerPage() {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
+  const moderationProductNamesById = useMemo(
+    () =>
+      new Map(
+        moderationProducts
+          .map((product) => [Number(product.id), product.name])
+          .filter(([productId, productName]) => Number.isFinite(productId) && productName),
+      ),
+    [moderationProducts],
+  )
   const allProductsSelected = selectedModerationProductKey === 'all'
   const selectedProduct = useMemo(
     () =>
@@ -1727,6 +1736,11 @@ export default function ProductManagerPage() {
               <div className="mt-6 space-y-4">
                 {moderationComments.map((record) => {
                   const normalizedStatus = String(record.meta.status || '').trim().toLowerCase()
+                  const recordProductLabel = allProductsSelected
+                    ? record.meta.productName ||
+                      moderationProductNamesById.get(Number(record.meta.productId)) ||
+                      moderationSelectionLabel
+                    : moderationSelectionLabel
                   const recordHasEndpointId = Number.isFinite(Number(record.meta.id)) && Number(record.meta.id) > 0
                   const recordActionBusy = moderationActionState.recordId === record.id && Boolean(moderationActionState.action)
                   const approveDisabled = recordActionBusy || !recordHasEndpointId || normalizedStatus === 'approved'
@@ -1759,7 +1773,7 @@ export default function ProductManagerPage() {
                           </p>
                         </div>
                         <div className="text-right text-sm leading-7 text-[var(--aurora-text)]">
-                          <p>{moderationSelectionLabel || 'Selected product'}</p>
+                          <p>{recordProductLabel || 'Selected product'}</p>
                         </div>
                       </div>
 

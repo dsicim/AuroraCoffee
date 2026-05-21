@@ -265,6 +265,11 @@ function normalizeManagerCommentSnapshot(snapshot, index, suffix) {
 
 function normalizeManagerCommentRecord(rawComment, index, scope) {
   const record = rawComment && typeof rawComment === 'object' ? rawComment : {}
+  const productId = Number(record?.product ?? record?.product_id ?? record?.productId) || null
+  const productName =
+    normalizeText(record?.product_name) ||
+    normalizeText(record?.productName) ||
+    ''
 
   if (scope === 'approved') {
     if (record.self === true && record.visible === false) {
@@ -293,6 +298,8 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
       id: String(id || existing.id),
       meta: {
         id,
+        productId,
+        productName,
         userId,
         userName,
         status: normalizeText(record?.status) || 'approved',
@@ -343,6 +350,8 @@ function normalizeManagerCommentRecord(rawComment, index, scope) {
     id: String(id || `${status}:${userName}:${index}`),
     meta: {
       id,
+      productId,
+      productName,
       userId,
       userName,
       status,

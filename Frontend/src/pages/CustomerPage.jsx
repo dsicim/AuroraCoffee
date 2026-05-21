@@ -3,8 +3,6 @@ import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import {
-  accountDataChangeEvent,
-  getFavoriteProductIds,
   reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
 import { addDefaultProductToCart } from '../lib/accountActions'
@@ -30,6 +28,11 @@ import {
   ordersChangeEvent,
 } from '../lib/orders'
 import { useProductCatalog } from '../lib/products'
+import {
+  fetchWishlistItems,
+  getWishlistProductReferences,
+  wishlistChangeEvent,
+} from '../lib/wishlist'
 
 function formatTimestamp(value) {
   const timestamp = Date.parse(value || '')
@@ -88,7 +91,7 @@ export default function CustomerPage() {
   const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
   const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
-  const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
+  const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
   const [feedback, setFeedback] = useState('')
@@ -122,7 +125,7 @@ export default function CustomerPage() {
         return
       }
 
-      setFavoriteIds(getFavoriteProductIds())
+      setFavoriteIds(getWishlistProductReferences())
     }
 
     const syncCartState = () => {
@@ -142,6 +145,7 @@ export default function CustomerPage() {
         reconcileCartStorageWithAuth(),
         fetchOrders(),
         fetchSavedAddresses(),
+        fetchWishlistItems(),
       ])
 
       if (!active) {
@@ -155,20 +159,20 @@ export default function CustomerPage() {
 
     window.addEventListener('storage', loadAccountState)
     window.addEventListener(authChangeEvent, loadAccountState)
-    window.addEventListener(accountDataChangeEvent, syncAccountState)
     window.addEventListener(addressBookChangeEvent, syncRemoteState)
     window.addEventListener(ordersChangeEvent, syncRemoteState)
     window.addEventListener(cartChangeEvent, syncCartState)
+    window.addEventListener(wishlistChangeEvent, syncAccountState)
     void loadAccountState()
 
     return () => {
       active = false
       window.removeEventListener('storage', loadAccountState)
       window.removeEventListener(authChangeEvent, loadAccountState)
-      window.removeEventListener(accountDataChangeEvent, syncAccountState)
       window.removeEventListener(addressBookChangeEvent, syncRemoteState)
       window.removeEventListener(ordersChangeEvent, syncRemoteState)
       window.removeEventListener(cartChangeEvent, syncCartState)
+      window.removeEventListener(wishlistChangeEvent, syncAccountState)
     }
   }, [])
 

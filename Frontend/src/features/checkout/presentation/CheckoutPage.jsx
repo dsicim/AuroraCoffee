@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
 import StorefrontLayout from '../../../shared/components/layout/StorefrontLayout'
+import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
 import { formatCurrency } from '../../../lib/currency'
 import {
   getCityOptions,
@@ -400,6 +401,7 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
   const [paymentSummaryOverride, setPaymentSummaryOverride] = useState(null)
+  const [pdfFeedback, setPdfFeedback] = useState(null)
 
   const subtotal = items.reduce(
     (total, item) => total + item.price * item.quantity,
@@ -564,6 +566,20 @@ export default function CheckoutPage() {
           },
     )
   }, [session?.email])
+
+  useEffect(() => {
+    if (!pdfFeedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPdfFeedback(null)
+    }, 3600)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pdfFeedback])
 
   useEffect(() => {
     const returnState = consumeCheckout3DSReturnState()
@@ -2097,6 +2113,24 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-8 flex flex-wrap gap-4">
+                <OrderPdfDownloadButton
+                  orderId={submittedOrderNumber}
+                  label="Download invoice"
+                  variant="secondary"
+                  size="hero"
+                  onSuccess={() => {
+                    setPdfFeedback({
+                      type: 'success',
+                      message: 'Invoice download started.',
+                    })
+                  }}
+                  onError={(message) => {
+                    setPdfFeedback({
+                      type: 'error',
+                      message,
+                    })
+                  }}
+                />
                 <LiquidGlassButton as={Link} to="/account/orders" variant="secondary" size="hero">
                   View order history
                 </LiquidGlassButton>
@@ -2107,6 +2141,15 @@ export default function CheckoutPage() {
                   View empty cart
                 </LiquidGlassButton>
               </div>
+              {pdfFeedback ? (
+                <p
+                  className={`aurora-message aurora-message-${pdfFeedback.type} mt-5`}
+                  role={pdfFeedback.type === 'error' ? 'alert' : 'status'}
+                  aria-live="polite"
+                >
+                  {pdfFeedback.message}
+                </p>
+              ) : null}
             </div>
           ) : null}
 

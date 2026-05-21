@@ -19,6 +19,14 @@ import {
   fetchApprovedProductComments,
   submitProductComment,
 } from '../features/comments/infrastructure/commentsApi'
+import ReviewPrivacyMatrix from '../features/comments/presentation/ReviewPrivacyMatrix'
+import {
+  buildReviewPrivacyCode,
+  buildReviewPrivacySelection,
+  getReviewPrivacyFallbackMode,
+  normalizeReviewPrivacyMode,
+  resolveReviewPrivacySelection,
+} from '../features/comments/presentation/reviewPrivacy'
 import { formatCurrency } from '../lib/currency'
 import {
   formatDiscountRate,
@@ -347,113 +355,6 @@ function buildSelectedOptionCodes(selectedOptionRecords) {
   return entries.length ? Object.fromEntries(entries) : null
 }
 
-const reviewPrivacyColumnOptions = [
-  { value: 'full', label: 'Show' },
-  { value: 'initials', label: 'Initial Only' },
-  { value: 'anonymous', label: 'Hide' },
-]
-
-function normalizeReviewPrivacyMode(value) {
-  return ['full', 'initials', 'anonymous'].includes(value) ? value : 'initials'
-}
-
-function getDisplayNameWords(displayName) {
-  return String(displayName || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-}
-
-function buildReviewPrivacyInitialWord(word) {
-  let normalizedWord = String(word || '').trim()
-
-  while (normalizedWord.startsWith('.') && normalizedWord.length > 1) {
-    normalizedWord = normalizedWord.slice(1)
-  }
-
-  if (!normalizedWord) {
-    return ''
-  }
-
-  return `${String(word || '').trim()[0]}.`
-}
-
-function buildReviewPrivacyWordPreview(word, mode) {
-  const normalizedMode = normalizeReviewPrivacyMode(mode)
-
-  if (normalizedMode === 'full') {
-    return word
-  }
-
-  if (normalizedMode === 'anonymous') {
-    return '-'
-  }
-
-  return buildReviewPrivacyInitialWord(word) || '-'
-}
-
-function buildReviewPrivacySelection(displayName, mode = 'initials') {
-  const words = getDisplayNameWords(displayName)
-  const normalizedMode = normalizeReviewPrivacyMode(mode)
-
-  return words.map(() => normalizedMode)
-}
-
-function getReviewPrivacyFallbackMode(selection, fallbackMode = 'initials') {
-  if (!Array.isArray(selection) || !selection.length) {
-    return normalizeReviewPrivacyMode(fallbackMode)
-  }
-
-  const normalizedSelection = selection.map((mode) => normalizeReviewPrivacyMode(mode))
-  const [firstMode] = normalizedSelection
-
-  return normalizedSelection.every((mode) => mode === firstMode)
-    ? firstMode
-    : normalizeReviewPrivacyMode(fallbackMode)
-}
-
-function resolveReviewPrivacySelection(selection, displayName, fallbackMode = 'initials') {
-  const words = getDisplayNameWords(displayName)
-
-  if (!words.length) {
-    return []
-  }
-
-  if (!Array.isArray(selection) || !selection.length) {
-    return buildReviewPrivacySelection(displayName, fallbackMode)
-  }
-
-  const normalizedFallbackMode = getReviewPrivacyFallbackMode(selection, fallbackMode)
-
-  return words.map((_, index) => normalizeReviewPrivacyMode(selection[index] || normalizedFallbackMode))
-}
-
-function buildReviewPrivacyPreviewName(selection, displayName) {
-  const words = getDisplayNameWords(displayName)
-  const resolvedSelection = resolveReviewPrivacySelection(selection, displayName)
-  const previewWords = words
-    .map((word, index) => buildReviewPrivacyWordPreview(word, resolvedSelection[index]))
-    .filter((word) => word && word !== '-')
-
-  return previewWords.length ? previewWords.join(' ') : 'Anonymous'
-}
-
-function buildReviewPrivacyCode(selectionOrMode, displayName) {
-  const words = getDisplayNameWords(displayName)
-
-  if (!words.length) {
-    return ''
-  }
-
-  const resolvedSelection = Array.isArray(selectionOrMode)
-    ? resolveReviewPrivacySelection(selectionOrMode, displayName)
-    : buildReviewPrivacySelection(displayName, selectionOrMode)
-
-  return resolvedSelection
-    .map((mode) => (mode === 'full' ? 's' : mode === 'anonymous' ? 'h' : 'i'))
-    .join('')
-}
-
 function formatReviewDate(value) {
   try {
     return new Intl.DateTimeFormat('en-US', {
@@ -608,96 +509,6 @@ function ReviewRatingInput({
           </div>
         )
       })}
-    </div>
-  )
-}
-
-function ReviewPrivacyMatrix({
-  displayName,
-  selection,
-  open,
-  disabled = false,
-  onToggle,
-  onChange,
-  onToggleAll,
-}) {
-  const words = getDisplayNameWords(displayName)
-  const resolvedSelection = resolveReviewPrivacySelection(selection, displayName)
-  const previewName = buildReviewPrivacyPreviewName(resolvedSelection, displayName)
-  const allHidden = words.length > 0 && resolvedSelection.every((mode) => mode === 'anonymous')
-
-  return (
-    <div className="aurora-review-privacy-matrix">
-      <div className="aurora-review-privacy-summary">
-        <span className="aurora-review-privacy-summary-name">{previewName}</span>
-        <div className="aurora-review-privacy-summary-actions">
-          <button
-            type="button"
-            className="aurora-review-privacy-summary-button"
-            disabled={disabled}
-            onClick={() => {
-              if (!disabled) {
-                onToggleAll(allHidden ? 'full' : 'anonymous')
-              }
-            }}
-          >
-            {allHidden ? 'Show All' : 'Hide All'}
-          </button>
-          <button
-            type="button"
-            className={`aurora-review-privacy-summary-chevron ${open ? 'is-open' : ''}`.trim()}
-            disabled={disabled}
-            aria-label={open ? 'Collapse name visibility options' : 'Expand name visibility options'}
-            aria-expanded={open ? 'true' : 'false'}
-            onClick={() => {
-              if (!disabled) {
-                onToggle(!open)
-              }
-            }}
-          >
-            <PreviewChevronIcon />
-          </button>
-        </div>
-      </div>
-
-      {open ? (
-        <div className="aurora-review-privacy-panel">
-          <div className="aurora-review-privacy-grid aurora-review-privacy-grid-heading">
-            {reviewPrivacyColumnOptions.map((option) => (
-              <span key={option.value} className="aurora-review-privacy-heading-cell">
-                {option.label}
-              </span>
-            ))}
-          </div>
-
-          <div className="aurora-review-privacy-rows">
-            {words.map((word, wordIndex) => (
-              <div key={`${word}-${wordIndex}`} className="aurora-review-privacy-grid">
-                {reviewPrivacyColumnOptions.map((option) => {
-                  const selected = resolvedSelection[wordIndex] === option.value
-
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      className={`aurora-review-privacy-cell ${selected ? 'is-selected' : ''}`.trim()}
-                      aria-pressed={selected ? 'true' : 'false'}
-                      disabled={disabled}
-                      onClick={() => {
-                        if (!disabled) {
-                          onChange(wordIndex, option.value)
-                        }
-                      }}
-                    >
-                      {buildReviewPrivacyWordPreview(word, option.value)}
-                    </button>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
     </div>
   )
 }

@@ -5,13 +5,11 @@ const accountStorageKeys = {
     local: 'auroraOrdersLocal',
     session: 'auroraOrdersSession',
   },
-  favorites: {
-    local: 'auroraFavoritesLocal',
-    session: 'auroraFavoritesSession',
-  },
 }
 
 export const accountDataChangeEvent = 'aurora-account-data-change'
+
+const legacyFavoriteStorageKeys = ['auroraFavoritesLocal', 'auroraFavoritesSession']
 
 function getStorage(mode) {
   return mode === 'session' ? window.sessionStorage : window.localStorage
@@ -44,10 +42,18 @@ function parseScopedMap(rawValue) {
 }
 
 function readScopedMap(type, mode) {
+  if (!accountStorageKeys[type]) {
+    return {}
+  }
+
   return parseScopedMap(getStorage(mode).getItem(accountStorageKeys[type][mode]))
 }
 
 function writeScopedMap(type, mode, nextMap) {
+  if (!accountStorageKeys[type]) {
+    return
+  }
+
   const storage = getStorage(mode)
   const sanitizedEntries = Object.entries(nextMap).filter(([, value]) => {
     if (Array.isArray(value)) {
@@ -115,17 +121,21 @@ function mergeOrders(baseOrders, incomingOrders) {
   return sortOrders(Array.from(merged.values()))
 }
 
-function mergeFavorites(baseFavorites, incomingFavorites) {
-  return Array.from(new Set([...baseFavorites, ...incomingFavorites]))
-}
-
 export function getAccountStorageMode() {
   return getAuthStorageMode() || 'local'
+}
+
+function clearLegacyFavoriteStorage() {
+  for (const key of legacyFavoriteStorageKeys) {
+    window.localStorage.removeItem(key)
+    window.sessionStorage.removeItem(key)
+  }
 }
 
 export function reconcileAccountStorageWithAuth() {
   const scope = getCurrentAccountScope()
   const authStorageMode = getAuthStorageMode()
+  clearLegacyFavoriteStorage()
 
   if (!scope || !authStorageMode) {
     return null
@@ -136,21 +146,15 @@ export function reconcileAccountStorageWithAuth() {
     readScopedRecords('orders', authStorageMode, scope),
     readScopedRecords('orders', otherMode, scope),
   )
-  const mergedFavorites = mergeFavorites(
-    readScopedRecords('favorites', authStorageMode, scope),
-    readScopedRecords('favorites', otherMode, scope),
-  )
 
   writeScopedRecords('orders', authStorageMode, scope, mergedOrders)
   writeScopedRecords('orders', otherMode, scope, [])
-  writeScopedRecords('favorites', authStorageMode, scope, mergedFavorites)
-  writeScopedRecords('favorites', otherMode, scope, [])
 
   dispatchAccountChange('reconcile')
 
   return {
     orders: mergedOrders,
-    favorites: mergedFavorites,
+    favorites: [],
   }
 }
 
@@ -183,33 +187,15 @@ export function addOrderHistoryEntry(order) {
 }
 
 export function getFavoriteProductIds() {
-  const scope = getCurrentAccountScope()
-
-  if (!scope) {
-    return []
-  }
-
-  return readScopedRecords('favorites', getAccountStorageMode(), scope)
+  clearLegacyFavoriteStorage()
+  return []
 }
 
 export function isFavoriteProduct(productId) {
   return getFavoriteProductIds().includes(productId)
 }
 
-export function toggleFavoriteProduct(productId) {
-  const scope = getCurrentAccountScope()
-
-  if (!scope || !productId) {
-    return []
-  }
-
-  const storageMode = getAccountStorageMode()
-  const existingFavorites = getFavoriteProductIds()
-  const nextFavorites = existingFavorites.includes(productId)
-    ? existingFavorites.filter((id) => id !== productId)
-    : [...existingFavorites, productId]
-
-  writeScopedRecords('favorites', storageMode, scope, nextFavorites)
+export function toggleFavoriteProduct() {
   dispatchAccountChange('favorites')
-  return nextFavorites
+  return []
 }

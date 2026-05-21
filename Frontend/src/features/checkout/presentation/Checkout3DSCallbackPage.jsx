@@ -4,6 +4,7 @@ import AuroraAtmosphere from '../../../shared/components/common/AuroraAtmosphere
 import Footer from '../../../shared/components/layout/Footer'
 import LiquidGlassButton from '../../../shared/components/ui/LiquidGlassButton'
 import LiquidGlassDefs from '../../../shared/components/ui/LiquidGlassDefs'
+import OrderPdfDownloadButton from '../../invoices/presentation/OrderPdfDownloadButton'
 import { getAuthSession } from '../../../lib/auth'
 import { clearCart, reconcileCartStorageWithAuth } from '../../../lib/cart'
 import { formatCurrency } from '../../../lib/currency'
@@ -49,6 +50,7 @@ export default function Checkout3DSCallbackPage() {
   const [submittedOrder, setSubmittedOrder] = useState(null)
   const [orderNumber, setOrderNumber] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [pdfFeedback, setPdfFeedback] = useState(null)
   const hasSession = Boolean(getAuthSession()?.token)
   const submittedPricing = submittedOrder
     ? getItemsPriceBreakdown(submittedOrder.items, {
@@ -140,6 +142,20 @@ export default function Checkout3DSCallbackPage() {
       active = false
     }
   }, [navigate, searchParams])
+
+  useEffect(() => {
+    if (!pdfFeedback) {
+      return undefined
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setPdfFeedback(null)
+    }, 3600)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [pdfFeedback])
 
   const hero = (
     <section className="aurora-showcase-band p-6 text-center sm:p-8 lg:p-10">
@@ -274,6 +290,26 @@ export default function Checkout3DSCallbackPage() {
             )}
 
             <div className="mt-8 flex flex-wrap gap-4">
+              {orderNumber ? (
+                <OrderPdfDownloadButton
+                  orderId={orderNumber}
+                  label="Download invoice"
+                  variant="secondary"
+                  size="hero"
+                  onSuccess={() => {
+                    setPdfFeedback({
+                      type: 'success',
+                      message: 'Invoice download started.',
+                    })
+                  }}
+                  onError={(message) => {
+                    setPdfFeedback({
+                      type: 'error',
+                      message,
+                    })
+                  }}
+                />
+              ) : null}
               {hasSession ? (
                 <LiquidGlassButton
                   as={Link}
@@ -291,6 +327,15 @@ export default function Checkout3DSCallbackPage() {
                 View empty cart
               </LiquidGlassButton>
             </div>
+            {pdfFeedback ? (
+              <p
+                className={`aurora-message aurora-message-${pdfFeedback.type} mt-5`}
+                role={pdfFeedback.type === 'error' ? 'alert' : 'status'}
+                aria-live="polite"
+              >
+                {pdfFeedback.message}
+              </p>
+            ) : null}
           </div>
         </div>
 

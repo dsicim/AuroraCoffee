@@ -6,30 +6,84 @@ import ProductCard from '../features/products/presentation/ProductCard'
 import { addDefaultProductToCart } from '../lib/accountActions'
 import { getCartErrorMessage } from '../lib/cart'
 import {
-  accountDataChangeEvent,
-  getFavoriteProductIds,
-} from '../lib/accountData'
-import { useProductCatalog } from '../lib/products'
+  fetchWishlistItems,
+  getWishlistProductReferences,
+  wishlistChangeEvent,
+} from '../lib/wishlist'
+import {
+  fetchProductsByIds,
+  fetchProductsBySlugs,
+} from '../lib/products'
+
+function splitProductReferences(references) {
+  const numericIds = []
+  const slugs = []
+
+  for (const reference of references || []) {
+    const normalizedReference = String(reference || '').trim()
+
+    if (!normalizedReference) {
+      continue
+    }
+
+    if (/^\d+$/.test(normalizedReference)) {
+      numericIds.push(Number(normalizedReference))
+    } else {
+      slugs.push(normalizedReference)
+    }
+  }
+
+  return { numericIds, slugs }
+}
 
 export default function FavoritesPage() {
-  const { products, loading } = useProductCatalog()
-  const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
+  const [favoriteProducts, setFavoriteProducts] = useState([])
+  const [loading, setLoading] = useState(true)
   const [feedback, setFeedback] = useState('')
   const [feedbackType, setFeedbackType] = useState('success')
 
   useEffect(() => {
-    const syncFavorites = () => {
-      setFavoriteIds(getFavoriteProductIds())
+    let active = true
+
+    const syncFavorites = async () => {
+      setLoading(true)
+
+      try {
+        const references = await fetchWishlistItems()
+        const { numericIds, slugs } = splitProductReferences(references || getWishlistProductReferences())
+        const [productsById, productsBySlug] = await Promise.all([
+          numericIds.length ? fetchProductsByIds(numericIds) : [],
+          slugs.length ? fetchProductsBySlugs(slugs) : [],
+        ])
+
+        if (!active) {
+          return
+        }
+
+        const productsByKey = new Map()
+
+        for (const product of [...productsById, ...productsBySlug]) {
+          productsByKey.set(product.id, product)
+        }
+
+        setFavoriteProducts(Array.from(productsByKey.values()))
+      } catch {
+        if (active) {
+          setFavoriteProducts([])
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
     }
 
-    window.addEventListener('storage', syncFavorites)
-    window.addEventListener(accountDataChangeEvent, syncFavorites)
-    const initialSyncId = window.setTimeout(syncFavorites, 0)
+    window.addEventListener(wishlistChangeEvent, syncFavorites)
+    void syncFavorites()
 
     return () => {
-      window.removeEventListener('storage', syncFavorites)
-      window.removeEventListener(accountDataChangeEvent, syncFavorites)
-      window.clearTimeout(initialSyncId)
+      active = false
+      window.removeEventListener(wishlistChangeEvent, syncFavorites)
     }
   }, [])
 
@@ -47,10 +101,6 @@ export default function FavoritesPage() {
       window.clearTimeout(timeoutId)
     }
   }, [feedback])
-
-  const favoriteProducts = products.filter((product) =>
-    favoriteIds.includes(product.slug),
-  )
 
   const handleQuickAdd = async (productSlug) => {
     let result

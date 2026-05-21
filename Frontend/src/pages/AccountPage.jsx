@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
+import ReviewPrivacyMatrix from '../features/comments/presentation/ReviewPrivacyMatrix'
+import {
+  buildReviewPrivacyCode,
+  buildReviewPrivacySelection,
+  buildReviewPrivacySelectionFromCode,
+  getReviewPrivacyFallbackMode,
+  normalizeReviewPrivacyMode,
+  resolveReviewPrivacySelection,
+} from '../features/comments/presentation/reviewPrivacy'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import PasswordField from '../shared/components/ui/PasswordField'
 import {
-  accountDataChangeEvent,
-  getFavoriteProductIds,
   reconcileAccountStorageWithAuth,
 } from '../lib/accountData'
 import {
@@ -26,55 +33,12 @@ import {
   getOrderStatusPresentation,
   ordersChangeEvent,
 } from '../lib/orders'
+import {
+  fetchWishlistItems,
+  getWishlistProductReferences,
+  wishlistChangeEvent,
+} from '../lib/wishlist'
 import { validatePassword } from '../lib/validation'
-
-const profilePrivacyOptions = [
-  {
-    value: 'full',
-    label: 'Show full name',
-    description: 'Your full display name can appear with account activity.',
-    code: 's',
-  },
-  {
-    value: 'initials',
-    label: 'Initials only',
-    description: 'Only initials are used where public names are shown.',
-    code: 'i',
-  },
-  {
-    value: 'hidden',
-    label: 'Hide name',
-    description: 'Public account activity uses an anonymous name.',
-    code: 'h',
-  },
-]
-
-function getDisplayNameWords(displayName) {
-  return String(displayName || '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-}
-
-function getProfilePrivacyMode(privacy) {
-  const normalizedPrivacy = String(privacy || '').trim().toLowerCase()
-
-  if (normalizedPrivacy && /^[h]+$/.test(normalizedPrivacy)) {
-    return 'hidden'
-  }
-
-  if (normalizedPrivacy && /^[s]+$/.test(normalizedPrivacy)) {
-    return 'full'
-  }
-
-  return 'initials'
-}
-
-function buildProfilePrivacyCode(displayName, mode) {
-  const option = profilePrivacyOptions.find((item) => item.value === mode) || profilePrivacyOptions[1]
-  const wordCount = Math.max(1, getDisplayNameWords(displayName).length)
-  return option.code.repeat(wordCount)
-}
 
 function getUserDisplayName(user) {
   return user?.displayname || user?.name || ''
@@ -107,10 +71,16 @@ export default function AccountPage() {
   const [ordersLoaded, setOrdersLoaded] = useState(() => getOrdersSnapshot().loaded)
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
   const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
-  const [favoriteIds, setFavoriteIds] = useState(() => getFavoriteProductIds())
+  const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
-  const [profilePrivacy, setProfilePrivacy] = useState(() => getProfilePrivacyMode(getUserPrivacy(currentUser)))
+  const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
+    buildReviewPrivacySelectionFromCode(
+      getUserPrivacy(currentUser),
+      getUserDisplayName(currentUser),
+    ),
+  )
+  const [profilePrivacyMenuOpen, setProfilePrivacyMenuOpen] = useState(true)
   const [profileFeedback, setProfileFeedback] = useState('')
   const [profileFeedbackType, setProfileFeedbackType] = useState('success')
   const [profileSaving, setProfileSaving] = useState(false)
@@ -146,35 +116,35 @@ export default function AccountPage() {
       setAddressesLoaded(addressSnapshot.loaded)
     }
 
-    const syncLocalState = () => {
+    const syncWishlistState = () => {
       if (!active) {
         return
       }
 
-      setFavoriteIds(getFavoriteProductIds())
+      setFavoriteIds(getWishlistProductReferences())
     }
 
     const loadAccountState = async () => {
       reconcileAccountStorageWithAuth()
       syncAuthState()
-      syncLocalState()
+      syncWishlistState()
       syncRemoteState()
-      await Promise.allSettled([fetchOrders(), fetchSavedAddresses()])
+      await Promise.allSettled([fetchOrders(), fetchSavedAddresses(), fetchWishlistItems()])
 
       if (!active) {
         return
       }
 
-      syncLocalState()
+      syncWishlistState()
       syncRemoteState()
     }
 
     window.addEventListener('storage', loadAccountState)
     window.addEventListener(authChangeEvent, loadAccountState)
     window.addEventListener(currentUserChangeEvent, syncAuthState)
-    window.addEventListener(accountDataChangeEvent, syncLocalState)
     window.addEventListener(addressBookChangeEvent, syncRemoteState)
     window.addEventListener(ordersChangeEvent, syncRemoteState)
+    window.addEventListener(wishlistChangeEvent, syncWishlistState)
     void loadAccountState()
 
     return () => {
@@ -182,15 +152,20 @@ export default function AccountPage() {
       window.removeEventListener('storage', loadAccountState)
       window.removeEventListener(authChangeEvent, loadAccountState)
       window.removeEventListener(currentUserChangeEvent, syncAuthState)
-      window.removeEventListener(accountDataChangeEvent, syncLocalState)
       window.removeEventListener(addressBookChangeEvent, syncRemoteState)
       window.removeEventListener(ordersChangeEvent, syncRemoteState)
+      window.removeEventListener(wishlistChangeEvent, syncWishlistState)
     }
   }, [])
 
   useEffect(() => {
-    setProfileName(getUserDisplayName(currentUser))
-    setProfilePrivacy(getProfilePrivacyMode(getUserPrivacy(currentUser)))
+    const nextProfileName = getUserDisplayName(currentUser)
+
+    setProfileName(nextProfileName)
+    setProfilePrivacySelection(
+      buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
+    )
+    setProfilePrivacyMenuOpen(true)
   }, [currentUser])
 
   const mostRecentOrder = ordersLoaded ? orders[0] || null : null
@@ -201,16 +176,20 @@ export default function AccountPage() {
   const latestOrderPath = mostRecentOrder
     ? `/account/orders/${encodeURIComponent(mostRecentOrder.id)}`
     : '/account/orders'
-  const selectedProfilePrivacyOption =
-    profilePrivacyOptions.find((option) => option.value === profilePrivacy) || profilePrivacyOptions[1]
-
   const handleProfileSubmit = async (event) => {
     event.preventDefault()
 
     const trimmedName = profileName.trim()
+    const profilePrivacyCode = buildReviewPrivacyCode(profilePrivacySelection, trimmedName)
 
     if (!trimmedName) {
       setProfileFeedback('Display name is required.')
+      setProfileFeedbackType('error')
+      return
+    }
+
+    if (!profilePrivacyCode) {
+      setProfileFeedback('Choose how your display name should appear.')
       setProfileFeedbackType('error')
       return
     }
@@ -221,7 +200,7 @@ export default function AccountPage() {
     try {
       await updateCurrentUserProfile({
         name: trimmedName,
-        privacy: buildProfilePrivacyCode(trimmedName, profilePrivacy),
+        privacy: profilePrivacyCode,
       })
       setProfileFeedback('Profile updated.')
       setProfileFeedbackType('success')
@@ -309,35 +288,46 @@ export default function AccountPage() {
                   autoComplete="name"
                   value={profileName}
                   onChange={(event) => {
-                    setProfileName(event.target.value)
+                    const nextProfileName = event.target.value
+
+                    setProfileName(nextProfileName)
+                    setProfilePrivacySelection((currentSelection) =>
+                      resolveReviewPrivacySelection(
+                        currentSelection,
+                        nextProfileName,
+                        getReviewPrivacyFallbackMode(currentSelection),
+                      ),
+                    )
                     setProfileFeedback('')
                   }}
                   className="aurora-input"
                 />
               </label>
 
-              <label className="block">
-                <span className="aurora-field-label">Privacy</span>
-                <select
-                  value={profilePrivacy}
-                  onChange={(event) => {
-                    setProfilePrivacy(event.target.value)
+              <div>
+                <span className="aurora-field-label">Name visibility</span>
+                <ReviewPrivacyMatrix
+                  displayName={profileName}
+                  selection={profilePrivacySelection}
+                  open={profilePrivacyMenuOpen}
+                  disabled={profileSaving}
+                  onToggle={setProfilePrivacyMenuOpen}
+                  onToggleAll={(mode) => {
+                    setProfilePrivacySelection(buildReviewPrivacySelection(profileName, mode))
                     setProfileFeedback('')
                   }}
-                  className="aurora-select"
-                >
-                  {profilePrivacyOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <div className="aurora-widget-subsurface p-5">
-                <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                  {selectedProfilePrivacyOption.description}
-                </p>
+                  onChange={(wordIndex, mode) => {
+                    setProfilePrivacySelection((currentSelection) => {
+                      const nextSelection = resolveReviewPrivacySelection(
+                        currentSelection,
+                        profileName,
+                      )
+                      nextSelection[wordIndex] = normalizeReviewPrivacyMode(mode)
+                      return nextSelection
+                    })
+                    setProfileFeedback('')
+                  }}
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-3">

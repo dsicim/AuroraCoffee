@@ -90,24 +90,39 @@ export default function ProductMedia({
     return [getFallbackMedia(product)]
   }, [images, product])
 
-  const supportsCarousel = normalizedImages.length > 1
-  const shouldShowControls = showControls ?? supportsCarousel
-  const shouldShowDots = showDots ?? supportsCarousel
   const isControlled = Number.isInteger(activeIndex)
   const [internalActiveIndex, setInternalActiveIndex] = useState(defaultActiveIndex)
   const [isLightboxOpen, setIsLightboxOpen] = useState(false)
+  const [failedImageSources, setFailedImageSources] = useState(() => new Set())
+
+  const availableImages = useMemo(() => {
+    const nextImages = normalizedImages.filter((image) => !failedImageSources.has(image.src))
+
+    return nextImages.length
+      ? nextImages
+      : [{
+          key: 'product-media-static-fallback',
+          src: coffeeSketch,
+          alt: product?.name ? `${product.name} product image` : 'Aurora Coffee product image',
+          label: '',
+          variantKey: '',
+        }]
+  }, [failedImageSources, normalizedImages, product])
 
   const resolvedActiveIndex = wrapIndex(
     isControlled ? activeIndex : internalActiveIndex,
-    normalizedImages.length,
+    availableImages.length,
   )
+  const supportsCarousel = availableImages.length > 1
+  const shouldShowControls = showControls ?? supportsCarousel
+  const shouldShowDots = showDots ?? supportsCarousel
 
-  const activeImage = normalizedImages[resolvedActiveIndex] || getFallbackMedia(product)
+  const activeImage = availableImages[resolvedActiveIndex] || getFallbackMedia(product)
 
   const alt = activeImage.alt || (product?.name ? `${product.name} product image` : 'Aurora Coffee product image')
 
   const updateActiveIndex = (nextIndex) => {
-    const normalizedIndex = wrapIndex(nextIndex, normalizedImages.length)
+    const normalizedIndex = wrapIndex(nextIndex, availableImages.length)
 
     if (isControlled) {
       onActiveIndexChange?.(normalizedIndex)
@@ -118,7 +133,15 @@ export default function ProductMedia({
   }
 
   const handleImageError = () => {
-    if (supportsCarousel) {
+    setFailedImageSources((current) => {
+      if (current.has(activeImage.src)) {
+        return current
+      }
+
+      return new Set([...current, activeImage.src])
+    })
+
+    if (availableImages.length > 1) {
       updateActiveIndex(resolvedActiveIndex + 1)
     }
   }
@@ -275,7 +298,7 @@ export default function ProductMedia({
       ) : null}
       {shouldShowDots && supportsCarousel ? (
         <div className="aurora-product-media-dots" aria-label="Select product image">
-          {normalizedImages.map((image, index) => {
+          {availableImages.map((image, index) => {
             const selected = index === resolvedActiveIndex
             const label = image.label || `Image ${index + 1}`
 

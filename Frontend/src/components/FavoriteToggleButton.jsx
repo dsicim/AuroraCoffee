@@ -1,19 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  accountDataChangeEvent,
-  isFavoriteProduct,
-  reconcileAccountStorageWithAuth,
-  toggleFavoriteProduct,
-} from '../lib/accountData'
-import {
   authChangeEvent,
   currentUserChangeEvent,
   getAuthStateSnapshot,
 } from '../lib/auth'
 import {
   addProductToWishlist,
+  fetchWishlistItems,
+  isWishlistProduct,
   removeProductFromWishlist,
+  wishlistChangeEvent,
 } from '../lib/wishlist'
 import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/ui/LiquidGlassButton'
 
@@ -25,39 +22,48 @@ export default function FavoriteToggleButton({
   const location = useLocation()
   const navigate = useNavigate()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
-  const [isFavorite, setIsFavorite] = useState(() => isFavoriteProduct(productId))
+  const [isFavorite, setIsFavorite] = useState(() => isWishlistProduct(productId))
   const [isSyncing, setIsSyncing] = useState(false)
   const canToggleFavorite = authState.hasUsableSession
   const displayIsFavorite = canToggleFavorite && isFavorite
 
   useEffect(() => {
-    const syncFavoriteState = (shouldReconcile = false) => {
+    const syncFavoriteState = () => {
       const nextAuthState = getAuthStateSnapshot()
       setAuthState(nextAuthState)
 
-      if (shouldReconcile && nextAuthState.hasUsableSession) {
-        reconcileAccountStorageWithAuth()
-      }
-
       setIsFavorite(
-        nextAuthState.hasUsableSession ? isFavoriteProduct(productId) : false,
+        nextAuthState.hasUsableSession ? isWishlistProduct(productId) : false,
       )
     }
 
-    const syncReconciledFavoriteState = () => syncFavoriteState(true)
-    const syncLocalFavoriteState = () => syncFavoriteState(false)
+    const syncRemoteFavoriteState = () => {
+      const nextAuthState = getAuthStateSnapshot()
+      setAuthState(nextAuthState)
 
-    window.addEventListener('storage', syncReconciledFavoriteState)
-    window.addEventListener(authChangeEvent, syncReconciledFavoriteState)
-    window.addEventListener(currentUserChangeEvent, syncLocalFavoriteState)
-    window.addEventListener(accountDataChangeEvent, syncLocalFavoriteState)
-    const initialSyncId = window.setTimeout(syncReconciledFavoriteState, 0)
+      if (!nextAuthState.hasUsableSession) {
+        setIsFavorite(false)
+        return
+      }
+
+      void fetchWishlistItems()
+        .then(() => {
+          setIsFavorite(isWishlistProduct(productId))
+        })
+        .catch(() => {
+          setIsFavorite(false)
+        })
+    }
+
+    window.addEventListener(authChangeEvent, syncRemoteFavoriteState)
+    window.addEventListener(currentUserChangeEvent, syncFavoriteState)
+    window.addEventListener(wishlistChangeEvent, syncFavoriteState)
+    const initialSyncId = window.setTimeout(syncRemoteFavoriteState, 0)
 
     return () => {
-      window.removeEventListener('storage', syncReconciledFavoriteState)
-      window.removeEventListener(authChangeEvent, syncReconciledFavoriteState)
-      window.removeEventListener(currentUserChangeEvent, syncLocalFavoriteState)
-      window.removeEventListener(accountDataChangeEvent, syncLocalFavoriteState)
+      window.removeEventListener(authChangeEvent, syncRemoteFavoriteState)
+      window.removeEventListener(currentUserChangeEvent, syncFavoriteState)
+      window.removeEventListener(wishlistChangeEvent, syncFavoriteState)
       window.clearTimeout(initialSyncId)
     }
   }, [productId])
@@ -82,8 +88,7 @@ export default function FavoriteToggleButton({
     }
 
     setIsSyncing(true)
-    const nextFavorites = toggleFavoriteProduct(productId)
-    const nextFavoriteState = nextFavorites.includes(productId)
+    const nextFavoriteState = !isFavorite
     setIsFavorite(nextFavoriteState)
 
     try {
@@ -94,8 +99,7 @@ export default function FavoriteToggleButton({
       }
     } catch (error) {
       console.error('Wishlist sync error:', error)
-      const revertedFavorites = toggleFavoriteProduct(productId)
-      setIsFavorite(revertedFavorites.includes(productId))
+      setIsFavorite(!nextFavoriteState)
     } finally {
       setIsSyncing(false)
     }
