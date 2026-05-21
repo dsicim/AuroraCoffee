@@ -65,3 +65,7 @@ test('buildReviewPrivacyPreviewName returns Anonymous when every word is hidden'
 test('buildReviewPrivacyCode serializes a per-word privacy selection', () => {
   assert.equal(buildReviewPrivacyCode(['full', 'initials', 'anonymous'], 'Ege Can Bulutoglu'), 'sih')
 })
+
+test('buildReviewPrivacyCode returns an empty code for blank display names', () => {
+  assert.equal(buildReviewPrivacyCode('full', '   '), '')
+})
