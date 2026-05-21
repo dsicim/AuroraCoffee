@@ -1,5 +1,5 @@
 import { getAuthSession } from './auth'
-import { fetchAuthJson } from './authRequest'
+import { fetchAuthJson, fetchAuthResponse, readJsonResponse } from './authRequest'
 import { fetchProductsByIds, findProductByReference } from './products'
 
 export const wishlistChangeEvent = 'aurora-wishlist-change'
@@ -182,6 +182,69 @@ async function requestWishlistJson(path = '', options = {}) {
   }
 
   return data
+}
+
+function normalizeNotifyItems(items) {
+  return Array.isArray(items) ? items : []
+}
+
+export async function fetchWishlistNotifyQueue() {
+  const data = await requestWishlistJson('/notify', { method: 'GET' })
+
+  return {
+    discount: normalizeNotifyItems(data?.discount),
+    stock: normalizeNotifyItems(data?.stock),
+  }
+}
+
+export async function sendWishlistNotifications(type) {
+  const normalizedType = String(type || '').trim().toLowerCase()
+
+  if (!['discount', 'stock'].includes(normalizedType)) {
+    throw new WishlistRequestError('Choose discount or stock notifications before sending.', 400)
+  }
+
+  const response = await fetchAuthResponse('/wishlist/notify', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'text/event-stream, text/plain, application/json',
+    },
+    body: JSON.stringify({ type: normalizedType }),
+  })
+  const contentType = response.headers.get('content-type') || ''
+
+  if (contentType.includes('application/json')) {
+    const { payload, data } = await readJsonResponse(response)
+
+    if (!response.ok || data?.e || payload?.e) {
+      throw new WishlistRequestError(
+        data?.e || payload?.e || 'Wishlist notification request failed',
+        response.status,
+        data,
+      )
+    }
+
+    return {
+      type: normalizedType,
+      log: data?.msg || payload?.msg || 'Wishlist notifications sent.',
+    }
+  }
+
+  const log = await response.text()
+
+  if (!response.ok) {
+    throw new WishlistRequestError(
+      log.trim() || 'Wishlist notification request failed',
+      response.status,
+      log,
+    )
+  }
+
+  return {
+    type: normalizedType,
+    log: log.trim() || 'Wishlist notifications sent.',
+  }
 }
 
 async function resolveWishlistProduct(productReference) {
