@@ -183,7 +183,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     result.d.order.order.details.products[product].refunded = true;
                     const full = result.d.order.order.details.products[product].product_price;
                     const deduction = result.d.order.order.details.products[product].pricededuction || 0;
-                    const refundResult = await payments.IyzipayAPI(config, "POST", "v2/payment/refund", {}, {"locale": "en", "price": full-deduction, "paymentId": result.d.order.order.payment_id,"currency": result.d.order.order.details.currency}).then(res => {
+                    const refundResult = await payments.IyzipayAPI(config, "POST", "v2/payment/refund", {}, {"locale": "en", "price": full-deduction, "paymentId": result.d.order.order.purchaseId,"currency": result.d.order.order.details.currency}).then(res => {
                         if (res.status == "success") return { success: true, message: "Payment refunded successfully" };
                         else return { success: false, message: "Failed to refund payment: "+res.errorMessage };
                     }).catch(err => {
