@@ -119,3 +119,10 @@ test('parse3DSCallbackResult decodes a successful base64 payment callback payloa
     result: { orderNumber: 'ORD-10', status: 'paid' },
   })
 })
+
+test('parse3DSCallbackResult reports a missing secure payment result', () => {
+  assert.deepEqual(parse3DSCallbackResult('  '), {
+    success: false,
+    error: 'Secure payment result is missing.',
+  })
+})
