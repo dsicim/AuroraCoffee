@@ -185,7 +185,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const emailData = emailPromises[i];
             let setNotify = false;
             if (!emailData.emailblocked) {
-                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(r => {
+                const emailResult = await emailDiscount(config, emailData.email, emailData.details, type).then(r => {
                     if (r.s) {
                         setNotify = true;
                         res.write(`Notification email sent successfully to ${emailData.email} (${i+1} / ${emailPromises.length})\n`);
