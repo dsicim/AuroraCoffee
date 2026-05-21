@@ -7,6 +7,7 @@ import {
   buildPaymentSummary,
   buildSubmittedOrderSnapshotFromPending,
   createPending3DSCheckoutSnapshot,
+  parse3DSCallbackResult,
 } from './payment3ds.js'
 
 test('buildDeliverySummary joins customer name and address lines for the checkout receipt', () => {
@@ -107,4 +108,14 @@ test('buildSubmittedOrderSnapshotFromPending rebuilds delivery and billing summa
   assert.equal(submitted.delivery.fullName, 'Ege Bulutoglu')
   assert.equal(submitted.billing.fullName, 'Ada Buyer')
   assert.equal(submitted.orderNumber, 'ORD-9')
+})
+
+test('parse3DSCallbackResult decodes a successful base64 payment callback payload', () => {
+  globalThis.window = { atob: globalThis.atob }
+  const encodedResult = btoa(JSON.stringify({ orderNumber: 'ORD-10', status: 'paid' }))
+
+  assert.deepEqual(parse3DSCallbackResult(encodedResult), {
+    success: true,
+    result: { orderNumber: 'ORD-10', status: 'paid' },
+  })
 })
