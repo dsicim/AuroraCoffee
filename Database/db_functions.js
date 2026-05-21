@@ -509,7 +509,8 @@ func.getCategories = async function (parent = null) {
             if (parent !== null) params.push(parent);
         }
         const [rows] = await pool.execute(query, params);
-        const [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?') + ')', params);
+        let [rows2] = [[]];
+        if (parent !== null) [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE id = ?)', [params[0]]);
         return { success: true, categories: rows, products: rows2 };
     } catch (error) {
         console.error('Get categories error:', error);
