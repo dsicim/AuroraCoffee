@@ -13,9 +13,9 @@ async function emailDiscount(config, email, details) {
             .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
             .replaceAll("{{ITEM_URL}}", product.product_url)
             .replaceAll("{{ITEM_CATEGORY}}", product.category)
-            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.final_price))
+            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol("TRY", product.final_price))
             .replaceAll("{{ITEM_STOCK}}", product.stock)
-            .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol(details.currency, product.product_price) + '</span><br><br><span style="font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
+            .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol("TRY", product.product_price) + '</span><br><br><span style="font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
     });
     if (details.length == 2) items += " and one other item";
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
@@ -142,7 +142,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         queue.forEach(q => {
             if (emailqueue[q.user_id]) {
                 emailqueue[q.user_id].details.push({
-                    product_url: "https://auroracoffee.youcantdrop.com/product/" + q.product_code,
+                    product_url: "https://auroracoffee.youcantdrop.com/products/" + q.product_code,
                     product_name: q.product_name,
                     product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
                     category: q.category_name,
@@ -159,7 +159,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     username: q.displayname,
                     emailblocked: Boolean(q.emailblocked),
                     details: [{
-                        product_url: "https://auroracoffee.youcantdrop.com/product/" + q.product_code,
+                        product_url: "https://auroracoffee.youcantdrop.com/products/" + q.product_code,
                         product_name: q.product_name,
                         product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
                         category: q.category_name,
