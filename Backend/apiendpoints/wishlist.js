@@ -10,8 +10,8 @@ async function emailDiscount(config, email, details) {
     details.forEach(product => {
         if (items == "") items = product.product_name;
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
-            .replaceAll("{{ITEM_IMAGE_URL}}", product.image_url)
-            .replaceAll("{{ITEM_URL}}", "https://auroracoffee.youcantdrop.com/product/" + product.product_code)
+            .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
+            .replaceAll("{{ITEM_URL}}", product.product_url)
             .replaceAll("{{ITEM_CATEGORY}}", product.category)
             .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.final_price))
             .replaceAll("{{ITEM_STOCK}}", product.stock)
@@ -142,12 +142,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         queue.forEach(q => {
             if (emailqueue[q.user_id]) {
                 emailqueue[q.user_id].details.push({
+                    product_url: "https://auroracoffee.youcantdrop.com/product/" + q.product_code,
                     product_name: q.product_name,
-                    product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.product_image,
+                    product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
                     category: q.category_name,
                     product_price: q.product_price,
                     final_price: q.final_price,
                     discount_rate: q.discount_rate,
+                    currency: "TRY",
                     stock: q.stock
                 });
             }
@@ -157,12 +159,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     username: q.displayname,
                     emailblocked: Boolean(q.emailblocked),
                     details: [{
+                        product_url: "https://auroracoffee.youcantdrop.com/product/" + q.product_code,
                         product_name: q.product_name,
-                        product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.product_image,
+                        product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
                         category: q.category_name,
                         product_price: q.product_price,
                         final_price: q.final_price,
                         discount_rate: q.discount_rate,
+                        currency: "TRY",
                         stock: q.stock
                     }]
                 };
