@@ -831,7 +831,7 @@ func.updateProduct = async function (productId, data) {
             if (previousStock === 0 && data.stock > 0) {
                 await connection.execute("UPDATE wishlist w SET w.is_notified_about_stock = 'pending' WHERE w.product_id = ? AND w.is_notified_about_stock = 'waiting'", [productId]);
             }
-            if (previousDiscount == 0 && data.discount_rate > 0) {
+            if (previousDiscount == 0 && data.discount_rate > 0 && old[0].stock > 0) {
                 await connection.execute("UPDATE wishlist w SET w.is_notified_about_discount = 'pending' WHERE w.product_id = ? AND w.is_notified_about_discount = 'waiting'", [productId]);
             }
             if (previousStock > 0 && data.stock == 0) {
@@ -895,14 +895,14 @@ func.applyDiscount = async function (productId, rate) {
     }
     try {
         await connection.beginTransaction();
-        const [old] = await connection.execute('SELECT price FROM products WHERE id = ? FOR UPDATE', [productId]);
+        const [old] = await connection.execute('SELECT price, stock, discount_rate FROM products WHERE id = ? FOR UPDATE', [productId]);
         if (old.length === 0) throw new DBError(404, 'Product not found');
         const previous = old[0].discount_rate;
         const [result] = await connection.execute('UPDATE products SET discount_rate = ? WHERE id = ?', [rate, productId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
         }
-        if (previous === 0 && rate > 0) {
+        if (previous === 0 && rate > 0 && old[0].stock > 0) {
             // New discount applied, time to queue wishlisters!
             await connection.execute("UPDATE wishlist w SET w.is_notified_about_discount = 'pending' WHERE w.product_id = ? AND w.is_notified_about_discount = 'waiting'", [productId]);
         }
