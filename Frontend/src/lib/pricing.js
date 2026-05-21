@@ -64,8 +64,9 @@ export function hasPriceChangingChoices(product) {
 
 export function formatDiscountRate(value) {
   const normalizedValue = Number(value) || 0
+  const displayValue = Math.trunc(normalizedValue * 100) / 100
 
-  return Number.isInteger(normalizedValue)
-    ? normalizedValue.toString()
-    : normalizedValue.toFixed(1).replace(/\.0$/, '')
+  return Number.isInteger(displayValue)
+    ? displayValue.toString()
+    : displayValue.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
 }
