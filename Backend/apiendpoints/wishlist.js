@@ -100,7 +100,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
         });
     }
-    else if (endpoint[0] === "notifyqueue") {
+    else if (endpoint[0] === "notify") {
         if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
         if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
         if (method === "GET") {
@@ -117,51 +117,29 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });
         }
-        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-    }
-    else if (endpoint[0] === "notify") {
-        if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
-        if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-        if (method !== "POST") return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-        if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.type || !["discount", "stock"].includes(body.data.type)) return { s: 400, j: true, d: { e: "Invalid request body" } };
-        const type = body.data.type;
-        res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
-        res.flushHeaders();
-        const queue = await sql.getNotifyQueue().then(result => {
-            if (result.success) {
-                return type === "discount" ? result.discount : result.stock;
+        else if (method === "POST") {
+            if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.type || !["discount", "stock"].includes(body.data.type)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            const type = body.data.type;
+            res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
+            res.flushHeaders();
+            const queue = await sql.getNotifyQueue().then(result => {
+                if (result.success) {
+                    return type === "discount" ? result.discount : result.stock;
+                }
+            }).catch(err => {
+                console.error("Get users wishing for product error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+            if (queue === null) {
+                res.write("ERROR: " + queue.d.e);
+                res.end();
+                return { s: 200, j: false, d: null, resended: true };
             }
-        }).catch(err => {
-            console.error("Get users wishing for product error:", err);
-            if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-            else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-        });
-        if (queue === null) {
-            res.write("ERROR: " + queue.d.e);
-            res.end();
-            return { s: 200, j: false, d: null, resended: true };
-        }
-        const emailqueue = {};
-        queue.forEach(q => {
-            if (emailqueue[q.user_id]) {
-                emailqueue[q.user_id].details.push({
-                    product_url: "https://auroracoffee.youcantdrop.com/products/" + q.product_code,
-                    product_name: q.product_name,
-                    product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
-                    category: q.category_name,
-                    product_price: q.product_price,
-                    final_price: q.final_price,
-                    discount_rate: q.discount_rate,
-                    currency: "TRY",
-                    stock: q.stock
-                });
-            }
-            else {
-                emailqueue[q.user_id] = {
-                    email: q.username,
-                    username: q.displayname,
-                    emailblocked: Boolean(q.emailblocked),
-                    details: [{
+            const emailqueue = {};
+            queue.forEach(q => {
+                if (emailqueue[q.user_id]) {
+                    emailqueue[q.user_id].details.push({
                         product_url: "https://auroracoffee.youcantdrop.com/products/" + q.product_code,
                         product_name: q.product_name,
                         product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
@@ -171,46 +149,63 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         discount_rate: q.discount_rate,
                         currency: "TRY",
                         stock: q.stock
-                    }]
-                };
-            }
-        });
-        const emailPromises = [];
-        Object.keys(emailqueue).forEach(userId => {
-            emailqueue[userId].details = emailqueue[userId].details.filter(d => d.stock > 0);
-            if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
-        });
-        delete emailqueue;
-        for (let i = 0; i < emailPromises.length; i++) {
-            const emailData = emailPromises[i];
-            let setNotify = false;
-            if (!emailData.emailblocked) {
-                const emailResult = await emailDiscount(config, emailData.email, emailData.details, type).then(r => {
-                    if (r.s) {
-                        setNotify = true;
-                        res.write(`Notification email sent successfully to ${emailData.email} (${i+1} / ${emailPromises.length})\n`);
-                    }
-                    else {
-                        res.write(`Error generating email content for user ${emailData.email}:`, r.err + "\n");
-                    }
-                }).catch(err => {
-                    res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
-                    return;
-                });
-            }
-            else {
-                setNotify = true;
-                res.write(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
-            }
-            await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
-                res.write(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
+                    });
+                }
+                else {
+                    emailqueue[q.user_id] = {
+                        email: q.username,
+                        username: q.displayname,
+                        emailblocked: Boolean(q.emailblocked),
+                        details: [{
+                            product_url: "https://auroracoffee.youcantdrop.com/products/" + q.product_code,
+                            product_name: q.product_name,
+                            product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.image_url,
+                            category: q.category_name,
+                            product_price: q.product_price,
+                            final_price: q.final_price,
+                            discount_rate: q.discount_rate,
+                            currency: "TRY",
+                            stock: q.stock
+                        }]
+                    };
+                }
             });
-        };
-        res.write("Finished sending all emails");
-        //res.write(JSON.stringify(emailPromises));
-        res.end();
-
-        return { s: 200, j: false, d: null, resended: true };
+            const emailPromises = [];
+            Object.keys(emailqueue).forEach(userId => {
+                emailqueue[userId].details = emailqueue[userId].details.filter(d => d.stock > 0);
+                if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
+            });
+            delete emailqueue;
+            for (let i = 0; i < emailPromises.length; i++) {
+                const emailData = emailPromises[i];
+                let setNotify = false;
+                if (!emailData.emailblocked) {
+                    const emailResult = await emailDiscount(config, emailData.email, emailData.details, type).then(r => {
+                        if (r.s) {
+                            setNotify = true;
+                            res.write(`Notification email sent successfully to ${emailData.email} (${i+1} / ${emailPromises.length})\n`);
+                        }
+                        else {
+                            res.write(`Error generating email content for user ${emailData.email}:`, r.err + "\n");
+                        }
+                    }).catch(err => {
+                        res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
+                        return;
+                    });
+                }
+                else {
+                    setNotify = true;
+                    res.write(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
+                }
+                await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
+                    res.write(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
+                });
+            };
+            res.write("Finished sending all emails");
+            res.end();
+            return { s: 200, j: false, d: null, resended: true };
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
