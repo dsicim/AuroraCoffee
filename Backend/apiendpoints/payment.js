@@ -266,7 +266,7 @@ function PaymentError(err, errorMsg, tvoyBank = "your bank") {
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "currencies") {
         if (method === "GET") {
-            return { s: 200, j: true, d: currencymodule.getcurrencies() };
+            return { s: 200, j: true, d: currencymodule.GetCurrencies() };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
@@ -387,7 +387,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (isNaN(parseInt(body.data.installments)) || parseInt(body.data.installments) < 1)) return { s: 412, j: true, d: { success: false, e: { what: "Installments", why: "Installment count is invalid", resolution: "Please provide a valid installment count or pay in full if not applicable" } } };
             if (body.data.currency && typeof body.data.currency !== "string") return { s: 412, j: true, d: { success: false, e: { what: "Currency", why: "Currency is invalid", resolution: "Please provide a valid currency code or default to TRY if not applicable" } } };
             if (!body.data.currency) body.data.currency = "TRY";
-            const allCurrencies = currencymodule.getcurrencies();
+            const allCurrencies = currencymodule.GetCurrencies();
             if (allCurrencies.currencies[body.data.currency] === undefined) return { s: 412, j: true, d: { success: false, e: { what: "Currency", why: "Currency is not supported", resolution: "We only support " + Object.keys(allCurrencies.currencies).join(", ") } } };
             const exchangeRate = allCurrencies.exchangeRates[body.data.currency] || 1;
             const billingToken = body.data.billing.token || null;

@@ -2,7 +2,7 @@ const sql = require("../../Database/server.js");
 const currencymodule = require("../components/currency.js");
 const mailer = require("../components/email.js");
 const fs = require("fs");
-async function emailDiscount(config, email, details) {
+async function emailDiscount(config, email, details, type = "discount") {
     const itemstemplate = fs.readFileSync("./emails/discountemailitems.html", "utf-8");
     let itemshtml = "";
     let items = "";
@@ -20,8 +20,8 @@ async function emailDiscount(config, email, details) {
     });
     if (details.length == 2) items += " and one other item";
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
-    const template = fs.readFileSync("./emails/discountemail.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
-    return await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, []).then(res => {
+    const template = fs.readFileSync("./emails/" + type + "email.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
+    return await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now "+ (type === "discount" ? "on sale!" : "in stock!"), template, []).then(res => {
         //console.log("Email sent:", res);
         return {s: true, res: res};
     }).catch(err => {
