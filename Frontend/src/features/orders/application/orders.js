@@ -134,6 +134,19 @@ function toNullableNumber(value) {
   return Number.isFinite(parsed) ? parsed : null
 }
 
+function toBoolean(value) {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  const normalized = normalizeText(value).toLowerCase()
+  return normalized === 'true' || normalized === '1' || normalized === 'yes'
+}
+
 function normalizeText(value) {
   return typeof value === 'string' ? value.trim() : ''
 }
@@ -471,6 +484,7 @@ function normalizeOrderPayment(cardDetails, installment) {
 }
 
 function normalizeOrderItem(rawItem, productById) {
+  const rawCartId = rawItem?.id ?? rawItem?.cartId ?? rawItem?.cart_id ?? null
   const productId = Number(rawItem?.product_id || rawItem?.productId || rawItem?.id) || null
   const product = productId ? productById.get(productId) : null
   const variantId = Number(rawItem?.variant_id || rawItem?.variantId) || null
@@ -503,9 +517,14 @@ function normalizeOrderItem(rawItem, productById) {
     priceNet: toNullableNumber(rawItem?.price_net ?? rawItem?.priceNet ?? rawItem?.subtotal ?? product?.priceNet),
     taxAmount: toNullableNumber(rawItem?.tax_amount ?? rawItem?.taxAmount ?? product?.taxAmount),
     quantity,
+    cartId: rawCartId,
     imageUrl: normalizeText(rawItem?.image_url || rawItem?.imageUrl) || product?.imageUrl || '',
     options: mapOrderOptionsForDisplay(product, optionCodes, variantCode) || optionCodes,
     optionCodes,
+    refundRequested: toBoolean(rawItem?.refundRequested),
+    refundMessage: normalizeText(rawItem?.refundMessage),
+    refundRejected: toBoolean(rawItem?.refundRejected),
+    refunded: toBoolean(rawItem?.refunded),
   }
 }
 
@@ -784,6 +803,68 @@ export async function updateOrderStatus(orderId, status) {
   invalidateOrdersCache()
   invalidateProductCatalogCache()
   dispatchOrdersChange('status', normalizedOrderId)
+  return result
+}
+
+export async function processOrderRefund(orderId, cartId, action) {
+  const normalizedOrderId = String(orderId || '').trim()
+  const normalizedAction = normalizeText(action).toLowerCase()
+
+  if (!normalizedOrderId) {
+    throw new Error('Order ID is required')
+  }
+
+  if (cartId === null || cartId === undefined || cartId === '') {
+    throw new Error('Refund item ID is required')
+  }
+
+  if (!['approve', 'reject'].includes(normalizedAction)) {
+    throw new Error('Refund action is invalid')
+  }
+
+  const result = await requestOrdersJson(`/refund/${normalizedAction}`, {
+    method: 'POST',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedOrderId,
+      cartId,
+    }),
+  })
+
+  invalidateOrdersCache()
+  invalidateProductCatalogCache()
+  dispatchOrdersChange('refund', normalizedOrderId)
+  return result
+}
+
+export async function requestOrderRefund(orderId, cartId, message) {
+  const normalizedOrderId = String(orderId || '').trim()
+  const normalizedMessage = normalizeText(message)
+
+  if (!normalizedOrderId) {
+    throw new Error('Order ID is required')
+  }
+
+  if (cartId === null || cartId === undefined || cartId === '') {
+    throw new Error('Refund item ID is required')
+  }
+
+  if (!normalizedMessage) {
+    throw new Error('Refund message is required')
+  }
+
+  const result = await requestOrdersJson('/refund', {
+    method: 'POST',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedOrderId,
+      cartId,
+      message: normalizedMessage,
+    }),
+  })
+
+  invalidateOrdersCache()
+  dispatchOrdersChange('refund', normalizedOrderId)
   return result
 }
 

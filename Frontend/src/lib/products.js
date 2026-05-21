@@ -209,7 +209,10 @@ function normalizeProductVariant(rawVariant, optionGroups) {
     id: Number(rawVariant?.id ?? rawVariant?.variant_id) || 0,
     variantCode: normalizeCode(rawVariant?.variant_code ?? rawVariant?.variantCode),
     price: toNumber(rawVariant?.price),
+    priceAdd: toNumber(rawVariant?.price_add ?? rawVariant?.priceAdd),
+    priceMult: toNullableNumber(rawVariant?.price_mult ?? rawVariant?.priceMult) ?? 1,
     stock: Math.max(0, Number(rawVariant?.stock) || 0),
+    discountRate: toNullableNumber(rawVariant?.discount_rate ?? rawVariant?.discountRate) ?? 0,
     optionValueCodes: normalizeVariantOptionValueCodes(
       rawVariant?.option_value_codes ?? rawVariant?.optionValueCodes,
       rawVariant?.variant_code ?? rawVariant?.variantCode,
@@ -640,6 +643,193 @@ export async function updateProductDetails(productId, edits) {
   return data
 }
 
+function normalizeProductCategory(rawCategory) {
+  return {
+    id: Number(rawCategory?.id) || 0,
+    name: normalizeText(rawCategory?.name),
+    parentId: Number(rawCategory?.parent_id ?? rawCategory?.parentId) || null,
+  }
+}
+
+function normalizeCategoryParentId(parentId) {
+  const normalizedParentId = Number(parentId)
+  return Number.isFinite(normalizedParentId) && normalizedParentId > 0
+    ? normalizedParentId
+    : null
+}
+
+export async function fetchProductCategories(parentId = null) {
+  const normalizedParentId = normalizeCategoryParentId(parentId)
+  const path = normalizedParentId
+    ? `/products/categories/${encodeURIComponent(String(normalizedParentId))}`
+    : '/products/categories'
+  const payload = await requestJson(path)
+
+  return (payload?.categories || [])
+    .map(normalizeProductCategory)
+    .filter((category) => category.id && category.name)
+}
+
+export async function fetchProductCategoryTree() {
+  const categoriesById = new Map()
+
+  async function collectChildren(parentId = null) {
+    const categories = await fetchProductCategories(parentId)
+
+    for (const category of categories) {
+      if (categoriesById.has(category.id)) {
+        continue
+      }
+
+      categoriesById.set(category.id, category)
+      await collectChildren(category.id)
+    }
+  }
+
+  await collectChildren()
+
+  return Array.from(categoriesById.values()).sort(
+    (left, right) =>
+      (left.parentId || 0) - (right.parentId || 0) ||
+      left.name.localeCompare(right.name),
+  )
+}
+
+export async function createProductCategory({ name, parentId = null }) {
+  const normalizedName = normalizeText(name)
+
+  if (!normalizedName) {
+    throw new Error('Category name is required.')
+  }
+
+  const data = await requestJson('/products/categories', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      name: normalizedName,
+      parent_id: normalizeCategoryParentId(parentId),
+    }),
+  })
+
+  return data
+}
+
+export async function updateProductCategory(categoryId, { name, parentId = null }) {
+  const normalizedCategoryId = Number(categoryId)
+  const normalizedName = normalizeText(name)
+
+  if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
+    throw new Error('Select a valid category before saving.')
+  }
+
+  if (!normalizedName) {
+    throw new Error('Category name is required.')
+  }
+
+  const data = await requestJson('/products/categories', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: normalizedCategoryId,
+      name: normalizedName,
+      parent_id: normalizeCategoryParentId(parentId),
+    }),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function deleteProductCategory(categoryId) {
+  const normalizedCategoryId = Number(categoryId)
+
+  if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
+    throw new Error('Select a valid category before deleting.')
+  }
+
+  const data = await requestJson(
+    `/products/categories?id=${encodeURIComponent(String(normalizedCategoryId))}`,
+    { method: 'DELETE' },
+  )
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+function normalizeVariantMutationPayload(payload) {
+  return Object.fromEntries(
+    Object.entries(payload || {}).filter(([, value]) => value !== undefined),
+  )
+}
+
+function getVariantMutationBody(payload) {
+  return JSON.stringify(normalizeVariantMutationPayload(payload))
+}
+
+export async function createProductVariant(productId, payload) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before creating a variant.')
+  }
+
+  const normalizedPayload = normalizeVariantMutationPayload({
+    ...(payload || {}),
+    product_id: normalizedProductId,
+  })
+
+  const data = await requestJson('/products/variants', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: getVariantMutationBody(normalizedPayload),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function updateProductVariant(variantId, edits) {
+  const normalizedVariantId = Number(variantId)
+
+  if (!Number.isFinite(normalizedVariantId) || normalizedVariantId <= 0) {
+    throw new Error('Select a valid variant before saving.')
+  }
+
+  const normalizedEdits = normalizeVariantMutationPayload(edits)
+
+  if (!Object.keys(normalizedEdits).length) {
+    throw new Error('No variant changes to save.')
+  }
+
+  const data = await requestJson('/products/variants', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: normalizedVariantId,
+      edits: normalizedEdits,
+    }),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function deleteProductVariant(variantId) {
+  const normalizedVariantId = Number(variantId)
+
+  if (!Number.isFinite(normalizedVariantId) || normalizedVariantId <= 0) {
+    throw new Error('Select a valid variant before deleting.')
+  }
+
+  const data = await requestJson(
+    `/products/variants?id=${encodeURIComponent(String(normalizedVariantId))}`,
+    { method: 'DELETE' },
+  )
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
 async function refreshProductsAfterImageChange() {
   await fetchAllProducts({ force: true })
 }
@@ -660,6 +850,7 @@ export async function uploadProductImage({
   sortOrder = 0,
   variantId = '',
   primary = false,
+  refreshOnCacheMiss = true,
 }) {
   const normalizedProductId = Number(productId)
 
@@ -697,17 +888,18 @@ export async function uploadProductImage({
   const data = await readProductImageResponse(response, 'Could not upload product image.')
   const uploadedUrl = normalizeText(data?.url)
 
-  if (
-    !uploadedUrl ||
-    !updateCachedProduct(normalizedProductId, (product) =>
-      mergeUploadedProductImage(product, {
-        url: uploadedUrl,
-        sortOrder: Math.floor(normalizedSortOrder),
-        variantId: normalizedVariantId,
-        primary,
-      }),
-    )
-  ) {
+  const didUpdateCache = uploadedUrl
+    ? updateCachedProduct(normalizedProductId, (product) =>
+        mergeUploadedProductImage(product, {
+          url: uploadedUrl,
+          sortOrder: Math.floor(normalizedSortOrder),
+          variantId: normalizedVariantId,
+          primary,
+        }),
+      )
+    : false
+
+  if ((!uploadedUrl || !didUpdateCache) && refreshOnCacheMiss) {
     await refreshProductsAfterImageChange()
   }
 

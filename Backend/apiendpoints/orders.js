@@ -120,9 +120,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else return { s: 500, e: "An unknown error occurred"};
                 });
                 if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
-                if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
-                const thirtyDaysAgo = new Date().getTime() - 30*24*60*60*1000;
-                if (result.d.order.order.created_at < thirtyDaysAgo) return { s: 400, j: true, d: { e: "Refund can only be requested within 30 days of purchase" } };
                 let product = -1 
                 result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
                 if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
@@ -144,7 +141,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (method === "POST") {
                 if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
                 if (!["Admin","Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId) return { s: 400, j: true, d: { e: "Invalid request body" } };
+                if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || body.data.cartId === undefined || body.data.cartId === null || body.data.cartId === "") return { s: 400, j: true, d: { e: "Invalid request body" } };
                 const orderId = body.data.id;
                 const cartId = body.data.cartId;
                 const result = await sql.getAllOrders(orderId).then(result => {
@@ -179,8 +176,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 let product = -1 
                 result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
                 if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
+                if (!result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "No pending refund request found for this product" } };
                 if (endpoint[1] === "approve") {
                     result.d.order.order.details.products[product].refunded = true;
+                    result.d.order.order.details.products[product].refundRequested = false;
+                    result.d.order.order.details.products[product].refundRejected = false;
                     const full = result.d.order.order.details.products[product].product_price;
                     const deduction = result.d.order.order.details.products[product].pricededuction || 0;
                     const refundResult = await payments.IyzipayAPI(config, "POST", "v2/payment/refund", {}, {"locale": "en", "price": full-deduction, "paymentId": result.d.order.order.purchaseId,"currency": result.d.order.order.details.currency}).then(res => {
@@ -198,7 +198,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     result.d.order.order.details.products[product].refundRequested = false;
                     result.d.order.order.details.products[product].refundRejected = true;
                 }
-                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
+                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), result.d.order.order.user_id);
                 let restock = null;
                 if (endpoint[1] === "approve") {
                     restock = {

@@ -1,17 +1,25 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments, moderateProductComment } from '../features/comments/infrastructure/commentsApi'
+import { mergeUploadedProductImage } from '../features/products/domain/productImageCache'
 import { formatCurrency } from '../lib/currency'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {
   getProductAvailability,
   getProductCategories,
+  createProductVariant,
+  createProductCategory,
+  deleteProductVariant,
+  deleteProductCategory,
   deleteProductImage,
+  fetchProductCategoryTree,
   updateProductImageSet,
+  updateProductCategory,
   updateProductDetails,
+  updateProductVariant,
   uploadProductImage,
   useProductCatalog,
 } from '../lib/products'
@@ -516,6 +524,57 @@ function buildProductEdits(product, form) {
   return edits
 }
 
+function getCategoryChildren(categories, parentId) {
+  return categories.filter((category) => Number(category.parentId) === Number(parentId))
+}
+
+function getCategoryDescendantIds(categories, categoryId) {
+  const descendantIds = new Set()
+  const pendingIds = [Number(categoryId)]
+
+  while (pendingIds.length) {
+    const currentId = pendingIds.pop()
+
+    for (const child of getCategoryChildren(categories, currentId)) {
+      if (descendantIds.has(child.id)) {
+        continue
+      }
+
+      descendantIds.add(child.id)
+      pendingIds.push(child.id)
+    }
+  }
+
+  return descendantIds
+}
+
+function getCategoryProductCount(products, categories, categoryId) {
+  const categoryIds = getCategoryDescendantIds(categories, categoryId)
+  categoryIds.add(Number(categoryId))
+
+  return (products || []).filter((product) => categoryIds.has(Number(product.categoryId))).length
+}
+
+function getCategoryName(categories, categoryId) {
+  return categories.find((category) => Number(category.id) === Number(categoryId))?.name || ''
+}
+
+function hasSiblingCategoryName(categories, { name, parentId, excludedId = null }) {
+  const normalizedName = String(name || '').trim().toLowerCase()
+  const normalizedParentId = parentId ? Number(parentId) : null
+
+  return categories.some((category) => {
+    if (excludedId && Number(category.id) === Number(excludedId)) {
+      return false
+    }
+
+    return (
+      category.name.trim().toLowerCase() === normalizedName &&
+      (category.parentId || null) === normalizedParentId
+    )
+  })
+}
+
 function getInventoryTone(stock) {
   const normalizedStock = Number(stock) || 0
 
@@ -674,6 +733,174 @@ function getProductImageVariantLabel(product, variantId) {
     : variant.variantCode || `Variant ${normalizedVariantId}`
 }
 
+function getVariantOptionGroups(product) {
+  return (product?.options || []).filter((group) => group.storeAsVariant)
+}
+
+function getVariantGroupKey(group) {
+  return group?.code || group?.id || group?.name || ''
+}
+
+function getVariantOptionValueId(group, valueCode) {
+  const normalizedValueCode = String(valueCode || '')
+  const optionValue = (group?.values || []).find(
+    (value) => String(value.valueCode) === normalizedValueCode,
+  )
+
+  return optionValue?.id ? String(optionValue.id) : ''
+}
+
+function getVariantOptionSelection(product, variant) {
+  return Object.fromEntries(
+    getVariantOptionGroups(product).map((group) => {
+      const groupKey = getVariantGroupKey(group)
+      const valueCode = variant?.optionValueCodes?.[groupKey] || ''
+
+      return [groupKey, getVariantOptionValueId(group, valueCode)]
+    }),
+  )
+}
+
+function getVariantForm(product, variant = null) {
+  return {
+    optionValueIdsByGroup: getVariantOptionSelection(product, variant),
+    price: String(Number(variant?.price ?? product?.price ?? 0) || 0),
+    stock: String(Math.max(0, Number(variant?.stock) || 0)),
+    discountRate: String(Math.max(0, Number(variant?.discountRate) || 0)),
+  }
+}
+
+function normalizeVariantNumber(value, label, { min = 0, max = null, integer = false } = {}) {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    throw new Error(`${label} is required.`)
+  }
+
+  const numericValue = Number(normalizedValue)
+
+  if (!Number.isFinite(numericValue)) {
+    throw new Error(`${label} must be a valid number.`)
+  }
+
+  if (numericValue < min) {
+    throw new Error(`${label} cannot be below ${min}.`)
+  }
+
+  if (max !== null && numericValue > max) {
+    throw new Error(`${label} cannot be above ${max}.`)
+  }
+
+  return integer ? Math.round(numericValue) : numericValue
+}
+
+function roundCurrency(value) {
+  return Math.round((Number(value) || 0) * 100) / 100
+}
+
+function getVariantSelectionKeyFromIds(product, optionValueIdsByGroup) {
+  return getVariantOptionGroups(product)
+    .map((group) => {
+      const groupKey = getVariantGroupKey(group)
+      const selectedValueId = String(optionValueIdsByGroup?.[groupKey] || '')
+      const optionValue = (group.values || []).find(
+        (value) => String(value.id) === selectedValueId,
+      )
+
+      return optionValue ? `${groupKey}:${optionValue.valueCode}` : ''
+    })
+    .filter(Boolean)
+    .join('|')
+}
+
+function getVariantSelectionKey(product, variant) {
+  const optionValueIdsByGroup = getVariantOptionSelection(product, variant)
+  return getVariantSelectionKeyFromIds(product, optionValueIdsByGroup)
+}
+
+function getVariantOptionValueIds(product, form) {
+  return getVariantOptionGroups(product).map((group) => {
+    const groupKey = getVariantGroupKey(group)
+    const optionValueId = Number(form.optionValueIdsByGroup?.[groupKey])
+
+    if (!Number.isFinite(optionValueId) || optionValueId <= 0) {
+      throw new Error(`Choose a ${group.name || 'variant option'} value.`)
+    }
+
+    return optionValueId
+  })
+}
+
+function ensureUniqueVariantSelection(product, form, currentVariantId = null) {
+  const nextSelectionKey = getVariantSelectionKeyFromIds(product, form.optionValueIdsByGroup)
+
+  if (!nextSelectionKey) {
+    return
+  }
+
+  const duplicate = (product?.variants || []).find((variant) => {
+    if (currentVariantId && Number(variant.id) === Number(currentVariantId)) {
+      return false
+    }
+
+    return getVariantSelectionKey(product, variant) === nextSelectionKey
+  })
+
+  if (duplicate) {
+    throw new Error('Another variant already uses that option combination.')
+  }
+}
+
+function buildCreateVariantPayload(product, form) {
+  const optionValueIds = getVariantOptionValueIds(product, form)
+  const basePrice = Number(product?.price) || 0
+  const price = normalizeVariantNumber(form.price, 'Variant price', { min: basePrice })
+  const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
+  const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
+
+  ensureUniqueVariantSelection(product, form)
+
+  return {
+    price_add: roundCurrency(price - basePrice),
+    price_mult: 1,
+    stock,
+    discount_rate: discountRate,
+    option_value_ids: optionValueIds,
+  }
+}
+
+function buildUpdateVariantEdits(product, variant, form) {
+  const edits = {}
+  const optionValueIds = getVariantOptionValueIds(product, form)
+  const basePrice = Number(product?.price) || 0
+  const price = normalizeVariantNumber(form.price, 'Variant price', { min: basePrice })
+  const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
+  const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
+  const nextSelectionKey = getVariantSelectionKeyFromIds(product, form.optionValueIdsByGroup)
+  const currentSelectionKey = getVariantSelectionKey(product, variant)
+
+  ensureUniqueVariantSelection(product, form, variant?.id)
+
+  if (nextSelectionKey !== currentSelectionKey) {
+    edits.option_value_ids = optionValueIds
+  }
+
+  if (roundCurrency(price) !== roundCurrency(variant?.price)) {
+    edits.price_add = roundCurrency(price - basePrice)
+    edits.price_mult = 1
+  }
+
+  if (stock !== Math.max(0, Number(variant?.stock) || 0)) {
+    edits.stock = stock
+  }
+
+  if (roundCurrency(discountRate) !== roundCurrency(variant?.discountRate)) {
+    edits.discount_rate = discountRate
+  }
+
+  return edits
+}
+
 function getNextProductImageSortOrder(images) {
   return Math.max(
     -1,
@@ -703,8 +930,391 @@ function preventProductImageEnterAction(event) {
   event.stopPropagation()
 }
 
+function ProductVariantManager({ product }) {
+  const optionGroups = useMemo(() => getVariantOptionGroups(product), [product])
+  const variants = useMemo(() => (Array.isArray(product?.variants) ? product.variants : []), [product])
+  const [mode, setMode] = useState(variants.length ? 'edit' : 'create')
+  const [selectedVariantId, setSelectedVariantId] = useState(
+    variants[0]?.id ? String(variants[0].id) : '',
+  )
+  const selectedVariant = variants.find(
+    (variant) => String(variant.id) === selectedVariantId,
+  ) || (mode === 'edit' ? variants[0] : null)
+  const selectedVariantSelectValue =
+    mode === 'edit' && selectedVariant?.id ? String(selectedVariant.id) : ''
+  const [variantForm, setVariantForm] = useState(() =>
+    getVariantForm(product, selectedVariant),
+  )
+  const [variantState, setVariantState] = useState({
+    busy: '',
+    error: '',
+    success: '',
+  })
+  const variantBusy = Boolean(variantState.busy)
+  const canManageVariants = optionGroups.length > 0
+
+  function setVariantBusy(busy) {
+    setVariantState({
+      busy,
+      error: '',
+      success: '',
+    })
+  }
+
+  function setVariantSuccess(success) {
+    setVariantState({
+      busy: '',
+      error: '',
+      success,
+    })
+  }
+
+  function setVariantError(error) {
+    setVariantState({
+      busy: '',
+      error: error?.message || 'Could not update variants.',
+      success: '',
+    })
+  }
+
+  function handleModeChange(nextMode) {
+    if (variantBusy) {
+      return
+    }
+
+    setMode(nextMode)
+    setVariantState({ busy: '', error: '', success: '' })
+
+    if (nextMode === 'create') {
+      setSelectedVariantId('')
+      setVariantForm(getVariantForm(product))
+      return
+    }
+
+    const nextVariant = selectedVariant || variants[0] || null
+    setSelectedVariantId(nextVariant?.id ? String(nextVariant.id) : '')
+    setVariantForm(getVariantForm(product, nextVariant))
+  }
+
+  function updateVariantOption(groupKey, optionValueId) {
+    setVariantForm((current) => ({
+      ...current,
+      optionValueIdsByGroup: {
+        ...current.optionValueIdsByGroup,
+        [groupKey]: optionValueId,
+      },
+    }))
+  }
+
+  function updateVariantField(field, value) {
+    setVariantForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  function handleVariantSelect(event) {
+    const nextVariantId = event.target.value
+    const nextVariant = variants.find((variant) => String(variant.id) === nextVariantId) || null
+
+    setSelectedVariantId(nextVariantId)
+    setVariantForm(getVariantForm(product, nextVariant))
+    setVariantState({ busy: '', error: '', success: '' })
+  }
+
+  function handleResetVariantForm() {
+    setVariantForm(getVariantForm(product, mode === 'edit' ? selectedVariant : null))
+    setVariantState({ busy: '', error: '', success: '' })
+  }
+
+  function handleSaveVariant() {
+    if (!canManageVariants || variantBusy) {
+      return
+    }
+
+    if (mode === 'edit' && !selectedVariant) {
+      setVariantError(new Error('Select a variant before saving.'))
+      return
+    }
+
+    let payload = null
+
+    try {
+      payload = mode === 'create'
+        ? buildCreateVariantPayload(product, variantForm)
+        : buildUpdateVariantEdits(product, selectedVariant, variantForm)
+    } catch (validationError) {
+      setVariantError(validationError)
+      return
+    }
+
+    if (mode === 'edit' && !Object.keys(payload).length) {
+      setVariantSuccess('No variant changes to save.')
+      return
+    }
+
+    setVariantBusy(mode === 'create' ? 'create' : `save:${selectedVariant.id}`)
+
+    const request = mode === 'create'
+      ? createProductVariant(product.id, payload)
+      : updateProductVariant(selectedVariant.id, payload)
+
+    void request
+      .then((result) => {
+        if (mode === 'create') {
+          setVariantForm(getVariantForm(product))
+        }
+
+        setVariantSuccess(result?.msg || (mode === 'create' ? 'Variant created.' : 'Variant updated.'))
+      })
+      .catch(setVariantError)
+  }
+
+  function handleDeleteVariant() {
+    if (!selectedVariant || variantBusy) {
+      return
+    }
+
+    if (!window.confirm('Delete this product variant permanently?')) {
+      return
+    }
+
+    setVariantBusy(`delete:${selectedVariant.id}`)
+
+    void deleteProductVariant(selectedVariant.id)
+      .then((result) => {
+        setMode('create')
+        setSelectedVariantId('')
+        setVariantForm(getVariantForm(product))
+        setVariantSuccess(result?.msg || 'Variant deleted.')
+      })
+      .catch(setVariantError)
+  }
+
+  return (
+    <section
+      className="aurora-product-edit-group aurora-product-variant-manager"
+      onKeyDownCapture={preventProductImageEnterAction}
+    >
+      <div className="aurora-product-image-manager-header">
+        <div>
+          <p className="aurora-product-edit-label">Product variants</p>
+          <h3>Edit option pricing and stock</h3>
+        </div>
+        <span>{variants.length} {variants.length === 1 ? 'variant' : 'variants'}</span>
+      </div>
+
+      {!canManageVariants ? (
+        <div className="aurora-product-image-empty">
+          <p>No variant options</p>
+          <span>This product does not expose backend variant option groups.</span>
+        </div>
+      ) : (
+        <>
+          <div className="aurora-product-variant-toolbar">
+            <div className="aurora-product-variant-mode" role="group" aria-label="Variant form mode">
+              <LiquidGlassButton
+                type="button"
+                size="compact"
+                variant={mode === 'edit' ? 'secondary' : 'quiet'}
+                selected={mode === 'edit'}
+                disabled={variantBusy || !variants.length}
+                onClick={() => {
+                  handleModeChange('edit')
+                }}
+              >
+                Edit
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                size="compact"
+                variant={mode === 'create' ? 'secondary' : 'quiet'}
+                selected={mode === 'create'}
+                disabled={variantBusy}
+                onClick={() => {
+                  handleModeChange('create')
+                }}
+              >
+                New
+              </LiquidGlassButton>
+            </div>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Variant</span>
+              <select
+                className="aurora-select aurora-product-edit-input mt-3"
+                value={selectedVariantSelectValue}
+                disabled={variantBusy || mode !== 'edit' || !variants.length}
+                onChange={handleVariantSelect}
+              >
+                {variants.length ? null : <option value="">No variants yet</option>}
+                {variants.map((variant) => (
+                  <option key={variant.id} value={String(variant.id)}>
+                    {getProductImageVariantLabel(product, variant.id)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <div className="aurora-product-variant-form">
+            {optionGroups.map((group) => {
+              const groupKey = getVariantGroupKey(group)
+
+              return (
+                <label key={groupKey} className="aurora-product-edit-field">
+                  <span className="aurora-product-edit-label">{group.name || 'Option'}</span>
+                  <select
+                    className="aurora-select aurora-product-edit-input mt-3"
+                    value={variantForm.optionValueIdsByGroup[groupKey] || ''}
+                    disabled={variantBusy}
+                    required
+                    onChange={(event) => {
+                      updateVariantOption(groupKey, event.target.value)
+                    }}
+                  >
+                    <option value="">Choose {group.name || 'option'}</option>
+                    {(group.values || []).map((value) => (
+                      <option key={value.id} value={String(value.id)}>
+                        {value.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )
+            })}
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Variant price</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="number"
+                min={Number(product.price) || 0}
+                step="0.01"
+                value={variantForm.price}
+                disabled={variantBusy}
+                onChange={(event) => {
+                  updateVariantField('price', event.target.value)
+                }}
+              />
+            </label>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Variant stock</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="number"
+                min="0"
+                step="1"
+                value={variantForm.stock}
+                disabled={variantBusy}
+                onChange={(event) => {
+                  updateVariantField('stock', event.target.value)
+                }}
+              />
+            </label>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Discount %</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={variantForm.discountRate}
+                disabled={variantBusy}
+                onChange={(event) => {
+                  updateVariantField('discountRate', event.target.value)
+                }}
+              />
+            </label>
+          </div>
+
+          <div className="aurora-product-variant-actions">
+            <LiquidGlassButton
+              type="button"
+              variant="quiet"
+              size="compact"
+              disabled={variantBusy}
+              onClick={handleResetVariantForm}
+            >
+              Reset variant
+            </LiquidGlassButton>
+            {mode === 'edit' ? (
+              <LiquidGlassButton
+                type="button"
+                variant="danger"
+                size="compact"
+                loading={variantState.busy === `delete:${selectedVariant?.id}`}
+                disabled={variantBusy || !selectedVariant}
+                onClick={handleDeleteVariant}
+              >
+                Delete variant
+              </LiquidGlassButton>
+            ) : null}
+            <LiquidGlassButton
+              type="button"
+              variant="secondary"
+              size="compact"
+              loading={
+                variantState.busy === 'create' ||
+                variantState.busy === `save:${selectedVariant?.id}`
+              }
+              disabled={variantBusy || (mode === 'edit' && !selectedVariant)}
+              onClick={handleSaveVariant}
+            >
+              {mode === 'create' ? 'Create variant' : 'Save variant'}
+            </LiquidGlassButton>
+          </div>
+
+          {variantState.error ? (
+            <p className="aurora-message aurora-message-error" role="alert">
+              {variantState.error}
+            </p>
+          ) : null}
+          {variantState.success ? (
+            <p className="aurora-message aurora-message-success" role="status" aria-live="polite">
+              {variantState.success}
+            </p>
+          ) : null}
+
+          {variants.length ? (
+            <div className="aurora-product-variant-list" aria-label="Current variants">
+              {variants.map((variant) => (
+                <article
+                  key={variant.id}
+                  className={
+                    String(variant.id) === selectedVariantSelectValue && mode === 'edit'
+                      ? 'aurora-product-variant-row is-selected'
+                      : 'aurora-product-variant-row'
+                  }
+                >
+                  <div>
+                    <p className="aurora-product-image-name">
+                      {getProductImageVariantLabel(product, variant.id)}
+                    </p>
+                    <p className="aurora-product-image-meta">
+                      #{variant.id} · {Math.max(0, Number(variant.stock) || 0)} in stock · {Number(variant.discountRate || 0)}% discount
+                    </p>
+                  </div>
+                  <strong>{formatCurrency(variant.price)}</strong>
+                </article>
+              ))}
+            </div>
+          ) : null}
+        </>
+      )}
+    </section>
+  )
+}
+
 function ProductImageManager({ product }) {
   const images = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product])
+  const [imageOverride, setImageOverride] = useState({
+    productId: null,
+    images: null,
+  })
   const variantOptions = (product?.variants || [])
     .map((variant) => ({
       id: Number(variant.id) || 0,
@@ -727,7 +1337,10 @@ function ProductImageManager({ product }) {
     (variant) => String(variant.id) === selectedVariantId,
   )
   const imageBusy = Boolean(imageState.busy)
-  const nextUploadSortOrder = getNextProductImageSortOrder(images)
+  const displayedImages =
+    Number(imageOverride.productId) === Number(product?.id) && Array.isArray(imageOverride.images)
+      ? imageOverride.images
+      : images
 
   function setImageBusy(busy) {
     setImageState({
@@ -768,15 +1381,41 @@ function ProductImageManager({ product }) {
 
     uploadInFlightRef.current = true
     setImageBusy('upload')
+    const currentImages = displayedImages
+    const uploadSortOrder = getNextProductImageSortOrder(currentImages)
+    const uploadVariantId = selectedVariant?.id || ''
+    const uploadPrimary = primaryUpload
 
     void uploadProductImage({
       productId: product.id,
       file: selectedFile,
-      sortOrder: Math.max(nextUploadSortOrder, getNextProductImageSortOrder(images)),
-      variantId: selectedVariant?.id || '',
-      primary: primaryUpload,
+      sortOrder: uploadSortOrder,
+      variantId: uploadVariantId,
+      primary: uploadPrimary,
+      refreshOnCacheMiss: false,
     })
       .then((result) => {
+        if (!result?.url) {
+          throw new Error('Product image uploaded, but the response did not include the image URL.')
+        }
+
+        const nextProduct = mergeUploadedProductImage(
+          { ...product, images: currentImages },
+          {
+            url: result?.url,
+            sortOrder: uploadSortOrder,
+            variantId: uploadVariantId,
+            primary: uploadPrimary,
+          },
+        )
+
+        if (Array.isArray(nextProduct?.images)) {
+          setImageOverride({
+            productId: product.id,
+            images: nextProduct.images,
+          })
+        }
+
         setSelectedFile(null)
         setFileInputVersion((version) => version + 1)
         if (fileInputRef.current) {
@@ -784,7 +1423,7 @@ function ProductImageManager({ product }) {
         }
         setSelectedVariantId('')
         setPrimaryUpload(false)
-        setImageSuccess(result?.msg || 'Product image uploaded.')
+        setImageSuccess(result?.msg || (displayedImages.length ? 'Product image uploaded.' : 'Product image uploaded and set as primary.'))
       })
       .catch(setImageError)
       .finally(() => {
@@ -800,22 +1439,30 @@ function ProductImageManager({ product }) {
       url: image.url,
     })
       .then((result) => {
+        setImageOverride({
+          productId: product.id,
+          images: null,
+        })
         setImageSuccess(result?.setprimary || result?.msg || 'Primary image updated.')
       })
       .catch(setImageError)
   }
 
   function handleReorder(index, direction) {
-    const newOrder = moveProductImageUrl(images, index, direction)
+    const newOrder = moveProductImageUrl(displayedImages, index, direction)
 
     if (!newOrder) {
       return
     }
 
-    setImageBusy(`order:${images[index].url}:${direction}`)
+    setImageBusy(`order:${displayedImages[index].url}:${direction}`)
 
     void updateProductImageSet(product.id, { newOrder })
       .then((result) => {
+        setImageOverride({
+          productId: product.id,
+          images: null,
+        })
         setImageSuccess(result?.setorder || result?.msg || 'Image order updated.')
       })
       .catch(setImageError)
@@ -830,6 +1477,10 @@ function ProductImageManager({ product }) {
 
     void deleteProductImage(image.url)
       .then((result) => {
+        setImageOverride({
+          productId: product.id,
+          images: null,
+        })
         setImageSuccess(result?.msg || 'Product image deleted.')
       })
       .catch(setImageError)
@@ -849,7 +1500,7 @@ function ProductImageManager({ product }) {
           <p className="aurora-product-edit-label">Product images</p>
           <h3>Manage gallery and variants</h3>
         </div>
-        <span>{images.length} {images.length === 1 ? 'image' : 'images'}</span>
+        <span>{displayedImages.length} {displayedImages.length === 1 ? 'image' : 'images'}</span>
       </div>
 
       <div className="aurora-product-image-upload">
@@ -874,7 +1525,7 @@ function ProductImageManager({ product }) {
         </label>
 
         <label className="aurora-product-edit-field">
-          <span className="aurora-product-edit-label">Variant key</span>
+          <span className="aurora-product-edit-label">Image applies to</span>
           <select
             className="aurora-select aurora-product-edit-input mt-3"
             value={selectedVariantId}
@@ -916,15 +1567,15 @@ function ProductImageManager({ product }) {
       </div>
 
       {imageState.error ? (
-        <p className="aurora-message aurora-message-error">{imageState.error}</p>
+        <p className="aurora-message aurora-message-error" role="alert">{imageState.error}</p>
       ) : null}
       {imageState.success ? (
-        <p className="aurora-message aurora-message-success">{imageState.success}</p>
+        <p className="aurora-message aurora-message-success" role="status" aria-live="polite">{imageState.success}</p>
       ) : null}
 
-      {images.length ? (
+      {displayedImages.length ? (
         <div className="aurora-product-image-list">
-          {images.map((image, index) => (
+          {displayedImages.map((image, index) => (
             <article key={image.url} className="aurora-product-image-row">
               <img src={image.src} alt="" loading="lazy" />
               <div className="aurora-product-image-row-body">
@@ -951,7 +1602,7 @@ function ProductImageManager({ product }) {
                     type="button"
                     size="compact"
                     variant="quiet"
-                    disabled={imageBusy || index === images.length - 1}
+                    disabled={imageBusy || index === displayedImages.length - 1}
                     loading={imageState.busy === `order:${image.url}:1`}
                     onClick={() => {
                       handleReorder(index, 1)
@@ -994,6 +1645,470 @@ function ProductImageManager({ product }) {
           <span>Upload the first image to create the product gallery.</span>
         </div>
       )}
+    </section>
+  )
+}
+
+function CategoryManagementPanel({ products }) {
+  const [categories, setCategories] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [createName, setCreateName] = useState('')
+  const [createParentId, setCreateParentId] = useState('')
+  const [selectedCategoryId, setSelectedCategoryId] = useState('')
+  const [editName, setEditName] = useState('')
+  const [editParentId, setEditParentId] = useState('')
+  const [actionState, setActionState] = useState({
+    busy: '',
+    error: '',
+    success: '',
+  })
+  const loadRequestRef = useRef(0)
+
+  const rootCategories = useMemo(
+    () => categories.filter((category) => !category.parentId),
+    [categories],
+  )
+  const selectedCategory = useMemo(
+    () => categories.find((category) => String(category.id) === selectedCategoryId) || null,
+    [categories, selectedCategoryId],
+  )
+  const selectedProductCount = selectedCategory
+    ? getCategoryProductCount(products, categories, selectedCategory.id)
+    : 0
+  const selectedChildCount = selectedCategory
+    ? getCategoryDescendantIds(categories, selectedCategory.id).size
+    : 0
+  const canChangeSelectedParent = selectedCategory ? selectedChildCount === 0 : true
+
+  const loadCategories = useCallback(async ({ quiet = false } = {}) => {
+    const requestId = loadRequestRef.current + 1
+    loadRequestRef.current = requestId
+
+    if (!quiet) {
+      setLoading(true)
+    }
+    setLoadError('')
+
+    try {
+      const nextCategories = await fetchProductCategoryTree()
+
+      if (loadRequestRef.current !== requestId) {
+        return nextCategories
+      }
+
+      setCategories(nextCategories)
+      return nextCategories
+    } catch (categoryError) {
+      if (loadRequestRef.current === requestId) {
+        setLoadError(categoryError?.message || 'Could not load categories.')
+      }
+      return []
+    } finally {
+      if (loadRequestRef.current === requestId) {
+        setLoading(false)
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadCategories()
+  }, [loadCategories])
+
+  useEffect(() => {
+    if (!selectedCategory) {
+      setEditName('')
+      setEditParentId('')
+      return
+    }
+
+    setEditName(selectedCategory.name)
+    setEditParentId(selectedCategory.parentId ? String(selectedCategory.parentId) : '')
+  }, [selectedCategory])
+
+  function setActionBusy(busy) {
+    setActionState({
+      busy,
+      error: '',
+      success: '',
+    })
+  }
+
+  function setActionError(error) {
+    setActionState({
+      busy: '',
+      error: error?.message || 'Could not update categories.',
+      success: '',
+    })
+  }
+
+  function setActionSuccess(success) {
+    setActionState({
+      busy: '',
+      error: '',
+      success,
+    })
+  }
+
+  async function handleCreateCategory(event) {
+    event.preventDefault()
+
+    const name = createName.trim()
+    const parentId = createParentId ? Number(createParentId) : null
+
+    if (!name) {
+      setActionError(new Error('Category name is required.'))
+      return
+    }
+
+    if (hasSiblingCategoryName(categories, { name, parentId })) {
+      setActionError(new Error('A category with that name already exists at this level.'))
+      return
+    }
+
+    setActionBusy('create')
+
+    try {
+      const result = await createProductCategory({ name, parentId })
+      await loadCategories({ quiet: true })
+      setCreateName('')
+      setCreateParentId('')
+      setSelectedCategoryId(String(result?.categoryId || ''))
+      setActionSuccess(result?.msg || 'Category created successfully.')
+    } catch (createError) {
+      setActionError(createError)
+    }
+  }
+
+  async function handleUpdateCategory(event) {
+    event.preventDefault()
+
+    if (!selectedCategory) {
+      setActionError(new Error('Select a category before saving.'))
+      return
+    }
+
+    const name = editName.trim()
+    const parentId = editParentId ? Number(editParentId) : null
+
+    if (!name) {
+      setActionError(new Error('Category name is required.'))
+      return
+    }
+
+    if (!canChangeSelectedParent && parentId) {
+      setActionError(new Error('Move or delete subcategories before nesting this category.'))
+      return
+    }
+
+    if (hasSiblingCategoryName(categories, { name, parentId, excludedId: selectedCategory.id })) {
+      setActionError(new Error('A category with that name already exists at this level.'))
+      return
+    }
+
+    if (name === selectedCategory.name && (selectedCategory.parentId || null) === parentId) {
+      setActionSuccess('No category changes to save.')
+      return
+    }
+
+    setActionBusy('update')
+
+    try {
+      const result = await updateProductCategory(selectedCategory.id, { name, parentId })
+      await loadCategories({ quiet: true })
+      setActionSuccess(result?.msg || 'Category updated successfully.')
+    } catch (updateError) {
+      setActionError(updateError)
+    }
+  }
+
+  async function handleDeleteCategory() {
+    if (!selectedCategory) {
+      setActionError(new Error('Select a category before deleting.'))
+      return
+    }
+
+    const impactParts = [
+      selectedProductCount
+        ? `${selectedProductCount} product${selectedProductCount === 1 ? '' : 's'} will lose this category`
+        : 'no products currently use this category',
+      selectedChildCount
+        ? `${selectedChildCount} subcategor${selectedChildCount === 1 ? 'y' : 'ies'} will also be deleted`
+        : '',
+    ].filter(Boolean)
+
+    if (!window.confirm(`Delete ${selectedCategory.name}? ${impactParts.join('. ')}.`)) {
+      return
+    }
+
+    setActionBusy('delete')
+
+    try {
+      const result = await deleteProductCategory(selectedCategory.id)
+      await loadCategories({ quiet: true })
+      setSelectedCategoryId('')
+      setActionSuccess(result?.msg || 'Category deleted successfully.')
+    } catch (deleteError) {
+      setActionError(deleteError)
+    }
+  }
+
+  return (
+    <section id="category-management" className="aurora-ops-panel aurora-product-edit-panel">
+      <div className="aurora-product-edit-hero">
+        <div className="aurora-widget-header">
+          <div className="aurora-widget-heading">
+            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+              Category management
+            </p>
+            <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+              Organize catalog groups
+            </h2>
+          </div>
+          <span className="aurora-category-count">
+            {loading ? 'Loading' : `${categories.length} categories`}
+          </span>
+        </div>
+
+        <p className="aurora-product-edit-intro">
+          Create top-level categories or subcategories, rename existing groups, and delete unused
+          category records from the backend catalog.
+        </p>
+      </div>
+
+      <div className="aurora-category-manager">
+        <form className="aurora-category-form" onSubmit={handleCreateCategory}>
+          <div>
+            <p className="aurora-product-edit-label">Create category</p>
+            <h3>Add a catalog group</h3>
+          </div>
+
+          <label className="aurora-product-edit-field">
+            <span className="aurora-product-edit-label">Name</span>
+            <input
+              className="aurora-input aurora-product-edit-input mt-3"
+              type="text"
+              value={createName}
+              disabled={Boolean(actionState.busy)}
+              onChange={(event) => {
+                setCreateName(event.target.value)
+              }}
+            />
+          </label>
+
+          <label className="aurora-product-edit-field">
+            <span className="aurora-product-edit-label">Parent</span>
+            <select
+              className="aurora-select aurora-product-edit-input mt-3"
+              value={createParentId}
+              disabled={Boolean(actionState.busy)}
+              onChange={(event) => {
+                setCreateParentId(event.target.value)
+              }}
+            >
+              <option value="">Top-level category</option>
+              {rootCategories.map((category) => (
+                <option key={category.id} value={String(category.id)}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <LiquidGlassButton
+            type="submit"
+            variant="secondary"
+            loading={actionState.busy === 'create'}
+            disabled={Boolean(actionState.busy)}
+          >
+            Create category
+          </LiquidGlassButton>
+        </form>
+
+        <div className="aurora-category-grid">
+          <section className="aurora-category-list" aria-label="Catalog categories">
+            <div className="aurora-category-list-header">
+              <p className="aurora-product-edit-label">Existing categories</p>
+              <button
+                type="button"
+                className="aurora-category-refresh"
+                disabled={Boolean(actionState.busy) || loading}
+                onClick={() => {
+                  void loadCategories()
+                }}
+              >
+                Refresh
+              </button>
+            </div>
+
+            {loadError ? (
+              <p className="aurora-message aurora-message-error" role="alert">{loadError}</p>
+            ) : null}
+
+            {loading ? (
+              <div className="aurora-product-image-empty">
+                <p>Loading categories</p>
+                <span>Fetching the current category tree.</span>
+              </div>
+            ) : categories.length ? (
+              <div className="aurora-category-tree">
+                {rootCategories.map((category) => {
+                  const children = getCategoryChildren(categories, category.id)
+                  const selected = String(category.id) === selectedCategoryId
+
+                  return (
+                    <div key={category.id} className="aurora-category-branch">
+                      <button
+                        type="button"
+                        className={`aurora-category-row ${selected ? 'aurora-category-row-active' : ''}`.trim()}
+                        onClick={() => {
+                          setSelectedCategoryId(String(category.id))
+                          setActionState({ busy: '', error: '', success: '' })
+                        }}
+                      >
+                        <span>{category.name}</span>
+                        <small>{getCategoryProductCount(products, categories, category.id)} products</small>
+                      </button>
+
+                      {children.length ? (
+                        <div className="aurora-category-children">
+                          {children.map((child) => {
+                            const childSelected = String(child.id) === selectedCategoryId
+
+                            return (
+                              <button
+                                key={child.id}
+                                type="button"
+                                className={`aurora-category-row ${childSelected ? 'aurora-category-row-active' : ''}`.trim()}
+                                onClick={() => {
+                                  setSelectedCategoryId(String(child.id))
+                                  setActionState({ busy: '', error: '', success: '' })
+                                }}
+                              >
+                                <span>{child.name}</span>
+                                <small>{getCategoryProductCount(products, categories, child.id)} products</small>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="aurora-product-image-empty">
+                <p>No categories yet</p>
+                <span>Create the first top-level category to begin grouping products.</span>
+              </div>
+            )}
+          </section>
+
+          <form className="aurora-category-form" onSubmit={handleUpdateCategory}>
+            <div>
+              <p className="aurora-product-edit-label">Edit category</p>
+              <h3>{selectedCategory?.name || 'Select a category'}</h3>
+            </div>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Category</span>
+              <select
+                className="aurora-select aurora-product-edit-input mt-3"
+                value={selectedCategoryId}
+                disabled={Boolean(actionState.busy)}
+                onChange={(event) => {
+                  setSelectedCategoryId(event.target.value)
+                  setActionState({ busy: '', error: '', success: '' })
+                }}
+              >
+                <option value="">Select a category</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {category.parentId ? `${getCategoryName(categories, category.parentId)} / ` : ''}
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Name</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="text"
+                value={editName}
+                disabled={!selectedCategory || Boolean(actionState.busy)}
+                onChange={(event) => {
+                  setEditName(event.target.value)
+                }}
+              />
+            </label>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Parent</span>
+              <select
+                className="aurora-select aurora-product-edit-input mt-3"
+                value={editParentId}
+                disabled={!selectedCategory || !canChangeSelectedParent || Boolean(actionState.busy)}
+                onChange={(event) => {
+                  setEditParentId(event.target.value)
+                }}
+              >
+                <option value="">Top-level category</option>
+                {rootCategories
+                  .filter((category) => Number(category.id) !== Number(selectedCategory?.id))
+                  .map((category) => (
+                    <option key={category.id} value={String(category.id)}>
+                      {category.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+
+            {selectedCategory ? (
+              <p className="aurora-category-impact">
+                {selectedProductCount} product{selectedProductCount === 1 ? '' : 's'} currently use
+                this category{selectedChildCount ? ` or its ${selectedChildCount} subcategories` : ''}.
+              </p>
+            ) : null}
+
+            {!canChangeSelectedParent ? (
+              <p className="aurora-category-impact">
+                Parent changes are locked while this category has subcategories.
+              </p>
+            ) : null}
+
+            <div className="aurora-category-actions">
+              <LiquidGlassButton
+                type="submit"
+                variant="secondary"
+                loading={actionState.busy === 'update'}
+                disabled={!selectedCategory || Boolean(actionState.busy)}
+              >
+                Save category
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                variant="danger"
+                loading={actionState.busy === 'delete'}
+                disabled={!selectedCategory || Boolean(actionState.busy)}
+                onClick={handleDeleteCategory}
+              >
+                Delete category
+              </LiquidGlassButton>
+            </div>
+          </form>
+        </div>
+
+        <div aria-live="polite">
+          {actionState.error ? (
+            <p className="aurora-message aurora-message-error" role="alert">{actionState.error}</p>
+          ) : null}
+          {actionState.success ? (
+            <p className="aurora-message aurora-message-success">{actionState.success}</p>
+          ) : null}
+        </div>
+      </div>
     </section>
   )
 }
@@ -1187,6 +2302,7 @@ function ProductEditPanel({ products, loading }) {
               className="aurora-product-edit-workspace"
             >
               <ProductEditSnapshot product={selectedProduct} />
+              <ProductVariantManager product={selectedProduct} />
               <ProductImageManager product={selectedProduct} />
 
               <div className="aurora-product-edit-groups">
@@ -1566,6 +2682,8 @@ export default function ProductManagerPage() {
         </section>
 
         <p className="text-sm leading-7 text-[var(--aurora-text)]">{inventoryStatus}</p>
+
+        <CategoryManagementPanel products={products} />
 
         <ProductEditPanel products={products} loading={loading} />
 
