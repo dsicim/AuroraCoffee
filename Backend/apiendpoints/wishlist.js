@@ -1,5 +1,29 @@
 const sql = require("../../Database/server.js");
-const currency = require("../components/currency.json");
+const currencymodule = require("../components/currency.json");
+const mailer = require("../components/email.js");
+async function emailDiscount(config, email, details) {
+    const itemstemplate = fs.readFileSync("./emails/discountemailitems.html", "utf-8");
+    let itemshtml = "";
+    let items = "";
+    details.forEach(product => {
+        if (items == "") items = product.product_name;
+        itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
+            .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
+            .replaceAll("{{ITEM_CATEGORY}}", product.category)
+            .replaceAll("{{OLD_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.product_price))
+            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.new_price))
+            .replaceAll("{{ITEM_DISCOUNT}}", "-" + product.discount_rate + "%");
+    });
+    if (details.length == 2) items += " and one other item";
+    else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
+    const template = fs.readFileSync("./emails/discountemail.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
+    await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, pdfResult ? [pdfResult] : []).then(res => {
+        console.log("Email sent:", res);
+    }).catch(err => {
+        console.error("Email sending error:", err);
+    });
+}
+
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0) {
         if (method === "GET") {
