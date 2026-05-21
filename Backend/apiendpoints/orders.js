@@ -145,7 +145,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
                 if (!["Admin","Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
                 if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.cartId) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                
+                const orderId = body.data.id;
+                const cartId = body.data.cartId;
                 const result = await sql.getAllOrders(orderId).then(result => {
                     if (result.success) {
                         const errors = [];
