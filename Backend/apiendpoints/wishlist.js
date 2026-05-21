@@ -130,7 +130,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             return null;
         });
         const emailqueue = {};
-        for (const q in queue) {
+        queue.forEach(q => {
             if (emailqueue[q.user_id]) {
                 emailqueue[q.user_id].details.push({
                     product_name: q.product_name,
@@ -158,7 +158,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }]
                 };
             }
-        }
+        });
         res.write(JSON.stringify(emailqueue));
         res.end();
 
