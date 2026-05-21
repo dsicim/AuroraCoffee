@@ -4,6 +4,7 @@ import { test } from 'node:test'
 import {
   buildBillingSummary,
   buildDeliverySummary,
+  buildPaymentSummary,
 } from './payment3ds.js'
 
 test('buildDeliverySummary joins customer name and address lines for the checkout receipt', () => {
@@ -36,4 +37,21 @@ test('buildBillingSummary omits blank name and address segments from billing det
     addressLine1: '',
     addressLine2: 'Office',
   }).address, 'Office')
+})
+
+test('buildPaymentSummary masks manual card numbers for order confirmation display', () => {
+  assert.deepEqual(buildPaymentSummary({
+    payment: {
+      cardholder: 'Ege Bulutoglu',
+      cardNumber: '4111 1111 1111 1234',
+      expiry: '12/30',
+    },
+    savedCards: [],
+    selectedSavedCardId: '',
+  }), {
+    mode: 'manual',
+    cardholder: 'Ege Bulutoglu',
+    maskedCardNumber: '•••• •••• •••• 1234',
+    expiry: '12/30',
+  })
 })
