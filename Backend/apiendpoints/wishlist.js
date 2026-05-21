@@ -129,7 +129,37 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             console.error("Get notify queue error:", err);
             return null;
         });
-        res.write(JSON.stringify(queue));
+        const emailqueue = {};
+        for (const q in queue) {
+            if (emailqueue[q.user_id]) {
+                emailqueue[q.user_id].details.push({
+                    product_name: q.product_name,
+                    product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.product_image,
+                    category: q.category_name,
+                    product_price: q.product_price,
+                    final_price: q.final_price,
+                    discount_rate: q.discount_rate,
+                    stock: q.stock
+                });
+            }
+            else {
+                emailqueue[q.user_id] = {
+                    email: q.username,
+                    username: q.displayname,
+                    emailblocked: Boolean(q.emailblocked),
+                    details: [{
+                        product_name: q.product_name,
+                        product_image: "https://auroracoffee.youcantdrop.com/uploads/" + q.product_image,
+                        category: q.category_name,
+                        product_price: q.product_price,
+                        final_price: q.final_price,
+                        discount_rate: q.discount_rate,
+                        stock: q.stock
+                    }]
+                };
+            }
+        }
+        res.write(JSON.stringify(emailqueue));
         res.end();
 
         return { s: 200, j: false, d: null, resended: true };
