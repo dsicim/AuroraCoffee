@@ -500,8 +500,74 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
     }
 };
 
-func.getCategories = async function (parent) {
+func.getCategories = async function (parent = null) {
+    try {
+        let query = 'SELECT * FROM categories';
+        const params = [];
+        if (parent !== undefined) {
+            query += ' WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?');
+            if (parent !== null) params.push(parent);
+        }
+        const [rows] = await pool.execute(query, params);
+        return { success: true, categories: rows };
+    } catch (error) {
+        console.error('Get categories error:', error);
+        throw new DBError(500, 'Failed to fetch categories');
+    }
+};
 
+func.addCategory = async function (name, parent_id = null) {
+    if (!name) {
+        throw new DBError(400, 'Category name is required');
+    }
+    try {
+        const [result] = await pool.execute(
+            'INSERT INTO categories (name, parent_id) VALUES (?, ?)',
+            [name, parent_id]
+        );
+        return { success: true, message: 'Category added successfully', categoryId: result.insertId };
+    } catch (error) {
+        console.error('Add category error:', error);
+        throw new DBError(500, 'Failed to add category: ' + error.message);
+    }
+};
+
+func.updateCategory = async function (categoryId, name, parent_id = null) {
+    if (!categoryId) {
+        throw new DBError(400, 'Category ID is required');
+    }
+    try {
+        const [result] = await pool.execute(
+            'UPDATE categories SET name = ?, parent_id = ? WHERE id = ?',
+            [name, parent_id, categoryId]
+        );
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Category not found');
+        }
+        return { success: true, message: 'Category updated successfully' };
+    } catch (error) {
+        console.error('Update category error:', error);
+        throw new DBError(500, 'Failed to update category: ' + error.message);
+    }
+};
+
+func.deleteCategory = async function (categoryId) {
+    if (!categoryId) {
+        throw new DBError(400, 'Category ID is required');
+    }
+    try {
+        const [result] = await pool.execute(
+            'DELETE FROM categories WHERE id = ?',
+            [categoryId]
+        );
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Category not found');
+        }
+        return { success: true, message: 'Category deleted successfully' };
+    } catch (error) {
+        console.error('Delete category error:', error);
+        throw new DBError(500, 'Failed to delete category: ' + error.message);
+    }
 };
 
 func.decreaseStock = async function (productId, qty, variantId = null) {
@@ -561,24 +627,189 @@ func.increaseStock = async function (productId, qty) {
 };
 
 func.addProduct = async function (data) {
-    const { name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes, material, capacity, image_url, discount_rate } = data;
+    const {
+        product_code, name, description, price, cost, stock, has_variants,
+        category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
+        material, capacity, image_url, discount_rate, warranty_status,
+        distributor_information, sales
+    } = data;
     if (!name || price === undefined) {
         throw new DBError(400, 'Name and price are required');
     }
+    const connection = await pool.getConnection();
     try {
-        const [result] = await pool.execute(`
+        await connection.beginTransaction();
+        const [result] = await connection.execute(`
             INSERT INTO products (
-                name, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes, material, capacity, image_url, discount_rate
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                product_code, name, description, price, cost, stock, has_variants,
+                category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
+                material, capacity, discount_rate, warranty_status,
+                distributor_information, sales
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            name, description || null, price, stock || 0, category_id || null,
-            origin || null, roast_level || null, acidity || null, flavor_notes || null,
-            material || null, capacity || null, image_url || null, discount_rate || 0
+            product_code || null, name, description || null, price, cost || 0.00, stock || 0, has_variants || false,
+            category_id || null, weight || null, tax || 0, origin || null, roast_level || null, acidity || null, flavor_notes || null,
+            material || null, capacity || null, discount_rate || 0.00, warranty_status || null,
+            distributor_information || null, sales || 0
         ]);
-        return { success: true, message: 'Product added successfully', productId: result.insertId };
+        const productId = result.insertId;
+
+        if (image_url) {
+            await connection.execute(`
+                INSERT INTO product_images (product_id, image_url, is_primary)
+                VALUES (?, ?, true)
+            `, [productId, image_url]);
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Product added successfully', productId };
     } catch (error) {
+        await connection.rollback();
         console.error('Add product error:', error);
-        throw new DBError(500, 'Failed to add product');
+        throw new DBError(500, 'Failed to add product: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.addVariant = async function (data) {
+    const { product_id, price_add, price_mult, cost, stock, discount_rate, option_value_ids } = data;
+    if (!product_id) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        let variant_code = data.variant_code || null;
+        if (option_value_ids && option_value_ids.length > 0) {
+            // Fetch group codes and value codes
+            const [optRows] = await connection.query(`
+                SELECT pog.group_code, pov.value_code
+                FROM product_option_values pov
+                JOIN product_option_groups pog ON pov.product_option_group_id = pog.id
+                WHERE pov.id IN (?)
+            `, [option_value_ids]);
+
+            const optionMap = {};
+            for (const row of optRows) {
+                if (row.group_code && row.value_code) {
+                    optionMap[row.group_code] = row.value_code;
+                }
+            }
+            variant_code = Buffer.from(JSON.stringify(optionMap)).toString('base64');
+        }
+
+        const [result] = await connection.execute(`
+            INSERT INTO product_variants (
+                product_id, variant_code, price_add, price_mult, cost, stock, discount_rate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [
+            product_id, variant_code, price_add || 0.00, price_mult || 1.0000, cost || 0.00, stock || 0, discount_rate || 0.00
+        ]);
+
+        const variantId = result.insertId;
+
+        // Insert variant values mapping
+        if (option_value_ids && option_value_ids.length > 0) {
+            for (const valId of option_value_ids) {
+                await connection.execute(`
+                    INSERT INTO product_variant_values (product_variant_id, product_option_value_id)
+                    VALUES (?, ?)
+                `, [variantId, valId]);
+            }
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Variant added successfully', variantId };
+    } catch (error) {
+        await connection.rollback();
+        console.error('Add variant error:', error);
+        throw new DBError(500, 'Failed to add variant: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.updateVariant = async function (variantId, data) {
+    if (!variantId) {
+        throw new DBError(400, 'Variant ID is required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+
+        const updateData = { ...data };
+        const option_value_ids = updateData.option_value_ids;
+        delete updateData.option_value_ids;
+
+        if (option_value_ids !== undefined) {
+            // Re-generate variant code
+            let variant_code = null;
+            if (option_value_ids && option_value_ids.length > 0) {
+                const [optRows] = await connection.query(`
+                    SELECT pog.group_code, pov.value_code
+                    FROM product_option_values pov
+                    JOIN product_option_groups pog ON pov.product_option_group_id = pog.id
+                    WHERE pov.id IN (?)
+                `, [option_value_ids]);
+
+                const optionMap = {};
+                for (const row of optRows) {
+                    if (row.group_code && row.value_code) {
+                        optionMap[row.group_code] = row.value_code;
+                    }
+                }
+                variant_code = Buffer.from(JSON.stringify(optionMap)).toString('base64');
+            }
+            updateData.variant_code = variant_code;
+
+            // Delete old mapping and insert new mapping
+            await connection.execute('DELETE FROM product_variant_values WHERE product_variant_id = ?', [variantId]);
+            if (option_value_ids && option_value_ids.length > 0) {
+                for (const valId of option_value_ids) {
+                    await connection.execute(`
+                        INSERT INTO product_variant_values (product_variant_id, product_option_value_id)
+                        VALUES (?, ?)
+                    `, [variantId, valId]);
+                }
+            }
+        }
+
+        if (Object.keys(updateData).length > 0) {
+            const fields = Object.keys(updateData).map(key => `${key} = ?`).join(', ');
+            const values = Object.values(updateData);
+            values.push(variantId);
+            const [result] = await connection.execute(`UPDATE product_variants SET ${fields} WHERE id = ?`, values);
+            if (result.affectedRows === 0) {
+                throw new DBError(404, 'Variant not found');
+            }
+        }
+
+        await connection.commit();
+        return { success: true, message: 'Variant updated successfully' };
+    } catch (error) {
+        await connection.rollback();
+        console.error('Update variant error:', error);
+        throw new DBError(500, 'Failed to update variant: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.deleteVariant = async function (variantId) {
+    if (!variantId) {
+        throw new DBError(400, 'Variant ID is required');
+    }
+    try {
+        const [result] = await pool.execute('DELETE FROM product_variants WHERE id = ?', [variantId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Variant not found');
+        }
+        return { success: true, message: 'Variant deleted successfully' };
+    } catch (error) {
+        console.error('Delete variant error:', error);
+        throw new DBError(500, 'Failed to delete variant: ' + error.message);
     }
 };
 
@@ -706,17 +937,13 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
     if (!productId || !imageUrl) {
         throw new DBError(400, 'Product ID and Image URL are required');
     }
+    const connection = await pool.getConnection();
     try {
-        const connection = await pool.getConnection();
         await connection.beginTransaction();
         if (isPrimary) {
             await connection.execute(
                 'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1',
                 [productId]
-            );
-            await connection.execute(
-                'UPDATE products SET image_url = ? WHERE id = ?',
-                [imageUrl, productId]
             );
         }
         const [result] = await connection.execute(
@@ -726,8 +953,11 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
         await connection.commit();
         return { success: true, message: 'Image added successfully', imageId: result.insertId, url: imageUrl };
     } catch (error) {
+        await connection.rollback();
         console.error('Add product image error:', error);
         throw new DBError(500, 'Failed to add product image');
+    } finally {
+        connection.release();
     }
 };
 
@@ -738,31 +968,34 @@ func.setImageOrder = async function (imageUrl, newSortOrder) {
     if (!Array.isArray(newSortOrder)) {
         throw new DBError(400, 'New sort order must be an array of image URLs in the desired order');
     }
+    const connection = await pool.getConnection();
     try {
-        const connection = await pool.getConnection();
         await connection.beginTransaction();
         for (let i = 0; i < newSortOrder.length; i++) {
             const url = newSortOrder[i];
             const [result] = await connection.execute('UPDATE product_images SET sort_order = ? WHERE image_url = ?', [i, url]);
             if (result.affectedRows === 0) {
-                await connection.rollback();
                 throw new DBError(404, `Image with URL ${url} not found`);
             }
         }
         await connection.commit();
         return { success: true, message: 'Image order updated successfully' };
     } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Set image order error:', error);
         throw new DBError(500, 'Failed to set image order');
+    } finally {
+        connection.release();
     }
-}
+};
 
 func.setPrimaryImage = async function (productId, imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
+    const connection = await pool.getConnection();
     try {
-        const connection = await pool.getConnection();
         await connection.beginTransaction();
         const [result2] = await connection.execute(
             'UPDATE product_images SET is_primary = 1 WHERE product_id = ? AND image_url = ?',
@@ -771,19 +1004,19 @@ func.setPrimaryImage = async function (productId, imageUrl) {
         if (result2.affectedRows === 0) {
             throw new DBError(404, 'Image or product not found');
         }
-        const [result] = await connection.execute(
+        await connection.execute(
             'UPDATE product_images SET is_primary = 0 WHERE product_id = ? AND is_primary = 1 AND image_url != ?',
             [productId, imageUrl]
-        );
-        const [result1] = await connection.execute(
-            'UPDATE products SET image_url = ? WHERE id = ?',
-            [imageUrl, productId]
         );
         await connection.commit();
         return { success: true, message: 'Primary image set successfully' };
     } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Set primary image error:', error);
         throw new DBError(500, 'Failed to set primary image');
+    } finally {
+        connection.release();
     }
 };
 
@@ -791,19 +1024,22 @@ func.removeProductImage = async function (imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
+    const connection = await pool.getConnection();
     try {
-        const connection = await pool.getConnection();
         await connection.beginTransaction();
         const [result] = await connection.execute('DELETE FROM product_images WHERE image_url = ?', [imageUrl]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Image not found');
         }
-        await connection.execute('UPDATE products SET image_url = NULL WHERE image_url = ?', [imageUrl]);
         await connection.commit();
         return { success: true, message: 'Image removed successfully' };
     } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Remove product image error:', error);
         throw new DBError(500, 'Failed to remove product image');
+    } finally {
+        connection.release();
     }
 };
 
@@ -1372,19 +1608,22 @@ func.getCart = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
         const [rows] = await pool.execute(`
-            SELECT c.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url, pv.variant_code AS variant_code, pv.price_add AS variant_price_add, pv.price_mult AS variant_price_mult
+            SELECT c.*, p.name AS product_name, p.price AS product_price, p.cost AS product_cost, p.discount_rate AS discount_rate, pi.image_url, pv.variant_code AS variant_code, pv.price_add AS variant_price_add, pv.price_mult AS variant_price_mult, pv.cost AS variant_cost
             FROM cart c 
             JOIN products p ON c.product_id = p.id 
+            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
             LEFT JOIN product_variants pv ON c.variant_id = pv.id AND pv.product_id = c.product_id
             WHERE c.user_id = ?
         `, [userId]);
         for (const row of rows) {
             row.product_price = parseFloat(row.product_price);
+            row.product_cost = parseFloat(row.product_cost || 0);
             row.discount_rate = parseFloat(row.discount_rate);
             if (row.variant_id) {
                 row.variant_price_add = parseFloat(row.variant_price_add);
                 row.variant_price_mult = parseFloat(row.variant_price_mult);
                 row.variant_price = (Math.round(((row.product_price + (row.variant_price_add || 0)) * (row.variant_price_mult || 1)) * 100) / 100);
+                row.variant_cost = parseFloat(row.variant_cost || 0);
                 delete row.variant_price_add;
                 delete row.variant_price_mult;
             }
@@ -1591,9 +1830,10 @@ func.getWishlists = async function (userId) {
     if (!userId) throw new DBError(400, 'User ID is required');
     try {
         const [rows] = await pool.execute(`
-            SELECT w.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, p.image_url 
+            SELECT w.*, p.name AS product_name, p.price AS product_price, p.discount_rate AS discount_rate, pi.image_url 
             FROM wishlist w 
             JOIN products p ON w.product_id = p.id 
+            LEFT JOIN product_images pi ON pi.product_id = p.id AND pi.is_primary = 1
             WHERE w.user_id = ?
         `, [userId]);
         return { success: true, wishlist: rows };
@@ -1630,6 +1870,123 @@ func.removeFromWishlist = async function (userId, productId) {
         if (error instanceof DBError) throw error;
         console.error('Remove from wishlist error:', error);
         throw new DBError(500, 'Failed to remove from wishlist');
+    }
+}
+
+func.getAnalyticsData = async function (startDate = null, endDate = null) {
+    try {
+        let query = 'SELECT o.*, u.displayname AS customer_name FROM orders o LEFT JOIN users u ON o.user_id = u.id WHERE o.status != ?';
+        const params = ['cancelled'];
+
+        if (startDate) {
+            query += ' AND o.created_at >= ?';
+            params.push(startDate);
+        }
+        if (endDate) {
+            query += ' AND o.created_at <= ?';
+            params.push(endDate);
+        }
+        query += ' ORDER BY o.created_at ASC';
+
+        const [orders] = await pool.execute(query, params);
+
+        // Fetch fallback cost map
+        const [allProducts] = await pool.query('SELECT id, cost FROM products');
+        const [allVariants] = await pool.query('SELECT id, cost FROM product_variants');
+
+        const productCostMap = {};
+        for (const p of allProducts) {
+            productCostMap[p.id] = parseFloat(p.cost || 0);
+        }
+
+        const variantCostMap = {};
+        for (const v of allVariants) {
+            variantCostMap[v.id] = parseFloat(v.cost || 0);
+        }
+
+        const dailyData = {};
+        let totalSales = 0;
+        let totalCost = 0;
+        let totalRefunds = 0;
+
+        const aes = require('../Backend/components/aes256.js');
+
+        for (const ordr of orders) {
+            let details = null;
+            try {
+                let parsedDetails = ordr.details;
+                if (typeof parsedDetails === 'string') {
+                    parsedDetails = aes.pjs(parsedDetails);
+                }
+                if (parsedDetails && !parsedDetails.e) {
+                    const decrypted = aes.decrypt(parsedDetails, ordr.user_id);
+                    if (decrypted.s) {
+                        details = aes.pjs(decrypted.value);
+                    }
+                }
+            } catch (err) {
+                console.error("Analytics decryption error for order:", ordr.id, err);
+            }
+
+            if (!details || !details.products) continue;
+
+            const orderDateStr = new Date(ordr.created_at).toISOString().split('T')[0];
+            if (!dailyData[orderDateStr]) {
+                dailyData[orderDateStr] = { date: orderDateStr, sales: 0, cost: 0, profit: 0, refunds: 0 };
+            }
+
+            for (const item of details.products) {
+                const productId = item.product_id || item.id;
+                const variantId = item.variant_id;
+                const qty = parseInt(item.quantity || 1);
+                const price = parseFloat(item.product_price || item.price || 0);
+                const deduction = parseFloat(item.pricededuction || 0);
+
+                const itemSales = (price * qty) - deduction;
+                
+                // Resolve cost
+                let unitCost = parseFloat(item.product_cost || item.variant_cost || item.cost || 0);
+                if (unitCost === 0) {
+                    if (variantId && variantCostMap[variantId] !== undefined) {
+                        unitCost = variantCostMap[variantId];
+                    } else if (productId && productCostMap[productId] !== undefined) {
+                        unitCost = productCostMap[productId];
+                    }
+                }
+                const itemCost = unitCost * qty;
+
+                let itemRefund = 0;
+                if (item.refunded) {
+                    itemRefund = itemSales; // Refunded full amount of the sale
+                }
+
+                dailyData[orderDateStr].sales += itemSales;
+                dailyData[orderDateStr].cost += itemCost;
+                dailyData[orderDateStr].refunds += itemRefund;
+                dailyData[orderDateStr].profit += (itemSales - itemCost - itemRefund);
+
+                totalSales += itemSales;
+                totalCost += itemCost;
+                totalRefunds += itemRefund;
+            }
+        }
+
+        // Convert dailyData map to sorted array
+        const timeseries = Object.values(dailyData).sort((a, b) => a.date.localeCompare(b.date));
+
+        return {
+            success: true,
+            summary: {
+                totalSales: Math.round(totalSales * 100) / 100,
+                totalCost: Math.round(totalCost * 100) / 100,
+                totalRefunds: Math.round(totalRefunds * 100) / 100,
+                netProfit: Math.round((totalSales - totalCost - totalRefunds) * 100) / 100
+            },
+            timeseries: timeseries
+        };
+    } catch (error) {
+        console.error('Get analytics data error:', error);
+        throw new DBError(500, 'Failed to calculate analytics: ' + error.message);
     }
 }
 
