@@ -9,7 +9,8 @@ async function emailDiscount(config, email, details) {
     details.forEach(product => {
         if (items == "") items = product.product_name;
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
-            .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
+            .replaceAll("{{ITEM_IMAGE_URL}}", product.image_url)
+            .replaceAll("{{ITEM_URL}}", "https://auroracoffee.youcantdrop.com/product/" + product.product_code)
             .replaceAll("{{ITEM_CATEGORY}}", product.category)
             .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.final_price))
             .replaceAll("{{ITEM_STOCK}}", product.stock)
