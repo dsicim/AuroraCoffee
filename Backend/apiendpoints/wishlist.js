@@ -7,7 +7,7 @@ async function emailDiscount(config, email, details) {
     let itemshtml = "";
     let items = "";
     console.log(details);
-    details.forEach(product => {
+    details.forEach((product,i) => {
         if (items == "") items = product.product_name;
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
             .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
@@ -15,6 +15,7 @@ async function emailDiscount(config, email, details) {
             .replaceAll("{{ITEM_CATEGORY}}", product.category)
             .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol("TRY", product.final_price))
             .replaceAll("{{ITEM_STOCK}}", product.stock)
+            .replaceAll("{{BORDERBOTTOM}}", i < details.length - 1 ? 'border-bottom:1px solid #e7eee6;' : '')
             .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol("TRY", product.product_price) + '</span><br><br><span style="font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
     });
     if (details.length == 2) items += " and one other item";
