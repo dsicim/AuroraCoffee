@@ -56,3 +56,7 @@ test('resolveReviewPrivacySelection pads short selections with the selection fal
 test('buildReviewPrivacyPreviewName combines visible full and initial words', () => {
   assert.equal(buildReviewPrivacyPreviewName(['full', 'initials'], 'Ege Bulutoglu'), 'Ege B.')
 })
+
+test('buildReviewPrivacyPreviewName returns Anonymous when every word is hidden', () => {
+  assert.equal(buildReviewPrivacyPreviewName(['anonymous', 'anonymous'], 'Ege Bulutoglu'), 'Anonymous')
+})
