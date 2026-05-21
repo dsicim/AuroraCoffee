@@ -68,4 +68,11 @@ describe('pricing helpers', () => {
       discountRate: 12.5,
     })
   })
+
+  it('keeps the base product price when variants are more expensive', () => {
+    assert.equal(getProductStartingPrice({
+      price: 14,
+      variants: [{ price: 18 }, { price: 16 }],
+    }), 14)
+  })
 })
