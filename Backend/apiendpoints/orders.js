@@ -199,7 +199,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     result.d.order.order.details.products[product].refundRejected = true;
                 }
                 const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), currentUser.id);
-                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails)).then(res => {
+                let restock = null;
+                if (endpoint[1] === "approve") {
+                    restock = {
+                        productId: result.d.order.order.details.products[product].id,
+                        variantId: result.d.order.order.details.products[product].variantId,
+                        quantity: result.d.order.order.details.products[product].quantity
+                    }
+                }
+                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails), restock).then(res => {
                     if (res.success) return { s: 200, j: true, d: { message: (endpoint[1] === "approve") ? "Refund processed successfully" : "Refund request rejected successfully" } };
                     else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
                 }).catch(err => {

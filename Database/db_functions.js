@@ -1361,19 +1361,30 @@ func.updateOrderDetails = async function (orderId, details) {
         throw new DBError(500, 'Failed to update order details');
     }
 };
-func.updateOrderStatus = async function (orderId, status, paymentId = null) {
+func.updateOrderStatus = async function (orderId, status, paymentId = null, restock = null) {
+    const connection = await pool.getConnection();
     if (!orderId || !status) {
         throw new DBError(400, 'Order ID and status are required');
     }
     try {
-        const [result] = paymentId ? await pool.execute('UPDATE orders SET status = ?, purchaseId = ? WHERE id = ?', [status, paymentId, orderId]) : await pool.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
+        const [result] = paymentId ? await connection.execute('UPDATE orders SET status = ?, purchaseId = ? WHERE id = ?', [status, paymentId, orderId]) : await connection.execute('UPDATE orders SET status = ? WHERE id = ?', [status, orderId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Order not found');
         }
+        if (restock !== null) {
+            await connection.execute('UPDATE products p SET p.stock = p.stock + ? WHERE p.id = ?', [restock.quantity, restock.productId]);
+            if (restock.variantId) {
+                await connection.execute('UPDATE product_variants pv SET pv.stock = pv.stock + ? WHERE pv.id = ?', [restock.quantity, restock.variantId]);
+            }
+        }
+        connection.commit();
         return { success: true, message: 'Order status updated successfully' };
     } catch (error) {
+        connection.rollback();
         console.error('Update order status error:', error);
         throw new DBError(500, 'Failed to update order status');
+    } finally {
+        connection.release();
     }
 };
 func.getOrderByPayment = async function (orderId, paymentId) {
