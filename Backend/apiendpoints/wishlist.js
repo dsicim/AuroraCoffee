@@ -24,7 +24,7 @@ async function emailDiscount(config, email, details) {
     });
 }
 
-async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
+async function handleAPI(config, method, endpoint, query, body, headers, currentUser, res) {
     if (endpoint.length === 0) {
         if (method === "GET") {
             if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
@@ -111,6 +111,28 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "notify") {
+        if (!currentUser || currentUser.e) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+        if (method !== "POST") return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+        if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.type || !["discount", "stock"].includes(body.data.type)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+        const type = body.data.type;
+        res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache", "Connection": "keep-alive" });
+        res.flushHeaders();
+        const queue = await sql.getNotifyQueue().then(result => {
+            if (result.success) {
+                return type === "discount" ? result.discount : result.stock;
+            }
+        }).catch(err => {
+            res.end("ERROR: Issue with pulling notify queue: " + err);
+            console.error("Get notify queue error:", err);
+            return null;
+        });
+        res.write(JSON.stringify(queue));
+        res.end();
+
+        return { s: 200, j: false, d: null, resended: true };
     }
     else return { s: 404, j: true, d: { e: "Not Found" } };
 }
