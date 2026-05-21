@@ -18,3 +18,7 @@ test('getDisplayNameWords collapses extra whitespace in customer display names',
 test('buildReviewPrivacyWordPreview shows full words when full privacy is selected', () => {
   assert.equal(buildReviewPrivacyWordPreview('Ege', 'full'), 'Ege')
 })
+
+test('buildReviewPrivacyWordPreview hides words when anonymous privacy is selected', () => {
+  assert.equal(buildReviewPrivacyWordPreview('Ege', 'anonymous'), '-')
+})
