@@ -20,12 +20,12 @@ async function emailDiscount(config, email, details) {
     if (details.length == 2) items += " and one other item";
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
     const template = fs.readFileSync("./emails/discountemail.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
-    return {html:template, title: items + " from your wishlist " + (details.length > 1 ? "are" : "is") + " now on sale!"};
-    // await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, []).then(res => {
-    //     console.log("Email sent:", res);
-    // }).catch(err => {
-    //     console.error("Email sending error:", err);
-    // });
+    return await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, []).then(res => {
+        console.log("Email sent:", res);
+        return {s: true, res: res};
+    }).catch(err => {
+        return {s: false, err: err};
+    });
 }
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser, res) {
@@ -180,23 +180,30 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         delete emailqueue;
         for (let i = 0; i < emailPromises.length; i++) {
             const emailData = emailPromises[i];
+            let setNotify = false;
             if (!emailData.emailblocked) {
-                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => res).catch(err => {
-                    res.write(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err + "\n");
+                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => {
+                    if (res.s) {
+                        setNotify = true;
+                        res.write(`Notification email sent successfully to ${emailData.email} (${i+1} / ${emailPromises.length})\n`);
+                    }
+                    else {
+                        res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
+                    }
+                }).catch(err => {
+                    res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
                     return;
                 });
-                res.write(emailResult.title);
-                res.write("\n\n");
-                res.write(emailResult.html);
             }
-            else res.write(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
-            res.write("\n\n");
-            res.write("----------------\n\n");
-            // await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
-            //     console.error(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
-            // });
+            else {
+                setNotify = true;
+                res.write(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
+            }
+            await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
+                res.write(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
+            });
         };
-        console.log("Finished processing notify queue");
+        res.write("Finished sending all emails");
         //res.write(JSON.stringify(emailPromises));
         res.end();
 
