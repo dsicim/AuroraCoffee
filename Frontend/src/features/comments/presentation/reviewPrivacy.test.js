@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  buildReviewPrivacyPreviewName,
   buildReviewPrivacySelectionFromCode,
   buildReviewPrivacyWordPreview,
   getDisplayNameWords,
@@ -50,4 +51,8 @@ test('resolveReviewPrivacySelection pads short selections with the selection fal
     'anonymous',
     'anonymous',
   ])
+})
+
+test('buildReviewPrivacyPreviewName combines visible full and initial words', () => {
+  assert.equal(buildReviewPrivacyPreviewName(['full', 'initials'], 'Ege Bulutoglu'), 'Ege B.')
 })
