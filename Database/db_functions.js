@@ -502,14 +502,14 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
 
 func.getCategories = async function (parent = null) {
     try {
-        let query = 'SELECT * FROM categories JOIN products ON categories.id = products.category_id';
+        let query = 'SELECT * FROM categories ';
         const params = [];
         if (parent !== undefined) {
             query += ' WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?');
             if (parent !== null) params.push(parent);
         }
         const [rows] = await pool.execute(query, params);
-        const [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT * FROM categories JOIN products ON categories.id = products.category_id WHERE categories.parent_id ' + (parent === null ? 'IS NULL' : '= ?') + ')', params);
+        const [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?') + ')', params);
         return { success: true, categories: rows, products: rows2 };
     } catch (error) {
         console.error('Get categories error:', error);
