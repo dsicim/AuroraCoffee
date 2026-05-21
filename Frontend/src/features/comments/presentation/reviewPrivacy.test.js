@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
 import {
+  buildReviewPrivacyCode,
   buildReviewPrivacyPreviewName,
   buildReviewPrivacySelectionFromCode,
   buildReviewPrivacyWordPreview,
@@ -59,4 +60,8 @@ test('buildReviewPrivacyPreviewName combines visible full and initial words', ()
 
 test('buildReviewPrivacyPreviewName returns Anonymous when every word is hidden', () => {
   assert.equal(buildReviewPrivacyPreviewName(['anonymous', 'anonymous'], 'Ege Bulutoglu'), 'Anonymous')
+})
+
+test('buildReviewPrivacyCode serializes a per-word privacy selection', () => {
+  assert.equal(buildReviewPrivacyCode(['full', 'initials', 'anonymous'], 'Ege Can Bulutoglu'), 'sih')
 })
