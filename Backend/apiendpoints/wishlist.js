@@ -175,10 +175,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 res.write(emailResult.title);
                 res.write("\n\n");
                 res.write(emailResult.html);
-                res.write("\n\n");
-                res.write("----------------\n\n");
             }
-            else console.log(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
+            else res.write(`User ${emailData.username} (${emailData.email}) has blocked emails, skipping notification for their wishlist items.`);
+            res.write("\n\n");
+            res.write("----------------\n\n");
             // await sql.setNotified(emailData.user_id, type, emailData.emailblocked).then(res => {}).catch(err => {
             //     console.error(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
             // });
