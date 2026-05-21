@@ -34,4 +34,23 @@ function GetCurrencies() {
     });
     return obj;
 }
-module.exports = { GetCurrencies };
+function currencyToDecimal(currency, price) {
+    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "SEK": "", "IRR": "", "RUB": "", "CHF": "," }[currency] || ",");
+    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "SEK": ".", "IRR": ".", "RUB": ".", "CHF": "." }[currency] || ".");
+    // mille should be printed on every thousand, and punctuation should be printed on every decimal
+    let priceStr = price.toFixed(2).replace(".", punctuation);
+    let priceidx = priceStr.length - 3;
+    priceidx = priceidx - 3;
+    while (priceidx > 0) {
+        priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
+        priceidx = priceidx - 3;
+    }
+    return priceStr;
+}
+function currencyToSymbol(currency, price, negative = false) {
+    price = parseFloat(price);
+    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
+    if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
+    else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
+}
+module.exports = { GetCurrencies, currencyToDecimal, currencyToSymbol};

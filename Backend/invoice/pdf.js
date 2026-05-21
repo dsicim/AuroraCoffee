@@ -6,24 +6,7 @@ const logo = fs.readFileSync(path.join(__dirname, "invoicelogo.png"));
 const logoHeight = 400;
 const logoWidth = 803;
 
-function currencyToDecimal(currency, price) {
-    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "SEK": "", "IRR": "", "RUB": "", "CHF": "," }[currency] || ",");
-    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "SEK": ".", "IRR": ".", "RUB": ".", "CHF": "." }[currency] || ".");
-    // mille should be printed on every thousand, and punctuation should be printed on every decimal
-    let priceStr = price.toFixed(2).replace(".", punctuation);
-    let priceidx = priceStr.length - 3;
-    priceidx = priceidx - 3;
-    while (priceidx > 0) {
-        priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
-        priceidx = priceidx - 3;
-    }
-    return priceStr;
-}
-function currencyToSymbol(currency, price, negative = false) {
-    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
-    else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
-}
+const currencymodule = require("../components/currency.js");
 async function generatePDF(orderData, print = false) {
     const document = await new Promise((resolve, reject) => {
         const margin = 28;
@@ -67,7 +50,7 @@ async function generatePDF(orderData, print = false) {
                 doc.font("InvoiceMedium").fontSize(12).text("Order ID: "+order, { align: "right"});
                 doc.font("InvoiceMedium").fontSize(12).text("Issue Date: "+date, { align: "right"});
                 doc.font("InvoiceMedium").fontSize(12).text("Due Date: "+date, { align: "right"});
-                doc.font("InvoiceBold").fontSize(14).text("Amount Due: "+currencyToSymbol(currency, orderData.details.price.paid), { align: "right"});
+                doc.font("InvoiceBold").fontSize(14).text("Amount Due: "+currencymodule.currencyToSymbol(currency, orderData.details.price.paid), { align: "right"});
                 const rightHeight = doc.y;
                 doc.y = addressHeight;
                 doc.x = 280;
@@ -190,17 +173,17 @@ async function generatePDF(orderData, print = false) {
             doc.y = startY;
             if (debuglines) doc.lineWidth(1).moveTo(tableX[2], doc.y).lineTo(tableX[3] - 5, doc.y).stroke();
             doc.font("InvoiceRegular").fontSize(12).text(tax+"%", tableX[2], doc.y, { align: "left", width: tableX[3] - tableX[2] - 5 });
-            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, taxAmount), tableX[2], doc.y, { align: "left", width: tableX[3] - tableX[2] - 5 });
+            doc.font("InvoiceLight").fontSize(12).text(currencymodule.currencyToSymbol(currency, taxAmount), tableX[2], doc.y, { align: "left", width: tableX[3] - tableX[2] - 5 });
             if (doc.y > endY) endY = doc.y;
             doc.y = startY;
             if (debuglines) doc.lineWidth(1).moveTo(tableX[3], doc.y).lineTo(tableX[4] - 5, doc.y).stroke();
-            doc.font("InvoiceRegular").fontSize(12).text(currencyToSymbol(currency, unitPrice), tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
-            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, unitPriceWT) + " with tax", tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
+            doc.font("InvoiceRegular").fontSize(12).text(currencymodule.currencyToSymbol(currency, unitPrice), tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
+            doc.font("InvoiceLight").fontSize(12).text(currencymodule.currencyToSymbol(currency, unitPriceWT) + " with tax", tableX[3], doc.y, { align: "left", width: tableX[4] - tableX[3] - 5 });
             if (doc.y > endY) endY = doc.y;
             doc.y = startY;
             if (debuglines) doc.lineWidth(1).moveTo(tableX[4], doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
-            doc.font("InvoiceBold").fontSize(12).text(currencyToSymbol(currency, price), tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
-            doc.font("InvoiceLight").fontSize(12).text(currencyToSymbol(currency, priceWT) + " with tax", tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
+            doc.font("InvoiceBold").fontSize(12).text(currencymodule.currencyToSymbol(currency, price), tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
+            doc.font("InvoiceLight").fontSize(12).text(currencymodule.currencyToSymbol(currency, priceWT) + " with tax", tableX[4], doc.y, { align: "left", width: (doc.page.width-margin) - tableX[4] });
             if (doc.y > endY) endY = doc.y;
             doc.y = endY;
             doc.moveDown(0.2);
@@ -218,17 +201,17 @@ async function generatePDF(orderData, print = false) {
             doc.font("InvoiceRegular").fontSize(12);
             const itemTaxH = doc.heightOfString(tax+"%", { width: tableX[3] - tableX[2] - 5, align: "left" });
             doc.font("InvoiceLight").fontSize(12);
-            const itemTaxAmountH = doc.heightOfString(currencyToSymbol(currency, taxAmount), { width: tableX[3] - tableX[2] - 5, align: "left" });
+            const itemTaxAmountH = doc.heightOfString(currencymodule.currencyToSymbol(currency, taxAmount), { width: tableX[3] - tableX[2] - 5, align: "left" });
             heights.push(itemTaxH + itemTaxAmountH);
             doc.font("InvoiceRegular").fontSize(12);
-            const itemUnitH = doc.heightOfString(currencyToSymbol(currency, unitPrice), { width: tableX[4] - tableX[3] - 5, align: "left" });
+            const itemUnitH = doc.heightOfString(currencymodule.currencyToSymbol(currency, unitPrice), { width: tableX[4] - tableX[3] - 5, align: "left" });
             doc.font("InvoiceLight").fontSize(12);
-            const itemUnitTH = doc.heightOfString(currencyToSymbol(currency, unitPriceWT) + " with tax", { width: tableX[4] - tableX[3] - 5, align: "left" });
+            const itemUnitTH = doc.heightOfString(currencymodule.currencyToSymbol(currency, unitPriceWT) + " with tax", { width: tableX[4] - tableX[3] - 5, align: "left" });
             heights.push(itemUnitH + itemUnitTH);
             doc.font("InvoiceBold").fontSize(12);
-            const itemH = doc.heightOfString(currencyToSymbol(currency, price), { width: (doc.page.width-margin) - tableX[4], align: "left" });
+            const itemH = doc.heightOfString(currencymodule.currencyToSymbol(currency, price), { width: (doc.page.width-margin) - tableX[4], align: "left" });
             doc.font("InvoiceLight").fontSize(12);
-            const itemTH = doc.heightOfString(currencyToSymbol(currency, priceWT) + " with tax", { width: (doc.page.width-margin) - tableX[4], align: "left" });
+            const itemTH = doc.heightOfString(currencymodule.currencyToSymbol(currency, priceWT) + " with tax", { width: (doc.page.width-margin) - tableX[4], align: "left" });
             heights.push(itemH + itemTH);
             const spacer = doc.currentLineHeight() * 0.4;
             return Math.max(...heights) + spacer;
@@ -243,17 +226,17 @@ async function generatePDF(orderData, print = false) {
                 doc.font("InvoiceRegular").fontSize(12);
                 const itemTaxW = doc.widthOfString(tax+"%", { align: "left",lineBreak: false, ellipsis: false });
                 doc.font("InvoiceLight").fontSize(12);
-                const itemTaxAmountW = doc.widthOfString(currencyToSymbol(currency, taxAmount), { align: "left" ,lineBreak: false, ellipsis: false });
+                const itemTaxAmountW = doc.widthOfString(currencymodule.currencyToSymbol(currency, taxAmount), { align: "left" ,lineBreak: false, ellipsis: false });
                 widths.push(Math.max(itemTaxW,itemTaxAmountW,19.998) + spacer);
                 doc.font("InvoiceRegular").fontSize(12);
-                const itemUnitW = doc.widthOfString(currencyToSymbol(currency, unitPrice), { align: "left",lineBreak: false, ellipsis: false });
+                const itemUnitW = doc.widthOfString(currencymodule.currencyToSymbol(currency, unitPrice), { align: "left",lineBreak: false, ellipsis: false });
                 doc.font("InvoiceLight").fontSize(12);
-                const itemUnitTW = doc.widthOfString(currencyToSymbol(currency, unitPriceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
+                const itemUnitTW = doc.widthOfString(currencymodule.currencyToSymbol(currency, unitPriceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
                 widths.push(Math.max(itemUnitW,itemUnitTW,56.874) + spacer);
                 doc.font("InvoiceBold").fontSize(12);
-                const itemW = doc.widthOfString(currencyToSymbol(currency, price), { align: "left",lineBreak: false, ellipsis: false });
+                const itemW = doc.widthOfString(currencymodule.currencyToSymbol(currency, price), { align: "left",lineBreak: false, ellipsis: false });
                 doc.font("InvoiceLight").fontSize(12);
-                const itemTW = doc.widthOfString(currencyToSymbol(currency, priceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
+                const itemTW = doc.widthOfString(currencymodule.currencyToSymbol(currency, priceWT) + " with tax", { align: "left",lineBreak: false, ellipsis: false });
                 widths.push(Math.max(itemW,itemTW,29.766000000000005) + spacer);
                 return widths;
             }
@@ -318,23 +301,23 @@ async function generatePDF(orderData, print = false) {
         doc.lineWidth(2).moveTo(20, doc.y+5).lineTo((doc.page.width-margin), doc.y+5).stroke();
         doc.moveDown(0.5);
         doc.font("InvoiceBold").fontSize(14);
-        const totalWidth = doc.widthOfString(currencyToSymbol(currency, orderData.details.price.paid), { align: "left",lineBreak: false, ellipsis: false });
+        const totalWidth = doc.widthOfString(currencymodule.currencyToSymbol(currency, orderData.details.price.paid), { align: "left",lineBreak: false, ellipsis: false });
         function insertSummaryLine(key, value, bold = false) {
             doc.font(bold ? "InvoiceMedium" : "InvoiceRegular").fontSize(bold?14:12).text(`${key}: `, margin, doc.y, { align: "right", width: (doc.page.width - margin) - totalWidth - margin - 10 });
             doc.moveUp(1);
             doc.font(bold ? "InvoiceBold" : "InvoiceMedium").fontSize(bold?14:12).text(value, (doc.page.width - margin)-totalWidth, doc.y, { align: "left" });
             doc.moveDown(0.2);
         }
-        insertSummaryLine("Subtotal", currencyToSymbol(currency, orderData.details.price.subtotal));
-        insertSummaryLine("Tax", currencyToSymbol(currency, orderData.details.price.tax));
-        insertSummaryLine("Discount", currencyToSymbol(currency, 0, false));
-        insertSummaryLine("Shipping", currencyToSymbol(currency, orderData.details.price.shipping));
-        insertSummaryLine("Subtotal with taxes", currencyToSymbol(currency, orderData.details.price.subtotal + orderData.details.price.tax));
+        insertSummaryLine("Subtotal", currencymodule.currencyToSymbol(currency, orderData.details.price.subtotal));
+        insertSummaryLine("Tax", currencymodule.currencyToSymbol(currency, orderData.details.price.tax));
+        insertSummaryLine("Discount", currencymodule.currencyToSymbol(currency, 0, false));
+        insertSummaryLine("Shipping", currencymodule.currencyToSymbol(currency, orderData.details.price.shipping));
+        insertSummaryLine("Subtotal with taxes", currencymodule.currencyToSymbol(currency, orderData.details.price.subtotal + orderData.details.price.tax));
         if (installment > 1) {
-            insertSummaryLine("Installment Interest", currencyToSymbol(currency, orderData.details.price.installment));
-            insertSummaryLine("Amount due per month for "+installment+" months", currencyToSymbol(currency, orderData.details.installment.permonth));
+            insertSummaryLine("Installment Interest", currencymodule.currencyToSymbol(currency, orderData.details.price.installment));
+            insertSummaryLine("Amount due per month for "+installment+" months", currencymodule.currencyToSymbol(currency, orderData.details.installment.permonth));
         }
-        insertSummaryLine("Amount Due", currencyToSymbol(currency, orderData.details.price.paid), true);
+        insertSummaryLine("Amount Due", currencymodule.currencyToSymbol(currency, orderData.details.price.paid), true);
         doc.end();
     });
     if (print) {

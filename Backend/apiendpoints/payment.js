@@ -5,7 +5,7 @@ const aes = require("../components/aes256.js");
 const fs = require("fs");
 const mailer = require("../components/email.js");
 const pdf = require("../invoice/pdf.js");
-const currency = require("../components/currency.js");
+const currencymodule = require("../components/currency.js");
 async function IyzipayAPI(config, method, url, headers, body) {
     // console.log("IyzipayAPI called with:", { method, url, headers, body: JSON.stringify(body) });
     const randomKey = crypto.randomBytes(16).toString("hex");
@@ -92,25 +92,6 @@ async function getCardToken(userId) {
         return { done: false, error: err.message };
     });
 }
-function currencyToDecimal(currency, price) {
-    const mille = ({ "USD": ",", "EUR": ",", "GBP": ",", "TRY": ".", "NOK": "", "SEK": "", "IRR": "", "RUB": "", "CHF": "," }[currency] || ",");
-    const punctuation = ({ "USD": ".", "EUR": ".", "GBP": ".", "TRY": ",", "NOK": ".", "SEK": ".", "IRR": ".", "RUB": ".", "CHF": "." }[currency] || ".");
-    // mille should be printed on every thousand, and punctuation should be printed on every decimal
-    let priceStr = price.toFixed(2).replace(".", punctuation);
-    let priceidx = priceStr.length - 3;
-    priceidx = priceidx - 3;
-    while (priceidx > 0) {
-        priceStr = priceStr.slice(0, priceidx) + mille + priceStr.slice(priceidx);
-        priceidx = priceidx - 3;
-    }
-    return priceStr;
-}
-function currencyToSymbol(currency, price, negative = false) {
-    price = parseFloat(price);
-    const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
-    if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
-    else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
-}
 function parseVariantOptions(variantCode) {
     const normalizedCode = checkTrim(variantCode);
     if (!normalizedCode) return {};
@@ -124,14 +105,14 @@ function parseVariantOptions(variantCode) {
 async function emailInvoice(config, email, orderNumber, details, textformat) {
     let instemplate = fs.readFileSync("./emails/" + (details.installment.months === 1 ? "orderemailinfull" : "orderemailinstallment") + ".html", "utf-8");
     if (details.installment.months > 1) {
-        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.total))
-            .replaceAll("{{INSTALLMENT_INTEREST}}", currencyToSymbol(details.currency, details.price.installment))
-            .replaceAll("{{ORDER_MONTH}}", currencyToSymbol(details.currency, details.installment.permonth))
+        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencymodule.currencyToSymbol(details.currency, details.price.total))
+            .replaceAll("{{INSTALLMENT_INTEREST}}", currencymodule.currencyToSymbol(details.currency, details.price.installment))
+            .replaceAll("{{ORDER_MONTH}}", currencymodule.currencyToSymbol(details.currency, details.installment.permonth))
             .replaceAll("{{INSTALLMENT_PERIOD}}", details.installment.months)
-            .replaceAll("{{ORDER_TOTAL_WITH_INTEREST}}", currencyToSymbol(details.currency, details.price.paid));
+            .replaceAll("{{ORDER_TOTAL_WITH_INTEREST}}", currencymodule.currencyToSymbol(details.currency, details.price.paid));
     }
     else {
-        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencyToSymbol(details.currency, details.price.paid));
+        instemplate = instemplate.replaceAll("{{ORDER_TOTAL}}", currencymodule.currencyToSymbol(details.currency, details.price.paid));
     }
     const itemstemplate = fs.readFileSync("./emails/orderemailitems.html", "utf-8");
     let itemshtml = "";
@@ -140,7 +121,7 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
             .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
             .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
             .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
-            .replaceAll("{{ITEM_PRICE}}", currencyToSymbol(details.currency, product.product_price));
+            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.product_price));
     });
     const template = fs.readFileSync("./emails/orderemail.html", "utf-8")
         .replaceAll("{{ORDER_ID}}", orderNumber)
@@ -150,9 +131,9 @@ async function emailInvoice(config, email, orderNumber, details, textformat) {
         .replaceAll("{{CITY}}", details.shippingAddress.province)
         .replaceAll("{{POSTAL_CODE}}", details.shippingAddress.zip)
         .replaceAll("{{PHONE}}", details.shippingAddress.phone)
-        .replaceAll("{{SUBTOTAL}}", currencyToSymbol(details.currency, details.price.subtotal))
-        .replaceAll("{{VAT_TOTAL}}", currencyToSymbol(details.currency, details.price.tax))
-        .replaceAll("{{SHIPPING_TOTAL}}", currencyToSymbol(details.currency, details.price.shipping))
+        .replaceAll("{{SUBTOTAL}}", currencymodule.currencyToSymbol(details.currency, details.price.subtotal))
+        .replaceAll("{{VAT_TOTAL}}", currencymodule.currencyToSymbol(details.currency, details.price.tax))
+        .replaceAll("{{SHIPPING_TOTAL}}", currencymodule.currencyToSymbol(details.currency, details.price.shipping))
         .replaceAll("{{ORDER_INSTALLMENT_HTML}}", instemplate)
         .replaceAll("{{ORDER_ITEMS_HTML}}", itemshtml);
     const rightnow = new Date().toISOString();
@@ -285,7 +266,7 @@ function PaymentError(err, errorMsg, tvoyBank = "your bank") {
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint[0] === "currencies") {
         if (method === "GET") {
-            return { s: 200, j: true, d: currency.GetCurrencies() };
+            return { s: 200, j: true, d: currencymodule.getcurrencies() };
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
@@ -406,7 +387,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (body.data.installments && (isNaN(parseInt(body.data.installments)) || parseInt(body.data.installments) < 1)) return { s: 412, j: true, d: { success: false, e: { what: "Installments", why: "Installment count is invalid", resolution: "Please provide a valid installment count or pay in full if not applicable" } } };
             if (body.data.currency && typeof body.data.currency !== "string") return { s: 412, j: true, d: { success: false, e: { what: "Currency", why: "Currency is invalid", resolution: "Please provide a valid currency code or default to TRY if not applicable" } } };
             if (!body.data.currency) body.data.currency = "TRY";
-            const allCurrencies = currency.GetCurrencies();
+            const allCurrencies = currencymodule.getcurrencies();
             if (allCurrencies.currencies[body.data.currency] === undefined) return { s: 412, j: true, d: { success: false, e: { what: "Currency", why: "Currency is not supported", resolution: "We only support " + Object.keys(allCurrencies.currencies).join(", ") } } };
             const exchangeRate = allCurrencies.exchangeRates[body.data.currency] || 1;
             const billingToken = body.data.billing.token || null;
