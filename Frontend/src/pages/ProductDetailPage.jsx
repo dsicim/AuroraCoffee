@@ -1668,7 +1668,7 @@ export default function ProductDetailPage() {
     try {
       await addCartItem({
         ...product,
-        price: purchasePrice,
+        cartPrice: purchasePrice,
         stock: displayAvailability.totalStock,
         variantId: matchingVariant?.id || null,
         variantCode: matchingVariant?.variantCode || '',

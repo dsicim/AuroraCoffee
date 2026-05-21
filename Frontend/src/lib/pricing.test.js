@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  getDiscountedPrice,
   formatDiscountRate,
   getDiscountPricing,
   getProductStartingPrice,
@@ -67,6 +68,10 @@ describe('pricing helpers', () => {
       currentPrice: 175,
       discountRate: 12.5,
     })
+  })
+
+  it('returns the discounted cart price for products on sale', () => {
+    assert.equal(getDiscountedPrice({ price: 150, discountRate: 20 }), 120)
   })
 
   it('keeps the base product price when variants are more expensive', () => {

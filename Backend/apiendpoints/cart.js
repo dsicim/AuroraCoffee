@@ -1,4 +1,13 @@
 const sql = require("../../Database/server.js");
+function getDiscountedPrice(price, discountRate) {
+    price = parseFloat(price);
+    discountRate = parseFloat(discountRate);
+    if (isNaN(price)) price = 0;
+    if (isNaN(discountRate) || discountRate < 0) discountRate = 0;
+    if (discountRate > 100) discountRate = 100;
+    return Math.round((price * ((100 - discountRate) / 100)) * 100) / 100;
+}
+
 function validateOptions(product, opt, variant, ignoreRequired = false) {
     const o = product.options ? product.options : [];
     const expectedopt = [];
@@ -342,7 +351,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (item.id && productsMap[item.id]) {
                     item.valid = true;
                     item.name = productsMap[item.id].name;
-                    item.price = productsMap[item.id].price;
+                    item.price = getDiscountedPrice(productsMap[item.id].price, productsMap[item.id].discount_rate);
                     item.stock = productsMap[item.id].stock;
                     item.category = productsMap[item.id].category_name;
                     item.parentcategory = productsMap[item.id].parent_category_name;

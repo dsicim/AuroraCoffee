@@ -22,6 +22,10 @@ export function getDiscountPricing(product) {
   }
 }
 
+export function getDiscountedPrice(product) {
+  return getDiscountPricing(product).currentPrice
+}
+
 export function getProductStartingPrice(product) {
   const prices = [Number(product?.price)]
 

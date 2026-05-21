@@ -7,6 +7,7 @@ import {
   getProductMetaLine,
   getProductTypeLabel,
 } from '../../../lib/products'
+import { getDiscountedPrice } from '../../../lib/pricing'
 import { buildCartErrorMessage } from './cartErrors'
 
 export const cartStorageKeys = {
@@ -452,6 +453,9 @@ function buildCartItem(product, quantity = 1, options = null) {
   const normalizedOptions = normalizeCartOptions(options)
   const normalizedOptionCodes = normalizeCartOptions(product.optionCodes)
   const normalizedVariantCode = normalizeVariantCode(product.variantCode)
+  const price = normalizeProductPrice(
+    product.cartPrice ?? getDiscountedPrice(product),
+  )
 
   return {
     id: buildCartVariantKey(
@@ -472,7 +476,7 @@ function buildCartItem(product, quantity = 1, options = null) {
     metaLine: getProductMetaLine(product),
     description: product.description,
     notes: getProductFlavorNotes(product),
-    price: normalizeProductPrice(product.price),
+    price,
     taxRate: product.taxRate ?? null,
     taxClass: product.taxClass || '',
     taxRateOverride: product.taxRateOverride ?? null,
@@ -737,7 +741,7 @@ async function hydrateServerCartRows(rows) {
       metaLine: product ? getProductMetaLine(product) : '',
       description: product?.description || '',
       notes: product ? getProductFlavorNotes(product) : [],
-      price: normalizeProductPrice(variant?.price ?? product?.price ?? row.product_price),
+      price: normalizeProductPrice(row.final_price ?? variant?.price ?? product?.price ?? row.product_price),
       taxRate: product?.taxRate ?? null,
       taxClass: product?.taxClass || '',
       taxRateOverride: product?.taxRateOverride ?? null,
