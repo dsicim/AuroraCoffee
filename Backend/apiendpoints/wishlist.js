@@ -160,10 +160,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             }
         });
         const emailPromises = [];
-        for (const userId in Object.keys(emailqueue)) {
+        Object.keys(emailqueue).forEach(userId => {
             emailqueue[userId].details = emailqueue[userId].details.filter(d => d.stock > 0);
             if (emailqueue[userId].details.length > 0) emailPromises.push({user_id: userId, ...emailqueue[userId]});
-        }
+        });
+        delete emailqueue;
         res.write(JSON.stringify(emailPromises));
         res.end();
 
