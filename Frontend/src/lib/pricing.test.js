@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
 import {
+  formatDiscountRate,
   getDiscountPricing,
   getProductStartingPrice,
   hasPriceChangingChoices,
@@ -53,5 +54,9 @@ describe('pricing helpers', () => {
     assert.equal(hasPriceChangingChoices({
       variants: [{ price: 15 }, { price: 18 }],
     }), true)
+  })
+
+  it('truncates long discount rates without rounding checkout-facing labels up', () => {
+    assert.equal(formatDiscountRate(12.999), '12.99')
   })
 })
