@@ -1803,8 +1803,8 @@ func.getUsersWishingForProduct = async function (productId) {
 }
 func.getNotifyQueue = async function () {
     try {
-        const [discount] = await pool.execute('SELECT w.*, u.username, u.displayname, u.emailblocked FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_discount = "pending"');
-        const [stock] = await pool.execute('SELECT w.*, u.username, u.displayname, u.emailblocked FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.is_notified_about_stock = "pending"');
+        const [discount] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.* FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id WHERE w.is_notified_about_discount = "pending"');
+        const [stock] = await pool.execute('SELECT w.user_id, w.product_id, u.username, u.displayname, u.emailblocked, p.* FROM wishlist w JOIN users u ON w.user_id = u.id JOIN products p ON w.product_id = p.id WHERE w.is_notified_about_stock = "pending"');
         return { success: true, discount: discount, stock: stock };
     } catch (error) {
         console.error('Get notify queue error:', error);
