@@ -182,13 +182,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const emailData = emailPromises[i];
             let setNotify = false;
             if (!emailData.emailblocked) {
-                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => {
-                    if (res.s) {
+                const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(r => {
+                    if (r.s) {
                         setNotify = true;
                         res.write(`Notification email sent successfully to ${emailData.email} (${i+1} / ${emailPromises.length})\n`);
                     }
                     else {
-                        res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
+                        res.write(`Error generating email content for user ${emailData.email}:`, r.err + "\n");
                     }
                 }).catch(err => {
                     res.write(`Error generating email content for user ${emailData.email}:`, err + "\n");
