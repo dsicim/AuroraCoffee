@@ -176,13 +176,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     else return { s: 500, e: "An unknown error occurred"};
                 });
                 if (result.s !== 200) return { s: result.s, j: true, d: { e: result.e } };
-                if (result.d.order.order.status !== "delivered") return { s: 400, j: true, d: { e: "Only delivered orders can be refunded" } };
-                const thirtyDaysAgo = new Date().getTime() - 30*24*60*60*1000;
-                if (result.d.order.order.created_at < thirtyDaysAgo) return { s: 400, j: true, d: { e: "Refund can only be requested within 30 days of purchase" } };
                 let product = -1 
                 result.d.order.order.details.products.forEach((p,i) => {if (p.id === cartId) product = i});
                 if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
-                if (result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "Refund for this product has already been requested" } };
                 if (endpoint[1] === "approve") {
                     result.d.order.order.details.products[product].refunded = true;
                     const full = result.d.order.order.details.products[product].product_price;
