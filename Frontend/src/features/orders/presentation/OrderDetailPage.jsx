@@ -13,6 +13,7 @@ import {
 import { formatCartOptionLabel, getCartOptionEntries } from '../../../lib/cart'
 import { formatCurrency } from '../../../lib/currency'
 import {
+  cancelOrder,
   fetchOrderById,
   getCachedOrderById,
   getOrderProgressState,
@@ -130,6 +131,7 @@ export default function OrderDetailPage() {
   const [refundMessages, setRefundMessages] = useState({})
   const [refundErrors, setRefundErrors] = useState({})
   const [refundBusyKey, setRefundBusyKey] = useState('')
+  const [cancelBusy, setCancelBusy] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -332,6 +334,41 @@ export default function OrderDetailPage() {
     }
   }
 
+  const handleCancelOrder = async () => {
+    if (!order?.id || cancelBusy) {
+      return
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to cancel order ${order.id}? This will attempt to cancel the payment and cannot be undone.`,
+    )
+
+    if (!confirmed) {
+      return
+    }
+
+    setCancelBusy(true)
+    setFeedback('')
+
+    try {
+      const result = await cancelOrder(order.id)
+      const nextOrder = await fetchOrderById(order.id, { force: true })
+
+      setOrder(nextOrder)
+      setFeedbackType('success')
+      setFeedback(result?.message || result?.msg || `Order ${order.id} was cancelled.`)
+    } catch (cancelError) {
+      setFeedbackType('error')
+      setFeedback(
+        cancelError instanceof Error
+          ? cancelError.message
+          : 'Could not cancel this order.',
+      )
+    } finally {
+      setCancelBusy(false)
+    }
+  }
+
   const showPdfSuccess = ({ orderId }) => {
     setFeedbackType('success')
     setFeedback(`Invoice download started for order ${orderId}.`)
@@ -345,6 +382,7 @@ export default function OrderDetailPage() {
   const progressState = getOrderProgressState(order)
   const status = getOrderStatusPresentation(order)
   const detailReady = Boolean(order && Array.isArray(order.items))
+  const canCancelOrder = Boolean(order?.id) && !['shipped', 'delivered', 'cancelled'].includes(status.key)
 
   return (
     <AccountLayout
@@ -429,6 +467,18 @@ export default function OrderDetailPage() {
                   onSuccess={showPdfSuccess}
                   onError={showPdfError}
                 />
+                {canCancelOrder ? (
+                  <LiquidGlassButton
+                    type="button"
+                    variant="danger"
+                    size="compact"
+                    onClick={handleCancelOrder}
+                    loading={cancelBusy}
+                    disabled={cancelBusy || Boolean(restoringAction)}
+                  >
+                    {cancelBusy ? 'Cancelling...' : 'Cancel order'}
+                  </LiquidGlassButton>
+                ) : null}
                 <LiquidGlassButton
                   type="button"
                   variant="secondary"

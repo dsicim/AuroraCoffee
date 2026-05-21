@@ -806,6 +806,27 @@ export async function updateOrderStatus(orderId, status) {
   return result
 }
 
+export async function cancelOrder(orderId) {
+  const normalizedOrderId = String(orderId || '').trim()
+
+  if (!normalizedOrderId) {
+    throw new Error('Order ID is required')
+  }
+
+  const result = await requestOrdersJson('/cancel', {
+    method: 'POST',
+    json: true,
+    body: JSON.stringify({
+      id: normalizedOrderId,
+    }),
+  })
+
+  invalidateOrdersCache()
+  invalidateProductCatalogCache()
+  dispatchOrdersChange('cancel', normalizedOrderId)
+  return result
+}
+
 export async function processOrderRefund(orderId, cartId, action) {
   const normalizedOrderId = String(orderId || '').trim()
   const normalizedAction = normalizeText(action).toLowerCase()
