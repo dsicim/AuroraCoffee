@@ -10,9 +10,9 @@ async function emailDiscount(config, email, details) {
         itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
             .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
             .replaceAll("{{ITEM_CATEGORY}}", product.category)
-            .replaceAll("{{OLD_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.product_price))
-            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.new_price))
-            .replaceAll("{{ITEM_DISCOUNT}}", "-" + product.discount_rate + "%");
+            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.final_price))
+            .replaceAll("{{ITEM_STOCK}}", product.stock)
+            .replaceAll("{{ITEM_DISCOUNT}}", product.discount_rate > 0 ? '<br><span style="text-decoration:line-through;color:#9191c0;font-size:14px;">' + currencymodule.currencyToSymbol(details.currency, product.product_price) + '</span><br><br><span style="font-size:16px;background-color:#efd0a9;color:#21150f;border:1px solid #bf8250;font-weight:bold;padding: 5px;border-radius: 9999px;">' + "-" + product.discount_rate + "%</span>" : '');
     });
     if (details.length == 2) items += " and one other item";
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
