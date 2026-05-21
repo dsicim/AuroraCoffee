@@ -22,7 +22,7 @@ async function emailDiscount(config, email, details) {
     else if (details.length > 2) items += " and " + (details.length - 1) + " other items";
     const template = fs.readFileSync("./emails/discountemail.html", "utf-8").replaceAll("{{DISCOUNT_ITEMS_HTML}}", itemshtml);
     return await mailer.sendEmail(email, items + " from your wishlist "+(details.length > 1 ? "are" : "is")+" now on sale!", template, []).then(res => {
-        console.log("Email sent:", res);
+        //console.log("Email sent:", res);
         return {s: true, res: res};
     }).catch(err => {
         return {s: false, err: err};
