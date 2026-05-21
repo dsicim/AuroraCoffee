@@ -5,6 +5,7 @@ import {
   buildBillingSummary,
   buildDeliverySummary,
   buildPaymentSummary,
+  createPending3DSCheckoutSnapshot,
 } from './payment3ds.js'
 
 test('buildDeliverySummary joins customer name and address lines for the checkout receipt', () => {
@@ -67,4 +68,28 @@ test('buildPaymentSummary uses the selected saved card mask when a saved card is
     maskedCardNumber: '•••• 6789',
     expiry: '',
   })
+})
+
+test('createPending3DSCheckoutSnapshot preserves totals and checkout selections for 3DS return', () => {
+  const snapshot = createPending3DSCheckoutSnapshot({
+    items: [{ id: 1, quantity: 2 }],
+    delivery: { firstName: 'Ege', lastName: 'Bulutoglu' },
+    billing: {},
+    useShippingAsBilling: true,
+    selectedAddressId: 42,
+    selectedSavedCardId: '',
+    payment: { cardNumber: '4111111111111234' },
+    savedCards: [],
+    selectedInstallments: 3,
+    subtotal: '100',
+    serviceFee: '5',
+    taxTotal: '10',
+    installmentFee: '2',
+    total: '117',
+  })
+
+  assert.equal(snapshot.selectedAddressId, '42')
+  assert.equal(snapshot.selectedInstallments, '3')
+  assert.equal(snapshot.total, 117)
+  assert.equal(snapshot.billingSummary, null)
 })
