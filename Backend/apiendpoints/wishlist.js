@@ -1,6 +1,7 @@
 const sql = require("../../Database/server.js");
 const currencymodule = require("../components/currency.js");
 const mailer = require("../components/email.js");
+const fs = require("fs");
 async function emailDiscount(config, email, details) {
     const itemstemplate = fs.readFileSync("./emails/discountemailitems.html", "utf-8");
     let itemshtml = "";
@@ -169,8 +170,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         emailPromises.forEach(async emailData => {
             if (!emailData.emailblocked) {
                 const emailResult = await emailDiscount(config, emailData.email, emailData.details).then(res => res).catch(err => {
-                    console.error(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err);
-                    return null;
+                    res.write(`Error generating email content for user ${emailData.username} (${emailData.email}):`, err + "\n");
+                    return;
                 });
                 res.write(emailResult.title);
                 res.write("\n\n");
@@ -183,6 +184,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             //     console.error(`Error setting notified for user ${emailData.username} (${emailData.email}):`, err);
             // });
         });
+        console.log("Finished processing notify queue");
         //res.write(JSON.stringify(emailPromises));
         res.end();
 
