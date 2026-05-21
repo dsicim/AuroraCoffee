@@ -21,3 +21,7 @@ test('buildCartErrorMessage combines structured what why and resolution fields',
     'Variant unavailable - Only two bags remain - Reduce quantity',
   )
 })
+
+test('buildCartErrorMessage uses the supplied fallback for blank backend strings', () => {
+  assert.equal(buildCartErrorMessage('   ', 'Cart update failed.'), 'Cart update failed.')
+})
