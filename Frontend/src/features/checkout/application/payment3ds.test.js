@@ -5,6 +5,7 @@ import {
   buildBillingSummary,
   buildDeliverySummary,
   buildPaymentSummary,
+  buildSubmittedOrderSnapshotFromPending,
   createPending3DSCheckoutSnapshot,
 } from './payment3ds.js'
 
@@ -92,4 +93,18 @@ test('createPending3DSCheckoutSnapshot preserves totals and checkout selections 
   assert.equal(snapshot.selectedInstallments, '3')
   assert.equal(snapshot.total, 117)
   assert.equal(snapshot.billingSummary, null)
+})
+
+test('buildSubmittedOrderSnapshotFromPending rebuilds delivery and billing summaries when only forms remain', () => {
+  const submitted = buildSubmittedOrderSnapshotFromPending({
+    reference: 'AUR-TEST1',
+    deliveryForm: { firstName: 'Ege', lastName: 'Bulutoglu', district: 'Tuzla' },
+    billingForm: { firstName: 'Ada', lastName: 'Buyer', district: 'Kadikoy' },
+    subtotal: 100,
+    total: 120,
+  }, { orderNumber: 'ORD-9' })
+
+  assert.equal(submitted.delivery.fullName, 'Ege Bulutoglu')
+  assert.equal(submitted.billing.fullName, 'Ada Buyer')
+  assert.equal(submitted.orderNumber, 'ORD-9')
 })
