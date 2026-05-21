@@ -59,4 +59,13 @@ describe('pricing helpers', () => {
   it('truncates long discount rates without rounding checkout-facing labels up', () => {
     assert.equal(formatDiscountRate(12.999), '12.99')
   })
+
+  it('calculates discounts from numeric string backend values', () => {
+    assert.deepEqual(getDiscountPricing({ price: '200', discountRate: '12.5' }), {
+      hasDiscount: true,
+      originalPrice: 200,
+      currentPrice: 175,
+      discountRate: 12.5,
+    })
+  })
 })
