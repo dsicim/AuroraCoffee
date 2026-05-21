@@ -389,7 +389,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body.data.currency) body.data.currency = "TRY";
             const allCurrencies = currencymodule.GetCurrencies();
             if (allCurrencies.currencies[body.data.currency] === undefined) return { s: 412, j: true, d: { success: false, e: { what: "Currency", why: "Currency is not supported", resolution: "We only support " + Object.keys(allCurrencies.currencies).join(", ") } } };
-            const exchangeRate = allCurrencies.exchangeRates[body.data.currency] || 1;
+            const exchangeRate = allCurrencies.currencies[body.data.currency] || 1;
             const billingToken = body.data.billing.token || null;
             const shippingToken = body.data.shipping.token || null;
             if (!billingToken && (!body.data.billing.name || !body.data.billing.surname || !body.data.billing.address || !body.data.billing.city || !body.data.billing.province || !body.data.billing.country || !body.data.billing.zip || !body.data.billing.phone)) return { s: 412, j: true, d: { success: false, e: { what: "Billing Address", why: "Billing address details are missing", resolution: "Please provide valid billing address details" } } };
