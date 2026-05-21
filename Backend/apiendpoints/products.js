@@ -285,25 +285,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
-    else if (endpoint[0] === "notifyqueue") {
-        if (method === "GET") {
-            if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-            return await sql.getNotifyQueue().then(result => {
-                if (result.success) {
-                    return { s: 200, j: true, d: { discount: result.discount, stock: result.stock } };
-                }
-                else {
-                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
-                }
-            }).catch(err => {
-                console.error("Get notify queue error:", err);
-                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
-                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
-            });
-        }
-        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
-    }
     else if (endpoint[0] === "image") {
         if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
         if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
