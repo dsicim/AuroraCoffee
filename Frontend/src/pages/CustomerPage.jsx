@@ -31,6 +31,8 @@ import { useProductCatalog } from '../lib/products'
 import {
   fetchWishlistItems,
   getWishlistProductReferences,
+  getWishlistedProductReferences,
+  hasLoadedWishlist,
   wishlistChangeEvent,
 } from '../lib/wishlist'
 
@@ -92,6 +94,7 @@ export default function CustomerPage() {
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
   const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
   const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
+  const [wishlistLoaded, setWishlistLoaded] = useState(() => hasLoadedWishlist())
   const [cartCount, setCartCount] = useState(() => getCartCount())
   const [cartSubtotal, setCartSubtotal] = useState(() => getCartSubtotal())
   const [feedback, setFeedback] = useState('')
@@ -126,6 +129,7 @@ export default function CustomerPage() {
       }
 
       setFavoriteIds(getWishlistProductReferences())
+      setWishlistLoaded(hasLoadedWishlist())
     }
 
     const syncCartState = () => {
@@ -264,8 +268,15 @@ export default function CustomerPage() {
     : null
   const hasSavedAddresses = addressesLoaded && addresses.length > 0
   const favoriteProducts = useMemo(
-    () => products.filter((product) => favoriteIds.includes(product.slug)).slice(0, 3),
-    [favoriteIds, products],
+    () => {
+      const productFlagIds = wishlistLoaded ? [] : getWishlistedProductReferences(products)
+      const favoriteReferences = new Set([...favoriteIds, ...productFlagIds])
+
+      return products
+        .filter((product) => favoriteReferences.has(product.slug))
+        .slice(0, 3)
+    },
+    [favoriteIds, products, wishlistLoaded],
   )
 
   const handleQuickAddFavorite = async (productSlug) => {

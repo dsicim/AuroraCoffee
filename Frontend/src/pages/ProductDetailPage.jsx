@@ -1755,7 +1755,13 @@ export default function ProductDetailPage() {
           subtitle="Price, stock, and options"
           icon="spark"
           className="aurora-showroom-panel aurora-product-detail-panel mx-auto w-full p-5 sm:p-8"
-          headerAside={<FavoriteToggleButton productId={product.slug} productName={product.name} />}
+          headerAside={
+            <FavoriteToggleButton
+              productId={product.slug}
+              productName={product.name}
+              initialIsFavorite={product.isWishlisted}
+            />
+          }
         >
           <AuroraInset className="mt-1">
             {notes.length ? (

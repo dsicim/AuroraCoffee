@@ -17,12 +17,15 @@ import LiquidGlassButton, { LiquidGlassIconButton } from '../shared/components/u
 export default function FavoriteToggleButton({
   productId,
   productName,
+  initialIsFavorite = false,
   compact = false,
 }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
-  const [isFavorite, setIsFavorite] = useState(() => isWishlistProduct(productId))
+  const [isFavorite, setIsFavorite] = useState(
+    () => Boolean(initialIsFavorite) || isWishlistProduct(productId),
+  )
   const [isSyncing, setIsSyncing] = useState(false)
   const canToggleFavorite = authState.hasUsableSession
   const displayIsFavorite = canToggleFavorite && isFavorite
@@ -67,6 +70,17 @@ export default function FavoriteToggleButton({
       window.clearTimeout(initialSyncId)
     }
   }, [productId])
+
+  useEffect(() => {
+    const nextAuthState = getAuthStateSnapshot()
+
+    setAuthState(nextAuthState)
+    setIsFavorite(
+      nextAuthState.hasUsableSession
+        ? Boolean(initialIsFavorite) || isWishlistProduct(productId)
+        : false,
+    )
+  }, [initialIsFavorite, productId])
 
   const handleClick = async (event) => {
     event.preventDefault()

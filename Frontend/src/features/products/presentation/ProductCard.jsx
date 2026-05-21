@@ -216,6 +216,7 @@ export default function ProductCard({ product, compact = false }) {
         <FavoriteToggleButton
           productId={product.slug}
           productName={product.name}
+          initialIsFavorite={product.isWishlisted}
           compact
         />
       </div>

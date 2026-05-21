@@ -24,6 +24,23 @@ function normalizeWishlistReference(value) {
     : ''
 }
 
+function hasPositiveWishlistFlag(value) {
+  if (typeof value === 'boolean') {
+    return value
+  }
+
+  if (typeof value === 'number') {
+    return value !== 0
+  }
+
+  if (typeof value === 'string') {
+    const normalizedValue = value.trim().toLowerCase()
+    return normalizedValue === 'true' || normalizedValue === '1'
+  }
+
+  return false
+}
+
 function getWishlistScope() {
   const session = getAuthSession()
 
@@ -212,6 +229,24 @@ export function isWishlistProduct(productReference) {
   const normalizedReference = normalizeWishlistReference(productReference)
 
   return Boolean(normalizedReference && getWishlistProductReferences().includes(normalizedReference))
+}
+
+export function getWishlistedProductReferences(products) {
+  return Array.from(
+    new Set(
+      (products || [])
+        .filter((product) =>
+          hasPositiveWishlistFlag(product?.isWishlisted ?? product?.is_wishlisted),
+        )
+        .flatMap((product) => [
+          product?.slug,
+          product?.productCode,
+          product?.product_code,
+        ])
+        .map(normalizeWishlistReference)
+        .filter(Boolean),
+    ),
+  )
 }
 
 export async function addProductToWishlist(productReference) {
