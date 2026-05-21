@@ -55,3 +55,16 @@ test('buildPaymentSummary masks manual card numbers for order confirmation displ
     expiry: '12/30',
   })
 })
+
+test('buildPaymentSummary uses the selected saved card mask when a saved card is chosen', () => {
+  assert.deepEqual(buildPaymentSummary({
+    payment: {},
+    savedCards: [{ id: 'card-1', last4dig: '6789' }],
+    selectedSavedCardId: 'card-1',
+  }), {
+    mode: 'saved',
+    cardholder: 'Saved card',
+    maskedCardNumber: '•••• 6789',
+    expiry: '',
+  })
+})
