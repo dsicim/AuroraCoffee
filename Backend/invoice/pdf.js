@@ -103,12 +103,11 @@ async function generatePDF(orderData, print = false) {
             doc.moveDown(0.3);
             doc.lineWidth(1).moveTo(20, doc.y).lineTo((doc.page.width-margin), doc.y).stroke();
         }
-
         for (let i = 0; i < orderData.details.products.length; i++) {
             const p = orderData.details.products[i];
             p.pricededuction = parseFloat(p.pricededuction);
             if (p.pricededuction > 0) {
-                const newobj = p;
+                const newobj = JSON.parse(JSON.stringify(p));
                 newobj.product_name = "Discount: " + p.product_name;
                 const taxrate = (p.tax / 100);
                 newobj.taxAmount = ((p.pricededuction * taxrate) * -100) / 100;
@@ -302,15 +301,18 @@ async function generatePDF(orderData, print = false) {
         doc.moveDown(0.5);
         doc.font("InvoiceBold").fontSize(14);
         const totalWidth = doc.widthOfString(currencymodule.currencyToSymbol(currency, orderData.details.price.paid), { align: "left",lineBreak: false, ellipsis: false });
+        doc.font("InvoiceMedium").fontSize(12);
+        const subtotalWidth = doc.widthOfString(currencymodule.currencyToSymbol(currency, orderData.details.price.subtotal), { align: "left",lineBreak: false, ellipsis: false });
+        const summaryWidth = Math.max(totalWidth, subtotalWidth) + 10;
         function insertSummaryLine(key, value, bold = false) {
-            doc.font(bold ? "InvoiceMedium" : "InvoiceRegular").fontSize(bold?14:12).text(`${key}: `, margin, doc.y, { align: "right", width: (doc.page.width - margin) - totalWidth - margin - 10 });
+            doc.font(bold ? "InvoiceMedium" : "InvoiceRegular").fontSize(bold?14:12).text(`${key}: `, margin, doc.y, { align: "right", width: (doc.page.width - margin) - summaryWidth - margin - 10 });
             doc.moveUp(1);
-            doc.font(bold ? "InvoiceBold" : "InvoiceMedium").fontSize(bold?14:12).text(value, (doc.page.width - margin)-totalWidth, doc.y, { align: "left" });
+            doc.font(bold ? "InvoiceBold" : "InvoiceMedium").fontSize(bold?14:12).text(value, (doc.page.width - margin)-summaryWidth, doc.y, { align: "left" });
             doc.moveDown(0.2);
         }
         insertSummaryLine("Subtotal", currencymodule.currencyToSymbol(currency, orderData.details.price.subtotal));
         insertSummaryLine("Tax", currencymodule.currencyToSymbol(currency, orderData.details.price.tax));
-        insertSummaryLine("Discount", currencymodule.currencyToSymbol(currency, 0, false));
+        insertSummaryLine("Discount", currencymodule.currencyToSymbol(currency, orderData.details.price.discount * -1));
         insertSummaryLine("Shipping", currencymodule.currencyToSymbol(currency, orderData.details.price.shipping));
         insertSummaryLine("Subtotal with taxes", currencymodule.currencyToSymbol(currency, orderData.details.price.subtotal + orderData.details.price.tax));
         if (installment > 1) {

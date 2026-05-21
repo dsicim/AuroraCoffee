@@ -49,6 +49,10 @@ function currencyToDecimal(currency, price) {
 }
 function currencyToSymbol(currency, price, negative = false) {
     price = parseFloat(price);
+    if (price < 0) {
+        price = Math.abs(price);
+        negative = true;
+    }
     const symbol = ({ "USD": "$", "EUR": "€", "GBP": "£", "TRY": "₺", "NOK": "NOK ", "SEK": "SEK ", "IRR": "IRR ", "RUB": " ₽", "CHF": " Fr." }[currency] || currency);
     if (["CHF", "RUB"].includes(currency)) return (negative ? "-" : "") + currencyToDecimal(currency, price) + symbol;
     else return symbol + (negative ? "-" : "") + currencyToDecimal(currency, price);
