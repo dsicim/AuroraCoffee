@@ -887,14 +887,26 @@ export async function uploadProductImage({
   })
   const data = await readProductImageResponse(response, 'Could not upload product image.')
   const uploadedUrl = normalizeText(data?.url)
+  const uploadedSortOrder = Number(data?.sortOrder ?? data?.sort_order)
+  const uploadedVariantId = Number(data?.variantId ?? data?.variant_id)
+  const uploadedPrimary =
+    typeof data?.isPrimary === 'boolean'
+      ? data.isPrimary
+      : typeof data?.is_primary === 'boolean'
+        ? data.is_primary
+        : primary
 
   const didUpdateCache = uploadedUrl
     ? updateCachedProduct(normalizedProductId, (product) =>
         mergeUploadedProductImage(product, {
           url: uploadedUrl,
-          sortOrder: Math.floor(normalizedSortOrder),
-          variantId: normalizedVariantId,
-          primary,
+          sortOrder: Number.isFinite(uploadedSortOrder)
+            ? uploadedSortOrder
+            : Math.floor(normalizedSortOrder),
+          variantId: Number.isFinite(uploadedVariantId)
+            ? uploadedVariantId
+            : normalizedVariantId,
+          primary: uploadedPrimary,
         }),
       )
     : false

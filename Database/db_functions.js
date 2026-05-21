@@ -991,6 +991,40 @@ func.setImageOrder = async function (imageUrl, newSortOrder) {
     }
 };
 
+func.reorderProductImages = async function (productId, urlToOrder) {
+    if (!productId || !urlToOrder || typeof urlToOrder !== 'object' || Array.isArray(urlToOrder)) {
+        throw new DBError(400, 'Product ID and image order map are required');
+    }
+
+    const entries = Object.entries(urlToOrder);
+    if (entries.length === 0) {
+        throw new DBError(400, 'Image order map cannot be empty');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        for (const [url, sortOrder] of entries) {
+            const [result] = await connection.execute(
+                'UPDATE product_images SET sort_order = ? WHERE product_id = ? AND image_url = ?',
+                [sortOrder, productId, url]
+            );
+            if (result.affectedRows === 0) {
+                throw new DBError(404, `Image with URL ${url} not found`);
+            }
+        }
+        await connection.commit();
+        return { success: true, message: 'Image order updated successfully' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Reorder product images error:', error);
+        throw new DBError(500, 'Failed to update image order');
+    } finally {
+        connection.release();
+    }
+};
+
 func.setPrimaryImage = async function (productId, imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');
@@ -2029,5 +2063,4 @@ module.exports = {
     DBError,
     ...func
 };
-
 

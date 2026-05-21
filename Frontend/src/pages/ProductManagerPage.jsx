@@ -8,6 +8,10 @@ import { formatCurrency } from '../lib/currency'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {
+  fetchWishlistNotifyQueue,
+  sendWishlistNotifications,
+} from '../lib/wishlist'
+import {
   getProductAvailability,
   getProductCategories,
   createProductVariant,
@@ -1403,9 +1407,13 @@ function ProductImageManager({ product }) {
           { ...product, images: currentImages },
           {
             url: result?.url,
-            sortOrder: uploadSortOrder,
-            variantId: uploadVariantId,
-            primary: uploadPrimary,
+            sortOrder: Number.isFinite(Number(result?.sortOrder ?? result?.sort_order))
+              ? Number(result?.sortOrder ?? result?.sort_order)
+              : uploadSortOrder,
+            variantId: Number.isFinite(Number(result?.variantId ?? result?.variant_id))
+              ? Number(result?.variantId ?? result?.variant_id)
+              : uploadVariantId,
+            primary: typeof result?.isPrimary === 'boolean' ? result.isPrimary : uploadPrimary,
           },
         )
 
@@ -2461,6 +2469,265 @@ function CommentSnapshotCard({
   )
 }
 
+function getWishlistNotifySummary(items) {
+  const normalizedItems = Array.isArray(items) ? items : []
+  const userIds = new Set()
+  const productIds = new Set()
+  let blockedUsers = 0
+
+  for (const item of normalizedItems) {
+    if (item?.user_id !== undefined && item?.user_id !== null) {
+      userIds.add(String(item.user_id))
+    }
+
+    if (item?.product_id !== undefined && item?.product_id !== null) {
+      productIds.add(String(item.product_id))
+    }
+
+    if (item?.emailblocked) {
+      blockedUsers += 1
+    }
+  }
+
+  return {
+    entries: normalizedItems.length,
+    users: userIds.size,
+    products: productIds.size,
+    blockedUsers,
+  }
+}
+
+function WishlistNotifyPanel() {
+  const [queueState, setQueueState] = useState({
+    loading: true,
+    error: '',
+    discount: [],
+    stock: [],
+  })
+  const [sendState, setSendState] = useState({
+    type: '',
+    error: '',
+    success: '',
+    log: '',
+  })
+
+  const discountSummary = useMemo(
+    () => getWishlistNotifySummary(queueState.discount),
+    [queueState.discount],
+  )
+  const stockSummary = useMemo(
+    () => getWishlistNotifySummary(queueState.stock),
+    [queueState.stock],
+  )
+  const busyType = sendState.type
+
+  const loadQueue = useCallback(async ({ quiet = false } = {}) => {
+    setQueueState((current) => ({
+      ...current,
+      loading: quiet ? current.loading : true,
+      error: '',
+    }))
+
+    try {
+      const queue = await fetchWishlistNotifyQueue()
+
+      setQueueState({
+        loading: false,
+        error: '',
+        discount: queue.discount,
+        stock: queue.stock,
+      })
+    } catch (queueError) {
+      setQueueState((current) => ({
+        ...current,
+        loading: false,
+        error: queueError?.message || 'Could not load wishlist notification queue.',
+      }))
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadQueue()
+  }, [loadQueue])
+
+  function handleSend(type, summary) {
+    if (busyType) {
+      return
+    }
+
+    if (!summary.entries) {
+      setSendState({
+        type: '',
+        error: '',
+        success: `No ${type} notifications are waiting.`,
+        log: '',
+      })
+      return
+    }
+
+    if (!window.confirm(`Send ${type} wishlist notifications to ${summary.users} user${summary.users === 1 ? '' : 's'} now?`)) {
+      return
+    }
+
+    setSendState({
+      type,
+      error: '',
+      success: '',
+      log: '',
+    })
+
+    void sendWishlistNotifications(type)
+      .then((result) => {
+        setSendState({
+          type: '',
+          error: '',
+          success: `${type === 'discount' ? 'Discount' : 'Stock'} notifications sent.`,
+          log: result?.log || '',
+        })
+        void loadQueue({ quiet: true })
+      })
+      .catch((sendError) => {
+        setSendState({
+          type: '',
+          error: sendError?.message || `Could not send ${type} notifications.`,
+          success: '',
+          log: '',
+        })
+      })
+  }
+
+  const cards = [
+    {
+      type: 'discount',
+      title: 'Discount alerts',
+      description: 'Wishlisted products whose discount changed and are waiting for a manager-triggered email.',
+      summary: discountSummary,
+    },
+    {
+      type: 'stock',
+      title: 'Stock alerts',
+      description: 'Wishlisted products that came back in stock and are waiting for a manager-triggered email.',
+      summary: stockSummary,
+    },
+  ]
+
+  return (
+    <section id="wishlist-notifications" className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            Wishlist notifications
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Send queued wishlist emails
+          </h2>
+        </div>
+        <LiquidGlassButton
+          type="button"
+          variant="quiet"
+          size="compact"
+          disabled={queueState.loading || Boolean(busyType)}
+          onClick={() => {
+            void loadQueue()
+          }}
+        >
+          Refresh queue
+        </LiquidGlassButton>
+      </div>
+
+      <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+        Emails are only sent when you choose a queue below. Updating stock or discounts can add
+        items here, but this panel never sends those notifications automatically.
+      </p>
+
+      {queueState.error ? (
+        <div className="aurora-message aurora-message-error mt-6">{queueState.error}</div>
+      ) : null}
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {cards.map((card) => (
+          <article key={card.type} className="aurora-ops-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                  {card.summary.entries} queued
+                </p>
+                <h3 className="mt-3 text-xl font-semibold text-[var(--aurora-text-strong)]">
+                  {card.title}
+                </h3>
+              </div>
+              <p className="text-right text-sm font-semibold text-[var(--aurora-text-strong)]">
+                {card.summary.users} user{card.summary.users === 1 ? '' : 's'}
+              </p>
+            </div>
+
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              {card.description}
+            </p>
+
+            <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                  Products
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.products}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                  Entries
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.entries}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                  Blocked
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.blockedUsers}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-4">
+              <LiquidGlassButton
+                type="button"
+                variant={card.type === 'discount' ? 'secondary' : 'soft'}
+                size="compact"
+                loading={busyType === card.type}
+                disabled={queueState.loading || Boolean(busyType) || !card.summary.entries}
+                onClick={() => {
+                  handleSend(card.type, card.summary)
+                }}
+              >
+                Send {card.type}
+              </LiquidGlassButton>
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                Requires confirmation before sending.
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {sendState.error ? (
+        <div className="aurora-message aurora-message-error mt-6">{sendState.error}</div>
+      ) : null}
+      {sendState.success ? (
+        <div className="aurora-message aurora-message-success mt-6">{sendState.success}</div>
+      ) : null}
+      {sendState.log ? (
+        <pre className="mt-4 max-h-48 overflow-auto rounded-[1.2rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-muted)] p-4 text-xs leading-6 text-[var(--aurora-text)]">
+          {sendState.log}
+        </pre>
+      ) : null}
+    </section>
+  )
+}
+
 export default function ProductManagerPage() {
   const { resolvedTheme } = useTheme()
   const { products, loading, error } = useProductCatalog()
@@ -2686,6 +2953,8 @@ export default function ProductManagerPage() {
         <CategoryManagementPanel products={products} />
 
         <ProductEditPanel products={products} loading={loading} />
+
+        <WishlistNotifyPanel />
 
         <div className="grid gap-8 xl:grid-cols-[0.82fr_1.18fr]">
           <section id="stock-watch" className="aurora-ops-panel p-8">

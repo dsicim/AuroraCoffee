@@ -35,11 +35,15 @@ async function createUpload(user, prefName, restrictions, req, headers) {
                 return;
             }
 
+            const imageMimeTypes = ["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"];
+            const imageFormats = ["png", "jpeg", "jpg", "gif", "webp", "tiff", "avif"];
             let format = detected.ext;
             let converting = null;
-            if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) format = restrictions.convertTo;
-            if (["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(restrictions.convertTo)) {
-                if (!["image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp", "image/tiff", "image/avif"].includes(detected.mime)) {
+            if (restrictions.convertTo !== undefined && restrictions.convertTo !== null) {
+                format = String(restrictions.convertTo).replace(/^image\//, "");
+            }
+            if (imageFormats.includes(format)) {
+                if (!imageMimeTypes.includes(detected.mime)) {
                     passthrough.resume();
                     reject({ s: 415, e: "Unsupported media type for conversion. Allowed types are: image/png, image/jpeg, image/jpg, image/gif, image/webp, image/tiff, image/avif" });
                     return;
