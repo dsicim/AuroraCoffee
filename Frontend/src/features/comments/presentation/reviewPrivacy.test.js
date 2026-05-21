@@ -6,6 +6,7 @@ import {
   buildReviewPrivacyWordPreview,
   getDisplayNameWords,
   normalizeReviewPrivacyMode,
+  resolveReviewPrivacySelection,
 } from './reviewPrivacy.js'
 
 test('normalizeReviewPrivacyMode falls back to initials for unknown modes', () => {
@@ -41,5 +42,12 @@ test('buildReviewPrivacySelectionFromCode repeats the first code for missing wor
     'full',
     'full',
     'full',
+  ])
+})
+
+test('resolveReviewPrivacySelection pads short selections with the selection fallback mode', () => {
+  assert.deepEqual(resolveReviewPrivacySelection(['anonymous'], 'Ege Can'), [
+    'anonymous',
+    'anonymous',
   ])
 })
