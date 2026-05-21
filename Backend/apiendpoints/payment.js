@@ -566,7 +566,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 item.taxAmount = item.product_price - (Math.round(item.subtotal * 100) / 100);
                 const itemFormat = {
                     id: item.product_id,
-                    price: item.product_price,
+                    price: item.product_price - item.pricededuction,
                     name: item.product_name,
                     category1: products[item.product_id].parent_category_name,
                     category2: products[item.product_id].category_name,
