@@ -75,4 +75,10 @@ describe('pricing helpers', () => {
       variants: [{ price: 18 }, { price: 16 }],
     }), 14)
   })
+
+  it('detects option price multipliers as price-changing choices', () => {
+    assert.equal(hasPriceChangingChoices({
+      options: [{ values: [{ priceMult: 1.2 }] }],
+    }), true)
+  })
 })
