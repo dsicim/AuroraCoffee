@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
@@ -2200,6 +2200,9 @@ function ProductEditPanel({ products, loading }) {
   const editFieldsRef = useRef(null)
   const createFieldsRef = useRef(null)
   const createCategoryRef = useRef(null)
+  const createImageInputRef = useRef(null)
+  const [createImageFile, setCreateImageFile] = useState(null)
+  const [createImageInputVersion, setCreateImageInputVersion] = useState(0)
   const productActionBusy = saveState.saving || createState.saving || deleteState.deleting
   const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
 
@@ -2288,6 +2291,12 @@ function ProductEditPanel({ products, loading }) {
 
     if (createCategoryRef.current) {
       createCategoryRef.current.value = ''
+    }
+
+    setCreateImageFile(null)
+    setCreateImageInputVersion((version) => version + 1)
+    if (createImageInputRef.current) {
+      createImageInputRef.current.value = ''
     }
   }
 
@@ -2390,28 +2399,79 @@ function ProductEditPanel({ products, loading }) {
       error: '',
       success: '',
     })
+    const selectedCreateImageFile = createImageFile
 
-    void createProduct(payload)
-      .then((result) => {
-        const createdProduct = result?.product || null
+    void (async () => {
+      let result = null
+      let createdProduct = null
+      let productId = null
+
+      try {
+        result = await createProduct(payload)
+        createdProduct = result?.product || null
+        productId = Number(result?.productId ?? createdProduct?.id)
+
+        if (selectedCreateImageFile) {
+          if (!Number.isFinite(productId) || productId <= 0) {
+            throw new Error('Product created, but the image upload could not start.')
+          }
+
+          const imageResult = await uploadProductImage({
+            productId,
+            file: selectedCreateImageFile,
+            sortOrder: 0,
+            primary: true,
+            refreshOnCacheMiss: false,
+          })
+
+          if (!imageResult?.url) {
+            throw new Error('Product created, but the image upload did not return an image URL.')
+          }
+
+          if (createdProduct) {
+            createdProduct = mergeUploadedProductImage(createdProduct, {
+              url: imageResult.url,
+              sortOrder: Number.isFinite(Number(imageResult?.sortOrder ?? imageResult?.sort_order))
+                ? Number(imageResult?.sortOrder ?? imageResult?.sort_order)
+                : 0,
+              variantId: Number.isFinite(Number(imageResult?.variantId ?? imageResult?.variant_id))
+                ? Number(imageResult?.variantId ?? imageResult?.variant_id)
+                : '',
+              primary:
+                typeof imageResult?.isPrimary === 'boolean'
+                  ? imageResult.isPrimary
+                  : true,
+            })
+          }
+        }
+
         resetCreateFields()
-        setSelectedProductId(result?.productId || createdProduct?.id || null)
+        setSelectedProductId(productId || createdProduct?.id || null)
         setSelectedProductKey(createdProduct ? getProductManagerSelectKey(createdProduct) : '')
         setSelectedProductSnapshot(createdProduct)
         setEditorMode('edit')
         setCreateState({
           saving: false,
           error: '',
-          success: result?.msg || 'Product created successfully.',
+          success: selectedCreateImageFile
+            ? 'Product created with image.'
+            : result?.msg || 'Product created successfully.',
         })
-      })
-      .catch((createError) => {
+      } catch (createError) {
+        if (Number.isFinite(productId) && productId > 0) {
+          setSelectedProductId(productId)
+          setSelectedProductKey(createdProduct ? getProductManagerSelectKey(createdProduct) : '')
+          setSelectedProductSnapshot(createdProduct)
+          setEditorMode('edit')
+        }
+
         setCreateState({
           saving: false,
           error: createError?.message || 'Could not create product.',
           success: '',
         })
-      })
+      }
+    })()
   }
 
   function handleDeleteProduct() {
@@ -2588,7 +2648,7 @@ function ProductEditPanel({ products, loading }) {
           )}
           <p className="aurora-product-edit-picker-copy">
             {activeEditorMode === 'create'
-              ? 'Create a product record, then add variants and gallery images in the editor that opens.'
+              ? 'Create a product record with its first gallery image when one is selected.'
               : selectedProduct
                 ? 'Changes save directly to the product record after review.'
                 : 'Choose an item to reveal the editable storefront fields.'}
@@ -2600,23 +2660,63 @@ function ProductEditPanel({ products, loading }) {
             <div ref={createFieldsRef} className="aurora-product-edit-workspace">
               <div className="aurora-product-edit-groups">
                 {productEditFieldGroups.map((group) => (
-                  <fieldset key={group.title} className="aurora-product-edit-group">
-                    <legend>
-                      <span>{group.title}</span>
-                      <small>{group.description}</small>
-                    </legend>
+                  <Fragment key={group.title}>
+                    <fieldset className="aurora-product-edit-group">
+                      <legend>
+                        <span>{group.title}</span>
+                        <small>{group.description}</small>
+                      </legend>
 
-                    <div className="aurora-product-edit-grid">
-                      {group.fields.map((field) => (
-                        <ProductEditField
-                          key={field.key}
-                          field={field}
-                          defaultValue=""
-                          idPrefix="product-create"
-                        />
-                      ))}
-                    </div>
-                  </fieldset>
+                      <div className="aurora-product-edit-grid">
+                        {group.fields.map((field) => (
+                          <ProductEditField
+                            key={field.key}
+                            field={field}
+                            defaultValue=""
+                            idPrefix="product-create"
+                          />
+                        ))}
+                      </div>
+                    </fieldset>
+
+                    {group.title === 'Storefront identity' ? (
+                      <div className="aurora-product-edit-group aurora-product-image-manager">
+                        <div className="aurora-product-image-manager-header">
+                          <div>
+                            <p className="aurora-product-edit-label">Product image</p>
+                            <h3>Add first gallery image</h3>
+                          </div>
+                          <span>{createImageFile ? '1 selected' : 'Optional'}</span>
+                        </div>
+
+                        <div className="aurora-product-image-upload">
+                          <label className="aurora-product-edit-field">
+                            <span className="aurora-product-edit-label">Upload image</span>
+                            <input
+                              key={createImageInputVersion}
+                              ref={createImageInputRef}
+                              className="aurora-input aurora-product-edit-input mt-3"
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp"
+                              disabled={productActionBusy}
+                              onChange={(event) => {
+                                if (productActionBusy) {
+                                  return
+                                }
+
+                                setCreateImageFile(event.target.files?.[0] || null)
+                                setCreateState({
+                                  saving: false,
+                                  error: '',
+                                  success: '',
+                                })
+                              }}
+                            />
+                          </label>
+                        </div>
+                      </div>
+                    ) : null}
+                  </Fragment>
                 ))}
               </div>
             </div>
@@ -2624,7 +2724,7 @@ function ProductEditPanel({ products, loading }) {
             <div className="aurora-product-edit-action-bar">
               <div className="aurora-product-edit-action-copy">
                 <span>New catalog item</span>
-                <p>The new product opens here for image upload and variant edits.</p>
+                <p>Create the product and attach the selected image in one action.</p>
               </div>
               <div className="aurora-product-edit-actions">
                 <LiquidGlassButton
