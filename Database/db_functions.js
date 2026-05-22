@@ -290,11 +290,6 @@ func.enrichProductsWithOptions = async function (userId, products) {
             variant_id: img.variant_id,
             sort_order: img.sort_order
         }));
-        if (!p.has_variants) {
-            p.variants = [];
-            continue;
-        }
-
         const pOptions = options.filter(o => o.product_id === p.id);
         const groups = {};
         for (const opt of pOptions) {
@@ -326,6 +321,11 @@ func.enrichProductsWithOptions = async function (userId, products) {
             }
         }
         p.options.push(...Object.values(groups));
+
+        if (!p.has_variants) {
+            p.variants = [];
+            continue;
+        }
 
         const pVariants = {};
         for (const v of variants.filter(v => v.product_id === p.id)) {
@@ -721,6 +721,8 @@ func.addVariant = async function (data) {
                 `, [variantId, valId]);
             }
         }
+
+        await connection.execute('UPDATE products SET has_variants = TRUE WHERE id = ?', [product_id]);
 
         await connection.commit();
         return { success: true, message: 'Variant added successfully', variantId };
@@ -2064,4 +2066,3 @@ module.exports = {
     DBError,
     ...func
 };
-
