@@ -14,8 +14,10 @@ import {
 import {
   getProductAvailability,
   getProductCategories,
+  createProduct,
   createProductVariant,
   createProductCategory,
+  deleteProduct,
   deleteProductVariant,
   deleteProductCategory,
   deleteProductImage,
@@ -528,6 +530,33 @@ function buildProductEdits(product, form) {
   return edits
 }
 
+function buildProductCreatePayload(form, categoryId) {
+  const payload = {}
+
+  for (const field of productEditFields) {
+    const nextValue = normalizeEditValue(field, form[field.key])
+
+    if (nextValue !== null && nextValue !== '') {
+      payload[field.column] = nextValue
+    }
+  }
+
+  if (!payload.name) {
+    throw new Error('Name is required.')
+  }
+
+  if (payload.price === undefined) {
+    throw new Error('Price is required.')
+  }
+
+  const normalizedCategoryId = Number(categoryId)
+  if (Number.isFinite(normalizedCategoryId) && normalizedCategoryId > 0) {
+    payload.category_id = normalizedCategoryId
+  }
+
+  return payload
+}
+
 function getCategoryChildren(categories, parentId) {
   return categories.filter((category) => Number(category.parentId) === Number(parentId))
 }
@@ -563,6 +592,15 @@ function getCategoryName(categories, categoryId) {
   return categories.find((category) => Number(category.id) === Number(categoryId))?.name || ''
 }
 
+function getCategorySelectLabel(categories, category) {
+  if (!category?.parentId) {
+    return category?.name || 'Category'
+  }
+
+  const parentName = getCategoryName(categories, category.parentId)
+  return parentName ? `${parentName} / ${category.name}` : category.name
+}
+
 function hasSiblingCategoryName(categories, { name, parentId, excludedId = null }) {
   const normalizedName = String(name || '').trim().toLowerCase()
   const normalizedParentId = parentId ? Number(parentId) : null
@@ -593,8 +631,8 @@ function getInventoryTone(stock) {
   return 'In stock'
 }
 
-function ProductEditField({ field, defaultValue }) {
-  const fieldId = `product-edit-${field.key}`
+function ProductEditField({ field, defaultValue, idPrefix = 'product-edit' }) {
+  const fieldId = `${idPrefix}-${field.key}`
   const inputClassName =
     field.type === 'textarea'
       ? 'aurora-textarea aurora-product-edit-input min-h-28'
@@ -2126,6 +2164,10 @@ function ProductEditPanel({ products, loading }) {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
+  const [createCategories, setCreateCategories] = useState([])
+  const [categoriesLoading, setCategoriesLoading] = useState(true)
+  const [categoryLoadError, setCategoryLoadError] = useState('')
+  const [editorMode, setEditorMode] = useState('edit')
   const [selectedProductKey, setSelectedProductKey] = useState('')
   const [selectedProductId, setSelectedProductId] = useState(null)
   const [selectedProductSnapshot, setSelectedProductSnapshot] = useState(null)
@@ -2145,7 +2187,73 @@ function ProductEditPanel({ products, loading }) {
     error: '',
     success: '',
   })
+  const [createState, setCreateState] = useState({
+    saving: false,
+    error: '',
+    success: '',
+  })
+  const [deleteState, setDeleteState] = useState({
+    deleting: false,
+    error: '',
+    success: '',
+  })
   const editFieldsRef = useRef(null)
+  const createFieldsRef = useRef(null)
+  const createCategoryRef = useRef(null)
+  const productActionBusy = saveState.saving || createState.saving || deleteState.deleting
+  const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
+
+  useEffect(() => {
+    let active = true
+
+    void fetchProductCategoryTree()
+      .then((categories) => {
+        if (!active) {
+          return
+        }
+
+        setCreateCategories(categories)
+      })
+      .catch((categoryError) => {
+        if (!active) {
+          return
+        }
+
+        setCategoryLoadError(categoryError?.message || 'Could not load product categories.')
+      })
+      .finally(() => {
+        if (active) {
+          setCategoriesLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  function handleEditorModeChange(nextMode) {
+    if (productActionBusy || activeEditorMode === nextMode) {
+      return
+    }
+
+    setEditorMode(nextMode)
+    setSaveState({
+      saving: false,
+      error: '',
+      success: '',
+    })
+    setCreateState({
+      saving: false,
+      error: '',
+      success: '',
+    })
+    setDeleteState({
+      deleting: false,
+      error: '',
+      success: '',
+    })
+  }
 
   function getCurrentEditForm() {
     return Object.fromEntries(
@@ -2154,6 +2262,33 @@ function ProductEditPanel({ products, loading }) {
         return [field.key, input?.value || '']
       }),
     )
+  }
+
+  function getCurrentCreateForm() {
+    return Object.fromEntries(
+      productEditFields.map((field) => {
+        const input = createFieldsRef.current?.querySelector(`[name="${field.key}"]`)
+        return [field.key, input?.value || '']
+      }),
+    )
+  }
+
+  function resetCreateFields() {
+    if (!createFieldsRef.current) {
+      return
+    }
+
+    for (const field of productEditFields) {
+      const input = createFieldsRef.current.querySelector(`[name="${field.key}"]`)
+
+      if (input) {
+        input.value = ''
+      }
+    }
+
+    if (createCategoryRef.current) {
+      createCategoryRef.current.value = ''
+    }
   }
 
   function resetEditFields() {
@@ -2228,6 +2363,107 @@ function ProductEditPanel({ products, loading }) {
       })
   }
 
+  function handleCreateProduct() {
+    let payload = null
+
+    try {
+      payload = buildProductCreatePayload(
+        getCurrentCreateForm(),
+        createCategoryRef.current?.value || '',
+      )
+    } catch (validationError) {
+      setCreateState({
+        saving: false,
+        error: validationError?.message || 'Review the product fields before creating.',
+        success: '',
+      })
+      return
+    }
+
+    setCreateState({
+      saving: true,
+      error: '',
+      success: '',
+    })
+    setDeleteState({
+      deleting: false,
+      error: '',
+      success: '',
+    })
+
+    void createProduct(payload)
+      .then((result) => {
+        resetCreateFields()
+        setSelectedProductId(result?.productId || null)
+        setSelectedProductKey('')
+        setSelectedProductSnapshot(null)
+        setEditorMode('edit')
+        setCreateState({
+          saving: false,
+          error: '',
+          success: result?.msg || 'Product created successfully.',
+        })
+      })
+      .catch((createError) => {
+        setCreateState({
+          saving: false,
+          error: createError?.message || 'Could not create product.',
+          success: '',
+        })
+      })
+  }
+
+  function handleDeleteProduct() {
+    if (!selectedProduct) {
+      setDeleteState({
+        deleting: false,
+        error: 'Select a product before deleting.',
+        success: '',
+      })
+      return
+    }
+
+    const productLabel = selectedProduct.name || `Product ${selectedProduct.id}`
+    if (!window.confirm(`Delete ${productLabel} permanently? Variants, images, comments, or order history may be affected if the backend allows the deletion.`)) {
+      return
+    }
+
+    setDeleteState({
+      deleting: true,
+      error: '',
+      success: '',
+    })
+    setCreateState({
+      saving: false,
+      error: '',
+      success: '',
+    })
+
+    void deleteProduct(selectedProduct.id)
+      .then((result) => {
+        setSelectedProductKey('')
+        setSelectedProductId(null)
+        setSelectedProductSnapshot(null)
+        setSaveState({
+          saving: false,
+          error: '',
+          success: '',
+        })
+        setDeleteState({
+          deleting: false,
+          error: '',
+          success: result?.msg || 'Product deleted successfully.',
+        })
+      })
+      .catch((deleteError) => {
+        setDeleteState({
+          deleting: false,
+          error: deleteError?.message || 'Could not delete product.',
+          success: '',
+        })
+      })
+  }
+
   return (
     <section id="product-editor" className="aurora-ops-panel aurora-product-edit-panel">
       <div className="aurora-product-edit-hero">
@@ -2240,7 +2476,7 @@ function ProductEditPanel({ products, loading }) {
               Update catalog details
             </h2>
           </div>
-          {selectedProduct ? (
+          {activeEditorMode === 'edit' && selectedProduct ? (
             <Link
               to={`/products/${selectedProduct.slug}`}
               className="aurora-product-edit-live-link"
@@ -2265,44 +2501,159 @@ function ProductEditPanel({ products, loading }) {
         }}
       >
         <div className="aurora-product-edit-picker">
-          <label className="aurora-product-edit-picker-field">
-            <span className="aurora-product-edit-label">Product</span>
-            <select
-              className="aurora-select aurora-product-edit-input mt-3"
-              value={selectedProductSelectKey}
-              onChange={(event) => {
-                const nextProductKey = event.target.value
-                const nextProduct =
-                  editableProducts.find(
-                    (product) => getProductManagerSelectKey(product) === nextProductKey,
-                  ) || null
-
-                setSelectedProductKey(nextProductKey)
-                setSelectedProductId(nextProduct?.id ?? null)
-                setSelectedProductSnapshot(nextProduct)
-                setSaveState({
-                  saving: false,
-                  error: '',
-                  success: '',
-                })
+          <div className="aurora-product-variant-mode" role="group" aria-label="Product editor mode">
+            <LiquidGlassButton
+              type="button"
+              size="compact"
+              variant={activeEditorMode === 'edit' ? 'secondary' : 'quiet'}
+              selected={activeEditorMode === 'edit'}
+              disabled={productActionBusy || (!editableProducts.length && !loading)}
+              onClick={() => {
+                handleEditorModeChange('edit')
               }}
             >
-              <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
-              {editableProducts.map((product) => (
-                <option key={product.id} value={getProductManagerSelectKey(product)}>
-                  {product.name}
+              Edit
+            </LiquidGlassButton>
+            <LiquidGlassButton
+              type="button"
+              size="compact"
+              variant={activeEditorMode === 'create' ? 'secondary' : 'quiet'}
+              selected={activeEditorMode === 'create'}
+              disabled={productActionBusy}
+              onClick={() => {
+                handleEditorModeChange('create')
+              }}
+            >
+              New
+            </LiquidGlassButton>
+          </div>
+
+          {activeEditorMode === 'edit' ? (
+            <label className="aurora-product-edit-picker-field">
+              <span className="aurora-product-edit-label">Product</span>
+              <select
+                className="aurora-select aurora-product-edit-input mt-3"
+                value={selectedProductSelectKey}
+                disabled={productActionBusy}
+                onChange={(event) => {
+                  const nextProductKey = event.target.value
+                  const nextProduct =
+                    editableProducts.find(
+                      (product) => getProductManagerSelectKey(product) === nextProductKey,
+                    ) || null
+
+                  setSelectedProductKey(nextProductKey)
+                  setSelectedProductId(nextProduct?.id ?? null)
+                  setSelectedProductSnapshot(nextProduct)
+                  setSaveState({
+                    saving: false,
+                    error: '',
+                    success: '',
+                  })
+                  setDeleteState({
+                    deleting: false,
+                    error: '',
+                    success: '',
+                  })
+                }}
+              >
+                <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
+                {editableProducts.map((product) => (
+                  <option key={product.id} value={getProductManagerSelectKey(product)}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : (
+            <label className="aurora-product-edit-picker-field">
+              <span className="aurora-product-edit-label">Category</span>
+              <select
+                ref={createCategoryRef}
+                className="aurora-select aurora-product-edit-input mt-3"
+                disabled={productActionBusy || categoriesLoading}
+                defaultValue=""
+              >
+                <option value="">
+                  {categoriesLoading ? 'Loading categories' : 'No category'}
                 </option>
-              ))}
-            </select>
-          </label>
+                {createCategories.map((category) => (
+                  <option key={category.id} value={String(category.id)}>
+                    {getCategorySelectLabel(createCategories, category)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
           <p className="aurora-product-edit-picker-copy">
-            {selectedProduct
-              ? 'Changes save directly to the product record after review.'
-              : 'Choose an item to reveal the editable storefront fields.'}
+            {activeEditorMode === 'create'
+              ? 'Create a backend product record before adding variants or gallery images.'
+              : selectedProduct
+                ? 'Changes save directly to the product record after review.'
+                : 'Choose an item to reveal the editable storefront fields.'}
           </p>
         </div>
 
-        {selectedProduct ? (
+        {activeEditorMode === 'create' ? (
+          <>
+            <div ref={createFieldsRef} className="aurora-product-edit-workspace">
+              <div className="aurora-product-edit-groups">
+                {productEditFieldGroups.map((group) => (
+                  <fieldset key={group.title} className="aurora-product-edit-group">
+                    <legend>
+                      <span>{group.title}</span>
+                      <small>{group.description}</small>
+                    </legend>
+
+                    <div className="aurora-product-edit-grid">
+                      {group.fields.map((field) => (
+                        <ProductEditField
+                          key={field.key}
+                          field={field}
+                          defaultValue=""
+                          idPrefix="product-create"
+                        />
+                      ))}
+                    </div>
+                  </fieldset>
+                ))}
+              </div>
+            </div>
+
+            <div className="aurora-product-edit-action-bar">
+              <div className="aurora-product-edit-action-copy">
+                <span>New catalog item</span>
+                <p>Add the product record first, then edit variants and images.</p>
+              </div>
+              <div className="aurora-product-edit-actions">
+                <LiquidGlassButton
+                  type="button"
+                  variant="quiet"
+                  disabled={createState.saving}
+                  onClick={() => {
+                    resetCreateFields()
+                    setCreateState({
+                      saving: false,
+                      error: '',
+                      success: '',
+                    })
+                  }}
+                >
+                  Reset fields
+                </LiquidGlassButton>
+                <LiquidGlassButton
+                  type="button"
+                  variant="secondary"
+                  loading={createState.saving}
+                  disabled={createState.saving}
+                  onClick={handleCreateProduct}
+                >
+                  Create product
+                </LiquidGlassButton>
+              </div>
+            </div>
+          </>
+        ) : selectedProduct ? (
           <>
             <div
               key={selectedProduct.id}
@@ -2344,7 +2695,7 @@ function ProductEditPanel({ products, loading }) {
                 <LiquidGlassButton
                   type="button"
                   variant="quiet"
-                  disabled={saveState.saving}
+                  disabled={saveState.saving || deleteState.deleting}
                   onClick={() => {
                     resetEditFields()
                     setSaveState({
@@ -2358,9 +2709,18 @@ function ProductEditPanel({ products, loading }) {
                 </LiquidGlassButton>
                 <LiquidGlassButton
                   type="button"
+                  variant="danger"
+                  loading={deleteState.deleting}
+                  disabled={saveState.saving || deleteState.deleting}
+                  onClick={handleDeleteProduct}
+                >
+                  Delete product
+                </LiquidGlassButton>
+                <LiquidGlassButton
+                  type="button"
                   variant="secondary"
                   loading={saveState.saving}
-                  disabled={saveState.saving}
+                  disabled={saveState.saving || deleteState.deleting}
                   onClick={() => {
                     handleSave()
                   }}
@@ -2379,10 +2739,25 @@ function ProductEditPanel({ products, loading }) {
       </div>
 
       {saveState.error ? (
-        <div className="aurora-message aurora-message-error mt-6">{saveState.error}</div>
+        <div className="aurora-message aurora-message-error mt-6" role="alert">{saveState.error}</div>
       ) : null}
       {saveState.success ? (
-        <div className="aurora-message aurora-message-success mt-6">{saveState.success}</div>
+        <div className="aurora-message aurora-message-success mt-6" role="status" aria-live="polite">{saveState.success}</div>
+      ) : null}
+      {categoryLoadError ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">{categoryLoadError}</div>
+      ) : null}
+      {createState.error ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">{createState.error}</div>
+      ) : null}
+      {createState.success ? (
+        <div className="aurora-message aurora-message-success mt-6" role="status" aria-live="polite">{createState.success}</div>
+      ) : null}
+      {deleteState.error ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">{deleteState.error}</div>
+      ) : null}
+      {deleteState.success ? (
+        <div className="aurora-message aurora-message-success mt-6" role="status" aria-live="polite">{deleteState.success}</div>
       ) : null}
     </section>
   )

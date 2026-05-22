@@ -643,6 +643,45 @@ export async function updateProductDetails(productId, edits) {
   return data
 }
 
+export async function createProduct(payload) {
+  const normalizedPayload = Object.fromEntries(
+    Object.entries(payload || {}).filter(([, value]) => value !== undefined),
+  )
+
+  if (!normalizeText(normalizedPayload.name)) {
+    throw new Error('Product name is required.')
+  }
+
+  if (normalizedPayload.price === null || normalizedPayload.price === undefined) {
+    throw new Error('Product price is required.')
+  }
+
+  const data = await requestJson('/products', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(normalizedPayload),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function deleteProduct(productId) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before deleting.')
+  }
+
+  const data = await requestJson(
+    `/products?id=${encodeURIComponent(String(normalizedProductId))}`,
+    { method: 'DELETE' },
+  )
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
 function normalizeProductCategory(rawCategory) {
   return {
     id: Number(rawCategory?.id) || 0,
