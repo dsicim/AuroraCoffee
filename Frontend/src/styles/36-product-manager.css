@@ -251,6 +251,10 @@
     gap: 1.25rem;
   }
 
+  .aurora-product-create-workspace {
+    display: block;
+  }
+
   .aurora-product-edit-snapshot,
   .aurora-product-edit-group,
   .aurora-product-edit-action-bar {
@@ -422,6 +426,44 @@
   .aurora-product-image-upload,
   .aurora-product-image-list,
   .aurora-product-image-row-body {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .aurora-product-create-image {
+    display: grid;
+    gap: 0.9rem;
+    margin-top: 1rem;
+    border-top: 1px solid rgba(126, 159, 135, 0.18);
+    padding-top: 1rem;
+  }
+
+  .aurora-product-create-image-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+
+  .aurora-product-create-image-header h3 {
+    margin-top: 0.35rem;
+    color: var(--aurora-text-strong);
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    line-height: 1.15;
+  }
+
+  .aurora-product-create-image-header > span {
+    border: 1px solid rgba(126, 159, 135, 0.24);
+    border-radius: 999px;
+    padding: 0.45rem 0.8rem;
+    color: var(--aurora-text);
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .aurora-product-create-image-upload {
     display: grid;
     gap: 0.9rem;
   }

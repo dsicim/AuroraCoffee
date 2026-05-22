@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
@@ -2657,31 +2657,32 @@ function ProductEditPanel({ products, loading }) {
 
         {activeEditorMode === 'create' ? (
           <>
-            <div ref={createFieldsRef} className="aurora-product-edit-workspace">
+            <div
+              ref={createFieldsRef}
+              className="aurora-product-edit-workspace aurora-product-create-workspace"
+            >
               <div className="aurora-product-edit-groups">
                 {productEditFieldGroups.map((group) => (
-                  <Fragment key={group.title}>
-                    <fieldset className="aurora-product-edit-group">
-                      <legend>
-                        <span>{group.title}</span>
-                        <small>{group.description}</small>
-                      </legend>
+                  <fieldset key={group.title} className="aurora-product-edit-group">
+                    <legend>
+                      <span>{group.title}</span>
+                      <small>{group.description}</small>
+                    </legend>
 
-                      <div className="aurora-product-edit-grid">
-                        {group.fields.map((field) => (
-                          <ProductEditField
-                            key={field.key}
-                            field={field}
-                            defaultValue=""
-                            idPrefix="product-create"
-                          />
-                        ))}
-                      </div>
-                    </fieldset>
+                    <div className="aurora-product-edit-grid">
+                      {group.fields.map((field) => (
+                        <ProductEditField
+                          key={field.key}
+                          field={field}
+                          defaultValue=""
+                          idPrefix="product-create"
+                        />
+                      ))}
+                    </div>
 
                     {group.title === 'Storefront identity' ? (
-                      <div className="aurora-product-edit-group aurora-product-image-manager">
-                        <div className="aurora-product-image-manager-header">
+                      <div className="aurora-product-create-image">
+                        <div className="aurora-product-create-image-header">
                           <div>
                             <p className="aurora-product-edit-label">Product image</p>
                             <h3>Add first gallery image</h3>
@@ -2689,7 +2690,7 @@ function ProductEditPanel({ products, loading }) {
                           <span>{createImageFile ? '1 selected' : 'Optional'}</span>
                         </div>
 
-                        <div className="aurora-product-image-upload">
+                        <div className="aurora-product-create-image-upload">
                           <label className="aurora-product-edit-field">
                             <span className="aurora-product-edit-label">Upload image</span>
                             <input
@@ -2716,7 +2717,7 @@ function ProductEditPanel({ products, loading }) {
                         </div>
                       </div>
                     ) : null}
-                  </Fragment>
+                  </fieldset>
                 ))}
               </div>
             </div>
