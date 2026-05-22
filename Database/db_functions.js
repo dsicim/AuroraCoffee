@@ -632,8 +632,7 @@ func.addProduct = async function (data) {
     const {
         product_code, name, description, price, cost, stock, has_variants,
         category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
-        material, capacity, image_url, discount_rate, warranty_status,
-        distributor_information, sales
+        material, capacity, image_url, discount_rate
     } = data;
     if (!name || price === undefined) {
         throw new DBError(400, 'Name and price are required');
@@ -645,14 +644,12 @@ func.addProduct = async function (data) {
             INSERT INTO products (
                 product_code, name, description, price, cost, stock, has_variants,
                 category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
-                material, capacity, discount_rate, warranty_status,
-                distributor_information, sales
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                material, capacity, discount_rate
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
             product_code || null, name, description || null, price, cost || 0.00, stock || 0, has_variants || false,
             category_id || null, weight || null, tax || 0, origin || null, roast_level || null, acidity || null, flavor_notes || null,
-            material || null, capacity || null, discount_rate || 0.00, warranty_status || null,
-            distributor_information || null, sales || 0
+            material || null, capacity || null, discount_rate || 0.00
         ]);
         const productId = result.insertId;
 
