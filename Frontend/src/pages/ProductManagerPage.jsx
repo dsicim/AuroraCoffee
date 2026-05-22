@@ -2393,10 +2393,11 @@ function ProductEditPanel({ products, loading }) {
 
     void createProduct(payload)
       .then((result) => {
+        const createdProduct = result?.product || null
         resetCreateFields()
-        setSelectedProductId(result?.productId || null)
-        setSelectedProductKey('')
-        setSelectedProductSnapshot(null)
+        setSelectedProductId(result?.productId || createdProduct?.id || null)
+        setSelectedProductKey(createdProduct ? getProductManagerSelectKey(createdProduct) : '')
+        setSelectedProductSnapshot(createdProduct)
         setEditorMode('edit')
         setCreateState({
           saving: false,
@@ -2587,7 +2588,7 @@ function ProductEditPanel({ products, loading }) {
           )}
           <p className="aurora-product-edit-picker-copy">
             {activeEditorMode === 'create'
-              ? 'Create a backend product record before adding variants or gallery images.'
+              ? 'Create a product record, then add variants and gallery images in the editor that opens.'
               : selectedProduct
                 ? 'Changes save directly to the product record after review.'
                 : 'Choose an item to reveal the editable storefront fields.'}
@@ -2623,7 +2624,7 @@ function ProductEditPanel({ products, loading }) {
             <div className="aurora-product-edit-action-bar">
               <div className="aurora-product-edit-action-copy">
                 <span>New catalog item</span>
-                <p>Add the product record first, then edit variants and images.</p>
+                <p>The new product opens here for image upload and variant edits.</p>
               </div>
               <div className="aurora-product-edit-actions">
                 <LiquidGlassButton

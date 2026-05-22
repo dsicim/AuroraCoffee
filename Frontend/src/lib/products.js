@@ -662,8 +662,17 @@ export async function createProduct(payload) {
     body: JSON.stringify(normalizedPayload),
   })
 
-  await fetchAllProducts({ force: true })
-  return data
+  const products = await fetchAllProducts({ force: true })
+  const productId = Number(data?.productId ?? data?.id)
+  const product = Number.isFinite(productId)
+    ? products.find((item) => Number(item.id) === productId) || null
+    : null
+
+  return {
+    ...data,
+    productId: Number.isFinite(productId) ? productId : data?.productId,
+    product,
+  }
 }
 
 export async function deleteProduct(productId) {
