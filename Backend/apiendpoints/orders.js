@@ -5,13 +5,41 @@ const aes = require("../components/aes256.js");
 const pdf = require("../invoice/pdf.js");
 const payments = require("./payment.js");
 
+function sanitizeProductManagerOrder(order) {
+    const details = order && typeof order.details === "object" ? order.details : {};
+    const shippingAddress = details.shippingAddress && typeof details.shippingAddress === "object"
+        ? details.shippingAddress
+        : {};
+
+    return {
+        id: order.id,
+        status: order.status,
+        created_at: order.created_at,
+        purchase_id: order.purchase_id,
+        details: {
+            products: Array.isArray(details.products) ? details.products : [],
+            price: details.price && typeof details.price === "object" ? details.price : {},
+            currency: details.currency,
+            shippingAddress: {
+                name: shippingAddress.name,
+                surname: shippingAddress.surname,
+                city: shippingAddress.city,
+                province: shippingAddress.province,
+                country: shippingAddress.country
+            }
+        }
+    };
+}
+
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (endpoint.length === 0) {
         if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
         if (method === "GET") {
             const specificorder = Boolean(query.id) ? query.id : null;
             const admin = (query.admin && (query.admin === "true" || query.admin === "1")) ? true : false;
-            if (admin && !["Admin","Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            const canReadManagerOrders = ["Admin","Sales Manager"].includes(currentUser.role);
+            const canReadSpecificManagerOrder = canReadManagerOrders || (specificorder && currentUser.role === "Product Manager");
+            if (admin && !canReadSpecificManagerOrder) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (admin) return await sql.getAllOrders(specificorder).then(async result => {
                 if (result.success) {
                     const errors = [];
@@ -26,6 +54,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 const order = aes.pjs(decrypted.value);
                                 if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                                 ordr.details = order;
+                                if (currentUser.role === "Product Manager") {
+                                    return { order: sanitizeProductManagerOrder(ordr) };
+                                }
                             }
                             else delete ordr.details;
                             return { order: ordr };

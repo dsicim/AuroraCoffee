@@ -11,6 +11,7 @@ import {
   fetchWishlistNotifyQueue,
   sendWishlistNotifications,
 } from '../lib/wishlist'
+import { fetchAdminOrderById, getOrderStatusPresentation } from '../features/orders/application/orders'
 import {
   getProductAvailability,
   getProductCategories,
@@ -104,12 +105,50 @@ function formatCommentDate(value) {
   }
 }
 
+function formatManagerOrderDate(value) {
+  const timestamp = Date.parse(value || '')
+
+  if (!Number.isFinite(timestamp)) {
+    return 'Date unavailable'
+  }
+
+  return new Date(timestamp).toLocaleString('en-GB', {
+    hour12: false,
+  })
+}
+
 function formatCommentRating(value) {
   if (!value) {
     return '0'
   }
 
   return Number.isInteger(value) ? `${value}` : value.toFixed(1)
+}
+
+function getManagerOrderLocation(order) {
+  const delivery = order?.delivery || {}
+  const seenParts = new Set()
+  const parts = [
+    delivery.address,
+    delivery.district,
+    delivery.city,
+    delivery.province,
+    delivery.country,
+    delivery.postalCode,
+  ]
+    .map((part) => String(part || '').trim())
+    .filter((part) => {
+      const normalizedPart = part.toLowerCase()
+
+      if (!normalizedPart || seenParts.has(normalizedPart)) {
+        return false
+      }
+
+      seenParts.add(normalizedPart)
+      return true
+    })
+
+  return parts.length ? parts.join(', ') : 'Delivery region unavailable'
 }
 
 function getCommentStatusLabel(status) {
@@ -3205,6 +3244,169 @@ function WishlistNotifyPanel() {
   )
 }
 
+function ProductOrderLookupPanel() {
+  const [orderId, setOrderId] = useState('')
+  const [order, setOrder] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    const normalizedOrderId = orderId.trim()
+
+    setError('')
+
+    if (!normalizedOrderId) {
+      setOrder(null)
+      setError('Enter an order number before looking up details.')
+      return
+    }
+
+    setLoading(true)
+
+    void fetchAdminOrderById(normalizedOrderId)
+      .then((nextOrder) => {
+        setOrder(nextOrder)
+      })
+      .catch((lookupError) => {
+        setOrder(null)
+        setError(lookupError?.message || 'Could not load order details.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
+
+  const status = getOrderStatusPresentation(order)
+
+  return (
+    <section className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            Order lookup
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Inspect order details
+          </h2>
+        </div>
+      </div>
+
+      <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+        Look up a known order number to review delivery region, totals, and product line details.
+      </p>
+
+      <form className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
+        <label className="block">
+          <span className="sr-only">Order number</span>
+          <input
+            type="search"
+            className="aurora-input"
+            value={orderId}
+            onChange={(event) => {
+              setOrderId(event.target.value)
+              setError('')
+            }}
+            placeholder="Enter order number"
+          />
+        </label>
+        <LiquidGlassButton type="submit" variant="secondary" size="compact" loading={loading}>
+          {loading ? 'Loading...' : 'Look up order'}
+        </LiquidGlassButton>
+      </form>
+
+      {error ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      {!order && !error ? (
+        <SectionEmptyState
+          title="No order selected"
+          description="Enter an order number to load the detail record available to product operations."
+        />
+      ) : null}
+
+      {order ? (
+        <div className="mt-6 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+          <div className="aurora-widget-subsurface p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="aurora-kicker">Order</p>
+                <h3 className="mt-3 break-all font-display text-3xl text-[var(--aurora-text-strong)]">
+                  {order.id}
+                </h3>
+              </div>
+              <span className={`aurora-order-status-chip is-${status.key} inline-flex`}>
+                {status.label}
+              </span>
+            </div>
+            <dl className="mt-5 grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="aurora-kicker">Submitted</dt>
+                <dd className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  {formatManagerOrderDate(order.submittedAt)}
+                </dd>
+              </div>
+              <div>
+                <dt className="aurora-kicker">Total</dt>
+                <dd className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                  {formatCurrency(order.total)}
+                </dd>
+              </div>
+              <div>
+                <dt className="aurora-kicker">Customer</dt>
+                <dd className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  {order.delivery?.fullName || 'Customer name unavailable'}
+                </dd>
+              </div>
+              <div>
+                <dt className="aurora-kicker">Currency</dt>
+                <dd className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                  {order.currency || 'TRY'}
+                </dd>
+              </div>
+            </dl>
+            <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
+              {getManagerOrderLocation(order)}
+            </p>
+          </div>
+
+          <div className="aurora-widget-subsurface p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="aurora-kicker">Products</p>
+              <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                {order.itemCount} item{order.itemCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="mt-4 divide-y divide-[rgba(73,92,65,0.12)]">
+              {(order.items || []).map((item) => (
+                <div key={`${order.id}:${item.lineItemId || item.id || item.name}`} className="py-3 text-sm">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-[var(--aurora-text-strong)]">
+                        {item.name}
+                      </p>
+                      <p className="mt-1 text-[var(--aurora-text)]">
+                        Qty {item.quantity}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">
+                      {formatCurrency(item.price * item.quantity)}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 export default function ProductManagerPage() {
   const { resolvedTheme } = useTheme()
   const { products, loading, error } = useProductCatalog()
@@ -3432,6 +3634,8 @@ export default function ProductManagerPage() {
         <ProductEditPanel products={products} loading={loading} />
 
         <WishlistNotifyPanel />
+
+        <ProductOrderLookupPanel />
 
         <div className="grid gap-8 xl:grid-cols-[0.82fr_1.18fr]">
           <section id="stock-watch" className="aurora-ops-panel p-8">
