@@ -64,6 +64,27 @@ function getOrderLocation(order) {
   ].filter(Boolean).join(', ') || 'Address unavailable'
 }
 
+function getDeliveryAddressLines(delivery) {
+  if (!delivery) {
+    return []
+  }
+
+  const areaLine = [
+    delivery.district || delivery.city,
+    delivery.province,
+    delivery.postalCode,
+  ].filter(Boolean).join(', ')
+
+  return [
+    delivery.fullName,
+    delivery.addressLine1,
+    delivery.addressLine2,
+    areaLine,
+    delivery.country,
+    delivery.phone,
+  ].filter(Boolean)
+}
+
 function getRefundStatus(item) {
   if (item.refunded) {
     return { key: 'refunded', label: 'Refunded', chipClass: 'is-delivered' }
@@ -341,6 +362,10 @@ export default function SalesManagerPage() {
     )),
     [selectedOrder],
   )
+  const selectedDeliveryAddressLines = useMemo(
+    () => getDeliveryAddressLines(selectedOrder?.delivery),
+    [selectedOrder],
+  )
   const pendingRefundCount = selectedRefundItems.filter((item) => (
     item.refundRequested && !item.refunded && !item.refundRejected
   )).length
@@ -458,6 +483,22 @@ export default function SalesManagerPage() {
 
   const handleDeliveredCancel = () => {
     setPendingDeliveredStatus('')
+  }
+
+  const handleCopyDeliveryAddress = async () => {
+    if (!selectedDeliveryAddressLines.length) {
+      return
+    }
+
+    setFeedback('')
+    setError('')
+
+    try {
+      await navigator.clipboard.writeText(selectedDeliveryAddressLines.join('\n'))
+      setFeedback('Delivery address copied.')
+    } catch {
+      setError('Could not copy the delivery address.')
+    }
   }
 
   return (
@@ -734,14 +775,32 @@ export default function SalesManagerPage() {
                       <p className="mt-3 text-sm font-semibold text-[var(--aurora-text-strong)]">
                         {selectedOrder.delivery?.fullName || 'Customer name unavailable'}
                       </p>
-                      <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                        {getOrderLocation(selectedOrder)}
-                      </p>
-                      {selectedOrder.delivery?.phone ? (
-                        <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                          {selectedOrder.delivery.phone}
+                      {selectedDeliveryAddressLines.length ? (
+                        <div className="mt-3 space-y-1">
+                          {selectedDeliveryAddressLines
+                            .slice(selectedOrder.delivery?.fullName ? 1 : 0)
+                            .map((line, index) => (
+                              <p key={`${line}-${index}`} className="text-sm leading-7 text-[var(--aurora-text)]">
+                                {line}
+                              </p>
+                            ))}
+                        </div>
+                      ) : (
+                        <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                          {getOrderLocation(selectedOrder)}
                         </p>
-                      ) : null}
+                      )}
+                      <div className="mt-4">
+                        <LiquidGlassButton
+                          type="button"
+                          variant="quiet"
+                          size="compact"
+                          disabled={!selectedDeliveryAddressLines.length}
+                          onClick={handleCopyDeliveryAddress}
+                        >
+                          Copy address
+                        </LiquidGlassButton>
+                      </div>
                     </div>
 
                     <div className="aurora-widget-subsurface p-5">
