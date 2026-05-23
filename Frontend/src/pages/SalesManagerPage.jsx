@@ -80,6 +80,118 @@ function getRefundStatus(item) {
   return null
 }
 
+function getRecentOrderBuckets(orders) {
+  const orderTimes = orders
+    .map((order) => Date.parse(order.submittedAt || order.createdAt || ''))
+    .filter(Number.isFinite)
+  const endTime = orderTimes.length ? Math.max(...orderTimes) : Date.now()
+  const endDate = new Date(endTime)
+
+  endDate.setHours(0, 0, 0, 0)
+
+  return Array.from({ length: 7 }, (_, index) => {
+    const date = new Date(endDate)
+    date.setDate(endDate.getDate() - (6 - index))
+
+    const nextDate = new Date(date)
+    nextDate.setDate(date.getDate() + 1)
+
+    const count = orders.filter((order) => {
+      const submittedTime = Date.parse(order.submittedAt || order.createdAt || '')
+      return Number.isFinite(submittedTime) && submittedTime >= date.getTime() && submittedTime < nextDate.getTime()
+    }).length
+
+    return {
+      key: date.toISOString().slice(0, 10),
+      label: date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }),
+      count,
+    }
+  })
+}
+
+function SalesGraphicsPanel({ orders, statusBreakdown }) {
+  const recentBuckets = useMemo(() => getRecentOrderBuckets(orders), [orders])
+  const maxRecentCount = Math.max(1, ...recentBuckets.map((bucket) => bucket.count))
+  const totalOrders = Math.max(1, orders.length)
+
+  return (
+    <section className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            Sales graphics
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Order movement at a glance
+          </h2>
+        </div>
+        <span className="aurora-chip">{orders.length} orders</span>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
+        <div className="aurora-ops-card p-5">
+          <div className="flex min-h-full flex-col gap-5">
+            <div>
+              <p className="aurora-kicker">Recent orders</p>
+              <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
+                Daily order count for the latest seven-day window in the order feed.
+              </p>
+            </div>
+            <div className="grid min-h-44 grid-cols-7 items-end gap-2" aria-label="Recent order count chart">
+              {recentBuckets.map((bucket) => {
+                const heightPercent = bucket.count ? Math.max(12, (bucket.count / maxRecentCount) * 100) : 6
+
+                return (
+                  <div key={bucket.key} className="flex h-full min-w-0 flex-col justify-end gap-2 text-center">
+                    <span className="text-xs font-semibold text-[var(--aurora-text-strong)]">
+                      {bucket.count}
+                    </span>
+                    <div
+                      className="rounded-full border border-[rgba(73,92,65,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(117,150,107,0.44))]"
+                      style={{ height: `${heightPercent}%` }}
+                    />
+                    <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--aurora-text)]">
+                      {bucket.label}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="aurora-ops-card p-5">
+          <p className="aurora-kicker">Status mix</p>
+          <div className="mt-5 space-y-4">
+            {statusBreakdown.map((status) => {
+              const percent = Math.round((status.count / totalOrders) * 100)
+
+              return (
+                <div key={status.key}>
+                  <div className="flex items-center justify-between gap-4 text-sm">
+                    <span className="font-semibold text-[var(--aurora-text-strong)]">
+                      {status.label}
+                    </span>
+                    <span className="text-[var(--aurora-text)]">
+                      {status.count} · {percent}%
+                    </span>
+                  </div>
+                  <div className="mt-2 h-3 overflow-hidden rounded-full border border-[rgba(73,92,65,0.16)] bg-[rgba(255,255,255,0.38)]">
+                    <div
+                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(117,150,107,0.72),rgba(196,168,108,0.82))]"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function MetricTile({ label, value, description }) {
   return (
     <div className="aurora-summary-card p-5">
@@ -232,6 +344,20 @@ export default function SalesManagerPage() {
   const pendingRefundCount = selectedRefundItems.filter((item) => (
     item.refundRequested && !item.refunded && !item.refundRejected
   )).length
+  const statusBreakdown = useMemo(
+    () => orderStatusOptions
+      .map((status) => {
+        const presentation = getOrderStatusPresentation(status)
+
+        return {
+          key: presentation.key,
+          label: presentation.label,
+          count: orders.filter((order) => order.statusKey === presentation.key).length,
+        }
+      })
+      .filter((status) => status.count > 0),
+    [orders],
+  )
 
   const handleRefresh = async () => {
     setOrdersLoading(true)
@@ -364,6 +490,8 @@ export default function SalesManagerPage() {
               description="Stopped or voided orders."
             />
           </section>
+
+          <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
 
           <section id="activity" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
