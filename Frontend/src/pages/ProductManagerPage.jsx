@@ -993,7 +993,7 @@ function ProductVariantManager({ product }) {
     success: '',
   })
   const variantBusy = Boolean(variantState.busy)
-  const canManageVariants = optionGroups.length > 0
+  const canManageVariants = Boolean(product?.hasVariants || variants.length || optionGroups.length)
 
   function setVariantBusy(busy) {
     setVariantState({
