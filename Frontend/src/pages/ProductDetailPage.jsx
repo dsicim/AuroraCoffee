@@ -562,7 +562,7 @@ function ProductReviewPanel({ product }) {
   if (hasSession) {
     if (!canComment && !selfComment) {
       reviewInfoMessage =
-        'Purchase and delivery are required before you can comment on this product.'
+        'Purchase and delivery are required before you can leave product feedback.'
     } else if (isCurrentUserLoading) {
       reviewInfoMessage = 'Loading your comment settings.'
     } else if (!hasDisplayName) {
@@ -576,15 +576,15 @@ function ProductReviewPanel({ product }) {
     }
 
     if (selfCommentStatus === 'pending') {
-      return 'Your current pending comment is loaded here. Saving again will replace that draft with your latest changes.'
+      return 'Your current pending feedback is loaded here. Saving again will replace that draft with your latest changes.'
     }
 
     if (selfCommentStatus === 'rejected') {
-      return 'Your last comment was rejected. Update it here to submit a new version for moderation.'
+      return 'Your last feedback was rejected. Update it here to submit a new version for moderation.'
     }
 
     if (!selfComment.draftAvailable) {
-      return 'Your current comment is awaiting approval. The current API does not return that draft text yet, so editing starts from a blank form.'
+      return 'Your current feedback is awaiting approval. The current API does not return that draft text yet, so editing starts from a blank form.'
     }
 
     if (selfCommentStatus === 'pending_edit') {
@@ -596,7 +596,7 @@ function ProductReviewPanel({ product }) {
     }
 
     if (selfComment.visibleSnapshot) {
-      return 'Your current comment is loaded here. Saving will submit an updated version for moderation.'
+      return 'Your current feedback is loaded here. Saving will submit an updated version for moderation.'
     }
 
     return ''
@@ -765,22 +765,22 @@ function ProductReviewPanel({ product }) {
   const reviewAverage = backendReviewAverage ?? commentReviewAverage
   const hasReviewAverage = hasReviewRating(reviewAverage)
   const emptyReviewMessage = commentsLoading
-    ? 'Loading approved comments.'
+    ? 'Loading approved feedback.'
     : editorMode && selfComment?.visibleSnapshot
-      ? 'Your published comment is being edited above.'
+      ? 'Your published feedback is being edited above.'
       : editorMode && selfCommentStatus === 'pending'
-        ? 'Your pending comment is loaded in the editor above.'
+        ? 'Your pending feedback is loaded in the editor above.'
       : editorMode && selfCommentStatus === 'rejected'
-        ? 'Your rejected comment draft is loaded in the editor above.'
+        ? 'Your rejected feedback draft is loaded in the editor above.'
       : editorMode && selfCommentStatus === 'edit_rejected'
         ? 'Your rejected edit is loaded in the editor above.'
       : editorMode && selfCommentStatus === 'pending_edit'
         ? 'Your pending edit is loaded in the editor above.'
       : editorMode && !selfComment?.draftAvailable
-        ? 'Your current comment is awaiting approval. Use the editor above to resubmit it.'
+        ? 'Your current feedback is awaiting approval. Use the editor above to resubmit it.'
         : selfComment && !reviews.length
-          ? 'No other approved comments yet.'
-        : 'This space is ready for product comments. Approved reviews will appear here once customers share their take.'
+          ? 'No other approved feedback yet.'
+        : 'This space is ready for product feedback. Approved reviews will appear here once customers share their take.'
 
   const clearSelfCommentState = () => {
     setSelfComment(null)
@@ -829,7 +829,7 @@ function ProductReviewPanel({ product }) {
     setReviewFeedback('')
 
     if (!hasReviewRating(reviewRating) && !trimmedComment) {
-      setReviewError('Add a rating or comment before posting.')
+      setReviewError('Add a rating or written comment before submitting.')
       return
     }
 
@@ -874,8 +874,8 @@ function ProductReviewPanel({ product }) {
         setReviewFeedback(
           result?.msg ||
           (editorMode
-            ? 'Your comment changes were submitted for moderation.'
-            : 'Your comment was submitted and is awaiting approval.'),
+            ? 'Your feedback changes were submitted for moderation.'
+            : 'Your feedback was submitted and is awaiting approval.'),
         )
 
         try {
@@ -888,7 +888,7 @@ function ProductReviewPanel({ product }) {
           setCommentsError(error?.message || 'Approved comments could not be refreshed.')
         }
       } catch (error) {
-        setReviewError(error?.message || 'Could not post your comment.')
+        setReviewError(error?.message || 'Could not submit your feedback.')
       } finally {
         setSubmitBusy(false)
       }
@@ -903,7 +903,7 @@ function ProductReviewPanel({ product }) {
       return
     }
 
-    if (!window.confirm('Delete your rating or comment for this product?')) {
+    if (!window.confirm('Delete your product feedback?')) {
       return
     }
 
@@ -927,9 +927,9 @@ function ProductReviewPanel({ product }) {
         setHoverReviewRating(null)
         setReviewComment('')
         setCommentsError('')
-        setReviewFeedback(result?.msg || 'Your comment was deleted.')
+        setReviewFeedback(result?.msg || 'Your feedback was deleted.')
       } catch (error) {
-        setReviewError(error?.message || 'Could not delete your comment.')
+        setReviewError(error?.message || 'Could not delete your feedback.')
       } finally {
         setDeleteBusy(false)
       }
@@ -938,8 +938,8 @@ function ProductReviewPanel({ product }) {
 
   return (
     <AuroraWidget
-      title={editorMode ? 'Edit your comment' : 'Share your take'}
-      subtitle={editorMode ? 'Update your rating and published text' : 'Half-step rating and quick comment'}
+      title={editorMode ? 'Edit your feedback' : 'Share your take'}
+      subtitle={editorMode ? 'Update your score or written comment' : 'Rate this product, then add an optional written comment'}
       icon="star"
       className="aurora-showroom-panel aurora-product-review-panel mx-auto w-full p-5 sm:p-8"
     >
@@ -980,7 +980,7 @@ function ProductReviewPanel({ product }) {
                       ? 'Pending update'
                       : selfCommentStatus === 'edit_rejected'
                         ? 'Rejected update'
-                        : 'Your comment'}
+                        : 'Your feedback'}
               </p>
               <p className="mt-2 text-sm text-[var(--aurora-text)]">
                 {selfCommentCardSnapshot?.createdAt
@@ -991,6 +991,7 @@ function ProductReviewPanel({ product }) {
             <div className="flex flex-wrap items-center gap-3">
               {selfCommentCardSnapshot ? (
                 <div className="aurora-review-card-score">
+                  <span className="aurora-review-card-score-label">Rating</span>
                   {hasReviewRating(selfCommentCardSnapshot.rating) ? (
                     <>
                       <ReviewStars value={selfCommentCardSnapshot.rating} compact />
@@ -1016,7 +1017,7 @@ function ProductReviewPanel({ product }) {
                   setSelfCommentEditing(true)
                 }}
               >
-                Edit comment
+                Edit feedback
               </LiquidGlassButton>
               <LiquidGlassButton
                 type="button"
@@ -1031,20 +1032,23 @@ function ProductReviewPanel({ product }) {
             </div>
           </div>
 
-          <p className="text-base leading-8 text-[var(--aurora-text)]">
-            {selfCommentCardSnapshot?.comment ||
-              'No written comment.'}
-          </p>
+          <div className="aurora-review-comment-copy">
+            <p className="aurora-kicker">Written comment</p>
+            <p className="mt-2 text-base leading-8 text-[var(--aurora-text)]">
+              {selfCommentCardSnapshot?.comment ||
+                'No written comment added.'}
+            </p>
+          </div>
 
           {hasPendingSelfComment || hasRejectedSelfComment ? (
             <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
               {selfCommentStatus === 'pending_edit'
-                ? 'A newer version of your comment is waiting for moderation. Use Edit comment to revise or replace that draft.'
+                ? 'A newer version of your feedback is waiting for moderation. Use Edit feedback to revise or replace that draft.'
                 : selfCommentStatus === 'edit_rejected'
-                  ? 'Your last edit was rejected. Use Edit comment to replace it with a new draft.'
+                  ? 'Your last edit was rejected. Use Edit feedback to replace it with a new draft.'
                   : selfCommentStatus === 'rejected'
-                    ? 'Your last comment was rejected. Use Edit comment to revise it and submit again.'
-                    : 'Your comment is waiting for moderation. Use Edit comment if you want to update the draft before it is reviewed.'}
+                    ? 'Your last feedback was rejected. Use Edit feedback to revise it and submit again.'
+                    : 'Your feedback is waiting for moderation. Use Edit feedback if you want to update the draft before it is reviewed.'}
             </p>
           ) : null}
         </AuroraInset>
@@ -1053,13 +1057,16 @@ function ProductReviewPanel({ product }) {
       {hasSession ? (
         !selfComment || editorMode ? (
           <form className="aurora-review-form" onSubmit={handleReviewSubmit}>
-            <AuroraInset>
+            <AuroraInset className="aurora-review-rating-section">
               <div className="aurora-review-form-heading">
                 <div>
-                  <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Your rating'}</p>
+                  <p className="aurora-kicker">{editorMode ? 'Edit rating' : 'Rate this product'}</p>
                   <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
                     {hasReviewRating(reviewRating) ? `${formatReviewScore(reviewRating)} out of 5` : 'Pick a score'}
                   </h4>
+                  <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
+                    Choose a star score here. Add written detail in the separate comment section below.
+                  </p>
                 </div>
                 <span className="aurora-review-score-pill">Half-step stars</span>
               </div>
@@ -1088,15 +1095,15 @@ function ProductReviewPanel({ product }) {
               <p className="aurora-message aurora-message-info">{selfCommentNotice}</p>
             ) : null}
 
-            <AuroraInset>
+            <AuroraInset className="aurora-review-comment-section">
               <div>
                 <label htmlFor="product-review-comment" className="aurora-review-label">
-                  {editorMode ? 'Edit comment' : 'Comment'}
+                  {editorMode ? 'Edit written comment' : 'Written comment'}
                 </label>
                 <p className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
                   {editorMode
-                    ? 'Refine your current comment and save a new version for moderation.'
-                    : 'Share taste, build quality, or how this product fits into your routine.'}
+                    ? 'Refine your optional written comment without changing the rating unless you choose a new score.'
+                    : 'Optional: share taste, build quality, or how this product fits into your routine.'}
                 </p>
               </div>
 
@@ -1139,7 +1146,7 @@ function ProductReviewPanel({ product }) {
                 placeholder={
                   editorMode
                     ? `Update your thoughts on ${product.name}. Mention what changed or what still stands out.`
-                    : `What stands out about ${product.name}? Mention taste, build quality, or how it fits into your routine.`
+                    : `Optional comment for ${product.name}: mention taste, build quality, or how it fits into your routine.`
                 }
                 disabled={reviewFormDisabled}
                 value={reviewComment}
@@ -1175,7 +1182,7 @@ function ProductReviewPanel({ product }) {
                     disabled={reviewFormDisabled}
                     loading={submitBusy}
                   >
-                    {submitBusy ? (editorMode ? 'Saving...' : 'Posting...') : (editorMode ? 'Save changes' : 'Post comment')}
+                    {submitBusy ? (editorMode ? 'Saving...' : 'Submitting...') : (editorMode ? 'Save feedback' : 'Submit feedback')}
                   </LiquidGlassButton>
                 </div>
               </div>
@@ -1186,7 +1193,7 @@ function ProductReviewPanel({ product }) {
         <AuroraInset className="aurora-review-login-prompt">
           <p className="aurora-kicker">Members only</p>
           <h4 className="mt-3 text-2xl font-semibold text-[var(--aurora-text-strong)]">
-            Sign in to leave a rating or comment.
+            Sign in to leave a rating or written comment.
           </h4>
           <p className="mt-3 max-w-2xl text-base leading-8 text-[var(--aurora-text)]">
             Guests can browse the visible comments here, but posting feedback is limited to signed-in customers.
@@ -1197,7 +1204,7 @@ function ProductReviewPanel({ product }) {
               to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`}
               size="compact"
             >
-              Sign in to comment
+              Sign in to add feedback
             </LiquidGlassButton>
           </div>
         </AuroraInset>
@@ -1227,6 +1234,7 @@ function ProductReviewPanel({ product }) {
                   </p>
                 </div>
                 <div className="aurora-review-card-score">
+                  <span className="aurora-review-card-score-label">Rating</span>
                   {hasReviewRating(review.rating) ? (
                     <>
                       <ReviewStars value={review.rating} compact />
@@ -1241,9 +1249,12 @@ function ProductReviewPanel({ product }) {
                   )}
                 </div>
               </div>
-              <p className="text-base leading-8 text-[var(--aurora-text)]">
-                {review.comment || 'No written comment.'}
-              </p>
+              <div className="aurora-review-comment-copy">
+                <p className="aurora-kicker">Written comment</p>
+                <p className="mt-2 text-base leading-8 text-[var(--aurora-text)]">
+                  {review.comment || 'No written comment added.'}
+                </p>
+              </div>
             </AuroraInset>
           ))
         ) : (

@@ -659,6 +659,18 @@
     gap: 0.4rem;
   }
 
+  .aurora-review-card-score-label {
+    color: var(--aurora-text-muted);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .aurora-review-comment-copy {
+    min-width: 0;
+  }
+
   .aurora-review-empty {
     text-align: center;
   }
