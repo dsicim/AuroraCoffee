@@ -865,16 +865,30 @@ func.removeProduct = async function (productId) {
     try {
         await connection.beginTransaction();
 
-        const [products] = await connection.execute('SELECT id, sales FROM products WHERE id = ? FOR UPDATE', [productId]);
+        const [products] = await connection.execute('SELECT * FROM products WHERE id = ? FOR UPDATE', [productId]);
         if (products.length === 0) {
             throw new DBError(404, 'Product not found');
         }
 
-        const [[history]] = await connection.execute(`
-            SELECT
-                (SELECT COUNT(*) FROM refunds WHERE product_id = ?) AS refunds,
-                (SELECT COUNT(*) FROM delivered_items WHERE product_id = ?) AS deliveredItems
-        `, [productId, productId]);
+        const [historyTables] = await connection.execute(`
+            SELECT table_name
+            FROM information_schema.tables
+            WHERE table_schema = DATABASE()
+              AND table_name IN ('refunds', 'delivered_items')
+        `);
+        const existingHistoryTables = new Set(historyTables.map(row => row.table_name));
+        const history = { refunds: 0, deliveredItems: 0 };
+
+        if (existingHistoryTables.has('refunds')) {
+            const [[refunds]] = await connection.execute('SELECT COUNT(*) AS count FROM refunds WHERE product_id = ?', [productId]);
+            history.refunds = Number(refunds.count) || 0;
+        }
+
+        if (existingHistoryTables.has('delivered_items')) {
+            const [[deliveredItems]] = await connection.execute('SELECT COUNT(*) AS count FROM delivered_items WHERE product_id = ?', [productId]);
+            history.deliveredItems = Number(deliveredItems.count) || 0;
+        }
+
         const hasHistory = Number(products[0].sales) > 0 || Number(history.refunds) > 0 || Number(history.deliveredItems) > 0;
 
         if (hasHistory) {
