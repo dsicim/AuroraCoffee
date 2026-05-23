@@ -872,11 +872,10 @@ func.removeProduct = async function (productId) {
 
         const [[history]] = await connection.execute(`
             SELECT
-                (SELECT COUNT(*) FROM product_variants WHERE product_id = ? AND sales > 0) AS soldVariants,
                 (SELECT COUNT(*) FROM refunds WHERE product_id = ?) AS refunds,
                 (SELECT COUNT(*) FROM delivered_items WHERE product_id = ?) AS deliveredItems
-        `, [productId, productId, productId]);
-        const hasHistory = Number(products[0].sales) > 0 || Number(history.soldVariants) > 0 || Number(history.refunds) > 0 || Number(history.deliveredItems) > 0;
+        `, [productId, productId]);
+        const hasHistory = Number(products[0].sales) > 0 || Number(history.refunds) > 0 || Number(history.deliveredItems) > 0;
 
         if (hasHistory) {
             throw new DBError(409, 'Product has order history and cannot be deleted');
