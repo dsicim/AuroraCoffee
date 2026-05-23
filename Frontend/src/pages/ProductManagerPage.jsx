@@ -15,6 +15,9 @@ import { fetchAdminOrderById, getOrderStatusPresentation } from '../features/ord
 import {
   getProductAvailability,
   getProductCategories,
+  getProductCategoryLabel,
+  getProductMetaLine,
+  isCoffeeProduct,
   createProduct,
   createProductVariant,
   createProductCategory,
@@ -82,9 +85,14 @@ const productEditFieldGroups = [
     fieldKeys: ['price', 'stock', 'discountRate', 'taxRate'],
   },
   {
-    title: 'Catalog attributes',
-    description: 'Product traits shown on catalog and detail pages.',
-    fieldKeys: ['origin', 'roastLevel', 'acidity', 'material', 'capacity', 'flavorNotes'],
+    title: 'Coffee profile',
+    description: 'Origin, roast, acidity, and tasting notes for coffee products.',
+    fieldKeys: ['origin', 'roastLevel', 'acidity', 'flavorNotes'],
+  },
+  {
+    title: 'Equipment details',
+    description: 'Material and capacity for accessories, brewers, mugs, and equipment.',
+    fieldKeys: ['material', 'capacity'],
   },
 ].map((group) => ({
   ...group,
@@ -739,10 +747,39 @@ function getProductManagerSelectKey(product) {
   return product?.slug || product?.productCode || product?.name || ''
 }
 
+function getProductManagerAttributeRows(product) {
+  const rows = [
+    { label: 'Category', value: getProductCategoryLabel(product) },
+    { label: 'Meta line', value: getProductMetaLine(product) },
+  ]
+
+  if (isCoffeeProduct(product)) {
+    rows.push(
+      { label: 'Origin', value: product.origin },
+      { label: 'Roast', value: product.roastLevel },
+      { label: 'Acidity', value: product.acidity },
+      { label: 'Flavor notes', value: product.flavorNotes },
+    )
+  } else {
+    rows.push(
+      { label: 'Material', value: product.material },
+      { label: 'Capacity', value: product.capacity },
+    )
+  }
+
+  return rows
+    .map((row) => ({
+      ...row,
+      value: String(row.value || '').trim(),
+    }))
+    .filter((row) => row.value)
+}
+
 function ProductEditSnapshot({ product }) {
-  const categoryLabel = product.categoryName || product.parentCategoryName || 'Catalog'
+  const categoryLabel = getProductCategoryLabel(product)
   const inventoryTone = getInventoryTone(product.stock)
   const productImage = product.imageUrl
+  const attributeRows = getProductManagerAttributeRows(product)
 
   return (
     <aside className="aurora-product-edit-snapshot" aria-label="Selected product summary">
@@ -787,6 +824,27 @@ function ProductEditSnapshot({ product }) {
           <dd>{Number(product.discountRate || 0)}%</dd>
         </div>
       </dl>
+
+      <div className="aurora-product-edit-attribute-summary">
+        <div className="aurora-product-edit-attribute-summary-header">
+          <p>Attribute review</p>
+          <span>{isCoffeeProduct(product) ? 'Coffee' : 'Equipment'}</span>
+        </div>
+        {attributeRows.length ? (
+          <dl>
+            {attributeRows.map((attribute) => (
+              <div key={attribute.label}>
+                <dt>{attribute.label}</dt>
+                <dd>{attribute.value}</dd>
+              </div>
+            ))}
+          </dl>
+        ) : (
+          <p className="aurora-product-edit-attribute-empty">
+            No storefront attributes are set for this product yet.
+          </p>
+        )}
+      </div>
     </aside>
   )
 }

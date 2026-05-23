@@ -62,19 +62,19 @@ function formatDetailAttribute(value) {
 }
 
 function buildAttributeCards(product) {
-  if (isCoffeeProduct(product)) {
-    return [
-      { title: formatDetailAttribute(product.origin), subtitle: 'Origin', icon: 'location' },
-      { title: formatDetailAttribute(product.roastLevel), subtitle: 'Roast level', icon: 'coffee' },
-      { title: formatDetailAttribute(product.acidity), subtitle: 'Acidity', icon: 'spark' },
-    ]
-  }
+  const cards = isCoffeeProduct(product)
+    ? [
+        { title: formatDetailAttribute(product.origin), subtitle: 'Origin', icon: 'location' },
+        { title: formatDetailAttribute(product.roastLevel), subtitle: 'Roast level', icon: 'coffee' },
+        { title: formatDetailAttribute(product.acidity), subtitle: 'Acidity', icon: 'spark' },
+      ]
+    : [
+        { title: formatDetailAttribute(product.material), subtitle: 'Material', icon: 'package' },
+        { title: formatDetailAttribute(product.capacity), subtitle: 'Capacity', icon: 'grid' },
+        { title: formatDetailAttribute(getProductCategoryLabel(product)), subtitle: 'Category', icon: 'spark' },
+      ]
 
-  return [
-    { title: formatDetailAttribute(product.material), subtitle: 'Material', icon: 'package' },
-    { title: formatDetailAttribute(product.capacity), subtitle: 'Capacity', icon: 'grid' },
-    { title: formatDetailAttribute(getProductCategoryLabel(product)), subtitle: 'Category', icon: 'spark' },
-  ]
+  return cards.filter((card) => card.title !== 'Not provided')
 }
 
 function getSelectedOptionLabel(group, selectedOptionsByGroup) {
@@ -1929,17 +1929,19 @@ export default function ProductDetailPage() {
             ) : null}
           </AuroraInset>
 
-          <div className="aurora-product-attribute-list mt-6">
-            {attributeCards.map((card) => (
-              <AuroraWidget
-                key={card.subtitle}
-                title={card.title}
-                subtitle={card.subtitle}
-                icon={card.icon}
-                className="aurora-showroom-subpanel aurora-product-attribute-card p-5"
-              />
-            ))}
-          </div>
+          {attributeCards.length ? (
+            <div className="aurora-product-attribute-list mt-6">
+              {attributeCards.map((card) => (
+                <AuroraWidget
+                  key={card.subtitle}
+                  title={card.title}
+                  subtitle={card.subtitle}
+                  icon={card.icon}
+                  className="aurora-showroom-subpanel aurora-product-attribute-card p-5"
+                />
+              ))}
+            </div>
+          ) : null}
         </AuroraWidget>
 
         <ProductReviewPanel key={product.slug} product={product} />
