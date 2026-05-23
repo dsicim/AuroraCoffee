@@ -861,15 +861,40 @@ func.removeProduct = async function (productId) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
+    const connection = await pool.getConnection();
     try {
-        const [result] = await pool.execute('DELETE FROM products WHERE id = ?', [productId]);
+        await connection.beginTransaction();
+
+        const [products] = await connection.execute('SELECT id, sales FROM products WHERE id = ? FOR UPDATE', [productId]);
+        if (products.length === 0) {
+            throw new DBError(404, 'Product not found');
+        }
+
+        const [[history]] = await connection.execute(`
+            SELECT
+                (SELECT COUNT(*) FROM product_variants WHERE product_id = ? AND sales > 0) AS soldVariants,
+                (SELECT COUNT(*) FROM refunds WHERE product_id = ?) AS refunds,
+                (SELECT COUNT(*) FROM delivered_items WHERE product_id = ?) AS deliveredItems
+        `, [productId, productId, productId]);
+        const hasHistory = Number(products[0].sales) > 0 || Number(history.soldVariants) > 0 || Number(history.refunds) > 0 || Number(history.deliveredItems) > 0;
+
+        if (hasHistory) {
+            throw new DBError(409, 'Product has order history and cannot be deleted');
+        }
+
+        const [result] = await connection.execute('DELETE FROM products WHERE id = ?', [productId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
         }
+        await connection.commit();
         return { success: true, message: 'Product removed successfully' };
     } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Remove product error:', error);
         throw new DBError(500, 'Failed to remove product');
+    } finally {
+        connection.release();
     }
 };
 
