@@ -7,8 +7,8 @@ import ProductCard from '../features/products/presentation/ProductCard'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
   getProductCategories,
-  getProductCategoryName,
   getProductRequestErrorMessage,
+  productMatchesCategory,
   searchProducts,
   useProductCatalog,
 } from '../lib/products'
@@ -167,7 +167,7 @@ export default function ProductsPage() {
     () =>
       sortProducts(
         sourceProducts.filter(
-          (product) => category === 'All' || getProductCategoryName(product) === category,
+          (product) => productMatchesCategory(product, category),
         ),
         sortBy,
       ),

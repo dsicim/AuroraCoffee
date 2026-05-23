@@ -1070,8 +1070,33 @@ export function getProductCategoryName(product) {
   return product?.categoryName || product?.parentCategoryName || ''
 }
 
+export function getProductCategoryPath(product) {
+  const parentCategory = normalizeText(product?.parentCategoryName)
+  const category = normalizeText(product?.categoryName)
+
+  if (parentCategory && category && parentCategory !== category) {
+    return `${parentCategory} / ${category}`
+  }
+
+  return category || parentCategory || ''
+}
+
 export function getProductCategoryLabel(product) {
-  return getProductCategoryName(product) || 'Catalog'
+  return getProductCategoryPath(product) || 'Catalog'
+}
+
+export function productMatchesCategory(product, category) {
+  const selectedCategory = normalizeText(category)
+
+  if (!selectedCategory || selectedCategory === 'All') {
+    return true
+  }
+
+  return (
+    getProductCategoryPath(product) === selectedCategory ||
+    product?.categoryName === selectedCategory ||
+    product?.parentCategoryName === selectedCategory
+  )
 }
 
 export function getProductTypeLabel(product) {
@@ -1112,9 +1137,14 @@ export function getProductCategories(products) {
   return [
     'All',
     ...new Set(
-      (products || [])
-        .map((product) => getProductCategoryName(product))
-        .filter(Boolean),
+      (products || []).flatMap((product) => {
+        const parentCategory = normalizeText(product?.parentCategoryName)
+        const categoryPath = getProductCategoryPath(product)
+
+        return parentCategory && categoryPath && parentCategory !== categoryPath
+          ? [parentCategory, categoryPath]
+          : [categoryPath]
+      }).filter(Boolean),
     ),
   ]
 }
