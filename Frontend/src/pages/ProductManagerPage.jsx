@@ -2763,7 +2763,7 @@ function ProductEditPanel({ products, loading }) {
               className="aurora-product-edit-workspace"
             >
               <ProductEditSnapshot product={selectedProduct} />
-              <ProductVariantManager product={selectedProduct} />
+              <ProductVariantManager key={selectedProduct.id} product={selectedProduct} />
               <ProductImageManager product={selectedProduct} />
 
               <div className="aurora-product-edit-groups">
