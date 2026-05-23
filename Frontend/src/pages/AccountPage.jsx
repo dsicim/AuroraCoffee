@@ -48,6 +48,10 @@ function getUserPrivacy(user) {
   return user?.privacy || user?.comment_privacy || user?.commentPrivacy || ''
 }
 
+function getUserTaxId(user) {
+  return user?.taxId || user?.tax_id || ''
+}
+
 function getAccountErrorMessage(error, fallback) {
   const message = String(error?.message || '').trim()
   return message || fallback
@@ -74,6 +78,7 @@ export default function AccountPage() {
   const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
+  const [profileTaxId, setProfileTaxId] = useState(() => getUserTaxId(currentUser))
   const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
     buildReviewPrivacySelectionFromCode(
       getUserPrivacy(currentUser),
@@ -162,6 +167,7 @@ export default function AccountPage() {
     const nextProfileName = getUserDisplayName(currentUser)
 
     setProfileName(nextProfileName)
+    setProfileTaxId(getUserTaxId(currentUser))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -201,6 +207,7 @@ export default function AccountPage() {
       await updateCurrentUserProfile({
         name: trimmedName,
         privacy: profilePrivacyCode,
+        taxId: profileTaxId.trim(),
       })
       setProfileFeedback('Profile updated.')
       setProfileFeedbackType('success')
@@ -298,6 +305,22 @@ export default function AccountPage() {
                         getReviewPrivacyFallbackMode(currentSelection),
                       ),
                     )
+                    setProfileFeedback('')
+                  }}
+                  className="aurora-input"
+                />
+              </label>
+
+              <label className="block">
+                <span className="aurora-field-label">Tax ID (optional)</span>
+                <input
+                  type="text"
+                  name="taxId"
+                  autoComplete="off"
+                  value={profileTaxId}
+                  maxLength={50}
+                  onChange={(event) => {
+                    setProfileTaxId(event.target.value)
                     setProfileFeedback('')
                   }}
                   className="aurora-input"

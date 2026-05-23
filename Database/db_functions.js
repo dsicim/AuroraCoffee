@@ -91,14 +91,14 @@ func.loginUser = async function (username, password) {
     }
 };
 
-func.editUser = async function (userId, newDisplayName, newNamePrivacy, newEmailBlock) {
+func.editUser = async function (userId, newDisplayName, newNamePrivacy, newEmailBlock, newTaxId = null) {
     if (!userId || !newDisplayName || !newNamePrivacy) {
         throw new DBError(400, 'User ID, display name, and name privacy are required');
     }
     try {
         const [result] = await pool.execute(
-            'UPDATE users SET displayname = ?, nameprivacy = ? WHERE id = ?',
-            [newDisplayName, newNamePrivacy, userId]
+            'UPDATE users SET displayname = ?, nameprivacy = ?, tax_id = ? WHERE id = ?',
+            [newDisplayName, newNamePrivacy, newTaxId, userId]
         );
         if (result.affectedRows === 0) {
             throw new DBError(404, 'User not found');
@@ -137,7 +137,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, role, nameprivacy, emailblocked, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
+            'SELECT id, displayname, username, verified, role, nameprivacy, tax_id, emailblocked, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {

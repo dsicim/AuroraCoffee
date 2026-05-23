@@ -426,7 +426,7 @@ function parseAuthTokenPayload(value) {
   }
 }
 
-export async function updateCurrentUserProfile({ name, privacy }) {
+export async function updateCurrentUserProfile({ name, privacy, taxId }) {
   const session = requireAuthSession()
   const response = await fetch(buildApiUrl('/users/me'), {
     method: 'PATCH',
@@ -439,6 +439,7 @@ export async function updateCurrentUserProfile({ name, privacy }) {
     body: JSON.stringify({
       name,
       privacy,
+      taxId,
     }),
   })
   const payload = await readAuthMutationResponse(response)
