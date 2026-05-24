@@ -7,7 +7,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     if (endpoint[0] === "me") {
         if (method === "GET") return { s: 200, j: true, d: { user: currentUser } };
         else if (method === "PATCH") {
-            if (!body || !body.exists || body.err || !body.json || !body.data || ((!body.data.name || !body.data.privacy) && body.data.emailblock === undefined)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (!body || !body.exists || body.err || !body.json || !body.data || ((!body.data.name || !body.data.privacy) && body.data.emailblock === undefined && body.data.taxId === undefined)) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if ((body.data.name && !body.data.privacy) || (!body.data.name && body.data.privacy)) return { s: 400, j: true, d: { e: "Display name and privacy must be provided together" } };
             if (!body.data.name && !body.data.privacy) {
                 body.data.name = currentUser.displayname;
                 body.data.privacy = currentUser.nameprivacy;
@@ -24,7 +25,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (userprivacy.length !== userwords.length) return { s: 400, j: true, d: { e: "Privacy setting length must match the number of words in your display name" } };
                 if (privacyinvalid) return { s: 400, j: true, d: { e: "Invalid privacy setting" } };
             }
-            return await sql.editUser(currentUser.id, body.data.name, body.data.privacy, body.data.emailblock === undefined ? currentUser.emailblock : body.data.emailblock).then(res => {
+            const taxId = body.data.taxId === undefined ? currentUser.tax_id : body.data.taxId;
+            if (taxId && taxId.length > 50) return { s: 400, j: true, d: { e: "Tax ID must be 50 characters or fewer" } };
+            return await sql.editUser(currentUser.id, body.data.name, body.data.privacy, body.data.emailblock === undefined ? currentUser.emailblock : body.data.emailblock, taxId || null).then(res => {
                 if (res.success) {
                     return { s: 200, j: true, d: { e: "User updated successfully" } };
                 }
