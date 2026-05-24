@@ -292,5 +292,125 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (11, 'eyJjb2xvciI6InJlZCJ9', 0, 1, 20),
 (11, 'eyJjb2xvciI6ImJsYWNrIn0=', 0, 1, 25);
 
+-- 7. Inserting the missing 10 coffees and their weight variants
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Panama Geisha', 'panama-geisha', 'An exceptionally rare coffee with a delicate, tea-like body. Floral jasmine and bergamot notes make it a truly luxurious cup.', 850.00, 20, id, 'Panama', 'Light', 'High', 'Jasmine, Bergamot, Earl Grey'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'India Monsooned Malabar', 'india-monsooned-malabar', 'A unique, heavy-bodied coffee with almost zero acidity. Exposed to monsoon winds for a distinctively earthy and spicy profile.', 420.00, 80, id, 'India', 'Dark', 'Very Low', 'Spicy, Earthy, Wood, Tobacco'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Rwanda Karongi', 'rwanda-karongi', 'A vibrant African coffee featuring sweet orange acidity and a clean, caramelized sugar finish.', 460.00, 60, id, 'Rwanda', 'Light-Medium', 'Medium-High', 'Orange, Brown Sugar, Black Tea'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Yemen Mocha Mattari', 'yemen-mocha-mattari', 'A wild and complex classic. Full-bodied with deep chocolate and dried fruit notes, ending with a winey acidity.', 750.00, 25, id, 'Yemen', 'Medium-Dark', 'Medium', 'Dark Chocolate, Dried Fruit, Winey'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'El Salvador Finca', 'el-salvador-finca', 'Smooth and easy to drink with a perfect harmony of milk chocolate and red apple sweetness. Ideal for daily brewing.', 440.00, 75, id, 'El Salvador', 'Medium', 'Medium', 'Milk Chocolate, Red Apple, Nougat'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Midnight Velvet Blend', 'midnight-velvet-blend', 'A heavy-bodied, low acidity blend crafted for the perfect late-night espresso. Rich notes of dark cocoa and roasted almonds.', 390.00, 150, id, 'Blend (Asia & South America)', 'Dark', 'Low', 'Cocoa Nibs, Roasted Almond, Treacle'
+FROM categories WHERE name = 'Blend' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Nicaragua SHG EP', 'nicaragua-shg-ep', 'High-altitude grown beans offering a mild acidity and a sweet, comforting finish with hints of vanilla and hazelnut.', 410.00, 90, id, 'Nicaragua', 'Medium', 'Medium-Low', 'Hazelnut, Vanilla, Caramel'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Uganda Rwenzori', 'uganda-rwenzori', 'A sweet and full-bodied cup showcasing an exciting mix of tropical fruits and rich cacao.', 430.00, 50, id, 'Uganda', 'Medium', 'Medium', 'Tropical Fruit, Cacao, Honey'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Mexico Altura', 'mexico-altura', 'A refreshing, light-bodied coffee with mild chocolate and roasted peanut notes. Great for a smooth morning drip.', 380.00, 110, id, 'Mexico', 'Medium', 'Medium-Low', 'Roasted Peanut, Cinnamon, Chocolate'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+INSERT INTO products (name, product_code, description, price, stock, category_id, origin, roast_level, acidity, flavor_notes)
+SELECT 'Decaf Swiss Water Peru', 'decaf-swiss-water-peru', 'A completely chemical-free decaf that retains all its rich flavor. Smooth notes of toasted walnut and molasses.', 480.00, 40, id, 'Peru', 'Medium', 'Medium', 'Toasted Walnut, Molasses, Mild Apple'
+FROM categories WHERE name = 'Single Origin' LIMIT 1;
+
+UPDATE products SET has_variants = TRUE WHERE id IN (15,16,17,18,19,20,21,22,23,24);
+
+INSERT INTO product_option_groups (product_id, name, cumulative_stock, group_code) VALUES
+(15, 'Weight', TRUE, 'weight'),
+(16, 'Weight', TRUE, 'weight'),
+(17, 'Weight', TRUE, 'weight'),
+(18, 'Weight', TRUE, 'weight'),
+(19, 'Weight', TRUE, 'weight'),
+(20, 'Weight', TRUE, 'weight'),
+(21, 'Weight', TRUE, 'weight'),
+(22, 'Weight', TRUE, 'weight'),
+(23, 'Weight', TRUE, 'weight'),
+(24, 'Weight', TRUE, 'weight');
+
+INSERT INTO product_option_values (product_option_group_id, label, value_code, price_add) VALUES
+(10, '250g', '250g', 0),
+(10, '500g', '500g', 350.00),
+(10, '1kg', '1000g', 650.00),
+(11, '250g', '250g', 0),
+(11, '500g', '500g', 350.00),
+(11, '1kg', '1000g', 650.00),
+(12, '250g', '250g', 0),
+(12, '500g', '500g', 350.00),
+(12, '1kg', '1000g', 650.00),
+(13, '250g', '250g', 0),
+(13, '500g', '500g', 350.00),
+(13, '1kg', '1000g', 650.00),
+(14, '250g', '250g', 0),
+(14, '500g', '500g', 350.00),
+(14, '1kg', '1000g', 650.00),
+(15, '250g', '250g', 0),
+(15, '500g', '500g', 350.00),
+(15, '1kg', '1000g', 650.00),
+(16, '250g', '250g', 0),
+(16, '500g', '500g', 350.00),
+(16, '1kg', '1000g', 650.00),
+(17, '250g', '250g', 0),
+(17, '500g', '500g', 350.00),
+(17, '1kg', '1000g', 650.00),
+(18, '250g', '250g', 0),
+(18, '500g', '500g', 350.00),
+(18, '1kg', '1000g', 650.00),
+(19, '250g', '250g', 0),
+(19, '500g', '500g', 350.00),
+(19, '1kg', '1000g', 650.00);
+
+INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, stock) VALUES
+(15, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 10),
+(15, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 6),
+(15, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 4),
+(16, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 40),
+(16, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 25),
+(16, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(17, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 30),
+(17, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 20),
+(17, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 10),
+(18, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 12),
+(18, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 8),
+(18, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 5),
+(19, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 35),
+(19, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 25),
+(19, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(20, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 75),
+(20, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 45),
+(20, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 30),
+(21, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 45),
+(21, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 30),
+(21, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 15),
+(22, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 25),
+(22, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 15),
+(22, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 10),
+(23, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 55),
+(23, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 35),
+(23, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 20),
+(24, 'eyJ3ZWlnaHQiOiIyNTBnIn0=', 0, 1, 20),
+(24, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 12),
+(24, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 8);
+
 SET FOREIGN_KEY_CHECKS=1;
 
