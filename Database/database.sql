@@ -53,20 +53,6 @@ CREATE TABLE IF NOT EXISTS orders (
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
--- Create refunds table
-CREATE TABLE IF NOT EXISTS refunds (
-    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id VARCHAR(20),
-    product_id BIGINT UNSIGNED,
-    user_id BIGINT UNSIGNED,
-    refund_amount DECIMAL(10, 2) UNSIGNED NOT NULL,
-    status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
 -- Create delivered_items table
 CREATE TABLE IF NOT EXISTS delivered_items (
     user_id BIGINT UNSIGNED NOT NULL,
@@ -111,6 +97,5 @@ CREATE TABLE IF NOT EXISTS wishlist (
 );
 CREATE INDEX idx_orders_user_id_created_at ON orders(user_id, created_at);
 CREATE INDEX idx_comments_product_status ON comments(product_id, status);
-CREATE INDEX idx_refunds_user_status ON refunds(user_id, status);
 CREATE INDEX idx_cart_user_id ON cart(user_id);
 CREATE INDEX idx_addresses_user_id ON addresses(user_id);

@@ -870,31 +870,6 @@ func.removeProduct = async function (productId) {
             throw new DBError(404, 'Product not found');
         }
 
-        const [historyTables] = await connection.execute(`
-            SELECT table_name
-            FROM information_schema.tables
-            WHERE table_schema = DATABASE()
-              AND table_name IN ('refunds', 'delivered_items')
-        `);
-        const existingHistoryTables = new Set(historyTables.map(row => row.table_name));
-        const history = { refunds: 0, deliveredItems: 0 };
-
-        if (existingHistoryTables.has('refunds')) {
-            const [[refunds]] = await connection.execute('SELECT COUNT(*) AS count FROM refunds WHERE product_id = ?', [productId]);
-            history.refunds = Number(refunds.count) || 0;
-        }
-
-        if (existingHistoryTables.has('delivered_items')) {
-            const [[deliveredItems]] = await connection.execute('SELECT COUNT(*) AS count FROM delivered_items WHERE product_id = ?', [productId]);
-            history.deliveredItems = Number(deliveredItems.count) || 0;
-        }
-
-        const hasHistory = Number(products[0].sales) > 0 || Number(history.refunds) > 0 || Number(history.deliveredItems) > 0;
-
-        if (hasHistory) {
-            throw new DBError(409, 'Product has order history and cannot be deleted');
-        }
-
         const [result] = await connection.execute('DELETE FROM products WHERE id = ?', [productId]);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Product not found');
