@@ -37,7 +37,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             const specificorder = Boolean(query.id) ? query.id : null;
             const admin = (query.admin && (query.admin === "true" || query.admin === "1")) ? true : false;
-            const canReadManagerOrders = ["Admin","Sales Manager"].includes(currentUser.role);
+            const canReadManagerOrders = ["Admin","Sales Manager","Product Manager"].includes(currentUser.role);
             const canReadSpecificManagerOrder = canReadManagerOrders || (specificorder && currentUser.role === "Product Manager");
             if (admin && !canReadSpecificManagerOrder) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (admin) return await sql.getAllOrders(specificorder).then(async result => {
