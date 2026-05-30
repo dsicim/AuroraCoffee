@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
@@ -58,6 +58,18 @@ const moderationScopeOptions = [
 ]
 
 const productManagerSelectionStorageKey = 'aurora-product-manager-selected-product'
+const productManagerDebugPrefix = '[Aurora Product Manager]'
+
+function logProductManagerDebug(event, details = {}) {
+  if (typeof console === 'undefined') {
+    return
+  }
+
+  console.info(productManagerDebugPrefix, event, {
+    ...details,
+    at: new Date().toISOString(),
+  })
+}
 
 function readStoredProductManagerSelection() {
   if (typeof window === 'undefined') {
@@ -1510,6 +1522,7 @@ function ProductVariantManager({ product }) {
 }
 
 function ProductImageManager({ product, onProductImagesChange }) {
+  const debugInstance = useId()
   const images = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product])
   const [imageOverride, setImageOverride] = useState({
     productId: null,
@@ -1543,7 +1556,58 @@ function ProductImageManager({ product, onProductImagesChange }) {
       ? imageOverride.images
       : images
 
+  useEffect(() => {
+    logProductManagerDebug('image-manager:mounted', {
+      instance: debugInstance,
+      productId: product?.id,
+      productCode: product?.productCode,
+      imageCount: images.length,
+    })
+
+    return () => {
+      logProductManagerDebug('image-manager:unmounted', {
+        instance: debugInstance,
+        productId: product?.id,
+        productCode: product?.productCode,
+        selectedFileName: selectedFileRef.current?.name || '',
+        selectedVariantId,
+        imageBusy,
+      })
+    }
+  }, [debugInstance, imageBusy, images.length, product?.id, product?.productCode, selectedVariantId])
+
+  useEffect(() => {
+    logProductManagerDebug('image-manager:product-state', {
+      instance: debugInstance,
+      productId: product?.id,
+      productCode: product?.productCode,
+      sourceImageCount: images.length,
+      displayedImageCount: displayedImages.length,
+      selectedFileName,
+      selectedVariantId,
+      busy: imageState.busy,
+      error: imageState.error,
+      success: imageState.success,
+    })
+  }, [
+    debugInstance,
+    displayedImages.length,
+    imageState.busy,
+    imageState.error,
+    imageState.success,
+    images.length,
+    product?.id,
+    product?.productCode,
+    selectedFileName,
+    selectedVariantId,
+  ])
+
   function setImageBusy(busy) {
+    logProductManagerDebug('image-manager:busy', {
+      instance: debugInstance,
+      productId: product?.id,
+      busy,
+    })
     setImageState({
       busy,
       error: '',
@@ -1552,6 +1616,11 @@ function ProductImageManager({ product, onProductImagesChange }) {
   }
 
   function setImageSuccess(success) {
+    logProductManagerDebug('image-manager:success', {
+      instance: debugInstance,
+      productId: product?.id,
+      success,
+    })
     setImageState({
       busy: '',
       error: '',
@@ -1560,6 +1629,11 @@ function ProductImageManager({ product, onProductImagesChange }) {
   }
 
   function setImageError(error) {
+    logProductManagerDebug('image-manager:error', {
+      instance: debugInstance,
+      productId: product?.id,
+      message: error?.message || 'Could not update product images.',
+    })
     setImageState({
       busy: '',
       error: error?.message || 'Could not update product images.',
@@ -1572,12 +1646,23 @@ function ProductImageManager({ product, onProductImagesChange }) {
     event?.stopPropagation()
 
     if (imageBusy || uploadInFlightRef.current) {
+      logProductManagerDebug('image-manager:upload-blocked', {
+        instance: debugInstance,
+        productId: product?.id,
+        imageBusy,
+        uploadInFlight: uploadInFlightRef.current,
+      })
       return
     }
 
     const uploadFile = selectedFileRef.current
 
     if (!uploadFile) {
+      logProductManagerDebug('image-manager:upload-missing-file', {
+        instance: debugInstance,
+        productId: product?.id,
+        selectedFileName,
+      })
       setImageError(new Error('Choose an image file before uploading.'))
       return
     }
@@ -1588,6 +1673,17 @@ function ProductImageManager({ product, onProductImagesChange }) {
     const uploadSortOrder = getNextProductImageSortOrder(currentImages)
     const uploadVariantId = selectedVariant?.id || ''
     const uploadPrimary = primaryUpload
+    logProductManagerDebug('image-manager:upload-start', {
+      instance: debugInstance,
+      productId: product?.id,
+      productCode: product?.productCode,
+      fileName: uploadFile.name,
+      fileSize: uploadFile.size,
+      sortOrder: uploadSortOrder,
+      variantId: uploadVariantId || null,
+      primary: uploadPrimary,
+      currentImageCount: currentImages.length,
+    })
 
     void uploadProductImage({
       productId: product.id,
@@ -1617,6 +1713,12 @@ function ProductImageManager({ product, onProductImagesChange }) {
         )
 
         if (Array.isArray(nextProduct?.images)) {
+          logProductManagerDebug('image-manager:upload-merge', {
+            instance: debugInstance,
+            productId: product?.id,
+            uploadedUrl: result.url,
+            nextImageCount: nextProduct.images.length,
+          })
           setImageOverride({
             productId: product.id,
             images: nextProduct.images,
@@ -1634,8 +1736,20 @@ function ProductImageManager({ product, onProductImagesChange }) {
         setPrimaryUpload(false)
         setImageSuccess(result?.msg || (displayedImages.length ? 'Product image uploaded.' : 'Product image uploaded and set as primary.'))
       })
-      .catch(setImageError)
+      .catch((error) => {
+        logProductManagerDebug('image-manager:upload-failed', {
+          instance: debugInstance,
+          productId: product?.id,
+          message: error?.message || '',
+        })
+        setImageError(error)
+      })
       .finally(() => {
+        logProductManagerDebug('image-manager:upload-finished', {
+          instance: debugInstance,
+          productId: product?.id,
+          selectedFileName: selectedFileRef.current?.name || '',
+        })
         uploadInFlightRef.current = false
       })
   }
@@ -1713,30 +1827,58 @@ function ProductImageManager({ product, onProductImagesChange }) {
       </div>
 
       <div className="aurora-product-image-upload">
-        <label className="aurora-product-edit-field">
+        <div className="aurora-product-edit-field">
           <span className="aurora-product-edit-label">Upload image</span>
           <input
             key={fileInputVersion}
             ref={fileInputRef}
-            className="aurora-input aurora-product-edit-input mt-3"
+            className="aurora-product-image-hidden-input"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             disabled={imageBusy}
             onChange={(event) => {
               if (imageBusy) {
+                logProductManagerDebug('image-manager:file-change-ignored-busy', {
+                  instance: debugInstance,
+                  productId: product?.id,
+                })
                 return
               }
 
               const nextFile = event.target.files?.[0] || null
+              logProductManagerDebug('image-manager:file-change', {
+                instance: debugInstance,
+                productId: product?.id,
+                productCode: product?.productCode,
+                fileName: nextFile?.name || '',
+                fileSize: nextFile?.size || 0,
+                previousFileName: selectedFileRef.current?.name || '',
+              })
               selectedFileRef.current = nextFile
               setSelectedFileName(nextFile?.name || '')
               setImageState({ busy: '', error: '', success: '' })
             }}
           />
+          <LiquidGlassButton
+            type="button"
+            variant="secondary"
+            disabled={imageBusy}
+            onClick={() => {
+              logProductManagerDebug('image-manager:file-dialog-open', {
+                instance: debugInstance,
+                productId: product?.id,
+                productCode: product?.productCode,
+                selectedFileName,
+              })
+              fileInputRef.current?.click()
+            }}
+          >
+            {selectedFileName ? 'Change file' : 'Choose file'}
+          </LiquidGlassButton>
           {selectedFileName ? (
             <small className="aurora-product-image-file-name">{selectedFileName}</small>
           ) : null}
-        </label>
+        </div>
 
         <label className="aurora-product-edit-field">
           <span className="aurora-product-edit-label">Image applies to</span>
@@ -2328,6 +2470,7 @@ function CategoryManagementPanel({ products }) {
 }
 
 function ProductEditPanel({ products, loading }) {
+  const debugInstance = useId()
   const editableProducts = useMemo(
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
@@ -2377,18 +2520,76 @@ function ProductEditPanel({ products, loading }) {
   const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
 
   useEffect(() => {
+    logProductManagerDebug('edit-panel:mounted', {
+      instance: debugInstance,
+      storedProductId: storedInitialSelection.id,
+      storedProductKey: storedInitialSelection.key,
+      storedProductCode: storedInitialSelection.product?.productCode,
+    })
+
+    return () => {
+      logProductManagerDebug('edit-panel:unmounted', {
+        instance: debugInstance,
+      })
+    }
+  }, [
+    debugInstance,
+    storedInitialSelection.id,
+    storedInitialSelection.key,
+    storedInitialSelection.product?.productCode,
+  ])
+
+  useEffect(() => {
+    logProductManagerDebug('edit-panel:catalog-state', {
+      instance: debugInstance,
+      productCount: products.length,
+      editableProductCount: editableProducts.length,
+      loading,
+      selectedProductId,
+      selectedProductKey,
+      selectedProductCode: selectedProduct?.productCode,
+      snapshotProductCode: selectedProductSnapshot?.productCode,
+      currentProductCode: currentSelectedProduct?.productCode,
+      activeEditorMode,
+    })
+  }, [
+    activeEditorMode,
+    currentSelectedProduct?.productCode,
+    debugInstance,
+    editableProducts.length,
+    loading,
+    products.length,
+    selectedProduct?.productCode,
+    selectedProductId,
+    selectedProductKey,
+    selectedProductSnapshot?.productCode,
+  ])
+
+  useEffect(() => {
     if (!currentSelectedProduct) {
       return
     }
 
+    logProductManagerDebug('edit-panel:sync-current-product', {
+      instance: debugInstance,
+      productId: currentSelectedProduct.id,
+      productCode: currentSelectedProduct.productCode,
+      imageCount: currentSelectedProduct.images?.length || 0,
+    })
     setSelectedProductSnapshot(currentSelectedProduct)
     writeStoredProductManagerSelection(currentSelectedProduct)
-  }, [currentSelectedProduct])
+  }, [currentSelectedProduct, debugInstance])
 
   const handleSelectedProductSnapshotChange = useCallback((nextProduct) => {
+    logProductManagerDebug('edit-panel:snapshot-updated', {
+      instance: debugInstance,
+      productId: nextProduct?.id,
+      productCode: nextProduct?.productCode,
+      imageCount: nextProduct?.images?.length || 0,
+    })
     setSelectedProductSnapshot(nextProduct)
     writeStoredProductManagerSelection(nextProduct)
-  }, [])
+  }, [debugInstance])
 
   useEffect(() => {
     let active = true
@@ -2417,7 +2618,7 @@ function ProductEditPanel({ products, loading }) {
     return () => {
       active = false
     }
-  }, [])
+  }, [debugInstance])
 
   function handleEditorModeChange(nextMode) {
     if (productActionBusy || activeEditorMode === nextMode) {
@@ -2790,6 +2991,14 @@ function ProductEditPanel({ products, loading }) {
                       (product) => getProductManagerSelectKey(product) === nextProductKey,
                     ) || null
 
+                  logProductManagerDebug('edit-panel:product-select-change', {
+                    instance: debugInstance,
+                    nextProductKey,
+                    nextProductId: nextProduct?.id || null,
+                    nextProductCode: nextProduct?.productCode || '',
+                    previousProductId: selectedProductId,
+                    previousProductKey: selectedProductKey,
+                  })
                   setSelectedProductKey(nextProductKey)
                   setSelectedProductId(nextProduct?.id ?? null)
                   setSelectedProductSnapshot(nextProduct)
@@ -2879,21 +3088,30 @@ function ProductEditPanel({ products, loading }) {
                         </div>
 
                         <div className="aurora-product-create-image-upload">
-                          <label className="aurora-product-edit-field">
+                          <div className="aurora-product-edit-field">
                             <span className="aurora-product-edit-label">Upload image</span>
                             <input
                               key={createImageInputVersion}
                               ref={createImageInputRef}
-                              className="aurora-input aurora-product-edit-input mt-3"
+                              className="aurora-product-image-hidden-input"
                               type="file"
                               accept="image/png,image/jpeg,image/webp"
                               disabled={productActionBusy}
                               onChange={(event) => {
                                 if (productActionBusy) {
+                                  logProductManagerDebug('create-panel:file-change-ignored-busy', {
+                                    instance: debugInstance,
+                                  })
                                   return
                                 }
 
                                 const nextFile = event.target.files?.[0] || null
+                                logProductManagerDebug('create-panel:file-change', {
+                                  instance: debugInstance,
+                                  fileName: nextFile?.name || '',
+                                  fileSize: nextFile?.size || 0,
+                                  previousFileName: createImageFileRef.current?.name || '',
+                                })
                                 createImageFileRef.current = nextFile
                                 setCreateImageFileName(nextFile?.name || '')
                                 setCreateState({
@@ -2903,10 +3121,24 @@ function ProductEditPanel({ products, loading }) {
                                 })
                               }}
                             />
+                            <LiquidGlassButton
+                              type="button"
+                              variant="secondary"
+                              disabled={productActionBusy}
+                              onClick={() => {
+                                logProductManagerDebug('create-panel:file-dialog-open', {
+                                  instance: debugInstance,
+                                  selectedFileName: createImageFileName,
+                                })
+                                createImageInputRef.current?.click()
+                              }}
+                            >
+                              {createImageFileName ? 'Change file' : 'Choose file'}
+                            </LiquidGlassButton>
                             {createImageFileName ? (
                               <small className="aurora-product-image-file-name">{createImageFileName}</small>
                             ) : null}
-                          </label>
+                          </div>
                         </div>
                       </div>
                     ) : null}
@@ -3565,6 +3797,7 @@ function ProductOrderLookupPanel() {
 }
 
 export default function ProductManagerPage() {
+  const debugInstance = useId()
   const { resolvedTheme } = useTheme()
   const { products, loading, error } = useProductCatalog()
   const [selectedModerationProductKey, setSelectedModerationProductKey] = useState('')
@@ -3600,6 +3833,29 @@ export default function ProductManagerPage() {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
+
+  useEffect(() => {
+    logProductManagerDebug('page:mounted', {
+      instance: debugInstance,
+    })
+
+    return () => {
+      logProductManagerDebug('page:unmounted', {
+        instance: debugInstance,
+      })
+    }
+  }, [debugInstance])
+
+  useEffect(() => {
+    logProductManagerDebug('page:catalog-hook-state', {
+      instance: debugInstance,
+      productCount: products.length,
+      loading,
+      error,
+      firstProductCode: products[0]?.productCode || '',
+    })
+  }, [debugInstance, error, loading, products])
+
   const moderationProductNamesById = useMemo(
     () =>
       new Map(

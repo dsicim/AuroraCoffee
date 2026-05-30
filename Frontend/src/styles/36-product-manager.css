@@ -532,6 +532,15 @@
     overflow-wrap: anywhere;
   }
 
+  .aurora-product-image-hidden-input {
+    position: fixed;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+    inset-inline-start: -100vw;
+  }
+
   .aurora-product-image-primary-toggle {
     display: inline-flex;
     align-items: center;
