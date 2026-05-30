@@ -16,13 +16,14 @@ async function createUpload(user, prefName, restrictions, req, headers) {
     if (parseInt(headers["content-length"]) > restrictions.maxSize) return { s: 413, e: "File size exceeds the maximum allowed size of " + (restrictions.maxSize / (1024 * 1024)) + " MB" };
     if (prefName.length > 0) prefName = prefName + "-";
     let bytesWritten = 0;
-    const { fileTypeStream } = await loadEsm("file-type");
-    const webStream = stream.Readable.toWeb(req);
-    const ftResult = await fileTypeStream(webStream);
-    const detected = ftResult.fileType;
-    const passthrough = stream.Readable.fromWeb(ftResult);
     let uploadprocess
     try {
+        const { fileTypeStream } = await loadEsm("file-type");
+        const webStream = stream.Readable.toWeb(req);
+        const ftResult = await fileTypeStream(webStream);
+        const detected = ftResult.fileType;
+        const passthrough = stream.Readable.fromWeb(ftResult);
+
         uploadprocess = await new Promise((resolve, reject) => {
             if (!detected) {
                 passthrough.resume();

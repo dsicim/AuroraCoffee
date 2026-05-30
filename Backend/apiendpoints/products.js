@@ -325,7 +325,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (images.some(img => img.sort_order === opts.sortOrder)) {
                 opts.sortOrder = Math.max(-1, ...images.map(img => Number(img.sort_order) || 0)) + 1;
             }
-            const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers);
+            const upload = await uploader.createUpload(currentUser, "product" + opts.productId + (opts.variantId ? ("var" + opts.variantId) : ""), { maxSize: 15 * 1024 * 1024, allowedTypes: ["image/png", "image/jpeg", "image/jpg", "image/webp"], convertTo: "webp" }, body.raw, headers).catch(err => {
+                console.error("Product image upload error:", err);
+                return { s: err?.s || 500, e: err?.e || "Internal server error" };
+            });
             if (upload.s !== 200) return { s: upload.s, j: true, d: { e: upload.e } };
             return await sql.addProductImage(opts.productId, upload.url, opts.isPrimary, opts.sortOrder, opts.variantId).then(result => {
                 return { s: 200, j: true, d: { msg: result.message, url: result.url, sortOrder: opts.sortOrder, isPrimary: opts.isPrimary, variantId: opts.variantId } };
