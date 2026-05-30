@@ -1538,6 +1538,19 @@ function ProductImageManager({ product, onProductImagesChange }) {
   const [selectedFileName, setSelectedFileName] = useState('')
   const fileInputRef = useRef(null)
   const uploadInFlightRef = useRef(false)
+  const debugInitialRef = useRef({
+    imageCount: images.length,
+    productCode: product?.productCode || '',
+    productId: product?.id || null,
+  })
+  const debugStateRef = useRef({
+    imageBusy: false,
+    imageCount: images.length,
+    productCode: product?.productCode || '',
+    productId: product?.id || null,
+    selectedFileName: '',
+    selectedVariantId: '',
+  })
   const [fileInputVersion, setFileInputVersion] = useState(0)
   const [selectedVariantId, setSelectedVariantId] = useState('')
   const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
@@ -1557,24 +1570,46 @@ function ProductImageManager({ product, onProductImagesChange }) {
       : images
 
   useEffect(() => {
+    debugStateRef.current = {
+      imageBusy,
+      imageCount: displayedImages.length,
+      productCode: product?.productCode || '',
+      productId: product?.id || null,
+      selectedFileName: selectedFileRef.current?.name || selectedFileName,
+      selectedVariantId,
+    }
+  }, [
+    displayedImages.length,
+    imageBusy,
+    product?.id,
+    product?.productCode,
+    selectedFileName,
+    selectedVariantId,
+  ])
+
+  useEffect(() => {
+    const debugInitial = debugInitialRef.current
+
     logProductManagerDebug('image-manager:mounted', {
       instance: debugInstance,
-      productId: product?.id,
-      productCode: product?.productCode,
-      imageCount: images.length,
+      productId: debugInitial.productId,
+      productCode: debugInitial.productCode,
+      imageCount: debugInitial.imageCount,
     })
 
     return () => {
+      const debugState = debugStateRef.current
       logProductManagerDebug('image-manager:unmounted', {
         instance: debugInstance,
-        productId: product?.id,
-        productCode: product?.productCode,
-        selectedFileName: selectedFileRef.current?.name || '',
-        selectedVariantId,
-        imageBusy,
+        productId: debugState.productId,
+        productCode: debugState.productCode,
+        selectedFileName: debugState.selectedFileName,
+        selectedVariantId: debugState.selectedVariantId,
+        imageBusy: debugState.imageBusy,
+        imageCount: debugState.imageCount,
       })
     }
-  }, [debugInstance, imageBusy, images.length, product?.id, product?.productCode, selectedVariantId])
+  }, [debugInstance])
 
   useEffect(() => {
     logProductManagerDebug('image-manager:product-state', {
