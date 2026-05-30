@@ -5,6 +5,12 @@ import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments, moderateProductComment } from '../features/comments/infrastructure/commentsApi'
 import { mergeUploadedProductImage } from '../features/products/domain/productImageCache'
 import { formatCurrency } from '../lib/currency'
+import {
+  endFrontendDebugIssue,
+  logFrontendDebug,
+  startFrontendDebugIssue,
+  withFrontendDebugIssue,
+} from '../lib/frontendDebug'
 import { themePreferences } from '../lib/theme'
 import { useTheme } from '../lib/theme-context'
 import {
@@ -60,15 +66,15 @@ const moderationScopeOptions = [
 const productManagerSelectionStorageKey = 'aurora-product-manager-selected-product'
 const productManagerDebugPrefix = '[Aurora Product Manager]'
 
-function logProductManagerDebug(event, details = {}) {
-  if (typeof console === 'undefined') {
-    return
-  }
+function logProductManagerDebug(event, details = {}, issueContext = {}) {
+  const entry = logFrontendDebug(`product-manager:${event}`, details, 'info', issueContext)
 
-  console.info(productManagerDebugPrefix, event, {
-    ...details,
-    at: new Date().toISOString(),
-  })
+  if (!entry && typeof console !== 'undefined') {
+    console.info(productManagerDebugPrefix, event, {
+      ...details,
+      at: new Date().toISOString(),
+    })
+  }
 }
 
 function readStoredProductManagerSelection() {
@@ -1538,6 +1544,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
   const [selectedFileName, setSelectedFileName] = useState('')
   const fileInputRef = useRef(null)
   const uploadInFlightRef = useRef(false)
+  const uploadIssueIdRef = useRef('')
   const debugInitialRef = useRef({
     imageCount: images.length,
     productCode: product?.productCode || '',
@@ -1569,6 +1576,44 @@ function ProductImageManager({ product, onProductImagesChange }) {
       ? imageOverride.images
       : images
 
+  function getUploadIssueId(source, details = {}) {
+    if (uploadIssueIdRef.current) {
+      return uploadIssueIdRef.current
+    }
+
+    uploadIssueIdRef.current = startFrontendDebugIssue('product-manager-image-upload', {
+      source,
+      component: 'ProductImageManager',
+      instance: debugInstance,
+      productId: product?.id || null,
+      productCode: product?.productCode || '',
+      productName: product?.name || '',
+      imageCount: displayedImages.length,
+      ...details,
+    })
+
+    return uploadIssueIdRef.current
+  }
+
+  function clearUploadIssue(outcome, details = {}) {
+    const issueId = uploadIssueIdRef.current
+
+    if (!issueId) {
+      return
+    }
+
+    endFrontendDebugIssue(issueId, outcome, {
+      component: 'ProductImageManager',
+      instance: debugInstance,
+      productId: product?.id || null,
+      productCode: product?.productCode || '',
+      selectedFileName: selectedFileRef.current?.name || selectedFileName,
+      selectedVariantId,
+      ...details,
+    })
+    uploadIssueIdRef.current = ''
+  }
+
   useEffect(() => {
     debugStateRef.current = {
       imageBusy,
@@ -1599,6 +1644,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
 
     return () => {
       const debugState = debugStateRef.current
+      const activeUploadIssueId = uploadIssueIdRef.current
       logProductManagerDebug('image-manager:unmounted', {
         instance: debugInstance,
         productId: debugState.productId,
@@ -1607,7 +1653,16 @@ function ProductImageManager({ product, onProductImagesChange }) {
         selectedVariantId: debugState.selectedVariantId,
         imageBusy: debugState.imageBusy,
         imageCount: debugState.imageCount,
-      })
+      }, { issueId: activeUploadIssueId })
+
+      if (activeUploadIssueId) {
+        endFrontendDebugIssue(activeUploadIssueId, 'interrupted', {
+          component: 'ProductImageManager',
+          reason: 'component-unmounted-with-active-upload-issue',
+          ...debugState,
+        })
+        uploadIssueIdRef.current = ''
+      }
     }
   }, [debugInstance])
 
@@ -1681,24 +1736,27 @@ function ProductImageManager({ product, onProductImagesChange }) {
     event?.stopPropagation()
 
     if (imageBusy || uploadInFlightRef.current) {
+      const issueId = getUploadIssueId('upload-blocked')
       logProductManagerDebug('image-manager:upload-blocked', {
         instance: debugInstance,
         productId: product?.id,
         imageBusy,
         uploadInFlight: uploadInFlightRef.current,
-      })
+      }, { issueId })
       return
     }
 
     const uploadFile = selectedFileRef.current
 
     if (!uploadFile) {
+      const issueId = getUploadIssueId('upload-missing-file')
       logProductManagerDebug('image-manager:upload-missing-file', {
         instance: debugInstance,
         productId: product?.id,
         selectedFileName,
-      })
+      }, { issueId })
       setImageError(new Error('Choose an image file before uploading.'))
+      clearUploadIssue('missing-file')
       return
     }
 
@@ -1708,6 +1766,12 @@ function ProductImageManager({ product, onProductImagesChange }) {
     const uploadSortOrder = getNextProductImageSortOrder(currentImages)
     const uploadVariantId = selectedVariant?.id || ''
     const uploadPrimary = primaryUpload
+    const uploadIssueId = getUploadIssueId('upload-start', {
+      fileName: uploadFile.name,
+      fileSize: uploadFile.size,
+      variantId: uploadVariantId || null,
+      primary: uploadPrimary,
+    })
     logProductManagerDebug('image-manager:upload-start', {
       instance: debugInstance,
       productId: product?.id,
@@ -1718,16 +1782,18 @@ function ProductImageManager({ product, onProductImagesChange }) {
       variantId: uploadVariantId || null,
       primary: uploadPrimary,
       currentImageCount: currentImages.length,
-    })
+    }, { issueId: uploadIssueId })
 
-    void uploadProductImage({
-      productId: product.id,
-      file: uploadFile,
-      sortOrder: uploadSortOrder,
-      variantId: uploadVariantId,
-      primary: uploadPrimary,
-      refreshOnCacheMiss: false,
-    })
+    void withFrontendDebugIssue(uploadIssueId, () =>
+      uploadProductImage({
+        productId: product.id,
+        file: uploadFile,
+        sortOrder: uploadSortOrder,
+        variantId: uploadVariantId,
+        primary: uploadPrimary,
+        refreshOnCacheMiss: false,
+      }),
+    )
       .then((result) => {
         if (!result?.url) {
           throw new Error('Product image uploaded, but the response did not include the image URL.')
@@ -1753,7 +1819,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
             productId: product?.id,
             uploadedUrl: result.url,
             nextImageCount: nextProduct.images.length,
-          })
+          }, { issueId: uploadIssueId })
           setImageOverride({
             productId: product.id,
             images: nextProduct.images,
@@ -1770,21 +1836,28 @@ function ProductImageManager({ product, onProductImagesChange }) {
         setSelectedVariantId('')
         setPrimaryUpload(false)
         setImageSuccess(result?.msg || (displayedImages.length ? 'Product image uploaded.' : 'Product image uploaded and set as primary.'))
+        clearUploadIssue('success', {
+          uploadedUrl: result.url,
+          nextImageCount: nextProduct?.images?.length || 0,
+        })
       })
       .catch((error) => {
         logProductManagerDebug('image-manager:upload-failed', {
           instance: debugInstance,
           productId: product?.id,
           message: error?.message || '',
-        })
+        }, { issueId: uploadIssueId })
         setImageError(error)
+        clearUploadIssue('failed', {
+          message: error?.message || '',
+        })
       })
       .finally(() => {
         logProductManagerDebug('image-manager:upload-finished', {
           instance: debugInstance,
           productId: product?.id,
           selectedFileName: selectedFileRef.current?.name || '',
-        })
+        }, { issueId: uploadIssueId })
         uploadInFlightRef.current = false
       })
   }
@@ -1873,14 +1946,19 @@ function ProductImageManager({ product, onProductImagesChange }) {
             disabled={imageBusy}
             onChange={(event) => {
               if (imageBusy) {
+                const issueId = getUploadIssueId('file-change-ignored-busy')
                 logProductManagerDebug('image-manager:file-change-ignored-busy', {
                   instance: debugInstance,
                   productId: product?.id,
-                })
+                }, { issueId })
                 return
               }
 
               const nextFile = event.target.files?.[0] || null
+              const issueId = getUploadIssueId('file-change', {
+                fileName: nextFile?.name || '',
+                fileSize: nextFile?.size || 0,
+              })
               logProductManagerDebug('image-manager:file-change', {
                 instance: debugInstance,
                 productId: product?.id,
@@ -1888,7 +1966,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
                 fileName: nextFile?.name || '',
                 fileSize: nextFile?.size || 0,
                 previousFileName: selectedFileRef.current?.name || '',
-              })
+              }, { issueId })
               selectedFileRef.current = nextFile
               setSelectedFileName(nextFile?.name || '')
               setImageState({ busy: '', error: '', success: '' })
@@ -1899,12 +1977,13 @@ function ProductImageManager({ product, onProductImagesChange }) {
             variant="secondary"
             disabled={imageBusy}
             onClick={() => {
+              const issueId = getUploadIssueId('file-dialog-open')
               logProductManagerDebug('image-manager:file-dialog-open', {
                 instance: debugInstance,
                 productId: product?.id,
                 productCode: product?.productCode,
                 selectedFileName,
-              })
+              }, { issueId })
               fileInputRef.current?.click()
             }}
           >
@@ -1922,6 +2001,16 @@ function ProductImageManager({ product, onProductImagesChange }) {
             value={selectedVariantId}
             disabled={imageBusy}
             onChange={(event) => {
+              const issueId = getUploadIssueId('variant-change', {
+                nextVariantId: event.target.value,
+              })
+              logProductManagerDebug('image-manager:variant-change', {
+                instance: debugInstance,
+                productId: product?.id,
+                previousVariantId: selectedVariantId,
+                nextVariantId: event.target.value,
+                selectedFileName,
+              }, { issueId })
               setSelectedVariantId(event.target.value)
             }}
           >
@@ -1940,6 +2029,16 @@ function ProductImageManager({ product, onProductImagesChange }) {
             checked={primaryUpload}
             disabled={imageBusy}
             onChange={(event) => {
+              const issueId = getUploadIssueId('primary-toggle', {
+                nextPrimary: event.target.checked,
+              })
+              logProductManagerDebug('image-manager:primary-toggle', {
+                instance: debugInstance,
+                productId: product?.id,
+                previousPrimary: primaryUpload,
+                nextPrimary: event.target.checked,
+                selectedFileName,
+              }, { issueId })
               setPrimaryUpload(event.target.checked)
             }}
           />
@@ -2549,10 +2648,44 @@ function ProductEditPanel({ products, loading }) {
   const createCategoryRef = useRef(null)
   const createImageInputRef = useRef(null)
   const createImageFileRef = useRef(null)
+  const createIssueIdRef = useRef('')
   const [createImageFileName, setCreateImageFileName] = useState('')
   const [createImageInputVersion, setCreateImageInputVersion] = useState(0)
   const productActionBusy = saveState.saving || createState.saving || deleteState.deleting
   const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
+
+  function getCreateIssueId(source, details = {}) {
+    if (createIssueIdRef.current) {
+      return createIssueIdRef.current
+    }
+
+    createIssueIdRef.current = startFrontendDebugIssue('product-manager-create-product', {
+      source,
+      component: 'ProductEditPanel',
+      instance: debugInstance,
+      selectedProductId: selectedProduct?.id || null,
+      selectedProductCode: selectedProduct?.productCode || '',
+      ...details,
+    })
+
+    return createIssueIdRef.current
+  }
+
+  function clearCreateIssue(outcome, details = {}) {
+    const issueId = createIssueIdRef.current
+
+    if (!issueId) {
+      return
+    }
+
+    endFrontendDebugIssue(issueId, outcome, {
+      component: 'ProductEditPanel',
+      instance: debugInstance,
+      selectedImageFileName: createImageFileRef.current?.name || createImageFileName,
+      ...details,
+    })
+    createIssueIdRef.current = ''
+  }
 
   useEffect(() => {
     logProductManagerDebug('edit-panel:mounted', {
@@ -2563,9 +2696,19 @@ function ProductEditPanel({ products, loading }) {
     })
 
     return () => {
+      const activeCreateIssueId = createIssueIdRef.current
       logProductManagerDebug('edit-panel:unmounted', {
         instance: debugInstance,
-      })
+      }, { issueId: activeCreateIssueId })
+
+      if (activeCreateIssueId) {
+        endFrontendDebugIssue(activeCreateIssueId, 'interrupted', {
+          component: 'ProductEditPanel',
+          reason: 'edit-panel-unmounted-with-active-create-issue',
+          selectedImageFileName: createImageFileRef.current?.name || '',
+        })
+        createIssueIdRef.current = ''
+      }
     }
   }, [
     debugInstance,
@@ -2795,6 +2938,9 @@ function ProductEditPanel({ products, loading }) {
 
   function handleCreateProduct() {
     let payload = null
+    const createIssueId = getCreateIssueId('create-submit', {
+      selectedImageFileName: createImageFileRef.current?.name || '',
+    })
 
     try {
       payload = buildProductCreatePayload(
@@ -2802,10 +2948,17 @@ function ProductEditPanel({ products, loading }) {
         createCategoryRef.current?.value || '',
       )
     } catch (validationError) {
+      logProductManagerDebug('create-panel:validation-failed', {
+        instance: debugInstance,
+        message: validationError?.message || '',
+      }, { issueId: createIssueId })
       setCreateState({
         saving: false,
         error: validationError?.message || 'Review the product fields before creating.',
         success: '',
+      })
+      clearCreateIssue('validation-failed', {
+        message: validationError?.message || '',
       })
       return
     }
@@ -2828,7 +2981,11 @@ function ProductEditPanel({ products, loading }) {
       let productId = null
 
       try {
-        result = await createProduct(payload)
+        logProductManagerDebug('create-panel:create-start', {
+          instance: debugInstance,
+          selectedImageFileName: selectedCreateImageFile?.name || '',
+        }, { issueId: createIssueId })
+        result = await withFrontendDebugIssue(createIssueId, () => createProduct(payload))
         createdProduct = result?.product || null
         productId = Number(result?.productId ?? createdProduct?.id)
 
@@ -2837,13 +2994,22 @@ function ProductEditPanel({ products, loading }) {
             throw new Error('Product created, but the image upload could not start.')
           }
 
-          const imageResult = await uploadProductImage({
+          logProductManagerDebug('create-panel:image-upload-start', {
+            instance: debugInstance,
             productId,
-            file: selectedCreateImageFile,
-            sortOrder: 0,
-            primary: true,
-            refreshOnCacheMiss: false,
-          })
+            fileName: selectedCreateImageFile.name,
+            fileSize: selectedCreateImageFile.size,
+          }, { issueId: createIssueId })
+
+          const imageResult = await withFrontendDebugIssue(createIssueId, () =>
+            uploadProductImage({
+              productId,
+              file: selectedCreateImageFile,
+              sortOrder: 0,
+              primary: true,
+              refreshOnCacheMiss: false,
+            }),
+          )
 
           if (!imageResult?.url) {
             throw new Error('Product created, but the image upload did not return an image URL.')
@@ -2879,7 +3045,16 @@ function ProductEditPanel({ products, loading }) {
             ? 'Product created with image.'
             : result?.msg || 'Product created successfully.',
         })
+        clearCreateIssue('success', {
+          productId: productId || createdProduct?.id || null,
+          selectedImageFileName: selectedCreateImageFile?.name || '',
+        })
       } catch (createError) {
+        logProductManagerDebug('create-panel:create-failed', {
+          instance: debugInstance,
+          productId,
+          message: createError?.message || '',
+        }, { issueId: createIssueId })
         if (Number.isFinite(productId) && productId > 0) {
           setSelectedProductId(productId)
           setSelectedProductKey(createdProduct ? getProductManagerSelectKey(createdProduct) : '')
@@ -2891,6 +3066,10 @@ function ProductEditPanel({ products, loading }) {
           saving: false,
           error: createError?.message || 'Could not create product.',
           success: '',
+        })
+        clearCreateIssue('failed', {
+          productId,
+          message: createError?.message || '',
         })
       }
     })()
@@ -3134,19 +3313,24 @@ function ProductEditPanel({ products, loading }) {
                               disabled={productActionBusy}
                               onChange={(event) => {
                                 if (productActionBusy) {
+                                  const issueId = getCreateIssueId('file-change-ignored-busy')
                                   logProductManagerDebug('create-panel:file-change-ignored-busy', {
                                     instance: debugInstance,
-                                  })
+                                  }, { issueId })
                                   return
                                 }
 
                                 const nextFile = event.target.files?.[0] || null
+                                const issueId = getCreateIssueId('file-change', {
+                                  fileName: nextFile?.name || '',
+                                  fileSize: nextFile?.size || 0,
+                                })
                                 logProductManagerDebug('create-panel:file-change', {
                                   instance: debugInstance,
                                   fileName: nextFile?.name || '',
                                   fileSize: nextFile?.size || 0,
                                   previousFileName: createImageFileRef.current?.name || '',
-                                })
+                                }, { issueId })
                                 createImageFileRef.current = nextFile
                                 setCreateImageFileName(nextFile?.name || '')
                                 setCreateState({
@@ -3161,10 +3345,11 @@ function ProductEditPanel({ products, loading }) {
                               variant="secondary"
                               disabled={productActionBusy}
                               onClick={() => {
+                                const issueId = getCreateIssueId('file-dialog-open')
                                 logProductManagerDebug('create-panel:file-dialog-open', {
                                   instance: debugInstance,
                                   selectedFileName: createImageFileName,
-                                })
+                                }, { issueId })
                                 createImageInputRef.current?.click()
                               }}
                             >
