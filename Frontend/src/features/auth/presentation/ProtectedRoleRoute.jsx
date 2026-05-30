@@ -79,7 +79,6 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
         return
       }
 
-      setStatus('checking')
       const guardValidationKey = [
         session.token,
         location.pathname,
@@ -94,6 +93,9 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
         currentUserState.token !== session.token ||
         currentUserState.status === currentUserFetchStatus.idle
       ) {
+        if (shouldValidateRouteEntry || status !== 'ready') {
+          setStatus('checking')
+        }
         lastGuardValidationKeyRef.current = guardValidationKey
         const result = await fetchCurrentUserResult(session.token, {
           force: shouldValidateRouteEntry,
@@ -127,6 +129,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
     navigate,
     requiredRole,
     session?.token,
+    status,
   ])
 
   if (authState.shouldRequestLogin || status !== 'ready') {
