@@ -1460,7 +1460,8 @@ function ProductImageManager({ product }) {
       label: getProductImageVariantLabel(product, variant.id),
     }))
     .filter((variant) => variant.id > 0)
-  const [selectedFile, setSelectedFile] = useState(null)
+  const selectedFileRef = useRef(null)
+  const [selectedFileName, setSelectedFileName] = useState('')
   const fileInputRef = useRef(null)
   const uploadInFlightRef = useRef(false)
   const [fileInputVersion, setFileInputVersion] = useState(0)
@@ -1513,7 +1514,9 @@ function ProductImageManager({ product }) {
       return
     }
 
-    if (!selectedFile) {
+    const uploadFile = selectedFileRef.current
+
+    if (!uploadFile) {
       setImageError(new Error('Choose an image file before uploading.'))
       return
     }
@@ -1527,7 +1530,7 @@ function ProductImageManager({ product }) {
 
     void uploadProductImage({
       productId: product.id,
-      file: selectedFile,
+      file: uploadFile,
       sortOrder: uploadSortOrder,
       variantId: uploadVariantId,
       primary: uploadPrimary,
@@ -1559,7 +1562,8 @@ function ProductImageManager({ product }) {
           })
         }
 
-        setSelectedFile(null)
+        selectedFileRef.current = null
+        setSelectedFileName('')
         setFileInputVersion((version) => version + 1)
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
@@ -1661,10 +1665,15 @@ function ProductImageManager({ product }) {
                 return
               }
 
-              setSelectedFile(event.target.files?.[0] || null)
+              const nextFile = event.target.files?.[0] || null
+              selectedFileRef.current = nextFile
+              setSelectedFileName(nextFile?.name || '')
               setImageState({ busy: '', error: '', success: '' })
             }}
           />
+          {selectedFileName ? (
+            <small className="aurora-product-image-file-name">{selectedFileName}</small>
+          ) : null}
         </label>
 
         <label className="aurora-product-edit-field">
@@ -2298,7 +2307,8 @@ function ProductEditPanel({ products, loading }) {
   const createFieldsRef = useRef(null)
   const createCategoryRef = useRef(null)
   const createImageInputRef = useRef(null)
-  const [createImageFile, setCreateImageFile] = useState(null)
+  const createImageFileRef = useRef(null)
+  const [createImageFileName, setCreateImageFileName] = useState('')
   const [createImageInputVersion, setCreateImageInputVersion] = useState(0)
   const productActionBusy = saveState.saving || createState.saving || deleteState.deleting
   const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
@@ -2390,7 +2400,8 @@ function ProductEditPanel({ products, loading }) {
       createCategoryRef.current.value = ''
     }
 
-    setCreateImageFile(null)
+    createImageFileRef.current = null
+    setCreateImageFileName('')
     setCreateImageInputVersion((version) => version + 1)
     if (createImageInputRef.current) {
       createImageInputRef.current.value = ''
@@ -2496,7 +2507,7 @@ function ProductEditPanel({ products, loading }) {
       error: '',
       success: '',
     })
-    const selectedCreateImageFile = createImageFile
+    const selectedCreateImageFile = createImageFileRef.current
 
     void (async () => {
       let result = null
@@ -2784,7 +2795,7 @@ function ProductEditPanel({ products, loading }) {
                             <p className="aurora-product-edit-label">Product image</p>
                             <h3>Add first gallery image</h3>
                           </div>
-                          <span>{createImageFile ? '1 selected' : 'Optional'}</span>
+                          <span>{createImageFileName ? '1 selected' : 'Optional'}</span>
                         </div>
 
                         <div className="aurora-product-create-image-upload">
@@ -2802,7 +2813,9 @@ function ProductEditPanel({ products, loading }) {
                                   return
                                 }
 
-                                setCreateImageFile(event.target.files?.[0] || null)
+                                const nextFile = event.target.files?.[0] || null
+                                createImageFileRef.current = nextFile
+                                setCreateImageFileName(nextFile?.name || '')
                                 setCreateState({
                                   saving: false,
                                   error: '',
@@ -2810,6 +2823,9 @@ function ProductEditPanel({ products, loading }) {
                                 })
                               }}
                             />
+                            {createImageFileName ? (
+                              <small className="aurora-product-image-file-name">{createImageFileName}</small>
+                            ) : null}
                           </label>
                         </div>
                       </div>

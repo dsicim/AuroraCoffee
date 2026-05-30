@@ -523,6 +523,15 @@
     gap: 0.9rem;
   }
 
+  .aurora-product-image-file-name {
+    display: block;
+    margin-top: 0.45rem;
+    color: var(--aurora-text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+  }
+
   .aurora-product-image-primary-toggle {
     display: inline-flex;
     align-items: center;
