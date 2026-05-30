@@ -65,6 +65,7 @@ const moderationScopeOptions = [
 
 const productManagerSelectionStorageKey = 'aurora-product-manager-selected-product'
 const productManagerDebugPrefix = '[Aurora Product Manager]'
+const productImageDrafts = new Map()
 
 function logProductManagerDebug(event, details = {}, issueContext = {}) {
   const entry = logFrontendDebug(`product-manager:${event}`, details, 'info', issueContext)
@@ -74,6 +75,50 @@ function logProductManagerDebug(event, details = {}, issueContext = {}) {
       ...details,
       at: new Date().toISOString(),
     })
+  }
+}
+
+function getProductImageDraftKey(productId) {
+  const normalizedProductId = Number(productId)
+
+  return Number.isFinite(normalizedProductId) && normalizedProductId > 0
+    ? String(normalizedProductId)
+    : ''
+}
+
+function readProductImageDraft(productId) {
+  const draftKey = getProductImageDraftKey(productId)
+
+  return draftKey ? productImageDrafts.get(draftKey) || null : null
+}
+
+function writeProductImageDraft(productId, draft) {
+  const draftKey = getProductImageDraftKey(productId)
+
+  if (!draftKey) {
+    return
+  }
+
+  if (!draft?.file) {
+    productImageDrafts.delete(draftKey)
+    return
+  }
+
+  productImageDrafts.set(draftKey, {
+    issueId: '',
+    primary: false,
+    scrollX: 0,
+    scrollY: 0,
+    selectedVariantId: '',
+    ...draft,
+  })
+}
+
+function clearProductImageDraft(productId) {
+  const draftKey = getProductImageDraftKey(productId)
+
+  if (draftKey) {
+    productImageDrafts.delete(draftKey)
   }
 }
 
@@ -1530,6 +1575,8 @@ function ProductVariantManager({ product }) {
 function ProductImageManager({ product, onProductImagesChange }) {
   const debugInstance = useId()
   const images = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product])
+  const [initialDraft] = useState(() => readProductImageDraft(product?.id))
+  const initialDraftRef = useRef(initialDraft)
   const [imageOverride, setImageOverride] = useState({
     productId: null,
     images: null,
@@ -1540,11 +1587,11 @@ function ProductImageManager({ product, onProductImagesChange }) {
       label: getProductImageVariantLabel(product, variant.id),
     }))
     .filter((variant) => variant.id > 0)
-  const selectedFileRef = useRef(null)
-  const [selectedFileName, setSelectedFileName] = useState('')
+  const selectedFileRef = useRef(initialDraft?.file || null)
+  const [selectedFileName, setSelectedFileName] = useState(initialDraft?.file?.name || '')
   const fileInputRef = useRef(null)
   const uploadInFlightRef = useRef(false)
-  const uploadIssueIdRef = useRef('')
+  const uploadIssueIdRef = useRef(initialDraft?.issueId || '')
   const debugInitialRef = useRef({
     imageCount: images.length,
     productCode: product?.productCode || '',
@@ -1559,8 +1606,12 @@ function ProductImageManager({ product, onProductImagesChange }) {
     selectedVariantId: '',
   })
   const [fileInputVersion, setFileInputVersion] = useState(0)
-  const [selectedVariantId, setSelectedVariantId] = useState('')
-  const [primaryUpload, setPrimaryUpload] = useState(images.length === 0)
+  const [selectedVariantId, setSelectedVariantId] = useState(initialDraft?.selectedVariantId || '')
+  const [primaryUpload, setPrimaryUpload] = useState(
+    typeof initialDraft?.primary === 'boolean'
+      ? initialDraft.primary
+      : images.length === 0,
+  )
   const [imageState, setImageState] = useState({
     busy: '',
     error: '',
@@ -1576,8 +1627,27 @@ function ProductImageManager({ product, onProductImagesChange }) {
       ? imageOverride.images
       : images
 
+  function persistUploadDraft(nextDraft = {}) {
+    const uploadFile = nextDraft.file === undefined ? selectedFileRef.current : nextDraft.file
+
+    if (!uploadFile) {
+      clearProductImageDraft(product?.id)
+      return
+    }
+
+    writeProductImageDraft(product?.id, {
+      file: uploadFile,
+      issueId: nextDraft.issueId === undefined ? uploadIssueIdRef.current : nextDraft.issueId,
+      primary: nextDraft.primary === undefined ? primaryUpload : nextDraft.primary,
+      scrollX: nextDraft.scrollX === undefined ? window.scrollX : nextDraft.scrollX,
+      scrollY: nextDraft.scrollY === undefined ? window.scrollY : nextDraft.scrollY,
+      selectedVariantId: nextDraft.selectedVariantId === undefined ? selectedVariantId : nextDraft.selectedVariantId,
+    })
+  }
+
   function getUploadIssueId(source, details = {}) {
     if (uploadIssueIdRef.current) {
+      persistUploadDraft({ issueId: uploadIssueIdRef.current })
       return uploadIssueIdRef.current
     }
 
@@ -1591,6 +1661,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
       imageCount: displayedImages.length,
       ...details,
     })
+    persistUploadDraft({ issueId: uploadIssueIdRef.current })
 
     return uploadIssueIdRef.current
   }
@@ -1612,7 +1683,24 @@ function ProductImageManager({ product, onProductImagesChange }) {
       ...details,
     })
     uploadIssueIdRef.current = ''
+    clearProductImageDraft(product?.id)
   }
+
+  const restoreDraftScroll = useCallback(() => {
+    const draft = readProductImageDraft(product?.id)
+
+    if (!draft || !Number.isFinite(draft.scrollY)) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      window.scrollTo({
+        left: Number(draft.scrollX) || 0,
+        top: Number(draft.scrollY) || 0,
+        behavior: 'auto',
+      })
+    })
+  }, [product?.id])
 
   useEffect(() => {
     debugStateRef.current = {
@@ -1634,17 +1722,34 @@ function ProductImageManager({ product, onProductImagesChange }) {
 
   useEffect(() => {
     const debugInitial = debugInitialRef.current
+    const restoredDraft = initialDraftRef.current
 
     logProductManagerDebug('image-manager:mounted', {
       instance: debugInstance,
       productId: debugInitial.productId,
       productCode: debugInitial.productCode,
       imageCount: debugInitial.imageCount,
+      restoredFileName: restoredDraft?.file?.name || '',
+      restoredIssueId: restoredDraft?.issueId || '',
     })
+
+    if (restoredDraft?.file) {
+      restoreDraftScroll()
+      logProductManagerDebug('image-manager:draft-restored', {
+        instance: debugInstance,
+        productId: debugInitial.productId,
+        productCode: debugInitial.productCode,
+        fileName: restoredDraft.file.name,
+        fileSize: restoredDraft.file.size,
+        issueId: restoredDraft.issueId || '',
+        selectedVariantId: restoredDraft.selectedVariantId || '',
+      }, { issueId: restoredDraft.issueId || '' })
+    }
 
     return () => {
       const debugState = debugStateRef.current
       const activeUploadIssueId = uploadIssueIdRef.current
+      const preservedDraft = readProductImageDraft(debugState.productId)
       logProductManagerDebug('image-manager:unmounted', {
         instance: debugInstance,
         productId: debugState.productId,
@@ -1653,9 +1758,10 @@ function ProductImageManager({ product, onProductImagesChange }) {
         selectedVariantId: debugState.selectedVariantId,
         imageBusy: debugState.imageBusy,
         imageCount: debugState.imageCount,
+        preservingDraft: Boolean(preservedDraft?.file),
       }, { issueId: activeUploadIssueId })
 
-      if (activeUploadIssueId) {
+      if (activeUploadIssueId && uploadInFlightRef.current) {
         endFrontendDebugIssue(activeUploadIssueId, 'interrupted', {
           component: 'ProductImageManager',
           reason: 'component-unmounted-with-active-upload-issue',
@@ -1664,7 +1770,7 @@ function ProductImageManager({ product, onProductImagesChange }) {
         uploadIssueIdRef.current = ''
       }
     }
-  }, [debugInstance])
+  }, [debugInstance, restoreDraftScroll])
 
   useEffect(() => {
     logProductManagerDebug('image-manager:product-state', {
@@ -1968,8 +2074,19 @@ function ProductImageManager({ product, onProductImagesChange }) {
                 previousFileName: selectedFileRef.current?.name || '',
               }, { issueId })
               selectedFileRef.current = nextFile
+              if (nextFile) {
+                persistUploadDraft({
+                  file: nextFile,
+                  issueId,
+                  scrollX: window.scrollX,
+                  scrollY: window.scrollY,
+                })
+              } else {
+                clearProductImageDraft(product?.id)
+              }
               setSelectedFileName(nextFile?.name || '')
               setImageState({ busy: '', error: '', success: '' })
+              restoreDraftScroll()
             }}
           />
           <LiquidGlassButton
@@ -1977,6 +2094,10 @@ function ProductImageManager({ product, onProductImagesChange }) {
             variant="secondary"
             disabled={imageBusy}
             onClick={() => {
+              persistUploadDraft({
+                scrollX: window.scrollX,
+                scrollY: window.scrollY,
+              })
               const issueId = getUploadIssueId('file-dialog-open')
               logProductManagerDebug('image-manager:file-dialog-open', {
                 instance: debugInstance,
@@ -2011,6 +2132,10 @@ function ProductImageManager({ product, onProductImagesChange }) {
                 nextVariantId: event.target.value,
                 selectedFileName,
               }, { issueId })
+              persistUploadDraft({
+                issueId,
+                selectedVariantId: event.target.value,
+              })
               setSelectedVariantId(event.target.value)
             }}
           >
@@ -2039,6 +2164,10 @@ function ProductImageManager({ product, onProductImagesChange }) {
                 nextPrimary: event.target.checked,
                 selectedFileName,
               }, { issueId })
+              persistUploadDraft({
+                issueId,
+                primary: event.target.checked,
+              })
               setPrimaryUpload(event.target.checked)
             }}
           />
