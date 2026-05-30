@@ -57,6 +57,67 @@ const moderationScopeOptions = [
   },
 ]
 
+const productManagerSelectionStorageKey = 'aurora-product-manager-selected-product'
+
+function readStoredProductManagerSelection() {
+  if (typeof window === 'undefined') {
+    return {
+      key: '',
+      id: null,
+      product: null,
+    }
+  }
+
+  try {
+    const storedValue = window.localStorage.getItem(productManagerSelectionStorageKey)
+    if (!storedValue) {
+      return {
+        key: '',
+        id: null,
+        product: null,
+      }
+    }
+
+    const parsedValue = JSON.parse(storedValue)
+    const storedProduct = parsedValue?.product && typeof parsedValue.product === 'object'
+      ? parsedValue.product
+      : null
+    const storedId = Number(parsedValue?.id ?? storedProduct?.id)
+
+    return {
+      key: String(parsedValue?.key || ''),
+      id: Number.isFinite(storedId) && storedId > 0 ? storedId : null,
+      product: storedProduct,
+    }
+  } catch {
+    return {
+      key: '',
+      id: null,
+      product: null,
+    }
+  }
+}
+
+function writeStoredProductManagerSelection(product) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (!product) {
+    window.localStorage.removeItem(productManagerSelectionStorageKey)
+    return
+  }
+
+  window.localStorage.setItem(
+    productManagerSelectionStorageKey,
+    JSON.stringify({
+      key: getProductManagerSelectKey(product),
+      id: product.id,
+      product,
+    }),
+  )
+}
+
 const productEditFields = [
   { key: 'name', column: 'name', label: 'Name', type: 'text', required: true },
   { key: 'productCode', column: 'product_code', label: 'Product code', type: 'text' },
@@ -1448,7 +1509,7 @@ function ProductVariantManager({ product }) {
   )
 }
 
-function ProductImageManager({ product }) {
+function ProductImageManager({ product, onProductImagesChange }) {
   const images = useMemo(() => (Array.isArray(product?.images) ? product.images : []), [product])
   const [imageOverride, setImageOverride] = useState({
     productId: null,
@@ -1560,6 +1621,7 @@ function ProductImageManager({ product }) {
             productId: product.id,
             images: nextProduct.images,
           })
+          onProductImagesChange?.(nextProduct)
         }
 
         selectedFileRef.current = null
@@ -2270,13 +2332,14 @@ function ProductEditPanel({ products, loading }) {
     () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
     [products],
   )
+  const [storedInitialSelection] = useState(() => readStoredProductManagerSelection())
   const [createCategories, setCreateCategories] = useState([])
   const [categoriesLoading, setCategoriesLoading] = useState(true)
   const [categoryLoadError, setCategoryLoadError] = useState('')
   const [editorMode, setEditorMode] = useState('edit')
-  const [selectedProductKey, setSelectedProductKey] = useState('')
-  const [selectedProductId, setSelectedProductId] = useState(null)
-  const [selectedProductSnapshot, setSelectedProductSnapshot] = useState(null)
+  const [selectedProductKey, setSelectedProductKey] = useState(storedInitialSelection.key)
+  const [selectedProductId, setSelectedProductId] = useState(storedInitialSelection.id)
+  const [selectedProductSnapshot, setSelectedProductSnapshot] = useState(storedInitialSelection.product)
   const currentSelectedProduct = useMemo(
     () =>
       editableProducts.find((product) => Number(product.id) === Number(selectedProductId)) ||
@@ -2312,6 +2375,20 @@ function ProductEditPanel({ products, loading }) {
   const [createImageInputVersion, setCreateImageInputVersion] = useState(0)
   const productActionBusy = saveState.saving || createState.saving || deleteState.deleting
   const activeEditorMode = !loading && !editableProducts.length ? 'create' : editorMode
+
+  useEffect(() => {
+    if (!currentSelectedProduct) {
+      return
+    }
+
+    setSelectedProductSnapshot(currentSelectedProduct)
+    writeStoredProductManagerSelection(currentSelectedProduct)
+  }, [currentSelectedProduct])
+
+  const handleSelectedProductSnapshotChange = useCallback((nextProduct) => {
+    setSelectedProductSnapshot(nextProduct)
+    writeStoredProductManagerSelection(nextProduct)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -2557,6 +2634,7 @@ function ProductEditPanel({ products, loading }) {
         setSelectedProductId(productId || createdProduct?.id || null)
         setSelectedProductKey(createdProduct ? getProductManagerSelectKey(createdProduct) : '')
         setSelectedProductSnapshot(createdProduct)
+        writeStoredProductManagerSelection(createdProduct)
         setEditorMode('edit')
         setCreateState({
           saving: false,
@@ -2613,6 +2691,7 @@ function ProductEditPanel({ products, loading }) {
         setSelectedProductKey('')
         setSelectedProductId(null)
         setSelectedProductSnapshot(null)
+        writeStoredProductManagerSelection(null)
         setSaveState({
           saving: false,
           error: '',
@@ -2714,6 +2793,7 @@ function ProductEditPanel({ products, loading }) {
                   setSelectedProductKey(nextProductKey)
                   setSelectedProductId(nextProduct?.id ?? null)
                   setSelectedProductSnapshot(nextProduct)
+                  writeStoredProductManagerSelection(nextProduct)
                   setSaveState({
                     saving: false,
                     error: '',
@@ -2877,7 +2957,10 @@ function ProductEditPanel({ products, loading }) {
             >
               <ProductEditSnapshot product={selectedProduct} />
               <ProductVariantManager key={selectedProduct.id} product={selectedProduct} />
-              <ProductImageManager product={selectedProduct} />
+              <ProductImageManager
+                product={selectedProduct}
+                onProductImagesChange={handleSelectedProductSnapshotChange}
+              />
 
               <div className="aurora-product-edit-groups">
                 {productEditFieldGroups.map((group) => (
