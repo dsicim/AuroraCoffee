@@ -691,11 +691,16 @@ export async function deleteProduct(productId) {
   return data
 }
 
-function normalizeProductCategory(rawCategory) {
+const categoryTreeTimeoutMs = 8000
+const categoryTreeMaxDepth = 20
+
+function normalizeProductCategory(rawCategory, fallbackParentId = null) {
+  const parentId = rawCategory?.parent_id ?? rawCategory?.parentId ?? fallbackParentId
+
   return {
     id: Number(rawCategory?.id) || 0,
     name: normalizeText(rawCategory?.name),
-    parentId: Number(rawCategory?.parent_id ?? rawCategory?.parentId) || null,
+    parentId: Number(parentId) || null,
   }
 }
 
@@ -711,18 +716,71 @@ export async function fetchProductCategories(parentId = null) {
   const path = normalizedParentId
     ? `/products/categories/${encodeURIComponent(String(normalizedParentId))}`
     : '/products/categories'
-  const payload = await requestJson(path)
+  const payload = await requestJsonWithTimeout(path)
 
   return (payload?.categories || [])
-    .map(normalizeProductCategory)
+    .map((category) => normalizeProductCategory(category, normalizedParentId))
     .filter((category) => category.id && category.name)
+}
+
+function getCategoryChildren(rawCategory) {
+  const children = rawCategory?.categories ?? rawCategory?.children ?? rawCategory?.subcategories
+  return Array.isArray(children) ? children : []
+}
+
+async function requestJsonWithTimeout(path, options = {}, timeoutMs = categoryTreeTimeoutMs) {
+  const controller = new AbortController()
+  const timeoutId = globalThis.setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    return await requestJson(path, {
+      ...options,
+      signal: controller.signal,
+    })
+  } catch (error) {
+    if (error?.name === 'AbortError') {
+      throw new Error('Category backend timed out.')
+    }
+
+    throw error
+  } finally {
+    globalThis.clearTimeout(timeoutId)
+  }
 }
 
 export async function fetchProductCategoryTree() {
   const categoriesById = new Map()
 
-  async function collectChildren(parentId = null) {
-    const categories = await fetchProductCategories(parentId)
+  function addNestedCategories(rawCategories, fallbackParentId = null, depth = 0) {
+    if (!Array.isArray(rawCategories) || depth > categoryTreeMaxDepth) {
+      return false
+    }
+
+    let hasNestedChildren = false
+
+    for (const rawCategory of rawCategories) {
+      const category = normalizeProductCategory(rawCategory, fallbackParentId)
+
+      if (!category.id || !category.name || categoriesById.has(category.id)) {
+        continue
+      }
+
+      categoriesById.set(category.id, category)
+
+      const children = getCategoryChildren(rawCategory)
+      if (children.length) {
+        hasNestedChildren = true
+        addNestedCategories(children, category.id, depth + 1)
+      }
+    }
+
+    return hasNestedChildren
+  }
+
+  async function collectFlatChildren(categories, depth = 0) {
+    if (depth > categoryTreeMaxDepth) {
+      throw new Error('Category tree is too deeply nested.')
+    }
 
     for (const category of categories) {
       if (categoriesById.has(category.id)) {
@@ -730,11 +788,22 @@ export async function fetchProductCategoryTree() {
       }
 
       categoriesById.set(category.id, category)
-      await collectChildren(category.id)
+      await collectFlatChildren(await fetchProductCategories(category.id), depth + 1)
     }
   }
 
-  await collectChildren()
+  const rootPayload = await requestJsonWithTimeout('/products/categories')
+  const rootCategories = Array.isArray(rootPayload?.categories) ? rootPayload.categories : []
+  const hasNestedTree = addNestedCategories(rootCategories)
+
+  if (!hasNestedTree) {
+    categoriesById.clear()
+    await collectFlatChildren(
+      rootCategories
+        .map((category) => normalizeProductCategory(category))
+        .filter((category) => category.id && category.name),
+    )
+  }
 
   return Array.from(categoriesById.values()).sort(
     (left, right) =>
