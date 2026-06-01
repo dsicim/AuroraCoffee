@@ -1529,7 +1529,7 @@ func.getUserOrders = async function (userId, orderId = null) {
         throw new DBError(400, 'User ID is required');
     }
     try {
-        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ?' + (orderId ? ' AND id = ?' : ' ORDER BY created_at DESC'), orderId ? [userId, orderId] : [userId]);
+        const [orders] = await pool.execute('SELECT * FROM orders WHERE user_id = ?' + (orderId !== null ? ' AND id = ?' : ' ORDER BY created_at DESC'), orderId ? [userId, orderId] : [userId]);
         return { success: true, orders: orders };
     } catch (error) {
         console.error('Get user orders error:', error);

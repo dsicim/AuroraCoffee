@@ -205,7 +205,7 @@ async function createOrder(config, currentUser, cart, basket, subtotal, shipping
             id: currentUser.id.toString(),
             name: currentUser.displayname.split(' ').slice(0, -1).join(' ') || currentUser.displayname,
             surname: currentUser.displayname.split(' ').slice(-1)[0],
-            identityNumber: currentUser.tax_id, // We are not collecting this information, but it's required by the payment provider, so we will just send a dummy value
+            identityNumber: (currentUser.tax_id && currentUser.tax_id.length > 0) ? currentUser.tax_id : "11111111111",
             email: currentUser.username,
             gsmNumber: billingAddress.phone,
             registrationAddress: billingAddress.open,
