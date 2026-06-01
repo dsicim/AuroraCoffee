@@ -76,12 +76,12 @@ function getUserIdentityType(user) {
 
 function getPurchaseTypeLabel(identityType) {
   if (identityType === identityDocumentTypes.taxId) {
-    return 'Turkish citizen business purchase'
+    return 'Turkish resident business purchase'
   }
 
   return identityType === identityDocumentTypes.foreignPassport
     ? 'Foreign citizen passport'
-    : 'Turkish citizen personal purchase'
+    : 'Turkish resident personal purchase'
 }
 
 function getAccountErrorMessage(error, fallback) {
@@ -356,32 +356,41 @@ export default function AccountPage() {
               </label>
 
               <fieldset className="grid gap-3">
-                <legend className="aurora-field-label">Purchase type</legend>
+                <legend className="aurora-field-label">Identity document</legend>
                 <div className="aurora-segmented-control">
                   {[
-                    { value: identityDocumentTypes.tcKimlik, label: 'Turkish citizen personal' },
-                    { value: identityDocumentTypes.taxId, label: 'Turkish citizen business' },
+                    { value: 'turkishResident', label: 'Turkish resident' },
                     { value: identityDocumentTypes.foreignPassport, label: 'Foreign citizen' },
                   ].map((option) => (
                     <label
                       key={option.value}
                       className={`aurora-segmented-option${
-                        profileIdentityType === option.value ? ' is-selected' : ''
+                        (option.value === 'turkishResident'
+                          ? profileIdentityType !== identityDocumentTypes.foreignPassport
+                          : profileIdentityType === option.value)
+                          ? ' is-selected'
+                          : ''
                       }`}
                     >
                       <input
                         type="radio"
-                        name="identityType"
+                        name="identityResidency"
                         value={option.value}
-                        checked={profileIdentityType === option.value}
+                        checked={
+                          option.value === 'turkishResident'
+                            ? profileIdentityType !== identityDocumentTypes.foreignPassport
+                            : profileIdentityType === option.value
+                        }
                         onChange={() => {
-                          setProfileIdentityType(option.value)
+                          const nextType =
+                            option.value === 'turkishResident'
+                              ? identityDocumentTypes.tcKimlik
+                              : identityDocumentTypes.foreignPassport
+                          setProfileIdentityType(nextType)
                           setProfileTaxId((currentValue) =>
-                            option.value === identityDocumentTypes.tcKimlik
+                            nextType === identityDocumentTypes.tcKimlik
                               ? sanitizeTurkishIdentityNumber(currentValue)
-                              : option.value === identityDocumentTypes.taxId
-                                ? sanitizeTaxIdentityNumber(currentValue)
-                                : sanitizePassportNumber(currentValue),
+                              : sanitizePassportNumber(currentValue),
                           )
                           setProfileFeedback('')
                         }}
@@ -391,6 +400,39 @@ export default function AccountPage() {
                     </label>
                   ))}
                 </div>
+                {profileIdentityType !== identityDocumentTypes.foreignPassport && (
+                  <div className="aurora-segmented-control">
+                    {[
+                      { value: identityDocumentTypes.tcKimlik, label: 'Personal' },
+                      { value: identityDocumentTypes.taxId, label: 'Business' },
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className={`aurora-segmented-option${
+                          profileIdentityType === option.value ? ' is-selected' : ''
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="identityType"
+                          value={option.value}
+                          checked={profileIdentityType === option.value}
+                          onChange={() => {
+                            setProfileIdentityType(option.value)
+                            setProfileTaxId((currentValue) =>
+                              option.value === identityDocumentTypes.tcKimlik
+                                ? sanitizeTurkishIdentityNumber(currentValue)
+                                : sanitizeTaxIdentityNumber(currentValue),
+                            )
+                            setProfileFeedback('')
+                          }}
+                          className="sr-only"
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </fieldset>
 
               <label className="block">

@@ -1754,28 +1754,66 @@ export default function CheckoutPage() {
                   <legend className="sr-only">Purchase type</legend>
                   <div className="aurora-segmented-control">
                     {[
-                      { value: identityDocumentTypes.tcKimlik, label: 'Turkish citizen personal' },
-                      { value: identityDocumentTypes.taxId, label: 'Turkish citizen business' },
+                      { value: 'turkishResident', label: 'Turkish resident' },
                       { value: identityDocumentTypes.foreignPassport, label: 'Foreign citizen' },
                     ].map((option) => (
                       <label
                         key={option.value}
                         className={`aurora-segmented-option${
-                          purchaseType === option.value ? ' is-selected' : ''
+                          (option.value === 'turkishResident'
+                            ? purchaseType !== identityDocumentTypes.foreignPassport
+                            : purchaseType === option.value)
+                            ? ' is-selected'
+                            : ''
                         }`}
                       >
                         <input
                           type="radio"
-                          name="checkoutPurchaseType"
+                          name="checkoutResidency"
                           value={option.value}
-                          checked={purchaseType === option.value}
-                          onChange={() => handlePurchaseTypeChange(option.value)}
+                          checked={
+                            option.value === 'turkishResident'
+                              ? purchaseType !== identityDocumentTypes.foreignPassport
+                              : purchaseType === option.value
+                          }
+                          onChange={() =>
+                            handlePurchaseTypeChange(
+                              option.value === 'turkishResident'
+                                ? identityDocumentTypes.tcKimlik
+                                : identityDocumentTypes.foreignPassport,
+                            )
+                          }
                           className="sr-only"
                         />
                         {option.label}
                       </label>
                     ))}
                   </div>
+                  {purchaseType !== identityDocumentTypes.foreignPassport && (
+                    <div className="aurora-segmented-control">
+                      {[
+                        { value: identityDocumentTypes.tcKimlik, label: 'Personal' },
+                        { value: identityDocumentTypes.taxId, label: 'Business' },
+                      ].map((option) => (
+                        <label
+                          key={option.value}
+                          className={`aurora-segmented-option${
+                            purchaseType === option.value ? ' is-selected' : ''
+                          }`}
+                        >
+                          <input
+                            type="radio"
+                            name="checkoutPurchaseType"
+                            value={option.value}
+                            checked={purchaseType === option.value}
+                            onChange={() => handlePurchaseTypeChange(option.value)}
+                            className="sr-only"
+                          />
+                          {option.label}
+                        </label>
+                      ))}
+                    </div>
+                  )}
                 </fieldset>
 
                 <label className="mt-4 block">
