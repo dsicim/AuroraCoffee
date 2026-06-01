@@ -40,12 +40,10 @@ import {
 } from '../lib/wishlist'
 import {
   identityDocumentTypes,
-  sanitizePassportNumber,
-  sanitizeTaxIdentityNumber,
-  sanitizeTurkishIdentityNumber,
-  validateIdentityDocument,
+  inferIdentityDocumentType,
+  sanitizeIdentityDocumentNumber,
+  validateIdentityDocumentAuto,
   validatePassword,
-  validateTurkishIdentityNumber,
 } from '../lib/validation'
 
 function getUserDisplayName(user) {
@@ -60,28 +58,42 @@ function getUserTaxId(user) {
   return user?.taxId || user?.tax_id || ''
 }
 
-function getUserIdentityType(user) {
-  const taxId = getUserTaxId(user)
+function sanitizeProfileIdentity(value) {
+  const identityNumber = String(value || '')
 
-  if (!taxId) {
-    return identityDocumentTypes.tcKimlik
+  if (identityNumber.includes('*')) {
+    return ''
   }
 
-  return validateTurkishIdentityNumber(taxId).s
-    ? identityDocumentTypes.tcKimlik
-    : taxId.length === 10 && /^\d+$/.test(taxId)
-      ? identityDocumentTypes.taxId
-      : identityDocumentTypes.foreignPassport
+  return sanitizeIdentityDocumentNumber(identityNumber)
 }
 
-function getPurchaseTypeLabel(identityType) {
-  if (identityType === identityDocumentTypes.taxId) {
-    return 'Turkish resident business purchase'
+function validateProfileIdentity(value) {
+  const identityNumber = sanitizeProfileIdentity(value)
+
+  if (!identityNumber) {
+    return { s: true, value: '' }
   }
 
-  return identityType === identityDocumentTypes.foreignPassport
-    ? 'Foreign citizen passport'
-    : 'Turkish resident personal purchase'
+  return validateIdentityDocumentAuto(identityNumber)
+}
+
+function getProfileIdentityLabel(value) {
+  if (!sanitizeProfileIdentity(value)) {
+    return 'Identity number'
+  }
+
+  const identityType = inferIdentityDocumentType(value)
+
+  if (identityType === identityDocumentTypes.tcKimlik) {
+    return 'T.C. Kimlik No'
+  }
+
+  if (identityType === identityDocumentTypes.taxId) {
+    return 'Tax ID'
+  }
+
+  return 'Passport number'
 }
 
 function getAccountErrorMessage(error, fallback) {
@@ -110,9 +122,8 @@ export default function AccountPage() {
   const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
-  const [profileTaxId, setProfileTaxId] = useState(() => getUserTaxId(currentUser))
-  const [profileIdentityType, setProfileIdentityType] = useState(() =>
-    getUserIdentityType(currentUser),
+  const [profileTaxId, setProfileTaxId] = useState(() =>
+    sanitizeProfileIdentity(getUserTaxId(currentUser)),
   )
   const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
     buildReviewPrivacySelectionFromCode(
@@ -202,8 +213,7 @@ export default function AccountPage() {
     const nextProfileName = getUserDisplayName(currentUser)
 
     setProfileName(nextProfileName)
-    setProfileTaxId(getUserTaxId(currentUser))
-    setProfileIdentityType(getUserIdentityType(currentUser))
+    setProfileTaxId(sanitizeProfileIdentity(getUserTaxId(currentUser)))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -236,7 +246,7 @@ export default function AccountPage() {
       return
     }
 
-    const identityValidation = validateIdentityDocument(profileTaxId, profileIdentityType)
+    const identityValidation = validateProfileIdentity(profileTaxId)
 
     if (!identityValidation.s) {
       setProfileFeedback(identityValidation.e)
@@ -355,126 +365,36 @@ export default function AccountPage() {
                 />
               </label>
 
-              <fieldset className="grid gap-3">
-                <legend className="aurora-field-label">Identity document</legend>
-                <div className="aurora-segmented-control">
-                  {[
-                    { value: 'turkishResident', label: 'Turkish resident' },
-                    { value: identityDocumentTypes.foreignPassport, label: 'Foreign citizen' },
-                  ].map((option) => (
-                    <label
-                      key={option.value}
-                      className={`aurora-segmented-option${
-                        (option.value === 'turkishResident'
-                          ? profileIdentityType !== identityDocumentTypes.foreignPassport
-                          : profileIdentityType === option.value)
-                          ? ' is-selected'
-                          : ''
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="identityResidency"
-                        value={option.value}
-                        checked={
-                          option.value === 'turkishResident'
-                            ? profileIdentityType !== identityDocumentTypes.foreignPassport
-                            : profileIdentityType === option.value
-                        }
-                        onChange={() => {
-                          const nextType =
-                            option.value === 'turkishResident'
-                              ? identityDocumentTypes.tcKimlik
-                              : identityDocumentTypes.foreignPassport
-                          setProfileIdentityType(nextType)
-                          setProfileTaxId((currentValue) =>
-                            nextType === identityDocumentTypes.tcKimlik
-                              ? sanitizeTurkishIdentityNumber(currentValue)
-                              : sanitizePassportNumber(currentValue),
-                          )
-                          setProfileFeedback('')
-                        }}
-                        className="sr-only"
-                      />
-                      {option.label}
-                    </label>
-                  ))}
-                </div>
-                {profileIdentityType !== identityDocumentTypes.foreignPassport && (
-                  <div className="aurora-segmented-control">
-                    {[
-                      { value: identityDocumentTypes.tcKimlik, label: 'Personal' },
-                      { value: identityDocumentTypes.taxId, label: 'Business' },
-                    ].map((option) => (
-                      <label
-                        key={option.value}
-                        className={`aurora-segmented-option${
-                          profileIdentityType === option.value ? ' is-selected' : ''
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="identityType"
-                          value={option.value}
-                          checked={profileIdentityType === option.value}
-                          onChange={() => {
-                            setProfileIdentityType(option.value)
-                            setProfileTaxId((currentValue) =>
-                              option.value === identityDocumentTypes.tcKimlik
-                                ? sanitizeTurkishIdentityNumber(currentValue)
-                                : sanitizeTaxIdentityNumber(currentValue),
-                            )
-                            setProfileFeedback('')
-                          }}
-                          className="sr-only"
-                        />
-                        {option.label}
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </fieldset>
-
               <label className="block">
-                <span className="aurora-field-label">
-                  {profileIdentityType === identityDocumentTypes.tcKimlik
-                    ? 'T.C. Kimlik No'
-                    : profileIdentityType === identityDocumentTypes.taxId
-                      ? 'Tax ID'
-                      : 'Passport number'}
-                </span>
+                <span className="aurora-field-label">Identity number</span>
                 <input
                   type="text"
                   name="taxId"
                   autoComplete="off"
                   value={profileTaxId}
-                  inputMode={
-                    profileIdentityType === identityDocumentTypes.foreignPassport
-                      ? 'text'
-                      : 'numeric'
-                  }
-                  maxLength={
-                    profileIdentityType === identityDocumentTypes.tcKimlik
-                      ? 11
-                      : profileIdentityType === identityDocumentTypes.taxId
-                        ? 10
-                        : 9
-                  }
+                  inputMode="text"
+                  maxLength={11}
                   onChange={(event) => {
-                    setProfileTaxId(
-                      profileIdentityType === identityDocumentTypes.tcKimlik
-                        ? sanitizeTurkishIdentityNumber(event.target.value)
-                        : profileIdentityType === identityDocumentTypes.taxId
-                          ? sanitizeTaxIdentityNumber(event.target.value)
-                          : sanitizePassportNumber(event.target.value),
-                    )
+                    setProfileTaxId(sanitizeProfileIdentity(event.target.value))
                     setProfileFeedback('')
                   }}
                   className="aurora-input"
                 />
-                <span className="mt-2 block text-sm leading-6 text-[var(--aurora-text-muted)]">
-                  {getPurchaseTypeLabel(profileIdentityType)} will be used for checkout and invoices.
-                </span>
+                <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                  {getProfileIdentityLabel(profileTaxId)}
+                </p>
+                {profileTaxId ? (
+                  <button
+                    type="button"
+                    className="aurora-link mt-2 text-sm"
+                    onClick={() => {
+                      setProfileTaxId('')
+                      setProfileFeedback('')
+                    }}
+                  >
+                    Clear field
+                  </button>
+                ) : null}
               </label>
 
               <div>
