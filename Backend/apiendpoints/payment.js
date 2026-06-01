@@ -388,6 +388,12 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     return { s: 500, j: true, d: { success: false, e: { what: "Account", why: "Your Tax ID can't be parsed", resolution: "Please update your tax ID in your profile settings or contact the developers" } } };
                 }
                 currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
+                if (!currentUser.tax_id.s || currentUser.tax_id.e) {
+                    console.error("Decryption error:", currentUser.tax_id.e);
+                    currentUser.tax_id = null;
+                    currentUser.tax_id_error = "Failed to decrypt tax ID. Please update your tax ID in your profile settings.";
+                }
+                else currentUser.tax_id = currentUser.tax_id.value;
             }
             if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 412, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please provide the necessary information" } } };
             // Required fields validation
