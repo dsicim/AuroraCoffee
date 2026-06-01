@@ -55,15 +55,15 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 currentUser.tax_id = null;
                 currentUser.tax_id_error = "Failed to parse tax ID data, possibly due to legacy format. Please update your tax ID in your profile settings.";
             }
-            const taxIDInfo = taxIDType(currentUser.tax_id);
-            if (!taxIDInfo.s) {
-                currentUser.tax_id_type = taxIDInfo.t || "unknown";
-                currentUser.tax_id_error = taxIDInfo.e;
-                currentUser.tax_id = null;
-            }
-            else currentUser.tax_id_type = taxIDInfo.t;
         }
         currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
+        const taxIDInfo = taxIDType(currentUser.tax_id);
+        if (!taxIDInfo.s) {
+            currentUser.tax_id_type = taxIDInfo.t || "unknown";
+            currentUser.tax_id_error = taxIDInfo.e;
+            currentUser.tax_id = null;
+        }
+        else currentUser.tax_id_type = taxIDInfo.t;
         // We don't want to expose the tax ID in the GET endpoint, but we will still accept it in the PATCH endpoint for updating it.
         if (method === "GET") {
             if (currentUser.tax_id && currentUser.tax_id.length > 0) {
