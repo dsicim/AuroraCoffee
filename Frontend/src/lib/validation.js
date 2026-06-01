@@ -23,6 +23,13 @@ export function sanitizeTaxIdentityNumber(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 10)
 }
 
+export function sanitizeIdentityDocumentNumber(value) {
+  return String(value || '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase()
+    .slice(0, 11)
+}
+
 export function validateTurkishIdentityNumber(value) {
   const identityNumber = sanitizeTurkishIdentityNumber(value)
 
@@ -91,6 +98,37 @@ export function validateIdentityDocument(value, type = identityDocumentTypes.tcK
   return type === identityDocumentTypes.taxId
     ? validateTaxIdentityNumber(value)
     : validateTurkishIdentityNumber(value)
+}
+
+export function inferIdentityDocumentType(value) {
+  const identityNumber = sanitizeIdentityDocumentNumber(value)
+
+  if (/^\d{11}$/.test(identityNumber)) {
+    return identityDocumentTypes.tcKimlik
+  }
+
+  if (/^\d{10}$/.test(identityNumber)) {
+    return identityDocumentTypes.taxId
+  }
+
+  return identityDocumentTypes.foreignPassport
+}
+
+export function validateIdentityDocumentAuto(value) {
+  const identityNumber = sanitizeIdentityDocumentNumber(value)
+
+  if (!identityNumber) {
+    return { s: false, e: 'Identity number is required' }
+  }
+
+  const type = inferIdentityDocumentType(identityNumber)
+
+  if (type === identityDocumentTypes.tcKimlik) {
+    const validation = validateTurkishIdentityNumber(identityNumber)
+    return validation.s ? { ...validation, type } : validation
+  }
+
+  return { s: true, value: identityNumber, type }
 }
 
 export function validateEmail(email) {

@@ -3,10 +3,13 @@ import { test } from 'node:test'
 
 import {
   identityDocumentTypes,
+  inferIdentityDocumentType,
+  sanitizeIdentityDocumentNumber,
   sanitizePassportNumber,
   sanitizeTaxIdentityNumber,
   sanitizeTurkishIdentityNumber,
   validateIdentityDocument,
+  validateIdentityDocumentAuto,
   validatePassportNumber,
   validateTaxIdentityNumber,
   validateTurkishIdentityNumber,
@@ -22,6 +25,10 @@ test('sanitizePassportNumber keeps only nine alphanumeric characters', () => {
 
 test('sanitizeTaxIdentityNumber keeps only ten digits', () => {
   assert.equal(sanitizeTaxIdentityNumber('123-456-7890-11'), '1234567890')
+})
+
+test('sanitizeIdentityDocumentNumber keeps up to eleven alphanumeric characters', () => {
+  assert.equal(sanitizeIdentityDocumentNumber('ab-123456789-tr'), 'AB123456789')
 })
 
 test('validateTurkishIdentityNumber accepts a number with valid checksum digits', () => {
@@ -66,4 +73,23 @@ test('validateTaxIdentityNumber rejects non-ten-digit values', () => {
 
 test('validatePassportNumber still requires a value', () => {
   assert.equal(validatePassportNumber('   ').s, false)
+})
+
+test('inferIdentityDocumentType only treats all-digit eleven-character values as T.C. Kimlik No', () => {
+  assert.equal(inferIdentityDocumentType('10000000146'), identityDocumentTypes.tcKimlik)
+  assert.equal(inferIdentityDocumentType('A0000000146'), identityDocumentTypes.foreignPassport)
+})
+
+test('inferIdentityDocumentType only treats all-digit ten-character values as tax ID', () => {
+  assert.equal(inferIdentityDocumentType('1234567890'), identityDocumentTypes.taxId)
+  assert.equal(inferIdentityDocumentType('A234567890'), identityDocumentTypes.foreignPassport)
+})
+
+test('validateIdentityDocumentAuto validates only all-digit T.C. Kimlik numbers', () => {
+  assert.equal(validateIdentityDocumentAuto('10000000147').s, false)
+  assert.deepEqual(validateIdentityDocumentAuto('A0000000147'), {
+    s: true,
+    value: 'A0000000147',
+    type: identityDocumentTypes.foreignPassport,
+  })
 })
