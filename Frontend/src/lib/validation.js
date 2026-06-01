@@ -4,6 +4,7 @@ export const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5
 export const postalCodeRegex = /^\d{5}$/
 export const identityDocumentTypes = {
   tcKimlik: 'tcKimlik',
+  ykKimlik: 'residencePermit',
   taxId: 'taxId',
   foreignPassport: 'foreignPassport',
 }
@@ -102,16 +103,60 @@ export function validateIdentityDocument(value, type = identityDocumentTypes.tcK
 
 export function inferIdentityDocumentType(value) {
   const identityNumber = sanitizeIdentityDocumentNumber(value)
+  const taxIDInfo = taxIDType(identityNumber)
 
-  if (/^\d{11}$/.test(identityNumber)) {
-    return identityDocumentTypes.tcKimlik
+  if (taxIDInfo.s) {
+    if (taxIDInfo.t === "Turkish ID") return identityDocumentTypes.tcKimlik
+    else if (taxIDInfo.t === "Turkish Corporate Tax ID") return identityDocumentTypes.taxId
+    else if (taxIDInfo.t === "Turkish Foreigner Resident ID") return identityDocumentTypes.ykKimlik
+    else if (taxIDInfo.t === "Passport Number") return identityDocumentTypes.foreignPassport
+    else if (taxIDInfo.t === "None") return null
+    else return undefined
   }
+  else return undefined
+}
 
-  if (/^\d{10}$/.test(identityNumber)) {
-    return identityDocumentTypes.taxId
-  }
+export function taxIDType(taxId) {
+    taxId = taxId.trim();
+    if (taxId === "11111111111") return { s: false, t: "Turkish ID", e: "Invalid Number." };
+    if (!taxId || taxId.trim().length === 0) return { s: true, t: "None", e: "Tax ID is empty" };
+    if (taxId.length > 11) return { s: false, t: "unknown", e: "Tax ID must be 11 characters or fewer" };
 
-  return identityDocumentTypes.foreignPassport
+    const mightBeTC = taxId.length === 11 && /^\d+$/.test(taxId);
+    const mightBeVKN = taxId.length === 10 && /^\d+$/.test(taxId);
+    const mightBePassport = taxId.length >= 6 && taxId.length <= 9 && /^[a-zA-Z0-9]+$/.test(taxId);
+
+    if (mightBeTC) {
+        const digits = taxId.split('').map(Number)
+        const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8]
+        const evenSum = digits[1] + digits[3] + digits[5] + digits[7]
+        const expectedTenthDigit = (((oddSum * 7) - evenSum) % 10 + 10) % 10
+        const expectedEleventhDigit = digits.slice(0, 10).reduce((total, digit) => total + digit, 0) % 10
+        const isForeigner = taxId[0] === "9";
+        if (digits[0] === 0) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
+        if (digits[9] !== expectedTenthDigit) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
+        if (digits[10] !== expectedEleventhDigit) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
+        return { s: true, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID" };
+    }
+    else if (mightBeVKN) {
+        const digits = taxId.split('').map(Number)
+        let sum = 0;
+        for (let i = 0; i < 9; i++) {
+            let value = ((digits[i] + (9 - i)) % 10) === 0 ? 0 : 10 - ((digits[i] + (9 - i)) % 10);
+            let check = (value * Math.pow(2, 9 - i)) % 9;
+            if (value > 0 && check === 0) check = 9;
+            sum += check;
+        }
+        const expectedTenthDigit = (sum % 10) === 0 ? 0 : 10 - (sum % 10);
+        if (expectedTenthDigit !== parseInt(taxId[9], 10)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
+        else return { s: true, t: "Turkish Corporate Tax ID" };
+    }
+    else if (mightBePassport) {
+        return { s: true, t: "Passport Number" };
+    }
+    else {
+        return { s: false, t: "unknown", e: "Invalid Tax ID format" };
+    }
 }
 
 export function validateIdentityDocumentAuto(value) {
