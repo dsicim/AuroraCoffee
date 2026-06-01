@@ -2,8 +2,8 @@ const sql = require("../../Database/server.js");
 const aes = require("../components/aes256.js");
 function taxIDType(taxId) {
     taxId = taxId.trim();
-    if (taxId === "11111111111") return { s: false, t: "Turkish ID", e: "Invalid Number. Note: You might be inputting a test number as a way to get around providing your ID. Tax ID is optional for personal customers. You can just leave it blank." };
-    if (!taxId || taxId.trim().length === 0) return { s: false, t: "unknown", e: "Tax ID is empty" };
+    if (taxId === "11111111111") return { s: false, t: "Turkish ID", e: "Invalid Number." };
+    if (!taxId || taxId.trim().length === 0) return { s: true, t: "None", e: "Tax ID is empty" };
     if (taxId.length > 11) return { s: false, t: "unknown", e: "Tax ID must be 11 characters or fewer" };
 
     const mightBeTC = taxId.length === 11 && /^\d+$/.test(taxId);
@@ -41,7 +41,6 @@ function taxIDType(taxId) {
     else {
         return { s: false, t: "unknown", e: "Invalid Tax ID format" };
     }
-
 }
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (!currentUser || currentUser.e) {
