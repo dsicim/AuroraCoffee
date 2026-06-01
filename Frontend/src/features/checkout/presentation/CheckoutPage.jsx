@@ -400,6 +400,14 @@ function getPurchaseIdentityType(user) {
       : identityDocumentTypes.foreignPassport
 }
 
+function getDefaultCheckoutPurchaseType(user) {
+  const purchaseType = getPurchaseIdentityType(user)
+
+  return purchaseType === identityDocumentTypes.foreignPassport
+    ? identityDocumentTypes.tcKimlik
+    : purchaseType
+}
+
 function sanitizePurchaseIdentity(value, purchaseType) {
   if (purchaseType === identityDocumentTypes.foreignPassport) {
     return sanitizePassportNumber(value)
@@ -419,6 +427,7 @@ export default function CheckoutPage() {
   const checkoutFormRef = useRef(null)
   const initialSession = getAuthSession()
   const initialAuthState = getAuthStateSnapshot()
+  const initialPurchaseType = getDefaultCheckoutPurchaseType(initialAuthState.user)
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => initialSession)
   const [currentUser, setCurrentUser] = useState(() => initialAuthState.user)
@@ -438,13 +447,11 @@ export default function CheckoutPage() {
   const [avoid3DS, setAvoid3DS] = useState(true)
   const [installmentInfo, setInstallmentInfo] = useState(null)
   const [selectedInstallments, setSelectedInstallments] = useState('')
-  const [purchaseType, setPurchaseType] = useState(() =>
-    getPurchaseIdentityType(initialAuthState.user),
-  )
+  const [purchaseType, setPurchaseType] = useState(() => initialPurchaseType)
   const [purchaseIdentity, setPurchaseIdentity] = useState(() =>
     sanitizePurchaseIdentity(
       getUserTaxId(initialAuthState.user),
-      getPurchaseIdentityType(initialAuthState.user),
+      initialPurchaseType,
     ),
   )
   const [purchaseIdentityTouched, setPurchaseIdentityTouched] = useState(false)
