@@ -53,7 +53,7 @@ function getUserDisplayName(user) {
 }
 
 function getUserPrivacy(user) {
-  return user?.privacy || user?.comment_privacy || user?.commentPrivacy || ''
+  return user?.nameprivacy || user?.privacy || user?.comment_privacy || user?.commentPrivacy || ''
 }
 
 function getUserTaxId(user) {

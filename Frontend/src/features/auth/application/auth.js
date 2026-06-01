@@ -348,7 +348,10 @@ export function getAuthStateSnapshot() {
   const session = readStoredSession()
   const currentUserState = getCurrentUserSnapshotForSession(session)
   const status = getAuthStateStatus(session, currentUserState)
-  const user = currentUserState.status === currentUserFetchStatus.ok
+  const user = (
+    currentUserState.status === currentUserFetchStatus.ok ||
+    currentUserState.status === currentUserFetchStatus.loading
+  )
     ? currentUserState.user
     : null
 
