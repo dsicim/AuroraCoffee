@@ -1,7 +1,67 @@
-import { getCityPostalPrefix, isKnownTurkishCity } from './address'
+import { getCityPostalPrefix, isKnownTurkishCity } from './address.js'
 
 export const emailRegex = /^([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x22([^\x0d\x22\x5c\x80-\xff]|\x5c[\x00-\x7f])*\x22))*\x40([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d)(\x2e([^\x00-\x20\x22\x28\x29\x2c\x2e\x3a-\x3c\x3e\x40\x5b-\x5d\x7f-\xff]+|\x5b([^\x0d\x5b-\x5d\x80-\xff]|\x5c[\x00-\x7f])*\x5d))*$/u // eslint-disable-line no-control-regex
 export const postalCodeRegex = /^\d{5}$/
+export const identityDocumentTypes = {
+  tcKimlik: 'tcKimlik',
+  taxId: 'taxId',
+}
+
+export function sanitizeTurkishIdentityNumber(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 11)
+}
+
+export function validateTurkishIdentityNumber(value) {
+  const identityNumber = sanitizeTurkishIdentityNumber(value)
+
+  if (!identityNumber) {
+    return { s: false, e: 'T.C. Kimlik No is required' }
+  }
+
+  if (identityNumber.length !== 11) {
+    return { s: false, e: 'T.C. Kimlik No must be exactly 11 digits' }
+  }
+
+  if (identityNumber[0] === '0') {
+    return { s: false, e: 'T.C. Kimlik No cannot start with 0' }
+  }
+
+  if (/^(\d)\1+$/.test(identityNumber)) {
+    return { s: false, e: 'Enter a valid T.C. Kimlik No' }
+  }
+
+  const digits = identityNumber.split('').map(Number)
+  const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8]
+  const evenSum = digits[1] + digits[3] + digits[5] + digits[7]
+  const expectedTenthDigit = (((oddSum * 7) - evenSum) % 10 + 10) % 10
+  const expectedEleventhDigit = digits.slice(0, 10).reduce((total, digit) => total + digit, 0) % 10
+
+  if (digits[9] !== expectedTenthDigit || digits[10] !== expectedEleventhDigit) {
+    return { s: false, e: 'Enter a valid T.C. Kimlik No' }
+  }
+
+  return { s: true, value: identityNumber }
+}
+
+export function validateTaxIdentityNumber(value) {
+  const taxId = String(value || '').trim()
+
+  if (!taxId) {
+    return { s: false, e: 'Tax ID is required' }
+  }
+
+  if (taxId.length > 50) {
+    return { s: false, e: 'Tax ID must be 50 characters or fewer' }
+  }
+
+  return { s: true, value: taxId }
+}
+
+export function validateIdentityDocument(value, type = identityDocumentTypes.tcKimlik) {
+  return type === identityDocumentTypes.taxId
+    ? validateTaxIdentityNumber(value)
+    : validateTurkishIdentityNumber(value)
+}
 
 export function validateEmail(email) {
   const normalizedEmail = email.trim()

@@ -38,7 +38,13 @@ import {
   getWishlistProductReferences,
   wishlistChangeEvent,
 } from '../lib/wishlist'
-import { validatePassword } from '../lib/validation'
+import {
+  identityDocumentTypes,
+  sanitizeTurkishIdentityNumber,
+  validateIdentityDocument,
+  validatePassword,
+  validateTurkishIdentityNumber,
+} from '../lib/validation'
 
 function getUserDisplayName(user) {
   return user?.displayname || user?.name || ''
@@ -50,6 +56,24 @@ function getUserPrivacy(user) {
 
 function getUserTaxId(user) {
   return user?.taxId || user?.tax_id || ''
+}
+
+function getUserIdentityType(user) {
+  const taxId = getUserTaxId(user)
+
+  if (!taxId) {
+    return identityDocumentTypes.tcKimlik
+  }
+
+  return validateTurkishIdentityNumber(taxId).s
+    ? identityDocumentTypes.tcKimlik
+    : identityDocumentTypes.taxId
+}
+
+function getPurchaseTypeLabel(identityType) {
+  return identityType === identityDocumentTypes.taxId
+    ? 'Business purchase'
+    : 'Personal purchase'
 }
 
 function getAccountErrorMessage(error, fallback) {
@@ -79,6 +103,9 @@ export default function AccountPage() {
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
   const [profileTaxId, setProfileTaxId] = useState(() => getUserTaxId(currentUser))
+  const [profileIdentityType, setProfileIdentityType] = useState(() =>
+    getUserIdentityType(currentUser),
+  )
   const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
     buildReviewPrivacySelectionFromCode(
       getUserPrivacy(currentUser),
@@ -168,6 +195,7 @@ export default function AccountPage() {
 
     setProfileName(nextProfileName)
     setProfileTaxId(getUserTaxId(currentUser))
+    setProfileIdentityType(getUserIdentityType(currentUser))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -200,6 +228,14 @@ export default function AccountPage() {
       return
     }
 
+    const identityValidation = validateIdentityDocument(profileTaxId, profileIdentityType)
+
+    if (!identityValidation.s) {
+      setProfileFeedback(identityValidation.e)
+      setProfileFeedbackType('error')
+      return
+    }
+
     setProfileSaving(true)
     setProfileFeedback('')
 
@@ -207,7 +243,7 @@ export default function AccountPage() {
       await updateCurrentUserProfile({
         name: trimmedName,
         privacy: profilePrivacyCode,
-        taxId: profileTaxId.trim(),
+        taxId: identityValidation.value,
       })
       setProfileFeedback('Profile updated.')
       setProfileFeedbackType('success')
@@ -311,20 +347,69 @@ export default function AccountPage() {
                 />
               </label>
 
+              <fieldset className="grid gap-3">
+                <legend className="aurora-field-label">Purchase type</legend>
+                <div className="inline-flex w-fit rounded-full border border-[var(--aurora-border)] bg-white/65 p-1">
+                  {[
+                    { value: identityDocumentTypes.tcKimlik, label: 'Personal purchase' },
+                    { value: identityDocumentTypes.taxId, label: 'Business purchase' },
+                  ].map((option) => (
+                    <label
+                      key={option.value}
+                      className={`cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition ${
+                        profileIdentityType === option.value
+                          ? 'bg-[var(--aurora-olive-deep)] text-white shadow-sm'
+                          : 'text-[var(--aurora-text)] hover:text-[var(--aurora-text-strong)]'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="identityType"
+                        value={option.value}
+                        checked={profileIdentityType === option.value}
+                        onChange={() => {
+                          setProfileIdentityType(option.value)
+                          setProfileTaxId((currentValue) =>
+                            option.value === identityDocumentTypes.tcKimlik
+                              ? sanitizeTurkishIdentityNumber(currentValue)
+                              : currentValue.trim(),
+                          )
+                          setProfileFeedback('')
+                        }}
+                        className="sr-only"
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               <label className="block">
-                <span className="aurora-field-label">Tax ID (optional)</span>
+                <span className="aurora-field-label">
+                  {profileIdentityType === identityDocumentTypes.tcKimlik
+                    ? 'T.C. Kimlik No'
+                    : 'Tax ID'}
+                </span>
                 <input
                   type="text"
                   name="taxId"
                   autoComplete="off"
                   value={profileTaxId}
-                  maxLength={50}
+                  inputMode={profileIdentityType === identityDocumentTypes.tcKimlik ? 'numeric' : 'text'}
+                  maxLength={profileIdentityType === identityDocumentTypes.tcKimlik ? 11 : 50}
                   onChange={(event) => {
-                    setProfileTaxId(event.target.value)
+                    setProfileTaxId(
+                      profileIdentityType === identityDocumentTypes.tcKimlik
+                        ? sanitizeTurkishIdentityNumber(event.target.value)
+                        : event.target.value,
+                    )
                     setProfileFeedback('')
                   }}
                   className="aurora-input"
                 />
+                <span className="mt-2 block text-sm leading-6 text-[var(--aurora-text-muted)]">
+                  {getPurchaseTypeLabel(profileIdentityType)} will be used for checkout and invoices.
+                </span>
               </label>
 
               <div>

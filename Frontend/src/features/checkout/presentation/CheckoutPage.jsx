@@ -61,6 +61,7 @@ import {
   validateCardExpiry,
   validateEmail,
   validateTurkishCity,
+  validateTurkishIdentityNumber,
 } from '../../../lib/validation'
 
 const checkoutSteps = [
@@ -373,6 +374,24 @@ function getInstallmentSelectionDescription(installmentInfo, selectedInstallment
     selectedOption.permonth,
     selectedOption.total,
   )
+}
+
+function getUserTaxId(user) {
+  return String(user?.taxId || user?.tax_id || '').trim()
+}
+
+function validateCheckoutIdentity(user) {
+  const taxId = getUserTaxId(user)
+
+  if (!taxId) {
+    return 'Add your Personal or Business purchase information in your account profile before payment.'
+  }
+
+  if (/^\d{11}$/.test(taxId) && !validateTurkishIdentityNumber(taxId).s) {
+    return 'Update your account profile with a valid T.C. Kimlik No, or choose Business purchase.'
+  }
+
+  return ''
 }
 
 export default function CheckoutPage() {
@@ -901,6 +920,13 @@ export default function CheckoutPage() {
         const hasFreshPaymentSession = await confirmPaymentSession()
 
         if (!hasFreshPaymentSession) {
+          return
+        }
+
+        const identityError = validateCheckoutIdentity(getAuthStateSnapshot().user)
+
+        if (identityError) {
+          setErrors((current) => ({ ...current, payment: identityError }))
           return
         }
 
