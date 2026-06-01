@@ -18,6 +18,7 @@ import {
   getCachedOrderById,
   getOrderProgressState,
   getOrderStatusPresentation,
+  isRefundRequestWindowOpen,
   orderProgressSteps,
   ordersChangeEvent,
   requestOrderRefund,
@@ -383,6 +384,7 @@ export default function OrderDetailPage() {
   const status = getOrderStatusPresentation(order)
   const detailReady = Boolean(order && Array.isArray(order.items))
   const canCancelOrder = Boolean(order?.id) && !['shipped', 'delivered', 'cancelled'].includes(status.key)
+  const refundWindowOpen = isRefundRequestWindowOpen(order)
 
   return (
     <AccountLayout
@@ -553,6 +555,7 @@ export default function OrderDetailPage() {
                       item.cartId === null || item.cartId === undefined || item.cartId === ''
                     const canRequestRefund =
                       status.key === 'delivered' &&
+                      refundWindowOpen &&
                       !item.refundRequested &&
                       !item.refunded &&
                       !item.refundRejected
@@ -578,6 +581,10 @@ export default function OrderDetailPage() {
                             {refundStatusMessage ? (
                               <p className="mt-4 text-sm font-semibold text-[var(--aurora-text-strong)]">
                                 {refundStatusMessage}
+                              </p>
+                            ) : status.key === 'delivered' && !refundWindowOpen && !refundStatusMessage ? (
+                              <p className="mt-4 text-sm font-medium text-[var(--aurora-text-strong)]">
+                                Refund requests are available within 30 days of purchase.
                               </p>
                             ) : null}
                             {item.refundMessage ? (

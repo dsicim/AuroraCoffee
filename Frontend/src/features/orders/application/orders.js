@@ -7,6 +7,10 @@ import {
   invalidateProductCatalogCache,
 } from '../../../lib/products'
 import { getItemsPriceBreakdown } from '../../../lib/tax'
+export {
+  isRefundRequestWindowOpen,
+  refundRequestWindowMs,
+} from './refundWindow'
 
 export const ordersChangeEvent = 'aurora-orders-change'
 
