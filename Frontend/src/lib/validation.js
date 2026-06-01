@@ -149,9 +149,10 @@ export function taxIDType(taxId) {
         if (!isValidVKN(taxId)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
         return { s: true, t: "Turkish Corporate Tax ID" };
     }
-    else {
+    else if (taxId.length <= 9) {
         return { s: true, t: "Passport Number" };
     }
+    else return { s: false, t: "unknown", e: "Invalid Tax ID format" };
 }
 
 function isValidVKN(taxId) {
