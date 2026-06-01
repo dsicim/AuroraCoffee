@@ -20,124 +20,6 @@ class DBError extends Error {
 
 let pool;
 const func = {};
-
-function encryptTaxIdForStorage(taxId, userId) {
-    const normalizedTaxId = String(taxId || '').trim();
-
-    if (!normalizedTaxId) {
-        return null;
-    }
-
-    const encrypted = aes.encrypt(normalizedTaxId, userId);
-
-    if (encrypted.e) {
-        throw new DBError(500, 'Failed to encrypt tax ID');
-    }
-
-    return JSON.stringify(encrypted);
-}
-
-function parseTaxIdStorageValue(taxId) {
-    if (!taxId) {
-        return null;
-    }
-
-    if (typeof taxId === 'object') {
-        return taxId;
-    }
-
-    const storedTaxId = String(taxId).trim();
-
-    if (!storedTaxId) {
-        return null;
-    }
-
-    if (!storedTaxId.startsWith('{') && !storedTaxId.startsWith('"')) {
-        return storedTaxId;
-    }
-
-    const parsedTaxId = aes.pjs(storedTaxId);
-    return parsedTaxId.e ? storedTaxId : parsedTaxId;
-}
-
-function isEncryptedTaxIdPayload(taxId) {
-    return taxId && typeof taxId === 'object' && taxId.iv && taxId.tg && taxId.pd;
-}
-
-function decryptTaxIdFromStorage(taxId, userId) {
-    const storedTaxId = parseTaxIdStorageValue(taxId);
-
-    if (!storedTaxId) {
-        return null;
-    }
-
-    if (typeof storedTaxId === 'string') {
-        return storedTaxId;
-    }
-
-    if (!isEncryptedTaxIdPayload(storedTaxId)) {
-        console.error('Tax ID decryption skipped: malformed encrypted value for user', userId);
-        return null;
-    }
-
-    const decryptedTaxId = aes.decrypt(storedTaxId, userId);
-
-    if (!decryptedTaxId.s) {
-        console.error('Tax ID decryption failed for user', userId, decryptedTaxId.e);
-        return null;
-    }
-
-    return decryptedTaxId.value;
-}
-
-async function migrateTaxIdColumnToJson() {
-    const [columnRows] = await pool.execute(
-        'SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?',
-        ['users', 'tax_id']
-    );
-    const taxIdColumnType = columnRows[0]?.DATA_TYPE;
-
-    if (taxIdColumnType !== 'json') {
-        await pool.execute('ALTER TABLE users MODIFY tax_id TEXT DEFAULT NULL');
-    }
-
-    const [rows] = await pool.execute(
-        'SELECT id, tax_id FROM users WHERE tax_id IS NOT NULL AND TRIM(CAST(tax_id AS CHAR)) <> ""'
-    );
-
-    for (const row of rows) {
-        const storedTaxId = parseTaxIdStorageValue(row.tax_id);
-
-        if (!storedTaxId || isEncryptedTaxIdPayload(storedTaxId)) {
-            continue;
-        }
-
-        if (typeof storedTaxId === 'string') {
-            await pool.execute(
-                'UPDATE users SET tax_id = ? WHERE id = ?',
-                [encryptTaxIdForStorage(storedTaxId, row.id), row.id]
-            );
-            continue;
-        }
-
-        const legacyTaxId = storedTaxId.value || storedTaxId.legacy || storedTaxId.taxId || storedTaxId.tax_id;
-
-        if (legacyTaxId) {
-            await pool.execute(
-                'UPDATE users SET tax_id = ? WHERE id = ?',
-                [encryptTaxIdForStorage(legacyTaxId, row.id), row.id]
-            );
-            continue;
-        }
-
-        console.error('Tax ID migration skipped malformed value for user', row.id);
-    }
-
-    if (taxIdColumnType !== 'json') {
-        await pool.execute('ALTER TABLE users MODIFY tax_id JSON DEFAULT NULL');
-    }
-}
-
 func.initDB = async function () {
     try {
         pool = mysql.createPool({
@@ -148,7 +30,6 @@ func.initDB = async function () {
             database: config.database,
             multipleStatements: true
         });
-        await migrateTaxIdColumnToJson();
         console.log('Connected to MySQL database.');
     } catch (error) {
         console.error('Database connection failed:', error.message);
@@ -215,10 +96,9 @@ func.editUser = async function (userId, newDisplayName, newNamePrivacy, newEmail
         throw new DBError(400, 'User ID, display name, and name privacy are required');
     }
     try {
-        const encryptedTaxId = encryptTaxIdForStorage(newTaxId, userId);
         const [result] = await pool.execute(
             'UPDATE users SET displayname = ?, nameprivacy = ?, tax_id = ? WHERE id = ?',
-            [newDisplayName, newNamePrivacy, encryptedTaxId, userId]
+            [newDisplayName, newNamePrivacy, newTaxId, userId]
         );
         if (result.affectedRows === 0) {
             throw new DBError(404, 'User not found');
@@ -263,7 +143,6 @@ func.findUser = async function (username, id) {
         if (rows.length === 0) {
             throw new DBError(404, 'User not found');
         }
-        rows[0].tax_id = decryptTaxIdFromStorage(rows[0].tax_id, rows[0].id);
         return { success: true, user: rows[0] };
     } catch (error) {
         if (error instanceof DBError) throw error;

@@ -381,6 +381,14 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "initiate") {
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { success: false, e: { what: "Account", why: "Unauthorized", resolution: "Please log in again" } } };
+            if (currentUser.tax_id && currentUser.tax_id.length > 0) {
+                currentUser.tax_id = aes.pjs(currentUser.tax_id);
+                if (currentUser.tax_id.e && currentUser.tax_id.e.startsWith("Failed to parse JSON: ")) {
+                    currentUser.tax_id = null;
+                    return { s: 500, j: true, d: { success: false, e: { what: "Account", why: "Your Tax ID can't be parsed", resolution: "Please update your tax ID in your profile settings or contact the developers" } } };
+                }
+                currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
+            }
             if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 412, j: true, d: { success: false, e: { what: "Information", why: "Invalid request body", resolution: "Please provide the necessary information" } } };
             // Required fields validation
             if (!body.data.cart || !Array.isArray(body.data.cart) || body.data.cart.length === 0) return { s: 412, j: true, d: { success: false, e: { what: "Shopping Cart", why: "Cart details are missing or invalid", resolution: "Please provide valid cart details from your session" } } };

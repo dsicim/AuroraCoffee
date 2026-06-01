@@ -1,11 +1,31 @@
 const sql = require("../../Database/server.js");
+const aes = require("../components/aes256.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (!currentUser || currentUser.e) {
         console.log("Unauthorized access: "+currentUser.e);
         return { s: 401, j: true, d: { e: "Unauthorized" } };
     }
     if (endpoint[0] === "me") {
-        if (method === "GET") return { s: 200, j: true, d: { user: currentUser } };
+        if (currentUser.tax_id && currentUser.tax_id.length > 0) {
+            currentUser.tax_id = aes.pjs(currentUser.tax_id);
+            if (currentUser.tax_id.e && currentUser.tax_id.e.startsWith("Failed to parse JSON: ")) {
+                currentUser.tax_id = null;
+                currentUser.tax_id_error = "Failed to parse tax ID data, possibly due to legacy format. Please update your tax ID in your profile settings.";
+            }
+        }
+        currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
+        // We don't want to expose the tax ID in the GET endpoint, but we will still accept it in the PATCH endpoint for updating it.
+        if (method === "GET") {
+            if (currentUser.tax_id && currentUser.tax_id.length > 0) {
+                function RepeatStar(n) {
+                    let str = "";
+                    for (let i = 0; i < n-2; i++) str += "*";
+                    return str;
+                }
+                currentUser.tax_id = currentUser.tax_id.substring(0, 1) + RepeatStar(currentUser.tax_id.length) + currentUser.tax_id.substring(currentUser.tax_id.length - 1);
+            }
+            return { s: 200, j: true, d: { user: currentUser } };
+        }
         else if (method === "PATCH") {
             if (!body || !body.exists || body.err || !body.json || !body.data || ((!body.data.name || !body.data.privacy) && body.data.emailblock === undefined && body.data.taxId === undefined)) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if ((body.data.name && !body.data.privacy) || (!body.data.name && body.data.privacy)) return { s: 400, j: true, d: { e: "Display name and privacy must be provided together" } };
@@ -25,8 +45,16 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (userprivacy.length !== userwords.length) return { s: 400, j: true, d: { e: "Privacy setting length must match the number of words in your display name" } };
                 if (privacyinvalid) return { s: 400, j: true, d: { e: "Invalid privacy setting" } };
             }
-            const taxId = body.data.taxId === undefined ? currentUser.tax_id : body.data.taxId;
-            if (taxId && taxId.length > 50) return { s: 400, j: true, d: { e: "Tax ID must be 50 characters or fewer" } };
+            let taxId = (body.data.taxId === undefined ? currentUser.tax_id :(body.data.taxId.trim().length === 0 ? null : body.data.taxId.trim()));
+            if (taxId && taxId.length > 15) return { s: 400, j: true, d: { e: "Tax ID must be 15 characters or fewer" } };
+            if (taxId && taxId.length > 0) {
+                taxId = aes.encrypt(taxId, currentUser.id);
+                if (taxId.e) {
+                    console.error("Encryption error:", taxId.e);
+                    return { s: 500, j: true, d: { e: "Internal server error" } };
+                }
+                taxId = JSON.stringify(taxId);
+            }
             return await sql.editUser(currentUser.id, body.data.name, body.data.privacy, body.data.emailblock === undefined ? currentUser.emailblock : body.data.emailblock, taxId || null).then(res => {
                 if (res.success) {
                     return { s: 200, j: true, d: { e: "User updated successfully" } };
