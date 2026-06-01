@@ -511,6 +511,11 @@ func.getCategories = async function (parent = null) {
         const [rows] = await pool.execute(query, params);
         let [rows2] = [[]];
         if (parent !== null) [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE id = ?)', [params[0]]);
+        for (let c of rows) {
+            const subs = await func.getCategories(c.id);
+            c.categories = subs.categories;
+            c.products = subs.products;
+        }
         return { success: true, categories: rows, products: rows2 };
     } catch (error) {
         console.error('Get categories error:', error);
