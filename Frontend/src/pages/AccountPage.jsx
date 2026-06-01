@@ -40,6 +40,8 @@ import {
 } from '../lib/wishlist'
 import {
   identityDocumentTypes,
+  sanitizePassportNumber,
+  sanitizeTaxIdentityNumber,
   sanitizeTurkishIdentityNumber,
   validateIdentityDocument,
   validatePassword,
@@ -67,13 +69,19 @@ function getUserIdentityType(user) {
 
   return validateTurkishIdentityNumber(taxId).s
     ? identityDocumentTypes.tcKimlik
-    : identityDocumentTypes.taxId
+    : taxId.length === 10 && /^\d+$/.test(taxId)
+      ? identityDocumentTypes.taxId
+      : identityDocumentTypes.foreignPassport
 }
 
 function getPurchaseTypeLabel(identityType) {
-  return identityType === identityDocumentTypes.taxId
-    ? 'Business purchase'
-    : 'Personal purchase'
+  if (identityType === identityDocumentTypes.taxId) {
+    return 'Turkish citizen business purchase'
+  }
+
+  return identityType === identityDocumentTypes.foreignPassport
+    ? 'Foreign citizen passport'
+    : 'Turkish citizen personal purchase'
 }
 
 function getAccountErrorMessage(error, fallback) {
@@ -349,17 +357,16 @@ export default function AccountPage() {
 
               <fieldset className="grid gap-3">
                 <legend className="aurora-field-label">Purchase type</legend>
-                <div className="inline-flex w-fit rounded-full border border-[var(--aurora-border)] bg-white/65 p-1">
+                <div className="aurora-segmented-control">
                   {[
-                    { value: identityDocumentTypes.tcKimlik, label: 'Personal purchase' },
-                    { value: identityDocumentTypes.taxId, label: 'Business purchase' },
+                    { value: identityDocumentTypes.tcKimlik, label: 'Turkish citizen personal' },
+                    { value: identityDocumentTypes.taxId, label: 'Turkish citizen business' },
+                    { value: identityDocumentTypes.foreignPassport, label: 'Foreign citizen' },
                   ].map((option) => (
                     <label
                       key={option.value}
-                      className={`cursor-pointer rounded-full px-4 py-2 text-sm font-semibold transition ${
-                        profileIdentityType === option.value
-                          ? 'bg-[var(--aurora-olive-deep)] text-white shadow-sm'
-                          : 'text-[var(--aurora-text)] hover:text-[var(--aurora-text-strong)]'
+                      className={`aurora-segmented-option${
+                        profileIdentityType === option.value ? ' is-selected' : ''
                       }`}
                     >
                       <input
@@ -372,7 +379,9 @@ export default function AccountPage() {
                           setProfileTaxId((currentValue) =>
                             option.value === identityDocumentTypes.tcKimlik
                               ? sanitizeTurkishIdentityNumber(currentValue)
-                              : currentValue.trim(),
+                              : option.value === identityDocumentTypes.taxId
+                                ? sanitizeTaxIdentityNumber(currentValue)
+                                : sanitizePassportNumber(currentValue),
                           )
                           setProfileFeedback('')
                         }}
@@ -388,20 +397,34 @@ export default function AccountPage() {
                 <span className="aurora-field-label">
                   {profileIdentityType === identityDocumentTypes.tcKimlik
                     ? 'T.C. Kimlik No'
-                    : 'Tax ID'}
+                    : profileIdentityType === identityDocumentTypes.taxId
+                      ? 'Tax ID'
+                      : 'Passport number'}
                 </span>
                 <input
                   type="text"
                   name="taxId"
                   autoComplete="off"
                   value={profileTaxId}
-                  inputMode={profileIdentityType === identityDocumentTypes.tcKimlik ? 'numeric' : 'text'}
-                  maxLength={profileIdentityType === identityDocumentTypes.tcKimlik ? 11 : 50}
+                  inputMode={
+                    profileIdentityType === identityDocumentTypes.foreignPassport
+                      ? 'text'
+                      : 'numeric'
+                  }
+                  maxLength={
+                    profileIdentityType === identityDocumentTypes.tcKimlik
+                      ? 11
+                      : profileIdentityType === identityDocumentTypes.taxId
+                        ? 10
+                        : 9
+                  }
                   onChange={(event) => {
                     setProfileTaxId(
                       profileIdentityType === identityDocumentTypes.tcKimlik
                         ? sanitizeTurkishIdentityNumber(event.target.value)
-                        : event.target.value,
+                        : profileIdentityType === identityDocumentTypes.taxId
+                          ? sanitizeTaxIdentityNumber(event.target.value)
+                          : sanitizePassportNumber(event.target.value),
                     )
                     setProfileFeedback('')
                   }}

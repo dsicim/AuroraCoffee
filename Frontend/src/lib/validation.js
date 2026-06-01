@@ -5,10 +5,22 @@ export const postalCodeRegex = /^\d{5}$/
 export const identityDocumentTypes = {
   tcKimlik: 'tcKimlik',
   taxId: 'taxId',
+  foreignPassport: 'foreignPassport',
 }
 
 export function sanitizeTurkishIdentityNumber(value) {
   return String(value || '').replace(/\D/g, '').slice(0, 11)
+}
+
+export function sanitizePassportNumber(value) {
+  return String(value || '')
+    .replace(/[^a-z0-9]/gi, '')
+    .toUpperCase()
+    .slice(0, 9)
+}
+
+export function sanitizeTaxIdentityNumber(value) {
+  return String(value || '').replace(/\D/g, '').slice(0, 10)
 }
 
 export function validateTurkishIdentityNumber(value) {
@@ -43,21 +55,39 @@ export function validateTurkishIdentityNumber(value) {
   return { s: true, value: identityNumber }
 }
 
+export function validatePassportNumber(value) {
+  const passportNumber = sanitizePassportNumber(value)
+
+  if (!passportNumber) {
+    return { s: false, e: 'Passport number is required' }
+  }
+
+  if (passportNumber.length > 9) {
+    return { s: false, e: 'Passport number must be 9 characters or fewer' }
+  }
+
+  return { s: true, value: passportNumber }
+}
+
 export function validateTaxIdentityNumber(value) {
-  const taxId = String(value || '').trim()
+  const taxId = sanitizeTaxIdentityNumber(value)
 
   if (!taxId) {
     return { s: false, e: 'Tax ID is required' }
   }
 
-  if (taxId.length > 50) {
-    return { s: false, e: 'Tax ID must be 50 characters or fewer' }
+  if (taxId.length !== 10) {
+    return { s: false, e: 'Tax ID must be exactly 10 digits' }
   }
 
   return { s: true, value: taxId }
 }
 
 export function validateIdentityDocument(value, type = identityDocumentTypes.tcKimlik) {
+  if (type === identityDocumentTypes.foreignPassport) {
+    return validatePassportNumber(value)
+  }
+
   return type === identityDocumentTypes.taxId
     ? validateTaxIdentityNumber(value)
     : validateTurkishIdentityNumber(value)

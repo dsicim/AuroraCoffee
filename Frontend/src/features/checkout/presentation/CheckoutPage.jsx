@@ -25,6 +25,7 @@ import {
   fetchCurrentUserResult,
   getAuthSession,
   getAuthStateSnapshot,
+  updateCurrentUserTaxId,
 } from '../../../lib/auth'
 import {
   enrichCartItems,
@@ -60,6 +61,11 @@ import {
   validateCityPostalCode,
   validateCardExpiry,
   validateEmail,
+  identityDocumentTypes,
+  sanitizePassportNumber,
+  sanitizeTaxIdentityNumber,
+  sanitizeTurkishIdentityNumber,
+  validateIdentityDocument,
   validateTurkishCity,
   validateTurkishIdentityNumber,
 } from '../../../lib/validation'
@@ -380,26 +386,42 @@ function getUserTaxId(user) {
   return String(user?.taxId || user?.tax_id || '').trim()
 }
 
-function validateCheckoutIdentity(user) {
+function getPurchaseIdentityType(user) {
   const taxId = getUserTaxId(user)
 
   if (!taxId) {
-    return 'Add your Personal or Business purchase information in your account profile before payment.'
+    return identityDocumentTypes.tcKimlik
   }
 
-  if (/^\d{11}$/.test(taxId) && !validateTurkishIdentityNumber(taxId).s) {
-    return 'Update your account profile with a valid T.C. Kimlik No, or choose Business purchase.'
+  return validateTurkishIdentityNumber(taxId).s
+    ? identityDocumentTypes.tcKimlik
+    : taxId.length === 10 && /^\d+$/.test(taxId)
+      ? identityDocumentTypes.taxId
+      : identityDocumentTypes.foreignPassport
+}
+
+function sanitizePurchaseIdentity(value, purchaseType) {
+  if (purchaseType === identityDocumentTypes.foreignPassport) {
+    return sanitizePassportNumber(value)
   }
 
-  return ''
+  return purchaseType === identityDocumentTypes.taxId
+    ? sanitizeTaxIdentityNumber(value)
+    : sanitizeTurkishIdentityNumber(value)
+}
+
+function validateCheckoutIdentity(value, purchaseType) {
+  return validateIdentityDocument(value, purchaseType)
 }
 
 export default function CheckoutPage() {
   const navigate = useNavigate()
   const checkoutFormRef = useRef(null)
   const initialSession = getAuthSession()
+  const initialAuthState = getAuthStateSnapshot()
   const [items, setItems] = useState(() => getCartItems())
   const [session, setSession] = useState(() => initialSession)
+  const [currentUser, setCurrentUser] = useState(() => initialAuthState.user)
   const [stepIndex, setStepIndex] = useState(0)
   const [delivery, setDelivery] = useState(() =>
     buildDeliveryFromAddress(null, initialSession?.email || ''),
@@ -416,6 +438,16 @@ export default function CheckoutPage() {
   const [avoid3DS, setAvoid3DS] = useState(true)
   const [installmentInfo, setInstallmentInfo] = useState(null)
   const [selectedInstallments, setSelectedInstallments] = useState('')
+  const [purchaseType, setPurchaseType] = useState(() =>
+    getPurchaseIdentityType(initialAuthState.user),
+  )
+  const [purchaseIdentity, setPurchaseIdentity] = useState(() =>
+    sanitizePurchaseIdentity(
+      getUserTaxId(initialAuthState.user),
+      getPurchaseIdentityType(initialAuthState.user),
+    ),
+  )
+  const [purchaseIdentityTouched, setPurchaseIdentityTouched] = useState(false)
   const [paymentBusy, setPaymentBusy] = useState(false)
   const [errors, setErrors] = useState({})
   const [submittedOrder, setSubmittedOrder] = useState(null)
@@ -464,6 +496,7 @@ export default function CheckoutPage() {
         await fetchSavedAddresses().catch(() => [])
         setItems(await enrichCartItems(getCartItems()))
         setSession(getAuthSession())
+        setCurrentUser(getAuthStateSnapshot().user)
         setSavedAddresses(getSavedAddresses())
       })()
     }
@@ -472,12 +505,14 @@ export default function CheckoutPage() {
       void (async () => {
         setItems(await enrichCartItems(getCartItems()))
         setSession(getAuthSession())
+        setCurrentUser(getAuthStateSnapshot().user)
       })()
     }
 
     const syncAccountState = () => {
       void (async () => {
         setSession(getAuthSession())
+        setCurrentUser(getAuthStateSnapshot().user)
         await fetchSavedAddresses().catch(() => [])
         setSavedAddresses(getSavedAddresses())
       })()
@@ -499,6 +534,17 @@ export default function CheckoutPage() {
       window.clearTimeout(initialSyncId)
     }
   }, [])
+
+  useEffect(() => {
+    if (purchaseIdentityTouched) {
+      return
+    }
+
+    const nextPurchaseType = getPurchaseIdentityType(currentUser)
+
+    setPurchaseType(nextPurchaseType)
+    setPurchaseIdentity(sanitizePurchaseIdentity(getUserTaxId(currentUser), nextPurchaseType))
+  }, [currentUser, purchaseIdentityTouched])
 
   useEffect(() => {
     if (!isLoggedIn) {
@@ -626,6 +672,9 @@ export default function CheckoutPage() {
     setUsingNewCard(!snapshot?.selectedSavedCardId)
     setSelectedInstallments(snapshot?.selectedInstallments || '')
     setSaveCardForLater(Boolean(snapshot?.saveCardForLater))
+    setPurchaseType(snapshot?.purchaseType || identityDocumentTypes.tcKimlik)
+    setPurchaseIdentity(snapshot?.purchaseIdentity || '')
+    setPurchaseIdentityTouched(Boolean(snapshot?.purchaseIdentity))
     setPaymentSummaryOverride(snapshot?.paymentSummary || null)
     setPayment({
       ...initialPayment,
@@ -756,6 +805,19 @@ export default function CheckoutPage() {
     setSelectedInstallments(value)
   }
 
+  const handlePurchaseTypeChange = (nextPurchaseType) => {
+    setPurchaseType(nextPurchaseType)
+    setPurchaseIdentity((currentValue) => sanitizePurchaseIdentity(currentValue, nextPurchaseType))
+    setPurchaseIdentityTouched(true)
+    setErrors((current) => ({ ...current, purchaseIdentity: '', payment: '' }))
+  }
+
+  const handlePurchaseIdentityChange = (value) => {
+    setPurchaseIdentity(sanitizePurchaseIdentity(value, purchaseType))
+    setPurchaseIdentityTouched(true)
+    setErrors((current) => ({ ...current, purchaseIdentity: '', payment: '' }))
+  }
+
   const focusFirstError = (nextErrors) => {
     const fieldOrder = [
       'firstName',
@@ -773,6 +835,7 @@ export default function CheckoutPage() {
       'billingDistrict',
       'billingPostalCode',
       'billingPhone',
+      'purchaseIdentity',
       'cardholder',
       'cardNumber',
       'expiry',
@@ -859,9 +922,14 @@ export default function CheckoutPage() {
     }
 
     if (currentStep.key === 'payment') {
+      const identityValidation = validateCheckoutIdentity(purchaseIdentity, purchaseType)
       const paymentErrors = selectedSavedCardId
         ? validateSavedCardForm(payment)
         : validatePaymentForm(payment)
+
+      if (!identityValidation.s) {
+        paymentErrors.purchaseIdentity = identityValidation.e
+      }
 
       if (Object.keys(paymentErrors).length) {
         setErrors(paymentErrors)
@@ -923,11 +991,22 @@ export default function CheckoutPage() {
           return
         }
 
-        const identityError = validateCheckoutIdentity(getAuthStateSnapshot().user)
+        const identityValidation = validateCheckoutIdentity(purchaseIdentity, purchaseType)
 
-        if (identityError) {
-          setErrors((current) => ({ ...current, payment: identityError }))
+        if (!identityValidation.s) {
+          setErrors((current) => ({
+            ...current,
+            purchaseIdentity: identityValidation.e,
+            payment: identityValidation.e,
+          }))
           return
+        }
+
+        const latestUser = getAuthStateSnapshot().user
+
+        if (getUserTaxId(latestUser) !== identityValidation.value) {
+          const updatedUser = await updateCurrentUserTaxId(identityValidation.value)
+          setCurrentUser(updatedUser)
         }
 
         if (!selectedSavedCardId && saveCardForLater) {
@@ -1008,6 +1087,8 @@ export default function CheckoutPage() {
           payment,
           savedCards,
           saveCardForLater,
+          purchaseType,
+          purchaseIdentity,
           selectedInstallments,
           installmentSelectionLabel: activeInstallmentLabel,
           subtotal: pricing.itemsGross,
@@ -1657,6 +1738,90 @@ export default function CheckoutPage() {
 
           {currentStep.key === 'payment' ? (
             <div className="mt-8 grid gap-5 sm:grid-cols-2">
+              <div className="aurora-showroom-subpanel p-5 sm:col-span-2">
+                <div className="aurora-widget-header">
+                  <div className="aurora-widget-heading">
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                      Purchase type
+                    </p>
+                    <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                      Choose how this order should be invoiced before payment.
+                    </p>
+                  </div>
+                </div>
+
+                <fieldset className="mt-4 grid gap-3">
+                  <legend className="sr-only">Purchase type</legend>
+                  <div className="aurora-segmented-control">
+                    {[
+                      { value: identityDocumentTypes.tcKimlik, label: 'Turkish citizen personal' },
+                      { value: identityDocumentTypes.taxId, label: 'Turkish citizen business' },
+                      { value: identityDocumentTypes.foreignPassport, label: 'Foreign citizen' },
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className={`aurora-segmented-option${
+                          purchaseType === option.value ? ' is-selected' : ''
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="checkoutPurchaseType"
+                          value={option.value}
+                          checked={purchaseType === option.value}
+                          onChange={() => handlePurchaseTypeChange(option.value)}
+                          className="sr-only"
+                        />
+                        {option.label}
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <label className="mt-4 block">
+                  <span className="aurora-field-label">
+                    {purchaseType === identityDocumentTypes.foreignPassport
+                      ? 'Passport number'
+                      : purchaseType === identityDocumentTypes.taxId
+                        ? 'Tax ID'
+                        : 'T.C. Kimlik No'}
+                  </span>
+                  <input
+                    type="text"
+                    inputMode={
+                      purchaseType === identityDocumentTypes.foreignPassport ? 'text' : 'numeric'
+                    }
+                    name="purchaseIdentity"
+                    autoComplete="off"
+                    value={purchaseIdentity}
+                    maxLength={
+                      purchaseType === identityDocumentTypes.foreignPassport
+                        ? 9
+                        : purchaseType === identityDocumentTypes.taxId
+                          ? 10
+                          : 11
+                    }
+                    onChange={(event) => handlePurchaseIdentityChange(event.target.value)}
+                    {...getFieldProps('purchaseIdentity')}
+                    className="aurora-input"
+                  />
+                  {purchaseIdentity ? (
+                    <button
+                      type="button"
+                      className="aurora-link mt-2 text-sm"
+                      onClick={() => {
+                        setPurchaseIdentity('')
+                        setPurchaseIdentityTouched(true)
+                        setErrors((current) => ({ ...current, purchaseIdentity: '', payment: '' }))
+                      }}
+                    >
+                      Clear field
+                    </button>
+                  ) : null}
+                  {renderFieldError('purchaseIdentity')}
+                </label>
+              </div>
+
               {savedCards.length ? (
                 <div className="aurora-showroom-subpanel p-5 sm:col-span-2">
                   <div className="aurora-widget-header">

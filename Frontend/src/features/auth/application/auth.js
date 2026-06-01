@@ -470,6 +470,32 @@ export async function updateCurrentUserProfile({ name, privacy, taxId }) {
   return result.user
 }
 
+export async function updateCurrentUserTaxId(taxId) {
+  const session = requireAuthSession()
+  const response = await fetch(buildApiUrl('/users/me'), {
+    method: 'PATCH',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      accept: 'application/json',
+      authorization: session.token,
+    },
+    body: JSON.stringify({
+      taxId,
+    }),
+  })
+
+  await readAuthMutationResponse(response)
+
+  const result = await fetchCurrentUserResult(session.token, { force: true })
+
+  if (result.status !== currentUserFetchStatus.ok) {
+    throw new Error('Purchase information saved, but the account could not be refreshed.')
+  }
+
+  return result.user
+}
+
 export async function changeCurrentPassword({ currentPassword, nextPassword }) {
   const session = requireAuthSession()
   const response = await fetch(buildApiUrl('/auth/password'), {
