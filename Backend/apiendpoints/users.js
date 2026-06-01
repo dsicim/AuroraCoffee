@@ -1,6 +1,6 @@
 const sql = require("../../Database/server.js");
 const aes = require("../components/aes256.js");
-const { taxIDType } = require("../components/identityValidation.js");
+const idvalidate = require("../components/idvalidate.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (!currentUser || currentUser.e) {
         console.log("Unauthorized access: " + currentUser.e);
@@ -21,7 +21,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             currentUser.tax_id_error = "Failed to decrypt tax ID. Please update your tax ID in your profile settings.";
         }
         else currentUser.tax_id = currentUser.tax_id.value;
-        const taxIDInfo = taxIDType(currentUser.tax_id);
+        const taxIDInfo = idvalidate.taxIDType(currentUser.tax_id);
         if (!taxIDInfo.s) {
             currentUser.tax_id_type = taxIDInfo.t || "unknown";
             currentUser.tax_id_error = taxIDInfo.e;
@@ -60,7 +60,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (privacyinvalid) return { s: 400, j: true, d: { e: "Invalid privacy setting" } };
             }
             let taxId = (body.data.taxId === undefined ? currentUser.tax_id : (body.data.taxId.trim().length === 0 ? null : body.data.taxId.trim()));
-            taxIDInfo = taxIDType(taxId);
+            const taxIDInfo = idvalidate.taxIDType(taxId);
             if (!taxIDInfo.s && currentUser.tax_id) return { s: 400, j: true, d: { e: "Invalid Tax ID: " + ((taxIDInfo.t !== "unknown" && taxIDInfo.t) ? "(Might be " + taxIDInfo.t + ") " : "") + taxIDInfo.e } };
             if (taxId && taxId.length > 0) {
                 taxId = aes.encrypt(taxId, currentUser.id);

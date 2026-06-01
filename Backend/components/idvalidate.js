@@ -4,10 +4,8 @@ function taxIDType(taxId) {
     if (!taxId) return { s: true, t: "None", e: "Tax ID is empty" };
     if (taxId.length > 11) return { s: false, t: "unknown", e: "Tax ID must be 11 characters or fewer" };
     if (!/^[A-Z0-9]+$/.test(taxId)) return { s: false, t: "unknown", e: "Invalid Tax ID format" };
-
     const mightBeTC = taxId.length === 11 && /^\d+$/.test(taxId);
     const mightBeVKN = taxId.length === 10 && /^\d+$/.test(taxId);
-
     if (mightBeTC) {
         const digits = taxId.split('').map(Number)
         const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8]
@@ -24,31 +22,20 @@ function taxIDType(taxId) {
         if (!isValidVKN(taxId)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
         return { s: true, t: "Turkish Corporate Tax ID" };
     }
-    else {
-        return { s: true, t: "Passport Number" };
-    }
+    else if (taxId.length >= 6 && taxId.length <= 9) return { s: true, t: "Passport Number" };
+    else return { s: false, t: "unknown", e: "Invalid Tax ID format" };
 }
 
 function isValidVKN(taxId) {
     const digits = taxId.split('').map(Number);
     let sum = 0;
-
     for (let i = 0; i < 9; i++) {
         const tmp = (digits[i] + (9 - i)) % 10;
-
-        if (tmp === 0) {
-            continue;
-        }
-
+        if (tmp === 0) continue;
         let product = (tmp * (2 ** (9 - i))) % 9;
-
-        if (product === 0) {
-            product = 9;
-        }
-
+        if (product === 0) product = 9;
         sum += product;
     }
-
     const expectedTenthDigit = (10 - (sum % 10)) % 10;
     return digits[9] === expectedTenthDigit;
 }
