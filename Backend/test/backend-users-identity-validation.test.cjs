@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
 
-const { taxIDType } = require('../components/identityValidation.js');
+const { taxIDType } = require('../components/idvalidate.js');
 
 test('taxIDType accepts empty values as optional identity data', () => {
   assert.equal(taxIDType(null).s, true);
@@ -15,8 +15,9 @@ test('taxIDType validates only all-digit eleven-character T.C. Kimlik numbers', 
   });
   assert.equal(taxIDType('10000000147').s, false);
   assert.deepEqual(taxIDType('A0000000146'), {
-    s: true,
-    t: 'Passport Number',
+    s: false,
+    t: 'unknown',
+    e: 'Invalid Tax ID format',
   });
 });
 
@@ -31,8 +32,9 @@ test('taxIDType validates all-digit ten-character values with the VKN checksum',
     e: 'Invalid Number',
   });
   assert.deepEqual(taxIDType('A234567890'), {
-    s: true,
-    t: 'Passport Number',
+    s: false,
+    t: 'unknown',
+    e: 'Invalid Tax ID format',
   });
 });
 

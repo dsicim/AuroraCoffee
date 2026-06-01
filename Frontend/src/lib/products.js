@@ -14,6 +14,7 @@ let catalogProducts = []
 let catalogProductsLoaded = false
 let productsPromise = null
 let productsPromiseScope = null
+let categoryTreePromise = null
 let catalogScope = null
 const productLookupById = new Map()
 
@@ -36,6 +37,7 @@ function clearProductsCache({ emit = true } = {}) {
   catalogProductsLoaded = false
   productsPromise = null
   productsPromiseScope = null
+  categoryTreePromise = null
   catalogScope = null
   productLookupById.clear()
 
@@ -749,6 +751,18 @@ async function requestJsonWithTimeout(path, options = {}, timeoutMs = categoryTr
 }
 
 export async function fetchProductCategoryTree() {
+  if (categoryTreePromise) {
+    return categoryTreePromise
+  }
+
+  categoryTreePromise = fetchProductCategoryTreeNetwork().finally(() => {
+    categoryTreePromise = null
+  })
+
+  return categoryTreePromise
+}
+
+async function fetchProductCategoryTreeNetwork() {
   const categoriesById = new Map()
 
   function addNestedCategories(rawCategories, fallbackParentId = null, depth = 0) {

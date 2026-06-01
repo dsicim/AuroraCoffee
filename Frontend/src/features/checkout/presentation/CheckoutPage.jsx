@@ -968,12 +968,6 @@ export default function CheckoutPage() {
       setErrors((current) => ({ ...current, payment: '' }))
 
       try {
-        const hasFreshPaymentSession = await confirmPaymentSession()
-
-        if (!hasFreshPaymentSession) {
-          return
-        }
-
         const identityValidation = validateCheckoutIdentity(purchaseIdentity)
 
         if (!identityValidation.s) {
@@ -982,6 +976,12 @@ export default function CheckoutPage() {
             purchaseIdentity: identityValidation.e,
             payment: identityValidation.e,
           }))
+          return
+        }
+
+        const hasFreshPaymentSession = await confirmPaymentSession()
+
+        if (!hasFreshPaymentSession) {
           return
         }
 
