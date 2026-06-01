@@ -67,6 +67,11 @@ test('validateIdentityDocument accepts a ten-digit tax id for business purchases
   })
 })
 
+test('validateIdentityDocument rejects ten-digit tax ids with invalid VKN checksum', () => {
+  assert.equal(validateIdentityDocument('1234567891', identityDocumentTypes.taxId).s, false)
+  assert.equal(validateIdentityDocumentAuto('1234567891').s, false)
+})
+
 test('validateTaxIdentityNumber rejects non-ten-digit values', () => {
   assert.equal(validateTaxIdentityNumber('123456789').s, false)
 })
@@ -77,11 +82,13 @@ test('validatePassportNumber still requires a value', () => {
 
 test('inferIdentityDocumentType only treats all-digit eleven-character values as T.C. Kimlik No', () => {
   assert.equal(inferIdentityDocumentType('10000000146'), identityDocumentTypes.tcKimlik)
+  assert.equal(inferIdentityDocumentType('10000000147'), identityDocumentTypes.tcKimlik)
   assert.equal(inferIdentityDocumentType('A0000000146'), identityDocumentTypes.foreignPassport)
 })
 
 test('inferIdentityDocumentType only treats all-digit ten-character values as tax ID', () => {
   assert.equal(inferIdentityDocumentType('1234567890'), identityDocumentTypes.taxId)
+  assert.equal(inferIdentityDocumentType('1234567891'), identityDocumentTypes.taxId)
   assert.equal(inferIdentityDocumentType('A234567890'), identityDocumentTypes.foreignPassport)
 })
 

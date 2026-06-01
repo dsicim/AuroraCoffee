@@ -88,6 +88,10 @@ export function validateTaxIdentityNumber(value) {
     return { s: false, e: 'Tax ID must be exactly 10 digits' }
   }
 
+  if (!taxIDType(taxId).s) {
+    return { s: false, e: 'Enter a valid Tax ID' }
+  }
+
   return { s: true, value: taxId }
 }
 
@@ -103,28 +107,31 @@ export function validateIdentityDocument(value, type = identityDocumentTypes.tcK
 
 export function inferIdentityDocumentType(value) {
   const identityNumber = sanitizeIdentityDocumentNumber(value)
-  const taxIDInfo = taxIDType(identityNumber)
 
-  if (taxIDInfo.s) {
-    if (taxIDInfo.t === "Turkish ID") return identityDocumentTypes.tcKimlik
-    else if (taxIDInfo.t === "Turkish Corporate Tax ID") return identityDocumentTypes.taxId
-    else if (taxIDInfo.t === "Turkish Foreigner Resident ID") return identityDocumentTypes.ykKimlik
-    else if (taxIDInfo.t === "Passport Number") return identityDocumentTypes.foreignPassport
-    else if (taxIDInfo.t === "None") return null
-    else return undefined
+  if (!identityNumber) {
+    return null
   }
-  else return undefined
+
+  if (/^\d{11}$/.test(identityNumber)) {
+    return identityDocumentTypes.tcKimlik
+  }
+
+  if (/^\d{10}$/.test(identityNumber)) {
+    return identityDocumentTypes.taxId
+  }
+
+  return identityDocumentTypes.foreignPassport
 }
 
 export function taxIDType(taxId) {
-    taxId = taxId.trim();
+    taxId = String(taxId || '').trim().toUpperCase();
     if (taxId === "11111111111") return { s: false, t: "Turkish ID", e: "Invalid Number." };
-    if (!taxId || taxId.trim().length === 0) return { s: true, t: "None", e: "Tax ID is empty" };
+    if (!taxId) return { s: true, t: "None", e: "Tax ID is empty" };
     if (taxId.length > 11) return { s: false, t: "unknown", e: "Tax ID must be 11 characters or fewer" };
+    if (!/^[A-Z0-9]+$/.test(taxId)) return { s: false, t: "unknown", e: "Invalid Tax ID format" };
 
     const mightBeTC = taxId.length === 11 && /^\d+$/.test(taxId);
     const mightBeVKN = taxId.length === 10 && /^\d+$/.test(taxId);
-    const mightBePassport = taxId.length >= 6 && taxId.length <= 9 && /^[a-zA-Z0-9]+$/.test(taxId);
 
     if (mightBeTC) {
         const digits = taxId.split('').map(Number)
@@ -139,24 +146,36 @@ export function taxIDType(taxId) {
         return { s: true, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID" };
     }
     else if (mightBeVKN) {
-        const digits = taxId.split('').map(Number)
-        let sum = 0;
-        for (let i = 0; i < 9; i++) {
-            let value = ((digits[i] + (9 - i)) % 10) === 0 ? 0 : 10 - ((digits[i] + (9 - i)) % 10);
-            let check = (value * Math.pow(2, 9 - i)) % 9;
-            if (value > 0 && check === 0) check = 9;
-            sum += check;
-        }
-        const expectedTenthDigit = (sum % 10) === 0 ? 0 : 10 - (sum % 10);
-        if (expectedTenthDigit !== parseInt(taxId[9], 10)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
-        else return { s: true, t: "Turkish Corporate Tax ID" };
-    }
-    else if (mightBePassport) {
-        return { s: true, t: "Passport Number" };
+        if (!isValidVKN(taxId)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
+        return { s: true, t: "Turkish Corporate Tax ID" };
     }
     else {
-        return { s: false, t: "unknown", e: "Invalid Tax ID format" };
+        return { s: true, t: "Passport Number" };
     }
+}
+
+function isValidVKN(taxId) {
+  const digits = taxId.split('').map(Number)
+  let sum = 0
+
+  for (let i = 0; i < 9; i += 1) {
+    const tmp = (digits[i] + (9 - i)) % 10
+
+    if (tmp === 0) {
+      continue
+    }
+
+    let product = (tmp * (2 ** (9 - i))) % 9
+
+    if (product === 0) {
+      product = 9
+    }
+
+    sum += product
+  }
+
+  const expectedTenthDigit = (10 - (sum % 10)) % 10
+  return digits[9] === expectedTenthDigit
 }
 
 export function validateIdentityDocumentAuto(value) {
@@ -168,8 +187,17 @@ export function validateIdentityDocumentAuto(value) {
 
   const type = inferIdentityDocumentType(identityNumber)
 
+  if (!type) {
+    return { s: false, e: 'Enter a valid identity number' }
+  }
+
   if (type === identityDocumentTypes.tcKimlik) {
     const validation = validateTurkishIdentityNumber(identityNumber)
+    return validation.s ? { ...validation, type } : validation
+  }
+
+  if (type === identityDocumentTypes.taxId) {
+    const validation = validateTaxIdentityNumber(identityNumber)
     return validation.s ? { ...validation, type } : validation
   }
 

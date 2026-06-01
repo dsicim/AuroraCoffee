@@ -1,47 +1,6 @@
 const sql = require("../../Database/server.js");
 const aes = require("../components/aes256.js");
-function taxIDType(taxId) {
-    taxId = taxId.trim();
-    if (taxId === "11111111111") return { s: false, t: "Turkish ID", e: "Invalid Number." };
-    if (!taxId || taxId.trim().length === 0) return { s: true, t: "None", e: "Tax ID is empty" };
-    if (taxId.length > 11) return { s: false, t: "unknown", e: "Tax ID must be 11 characters or fewer" };
-
-    const mightBeTC = taxId.length === 11 && /^\d+$/.test(taxId);
-    const mightBeVKN = taxId.length === 10 && /^\d+$/.test(taxId);
-    const mightBePassport = taxId.length >= 6 && taxId.length <= 9 && /^[a-zA-Z0-9]+$/.test(taxId);
-
-    if (mightBeTC) {
-        const digits = taxId.split('').map(Number)
-        const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8]
-        const evenSum = digits[1] + digits[3] + digits[5] + digits[7]
-        const expectedTenthDigit = (((oddSum * 7) - evenSum) % 10 + 10) % 10
-        const expectedEleventhDigit = digits.slice(0, 10).reduce((total, digit) => total + digit, 0) % 10
-        const isForeigner = taxId[0] === "9";
-        if (digits[0] === 0) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
-        if (digits[9] !== expectedTenthDigit) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
-        if (digits[10] !== expectedEleventhDigit) return { s: false, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID", e: "Invalid Number" };
-        return { s: true, t: isForeigner ? "Turkish Foreigner Resident ID" : "Turkish ID" };
-    }
-    else if (mightBeVKN) {
-        const digits = taxId.split('').map(Number)
-        let sum = 0;
-        for (let i = 0; i < 9; i++) {
-            let value = ((digits[i] + (9 - i)) % 10) === 0 ? 0 : 10 - ((digits[i] + (9 - i)) % 10);
-            let check = (value * Math.pow(2, 9 - i)) % 9;
-            if (value > 0 && check === 0) check = 9;
-            sum += check;
-        }
-        const expectedTenthDigit = (sum % 10) === 0 ? 0 : 10 - (sum % 10);
-        if (expectedTenthDigit !== parseInt(taxId[9], 10)) return { s: false, t: "Turkish Corporate Tax ID", e: "Invalid Number" };
-        else return { s: true, t: "Turkish Corporate Tax ID" };
-    }
-    else if (mightBePassport) {
-        return { s: true, t: "Passport Number" };
-    }
-    else {
-        return { s: false, t: "unknown", e: "Invalid Tax ID format" };
-    }
-}
+const { taxIDType } = require("../components/identityValidation.js");
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     if (!currentUser || currentUser.e) {
         console.log("Unauthorized access: " + currentUser.e);
