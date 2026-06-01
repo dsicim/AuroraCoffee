@@ -67,6 +67,13 @@ test('validateIdentityDocument accepts a ten-digit tax id for business purchases
   })
 })
 
+test('validateIdentityDocument accepts an empty tax id for business purchases', () => {
+  assert.deepEqual(validateIdentityDocument('   ', identityDocumentTypes.taxId), {
+    s: true,
+    value: '',
+  })
+})
+
 test('validateIdentityDocument rejects ten-digit tax ids with invalid VKN checksum', () => {
   assert.equal(validateIdentityDocument('1234567891', identityDocumentTypes.taxId).s, false)
   assert.equal(validateIdentityDocumentAuto('1234567891').s, false)

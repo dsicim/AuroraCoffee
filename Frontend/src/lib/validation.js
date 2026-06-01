@@ -81,7 +81,7 @@ export function validateTaxIdentityNumber(value) {
   const taxId = sanitizeTaxIdentityNumber(value)
 
   if (!taxId) {
-    return { s: false, e: 'Tax ID is required' }
+    return { s: true, value: '' }
   }
 
   if (taxId.length !== 10) {
