@@ -78,18 +78,18 @@ function validateProfileIdentity(value) {
   return validateIdentityDocumentAuto(identityNumber)
 }
 
-function getProfileIdentityLabel(value) {
+function getProfileIdentityLabel(value, user) {
   if (value.includes('*')) {
-    if (authState.user?.taxIdType === "Turkish ID") {
+    if (user?.taxIdType === "Turkish ID") {
       return 'Turkish ID number'
     }
-    if (authState.user?.taxIdType === "Turkish Foreigner Resident ID") {
+    if (user?.taxIdType === "Turkish Foreigner Resident ID") {
       return 'Turkish Resident Foreigner ID number'
     }
-    if (authState.user?.taxIdType === "Turkish Corporate Tax ID") {
+    if (user?.taxIdType === "Turkish Corporate Tax ID") {
       return 'Tax ID'
     }
-    if (authState.user?.taxIdType === "Passport Number") {
+    if (user?.taxIdType === "Passport Number") {
       return 'Passport number'
     }
     return 'Identity number'
@@ -407,7 +407,7 @@ export default function AccountPage() {
                   className="aurora-input"
                 />
                 <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
-                  {getProfileIdentityLabel(profileTaxId)}
+                  {getProfileIdentityLabel(profileTaxId, authState.user)}
                 </p>
                 {profileTaxId ? (
                   <button
