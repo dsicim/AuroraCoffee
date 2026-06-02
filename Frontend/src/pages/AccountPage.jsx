@@ -80,16 +80,16 @@ function validateProfileIdentity(value) {
 
 function getProfileIdentityLabel(value, user) {
   if (value.includes('*')) {
-    if (user?.taxIdType === "Turkish ID") {
+    if (user?.tax_id_type === "Turkish ID") {
       return 'Turkish ID number'
     }
-    if (user?.taxIdType === "Turkish Foreigner Resident ID") {
+    if (user?.tax_id_type === "Turkish Foreigner Resident ID") {
       return 'Turkish Resident Foreigner ID number'
     }
-    if (user?.taxIdType === "Turkish Corporate Tax ID") {
+    if (user?.tax_id_type === "Turkish Corporate Tax ID") {
       return 'Tax ID'
     }
-    if (user?.taxIdType === "Passport Number") {
+    if (user?.tax_id_type === "Passport Number") {
       return 'Passport number'
     }
     return 'Identity number'
