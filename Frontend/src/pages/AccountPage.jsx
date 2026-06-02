@@ -62,7 +62,7 @@ function sanitizeProfileIdentity(value) {
   const identityNumber = String(value || '')
 
   if (identityNumber.includes('*')) {
-    return ''
+    return undefined
   }
 
   return sanitizeIdentityDocumentNumber(identityNumber)
@@ -268,11 +268,14 @@ export default function AccountPage() {
     setProfileFeedback('')
 
     try {
-      await updateCurrentUserProfile({
+      const updatedUser = {
         name: trimmedName,
         privacy: profilePrivacyCode,
-        taxId: identityValidation.value,
-      })
+      }
+      if (sanitizeProfileIdentity(profileTaxId) !== undefined) {
+        updatedUser.taxId = identityValidation.value
+      }
+      await updateCurrentUserProfile(updatedUser)
       setProfileFeedback('Profile updated.')
       setProfileFeedbackType('success')
     } catch (error) {
