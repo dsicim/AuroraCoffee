@@ -400,7 +400,7 @@ function getCheckoutIdentityLabel(value) {
   const identityType = inferIdentityDocumentType(value)
 
   if (identityType === identityDocumentTypes.tcKimlik) {
-    return 'T.C. Kimlik No'
+    return 'Turkish ID number'
   }
 
   if (identityType === identityDocumentTypes.taxId) {
@@ -1728,7 +1728,7 @@ export default function CheckoutPage() {
                       Identity document
                     </p>
                     <p className="text-sm leading-7 text-[var(--aurora-text)]">
-                      Enter your T.C. Kimlik No, tax ID, or passport number before payment.
+                      Enter your Turkish ID number, tax ID, or passport number before payment.
                     </p>
                   </div>
                 </div>

@@ -68,6 +68,16 @@ function sanitizeProfileIdentity(value) {
   return sanitizeIdentityDocumentNumber(identityNumber)
 }
 
+function sanitizeSetProfileIdentity(value) {
+  const identityNumber = String(value || '')
+
+  if (identityNumber.includes('*')) {
+    return value
+  }
+
+  return sanitizeIdentityDocumentNumber(identityNumber)
+}
+
 function validateProfileIdentity(value) {
   const identityNumber = sanitizeProfileIdentity(value)
 
@@ -86,7 +96,7 @@ function getProfileIdentityLabel(value) {
   const identityType = inferIdentityDocumentType(value)
 
   if (identityType === identityDocumentTypes.tcKimlik) {
-    return 'T.C. Kimlik No'
+    return 'Turkish ID number'
   }
 
   if (identityType === identityDocumentTypes.taxId) {
@@ -123,7 +133,7 @@ export default function AccountPage() {
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
   const [profileTaxId, setProfileTaxId] = useState(() =>
-    sanitizeProfileIdentity(getUserTaxId(currentUser)),
+    getUserTaxId(currentUser),
   )
   const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
     buildReviewPrivacySelectionFromCode(
@@ -213,7 +223,7 @@ export default function AccountPage() {
     const nextProfileName = getUserDisplayName(currentUser)
 
     setProfileName(nextProfileName)
-    setProfileTaxId(sanitizeProfileIdentity(getUserTaxId(currentUser)))
+    setProfileTaxId(sanitizeSetProfileIdentity(getUserTaxId(currentUser)))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -375,7 +385,7 @@ export default function AccountPage() {
                   inputMode="text"
                   maxLength={11}
                   onChange={(event) => {
-                    setProfileTaxId(sanitizeProfileIdentity(event.target.value))
+                    setProfileTaxId(sanitizeSetProfileIdentity(event.target.value))
                     setProfileFeedback('')
                   }}
                   className="aurora-input"

@@ -35,19 +35,19 @@ export function validateTurkishIdentityNumber(value) {
   const identityNumber = sanitizeTurkishIdentityNumber(value)
 
   if (!identityNumber) {
-    return { s: false, e: 'T.C. Kimlik No is required' }
+    return { s: false, e: 'Turkish ID Number is required' }
   }
 
   if (identityNumber.length !== 11) {
-    return { s: false, e: 'T.C. Kimlik No must be exactly 11 digits' }
+    return { s: false, e: 'Turkish ID Number must be exactly 11 digits' }
   }
 
   if (identityNumber[0] === '0') {
-    return { s: false, e: 'T.C. Kimlik No cannot start with 0' }
+    return { s: false, e: 'Turkish ID Number cannot start with 0' }
   }
 
   if (/^(\d)\1+$/.test(identityNumber)) {
-    return { s: false, e: 'Enter a valid T.C. Kimlik No' }
+    return { s: false, e: 'Enter a valid Turkish ID Number' }
   }
 
   const digits = identityNumber.split('').map(Number)
@@ -57,7 +57,7 @@ export function validateTurkishIdentityNumber(value) {
   const expectedEleventhDigit = digits.slice(0, 10).reduce((total, digit) => total + digit, 0) % 10
 
   if (digits[9] !== expectedTenthDigit || digits[10] !== expectedEleventhDigit) {
-    return { s: false, e: 'Enter a valid T.C. Kimlik No' }
+    return { s: false, e: 'Enter a valid Turkish ID Number' }
   }
 
   return { s: true, value: identityNumber }
