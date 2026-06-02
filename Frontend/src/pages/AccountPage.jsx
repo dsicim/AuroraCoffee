@@ -264,8 +264,7 @@ export default function AccountPage() {
         privacy: profilePrivacyCode,
       }
       if (sanitizeProfileIdentity(profileTaxId, '') !== profileTaxId) {
-        if (profileTaxId !== getUserTaxId(currentUser)) updatedUser.taxId = identityValidation.value
-        else {
+        if (profileTaxId !== getUserTaxId(currentUser)) {
           setProfileFeedback("Please remove all asterisks from the identity number field to change it. Or reset the field to leave it as your current ID")
           setProfileFeedbackType('error')
           return;
