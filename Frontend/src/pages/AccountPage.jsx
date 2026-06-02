@@ -79,6 +79,22 @@ function validateProfileIdentity(value) {
 }
 
 function getProfileIdentityLabel(value) {
+  if (value.includes('*')) {
+    if (authState.user?.taxIdType === "Turkish ID") {
+      return 'Turkish ID number'
+    }
+    if (authState.user?.taxIdType === "Turkish Foreigner Resident ID") {
+      return 'Turkish Resident Foreigner ID number'
+    }
+    if (authState.user?.taxIdType === "Turkish Corporate Tax ID") {
+      return 'Tax ID'
+    }
+    if (authState.user?.taxIdType === "Passport Number") {
+      return 'Passport number'
+    }
+    return 'Identity number'
+  }
+
   if (!sanitizeProfileIdentity(value)) {
     return 'Identity number'
   }
@@ -86,6 +102,7 @@ function getProfileIdentityLabel(value) {
   const identityType = inferIdentityDocumentType(value)
 
   if (identityType === identityDocumentTypes.tcKimlik) {
+    if (value[0] === '9') return 'Turkish Resident Foreigner ID number'
     return 'Turkish ID number'
   }
 
