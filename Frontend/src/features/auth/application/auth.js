@@ -431,15 +431,6 @@ function parseAuthTokenPayload(value) {
 
 export async function updateCurrentUserProfile({ name, privacy, taxId }) {
   const session = requireAuthSession()
-  const payload = {
-    name,
-    privacy,
-  }
-
-  if (taxId !== undefined) {
-    payload.taxId = taxId
-  }
-
   const response = await fetch(buildApiUrl('/users/me'), {
     method: 'PATCH',
     cache: 'no-store',
@@ -448,7 +439,11 @@ export async function updateCurrentUserProfile({ name, privacy, taxId }) {
       accept: 'application/json',
       authorization: session.token,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      name,
+      privacy,
+      taxId,
+    }),
   })
   const payload = await readAuthMutationResponse(response)
   const nestedUser =

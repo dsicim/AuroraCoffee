@@ -58,58 +58,32 @@ function getUserTaxId(user) {
   return user?.taxId || user?.tax_id || ''
 }
 
-function normalizeProfileIdentityInput(value) {
-  const identityNumber = String(value || '').trim()
-
-  if (!identityNumber) {
-    return ''
-  }
+function sanitizeProfileIdentity(value) {
+  const identityNumber = String(value || '')
 
   if (identityNumber.includes('*')) {
-    return identityNumber
+    return ''
   }
 
   return sanitizeIdentityDocumentNumber(identityNumber)
 }
 
-function isProfileIdentityUnchanged(value, baseline) {
-  const normalizedValue = String(value || '').trim()
-  const normalizedBaseline = String(baseline || '').trim()
-
-  if (!normalizedBaseline) {
-    return normalizedValue === ''
-  }
-
-  return normalizedValue === normalizedBaseline
-}
-
-function validateProfileIdentity(value, baseline) {
-  if (isProfileIdentityUnchanged(value, baseline)) {
-    return { s: true, value: null, shouldUpdate: false }
-  }
-
-  const identityNumber = sanitizeIdentityDocumentNumber(value)
+function validateProfileIdentity(value) {
+  const identityNumber = sanitizeProfileIdentity(value)
 
   if (!identityNumber) {
-    return { s: true, value: '', shouldUpdate: true }
+    return { s: true, value: '' }
   }
 
-  const validation = validateIdentityDocumentAuto(identityNumber)
-  return { ...validation, shouldUpdate: true }
+  return validateIdentityDocumentAuto(identityNumber)
 }
 
-function getProfileIdentityLabel(value, baseline) {
-  if (isProfileIdentityUnchanged(value, baseline) && String(value || '').includes('*')) {
+function getProfileIdentityLabel(value) {
+  if (!sanitizeProfileIdentity(value)) {
     return 'Identity number'
   }
 
-  const identityNumber = sanitizeIdentityDocumentNumber(value)
-
-  if (!identityNumber) {
-    return 'Identity number'
-  }
-
-  const identityType = inferIdentityDocumentType(identityNumber)
+  const identityType = inferIdentityDocumentType(value)
 
   if (identityType === identityDocumentTypes.tcKimlik) {
     return 'T.C. Kimlik No'
@@ -148,11 +122,8 @@ export default function AccountPage() {
   const [favoriteIds, setFavoriteIds] = useState(() => getWishlistProductReferences())
   const currentUser = authState.user
   const [profileName, setProfileName] = useState(() => getUserDisplayName(currentUser))
-  const [profileTaxIdBaseline, setProfileTaxIdBaseline] = useState(() =>
-    normalizeProfileIdentityInput(getUserTaxId(currentUser)),
-  )
   const [profileTaxId, setProfileTaxId] = useState(() =>
-    normalizeProfileIdentityInput(getUserTaxId(currentUser)),
+    sanitizeProfileIdentity(getUserTaxId(currentUser)),
   )
   const [profilePrivacySelection, setProfilePrivacySelection] = useState(() =>
     buildReviewPrivacySelectionFromCode(
@@ -240,11 +211,9 @@ export default function AccountPage() {
 
   useEffect(() => {
     const nextProfileName = getUserDisplayName(currentUser)
-    const nextProfileTaxId = normalizeProfileIdentityInput(getUserTaxId(currentUser))
 
     setProfileName(nextProfileName)
-    setProfileTaxIdBaseline(nextProfileTaxId)
-    setProfileTaxId(nextProfileTaxId)
+    setProfileTaxId(sanitizeProfileIdentity(getUserTaxId(currentUser)))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -277,7 +246,7 @@ export default function AccountPage() {
       return
     }
 
-    const identityValidation = validateProfileIdentity(profileTaxId, profileTaxIdBaseline)
+    const identityValidation = validateProfileIdentity(profileTaxId)
 
     if (!identityValidation.s) {
       setProfileFeedback(identityValidation.e)
@@ -289,16 +258,11 @@ export default function AccountPage() {
     setProfileFeedback('')
 
     try {
-      const nextProfile = {
+      await updateCurrentUserProfile({
         name: trimmedName,
         privacy: profilePrivacyCode,
-      }
-
-      if (identityValidation.shouldUpdate) {
-        nextProfile.taxId = identityValidation.value
-      }
-
-      await updateCurrentUserProfile(nextProfile)
+        taxId: identityValidation.value,
+      })
       setProfileFeedback('Profile updated.')
       setProfileFeedbackType('success')
     } catch (error) {
@@ -411,13 +375,13 @@ export default function AccountPage() {
                   inputMode="text"
                   maxLength={11}
                   onChange={(event) => {
-                    setProfileTaxId(normalizeProfileIdentityInput(event.target.value))
+                    setProfileTaxId(sanitizeProfileIdentity(event.target.value))
                     setProfileFeedback('')
                   }}
                   className="aurora-input"
                 />
                 <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
-                  {getProfileIdentityLabel(profileTaxId, profileTaxIdBaseline)}
+                  {getProfileIdentityLabel(profileTaxId)}
                 </p>
                 {profileTaxId ? (
                   <button
