@@ -263,8 +263,12 @@ export default function AccountPage() {
         name: trimmedName,
         privacy: profilePrivacyCode,
       }
-      if (sanitizeProfileIdentity(profileTaxId, undefined) !== undefined) {
-        updatedUser.taxId = identityValidation.value
+      if (sanitizeProfileIdentity(identityValidation.value, undefined) !== undefined) {
+        if (identityValidation.value !== getUserTaxId(currentUser)) updatedUser.taxId = identityValidation.value
+        else {
+          setProfileFeedback("Please remove all asterisks from the identity number field to change it. Or reset the field to leave it as your current ID")
+          setProfileFeedbackType('error')
+        }
       }
       await updateCurrentUserProfile(updatedUser)
       setProfileFeedback('Profile updated.')
@@ -392,11 +396,11 @@ export default function AccountPage() {
                     type="button"
                     className="aurora-link mt-2 text-sm"
                     onClick={() => {
-                      setProfileTaxId('')
+                      setProfileTaxId(getUserTaxId(currentUser))
                       setProfileFeedback('')
                     }}
                   >
-                    Clear field
+                    Reset field
                   </button>
                 ) : null}
               </label>
