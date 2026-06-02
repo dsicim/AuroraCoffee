@@ -263,12 +263,12 @@ export default function AccountPage() {
         name: trimmedName,
         privacy: profilePrivacyCode,
       }
-      if (sanitizeProfileIdentity(identityValidation.value, undefined) !== undefined) {
+      if (sanitizeProfileIdentity(profileTaxId, undefined) !== undefined) {
         console.log('Profile identity change requested:', {
           current: getUserTaxId(currentUser),
-          requested: identityValidation.value,
+          requested: profileTaxId,
         });
-        if (identityValidation.value !== getUserTaxId(currentUser)) updatedUser.taxId = identityValidation.value
+        if (profileTaxId !== getUserTaxId(currentUser)) updatedUser.taxId = identityValidation.value
         else {
           setProfileFeedback("Please remove all asterisks from the identity number field to change it. Or reset the field to leave it as your current ID")
           setProfileFeedbackType('error')
