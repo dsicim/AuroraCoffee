@@ -180,7 +180,7 @@ function isValidVKN(taxId) {
 }
 
 export function validateIdentityDocumentAuto(value) {
-  const identityNumber = sanitizeIdentityDocumentNumber(value)
+  const identityNumber = sanitizeIdentityDocumentNumber(value, value)
 
   if (!identityNumber) {
     return { s: false, e: 'Identity number is required' }
