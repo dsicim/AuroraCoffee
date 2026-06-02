@@ -79,7 +79,7 @@ function sanitizeSetProfileIdentity(value) {
 }
 
 function validateProfileIdentity(value) {
-  const identityNumber = sanitizeProfileIdentity(value)
+  const identityNumber = sanitizeSetProfileIdentity(value)
 
   if (!identityNumber) {
     return { s: true, value: '' }
