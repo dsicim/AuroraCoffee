@@ -264,6 +264,10 @@ export default function AccountPage() {
         privacy: profilePrivacyCode,
       }
       if (sanitizeProfileIdentity(identityValidation.value, undefined) !== undefined) {
+        console.log('Profile identity change requested:', {
+          current: getUserTaxId(currentUser),
+          requested: identityValidation.value,
+        });
         if (identityValidation.value !== getUserTaxId(currentUser)) updatedUser.taxId = identityValidation.value
         else {
           setProfileFeedback("Please remove all asterisks from the identity number field to change it. Or reset the field to leave it as your current ID")
