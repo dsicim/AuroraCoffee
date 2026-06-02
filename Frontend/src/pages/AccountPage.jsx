@@ -58,28 +58,18 @@ function getUserTaxId(user) {
   return user?.taxId || user?.tax_id || ''
 }
 
-function sanitizeProfileIdentity(value) {
+function sanitizeProfileIdentity(value, fallback = '') {
   const identityNumber = String(value || '')
 
   if (identityNumber.includes('*')) {
-    return undefined
-  }
-
-  return sanitizeIdentityDocumentNumber(identityNumber)
-}
-
-function sanitizeSetProfileIdentity(value) {
-  const identityNumber = String(value || '')
-
-  if (identityNumber.includes('*')) {
-    return value
+    return fallback
   }
 
   return sanitizeIdentityDocumentNumber(identityNumber)
 }
 
 function validateProfileIdentity(value) {
-  const identityNumber = sanitizeSetProfileIdentity(value)
+  const identityNumber = sanitizeProfileIdentity(value, value)
 
   if (!identityNumber) {
     return { s: true, value: '' }
@@ -223,7 +213,8 @@ export default function AccountPage() {
     const nextProfileName = getUserDisplayName(currentUser)
 
     setProfileName(nextProfileName)
-    setProfileTaxId(sanitizeSetProfileIdentity(getUserTaxId(currentUser)))
+    const nextProfileTaxId = getUserTaxId(currentUser)
+    setProfileTaxId(sanitizeProfileIdentity(nextProfileTaxId, nextProfileTaxId))
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
@@ -272,7 +263,7 @@ export default function AccountPage() {
         name: trimmedName,
         privacy: profilePrivacyCode,
       }
-      if (sanitizeProfileIdentity(profileTaxId) !== undefined) {
+      if (sanitizeProfileIdentity(profileTaxId, undefined) !== undefined) {
         updatedUser.taxId = identityValidation.value
       }
       await updateCurrentUserProfile(updatedUser)
@@ -388,7 +379,7 @@ export default function AccountPage() {
                   inputMode="text"
                   maxLength={11}
                   onChange={(event) => {
-                    setProfileTaxId(sanitizeSetProfileIdentity(event.target.value))
+                    setProfileTaxId(sanitizeProfileIdentity(event.target.value, event.target.value))
                     setProfileFeedback('')
                   }}
                   className="aurora-input"
