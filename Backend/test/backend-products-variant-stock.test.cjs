@@ -90,3 +90,69 @@ test('today pick endpoint uses dedicated product selection', async () => {
   assert.equal(response.d.product.variants[0].sales, undefined);
   assert.equal(response.d.reason, 'Dedicated daily selection');
 });
+
+test('today pick endpoint passes current user to personalized selector', async () => {
+  let receivedUserId = null;
+  const sql = {
+    getTodaysPick: async (userId) => {
+      receivedUserId = userId;
+      return {
+        success: true,
+        reason: 'Personalized daily selection',
+        product: {
+          id: 18,
+          name: 'Personal Pick',
+          stock: 4,
+          has_variants: 0,
+          variants: [],
+        },
+      };
+    },
+  };
+  const { handleAPI } = loadProductsEndpoint(sql);
+  const response = await handleAPI(
+    {},
+    'GET',
+    ['todays-pick'],
+    {},
+    null,
+    {},
+    { id: 77, role: 'Customer' },
+  );
+
+  assert.equal(response.s, 200);
+  assert.equal(receivedUserId, 77);
+  assert.equal(response.d.reason, 'Personalized daily selection');
+});
+
+test('today pick endpoint returns personalized reason for logged-in users', async () => {
+  const sql = {
+    getTodaysPick: async (userId) => ({
+      success: true,
+      reason: userId
+        ? 'Prioritizes in-stock coffee, then personalizes ties with your wishlist, cart, delivered-order category history, approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
+        : 'Prioritizes in-stock coffee, then ranks by approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.',
+      product: {
+        id: 22,
+        name: 'Coffee Pick',
+        stock: 6,
+        has_variants: 0,
+        variants: [],
+      },
+    }),
+  };
+  const { handleAPI } = loadProductsEndpoint(sql);
+  const response = await handleAPI(
+    {},
+    'GET',
+    ['todays-pick'],
+    {},
+    null,
+    {},
+    { id: 12, role: 'Customer' },
+  );
+
+  assert.equal(response.s, 200);
+  assert.match(response.d.reason, /personalizes ties/);
+  assert.match(response.d.reason, /in-stock coffee/);
+});

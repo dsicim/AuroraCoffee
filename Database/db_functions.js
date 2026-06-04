@@ -431,12 +431,43 @@ func.getTodaysPick = async function (userId, isManager = false) {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
         let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
-        if (userId) q.push(userId);
-        else {w = "";ww = "";}
+        let personalizationJoins = "";
+        let personalizationScore = "0";
+        if (!userId) {w = "";ww = "";}
         if (userId && isManager) {
             w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
             ww += ", ww.users_wishing_for_product AS users_wishing_for_product";
         }
+        if (userId) {
+            personalizationJoins = `
+            LEFT JOIN (
+                SELECT product_id, COUNT(*) AS current_user_wishlist_count
+                FROM wishlist
+                WHERE user_id = ?
+                GROUP BY product_id
+            ) user_wish ON user_wish.product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, SUM(GREATEST(quantity, 1)) AS current_user_cart_quantity
+                FROM cart
+                WHERE user_id = ?
+                GROUP BY product_id
+            ) user_cart ON user_cart.product_id = p.id
+            LEFT JOIN (
+                SELECT p2.category_id, COUNT(*) AS current_user_category_deliveries
+                FROM delivered_items di
+                JOIN products p2 ON p2.id = di.product_id
+                WHERE di.user_id = ?
+                GROUP BY p2.category_id
+            ) user_delivered_category ON user_delivered_category.category_id <=> p.category_id
+            `;
+            personalizationScore = `
+                    (LEAST(COALESCE(user_wish.current_user_wishlist_count, 0), 1) * 90) +
+                    (LEAST(COALESCE(user_cart.current_user_cart_quantity, 0), 5) * 18) +
+                    (LEAST(COALESCE(user_delivered_category.current_user_category_deliveries, 0), 10) * 7)
+            `;
+            q.push(userId, userId, userId);
+        }
+        if (userId) q.push(userId);
         const [rows] = await pool.execute(`
             SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating${ww},
                    COALESCE(v.variant_stock, p.stock, 0) AS pick_stock,
@@ -473,9 +504,14 @@ func.getTodaysPick = async function (userId, isManager = false) {
                 FROM delivered_items
                 GROUP BY product_id
             ) delivered ON delivered.product_id = p.id
+            ${personalizationJoins}
             ${w}
             ORDER BY
                 CASE WHEN COALESCE(v.variant_stock, p.stock, 0) > 0 THEN 1 ELSE 0 END DESC,
+                CASE WHEN c.name = 'Coffee' OR pc.name = 'Coffee' THEN 1 ELSE 0 END DESC,
+                (
+                    ${personalizationScore}
+                ) DESC,
                 (
                     (COALESCE(r.averageRating, 0) * 100) +
                     (LEAST(COALESCE(r.review_count, 0), 20) * 4) +
@@ -497,7 +533,9 @@ func.getTodaysPick = async function (userId, isManager = false) {
         return {
             success: true,
             product,
-            reason: 'Ranked by stock availability, approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.'
+            reason: userId
+                ? 'Prioritizes in-stock coffee, then personalizes ties with your wishlist, cart, delivered-order category history, approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
+                : 'Prioritizes in-stock coffee, then ranks by approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.'
         };
     } catch (error) {
         console.error('Get today pick error:', error);
