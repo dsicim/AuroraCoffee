@@ -432,7 +432,7 @@ func.getTodaysPick = async function (userId, isManager = false) {
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
         let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
         let personalizationJoins = "";
-        let personalizationScore = "0";
+        let personalizationScore = "0 + 0";
         if (!userId) {w = "";ww = "";}
         if (userId && isManager) {
             w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
