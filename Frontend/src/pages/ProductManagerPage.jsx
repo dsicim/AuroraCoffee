@@ -875,6 +875,7 @@ function getProductManagerSelectKey(product) {
 function getProductManagerAttributeRows(product) {
   const rows = [
     { label: 'Category', value: getProductCategoryLabel(product) },
+    { label: 'Description', value: product.description },
     { label: 'Meta line', value: getProductMetaLine(product) },
   ]
 
