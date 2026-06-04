@@ -161,7 +161,14 @@ export default function AccountLayout({
 }) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
+  const [authState, setAuthState] = useState(() => {
+    const initialAuthState = getAuthStateSnapshot()
+
+    return {
+      ...initialAuthState,
+      lastVerifiedUser: initialAuthState.hasVerifiedUser ? initialAuthState.user : null,
+    }
+  })
   const session = authState.session
   const currentUserState = authState.currentUserState
   const canRenderAccountShell = authState.hasVerifiedUser || authState.isProfileError
@@ -172,7 +179,14 @@ export default function AccountLayout({
 
   useEffect(() => {
     const syncAuthState = () => {
-      setAuthState(getAuthStateSnapshot())
+      const nextAuthState = getAuthStateSnapshot()
+
+      setAuthState((currentAuthState) => ({
+        ...nextAuthState,
+        lastVerifiedUser: nextAuthState.hasVerifiedUser
+          ? nextAuthState.user
+          : currentAuthState.lastVerifiedUser,
+      }))
     }
 
     window.addEventListener('storage', syncAuthState)
