@@ -265,6 +265,26 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         }
         else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
     }
+    else if (endpoint[0] === "options") {
+        if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
+        if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+        if (method === "POST") {
+            if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            return await sql.addProductOption(body.data).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { msg: result.message, optionGroupId: result.optionGroupId, optionValueId: result.optionValueId } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Add product option error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
     else if (endpoint[0] === "discount") {
         if (method === "PATCH") {
             if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };

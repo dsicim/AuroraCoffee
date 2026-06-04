@@ -644,6 +644,62 @@ func.addProduct = async function (data) {
     }
 };
 
+function buildOptionCode(value, fallback) {
+    const raw = String(value || fallback || "").trim().toLowerCase();
+    const code = raw.replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    return code || null;
+}
+
+func.addProductOption = async function (data) {
+    const { product_id, name, group_code, value_label, value_code } = data;
+    const normalizedProductId = Number(product_id);
+    const groupName = String(name || "").trim();
+    const valueLabel = String(value_label || "").trim();
+    if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+        throw new DBError(400, 'Product ID is required');
+    }
+    if (!groupName) {
+        throw new DBError(400, 'Option name is required');
+    }
+    if (!valueLabel) {
+        throw new DBError(400, 'Option value is required');
+    }
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [products] = await connection.execute('SELECT id FROM products WHERE id = ? FOR UPDATE', [normalizedProductId]);
+        if (!products.length) {
+            throw new DBError(404, 'Product not found');
+        }
+        const [groupResult] = await connection.execute(`
+            INSERT INTO product_option_groups (
+                product_id, name, group_code, cumulative_stock, separate_stock, separate_price, is_required, multi_select, priority
+            ) VALUES (?, ?, ?, FALSE, FALSE, FALSE, TRUE, FALSE, 1)
+        `, [normalizedProductId, groupName, buildOptionCode(group_code, groupName)]);
+        const optionGroupId = groupResult.insertId;
+        const [valueResult] = await connection.execute(`
+            INSERT INTO product_option_values (
+                product_option_group_id, label, value_code, price_add, price_mult, sort_order
+            ) VALUES (?, ?, ?, 0.00, 1.0000, 0)
+        `, [optionGroupId, valueLabel, buildOptionCode(value_code, valueLabel)]);
+        await connection.execute('UPDATE products SET has_variants = TRUE WHERE id = ?', [normalizedProductId]);
+        await connection.commit();
+        return {
+            success: true,
+            message: 'Product option added successfully',
+            optionGroupId,
+            optionValueId: valueResult.insertId
+        };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Add product option error:', error);
+        throw new DBError(500, 'Failed to add product option: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
 func.addVariant = async function (data) {
     const { product_id, price_add, price_mult, cost, stock, discount_rate, option_value_ids } = data;
     if (!product_id) {

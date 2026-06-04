@@ -448,7 +448,8 @@
     gap: 0.9rem;
   }
 
-  .aurora-product-image-manager {
+  .aurora-product-image-manager,
+  .aurora-product-option-manager {
     display: grid;
     gap: 1rem;
   }

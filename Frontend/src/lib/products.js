@@ -887,6 +887,43 @@ export async function deleteProductCategory(categoryId) {
   return data
 }
 
+export async function createProductOption(productId, payload) {
+  const normalizedProductId = Number(productId)
+
+  if (!Number.isFinite(normalizedProductId) || normalizedProductId <= 0) {
+    throw new Error('Select a valid product before adding an option.')
+  }
+
+  const name = normalizeText(payload?.name)
+  const valueLabel = normalizeText(payload?.valueLabel ?? payload?.value_label)
+
+  if (!name) {
+    throw new Error('Option name is required.')
+  }
+
+  if (!valueLabel) {
+    throw new Error('Option value is required.')
+  }
+
+  const data = await requestJson('/products/options', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      product_id: normalizedProductId,
+      name,
+      value_label: valueLabel,
+    }),
+  })
+
+  const products = await fetchAllProducts({ force: true })
+  const product = products.find((item) => Number(item.id) === normalizedProductId) || null
+
+  return {
+    ...data,
+    product,
+  }
+}
+
 function normalizeVariantMutationPayload(payload) {
   return Object.fromEntries(
     Object.entries(payload || {}).filter(([, value]) => value !== undefined),

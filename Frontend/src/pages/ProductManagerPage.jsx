@@ -25,6 +25,7 @@ import {
   getProductMetaLine,
   isCoffeeProduct,
   createProduct,
+  createProductOption,
   createProductVariant,
   createProductCategory,
   deleteProduct,
@@ -1212,6 +1213,166 @@ function preventProductImageEnterAction(event) {
 
   event.preventDefault()
   event.stopPropagation()
+}
+
+function ProductOptionManager({ product, onProductOptionsChange }) {
+  const optionGroups = useMemo(() => getVariantOptionGroups(product), [product])
+  const [optionName, setOptionName] = useState('')
+  const [optionValue, setOptionValue] = useState('')
+  const [optionState, setOptionState] = useState({
+    busy: false,
+    error: '',
+    success: '',
+  })
+  const optionBusy = Boolean(optionState.busy)
+
+  function handleAddOption() {
+    const name = optionName.trim()
+    const valueLabel = optionValue.trim()
+
+    if (!name) {
+      setOptionState({
+        busy: false,
+        error: 'Option name is required.',
+        success: '',
+      })
+      return
+    }
+
+    if (!valueLabel) {
+      setOptionState({
+        busy: false,
+        error: 'Option value is required.',
+        success: '',
+      })
+      return
+    }
+
+    setOptionState({
+      busy: true,
+      error: '',
+      success: '',
+    })
+
+    void createProductOption(product.id, { name, valueLabel })
+      .then((result) => {
+        setOptionName('')
+        setOptionValue('')
+        if (result?.product) {
+          onProductOptionsChange?.(result.product)
+        }
+        setOptionState({
+          busy: false,
+          error: '',
+          success: result?.msg || 'Product option added.',
+        })
+      })
+      .catch((error) => {
+        setOptionState({
+          busy: false,
+          error: error?.message || 'Could not add product option.',
+          success: '',
+        })
+      })
+  }
+
+  return (
+    <section
+      className="aurora-product-edit-group aurora-product-option-manager"
+      onKeyDownCapture={preventProductImageEnterAction}
+    >
+      <div className="aurora-product-image-manager-header">
+        <div>
+          <p className="aurora-product-edit-label">Product options</p>
+          <h3>Add selectable options</h3>
+        </div>
+        <span>{optionGroups.length} {optionGroups.length === 1 ? 'option' : 'options'}</span>
+      </div>
+
+      <div className="aurora-product-variant-form">
+        <label className="aurora-product-edit-field">
+          <span className="aurora-product-edit-label">Option name</span>
+          <input
+            className="aurora-input aurora-product-edit-input mt-3"
+            type="text"
+            value={optionName}
+            disabled={optionBusy}
+            placeholder="Weight"
+            onChange={(event) => {
+              setOptionName(event.target.value)
+            }}
+          />
+        </label>
+
+        <label className="aurora-product-edit-field">
+          <span className="aurora-product-edit-label">First value</span>
+          <input
+            className="aurora-input aurora-product-edit-input mt-3"
+            type="text"
+            value={optionValue}
+            disabled={optionBusy}
+            placeholder="250g"
+            onChange={(event) => {
+              setOptionValue(event.target.value)
+            }}
+          />
+        </label>
+      </div>
+
+      <div className="aurora-product-variant-actions">
+        <LiquidGlassButton
+          type="button"
+          variant="quiet"
+          size="compact"
+          disabled={optionBusy}
+          onClick={() => {
+            setOptionName('')
+            setOptionValue('')
+            setOptionState({ busy: false, error: '', success: '' })
+          }}
+        >
+          Reset option
+        </LiquidGlassButton>
+        <LiquidGlassButton
+          type="button"
+          variant="secondary"
+          size="compact"
+          loading={optionBusy}
+          disabled={optionBusy}
+          onClick={handleAddOption}
+        >
+          Add option
+        </LiquidGlassButton>
+      </div>
+
+      {optionState.error ? (
+        <p className="aurora-message aurora-message-error" role="alert">
+          {optionState.error}
+        </p>
+      ) : null}
+      {optionState.success ? (
+        <p className="aurora-message aurora-message-success" role="status" aria-live="polite">
+          {optionState.success}
+        </p>
+      ) : null}
+
+      {optionGroups.length ? (
+        <div className="aurora-product-variant-list" aria-label="Current product options">
+          {optionGroups.map((group) => (
+            <article key={getVariantGroupKey(group)} className="aurora-product-variant-row">
+              <div>
+                <p className="aurora-product-image-name">{group.name || 'Option'}</p>
+                <p className="aurora-product-image-meta">
+                  {(group.values || []).map((value) => value.label).join(', ') || 'No values yet'}
+                </p>
+              </div>
+              <strong>{(group.values || []).length}</strong>
+            </article>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
 }
 
 function ProductVariantManager({ product }) {
@@ -3559,6 +3720,11 @@ function ProductEditPanel({ products, loading }) {
               className="aurora-product-edit-workspace"
             >
               <ProductEditSnapshot product={selectedProduct} />
+              <ProductOptionManager
+                key={`options:${selectedProduct.id}`}
+                product={selectedProduct}
+                onProductOptionsChange={handleSelectedProductSnapshotChange}
+              />
               <ProductVariantManager key={selectedProduct.id} product={selectedProduct} />
               <ProductImageManager
                 product={selectedProduct}
