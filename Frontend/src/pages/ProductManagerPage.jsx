@@ -184,6 +184,7 @@ function writeStoredProductManagerSelection(product) {
 const productEditFields = [
   { key: 'name', column: 'name', label: 'Name', type: 'text', required: true },
   { key: 'productCode', column: 'product_code', label: 'Product code', type: 'text' },
+  { key: 'description', column: 'description', label: 'Description', type: 'textarea' },
   { key: 'price', column: 'price', label: 'Price', type: 'number', min: 0, step: '0.01' },
   { key: 'stock', column: 'stock', label: 'Stock', type: 'number', min: 0, step: '1' },
   { key: 'discountRate', column: 'discount_rate', label: 'Discount %', type: 'number', min: 0, step: '0.01' },
