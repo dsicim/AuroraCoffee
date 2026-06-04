@@ -111,7 +111,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getTodaysPick(userId,isManager).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { product: result.product ? sanitizeProductForResponse(result.product) : null, reason: result.reason } };
+                    return { s: 200, j: true, d: { product: result.product ? sanitizeProductForResponse(result.product) : null, personalized: result.personalized } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };

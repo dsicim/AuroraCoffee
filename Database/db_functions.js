@@ -533,9 +533,7 @@ func.getTodaysPick = async function (userId, isManager = false) {
         return {
             success: true,
             product,
-            reason: userId
-                ? 'Prioritizes in-stock products, then your wishlist, cart, and delivered-order category history, then coffee over accessories, then approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
-                : 'Prioritizes in-stock coffee, then ranks by approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.'
+            personalized: !!userId,
         };
     } catch (error) {
         console.error('Get today pick error:', error);
