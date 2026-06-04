@@ -620,7 +620,7 @@ func.addProduct = async function (data) {
                 material, capacity, discount_rate
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            product_code || null, name, description || null, price, cost || 0.00, stock || 0, has_variants || false,
+            product_code || null, name, description || null, price, cost || 0.00, stock || 0, has_variants ?? true,
             category_id || null, weight || null, tax || 0, origin || null, roast_level || null, acidity || null, flavor_notes || null,
             material || null, capacity || null, discount_rate || 0.00
         ]);
