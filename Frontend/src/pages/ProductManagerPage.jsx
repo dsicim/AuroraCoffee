@@ -202,7 +202,7 @@ const productEditFieldGroups = [
   {
     title: 'Storefront identity',
     description: 'Customer-facing names, codes, and product media.',
-    fieldKeys: ['name', 'productCode', 'imageUrl'],
+    fieldKeys: ['name', 'productCode', 'description', 'imageUrl'],
   },
   {
     title: 'Pricing and inventory',
