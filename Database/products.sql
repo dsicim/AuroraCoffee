@@ -29,6 +29,8 @@ INSERT INTO brew_methods (name, description) VALUES
 CREATE TABLE IF NOT EXISTS products (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     product_code VARCHAR(50) UNIQUE DEFAULT NULL,
+    model VARCHAR(255) DEFAULT NULL,
+    serial_number VARCHAR(255) DEFAULT NULL,
     name VARCHAR(255) NOT NULL,
     description TEXT,
     price DECIMAL(10, 2) NOT NULL,
@@ -413,4 +415,3 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (24, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 8);
 
 SET FOREIGN_KEY_CHECKS=1;
-

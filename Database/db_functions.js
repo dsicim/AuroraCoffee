@@ -718,28 +718,92 @@ func.decreaseStock = async function (productId, qty, variantId = null) {
     }
 };
 
+let productDesignColumnsReady = false;
+
+async function ensureProductDesignColumns(connection) {
+    if (productDesignColumnsReady) {
+        return;
+    }
+
+    const requiredColumns = {
+        model: 'VARCHAR(255) DEFAULT NULL',
+        serial_number: 'VARCHAR(255) DEFAULT NULL',
+        warranty_status: 'VARCHAR(255) DEFAULT NULL',
+        distributor_information: 'VARCHAR(255) DEFAULT NULL'
+    };
+    const [columns] = await connection.execute(`
+        SELECT COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE()
+          AND TABLE_NAME = 'products'
+          AND COLUMN_NAME IN (?, ?, ?, ?)
+    `, Object.keys(requiredColumns));
+    const existingColumns = new Set(columns.map(column => column.COLUMN_NAME));
+
+    for (const [columnName, definition] of Object.entries(requiredColumns)) {
+        if (!existingColumns.has(columnName)) {
+            await connection.execute(`ALTER TABLE products ADD COLUMN \`${columnName}\` ${definition}`);
+        }
+    }
+
+    productDesignColumnsReady = true;
+}
+
+function normalizeRequiredProductText(value, label) {
+    const text = typeof value === 'string' || typeof value === 'number'
+        ? String(value).trim()
+        : '';
+
+    if (!text) {
+        throw new DBError(400, `${label} is required`);
+    }
+
+    return text;
+}
+
+function normalizeRequiredProductNumber(value, label, { integer = false } = {}) {
+    if (value === undefined || value === null || value === '') {
+        throw new DBError(400, `${label} is required`);
+    }
+
+    const numberValue = Number(value);
+    if (!Number.isFinite(numberValue) || numberValue < 0) {
+        throw new DBError(400, `${label} must be a non-negative number`);
+    }
+
+    return integer ? Math.floor(numberValue) : numberValue;
+}
+
 func.addProduct = async function (data) {
+    data = data || {};
     const {
         product_code, name, description, price, cost, stock, has_variants,
         category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
-        material, capacity, image_url, discount_rate
+        material, capacity, image_url, discount_rate,
+        warranty_status, distributor_information
     } = data;
-    if (!name || price === undefined) {
-        throw new DBError(400, 'Name and price are required');
-    }
+    const model = normalizeRequiredProductText(data.model, 'Model');
+    const serial_number = normalizeRequiredProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number');
+    const productName = normalizeRequiredProductText(name, 'Name');
+    const productDescription = normalizeRequiredProductText(description, 'Description');
+    const productPrice = normalizeRequiredProductNumber(price, 'Price');
+    const productStock = normalizeRequiredProductNumber(stock, 'Stock', { integer: true });
+    const warrantyStatus = normalizeRequiredProductText(warranty_status ?? data.warrantyStatus, 'Warranty status');
+    const distributorInformation = normalizeRequiredProductText(distributor_information ?? data.distributorInformation, 'Distributor information');
     const connection = await pool.getConnection();
     try {
+        await ensureProductDesignColumns(connection);
         await connection.beginTransaction();
         const [result] = await connection.execute(`
             INSERT INTO products (
-                product_code, name, description, price, cost, stock, has_variants,
+                product_code, model, serial_number, name, description, price, cost, stock, has_variants,
                 category_id, weight, tax, origin, roast_level, acidity, flavor_notes,
-                material, capacity, discount_rate
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                material, capacity, discount_rate, warranty_status, distributor_information
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-            product_code || null, name, description || null, price, cost || 0.00, stock || 0, has_variants || false,
+            product_code || null, model, serial_number, productName, productDescription, productPrice, cost || 0.00, productStock, has_variants || false,
             category_id || null, weight || null, tax || 0, origin || null, roast_level || null, acidity || null, flavor_notes || null,
-            material || null, capacity || null, discount_rate || 0.00
+            material || null, capacity || null, discount_rate || 0.00, warrantyStatus, distributorInformation
         ]);
         const productId = result.insertId;
 

@@ -185,9 +185,13 @@ function writeStoredProductManagerSelection(product) {
 const productEditFields = [
   { key: 'name', column: 'name', label: 'Name', type: 'text', required: true },
   { key: 'productCode', column: 'product_code', label: 'Product code', type: 'text' },
+  { key: 'model', column: 'model', label: 'Model', type: 'text' },
+  { key: 'serialNumber', column: 'serial_number', label: 'Serial number', type: 'text' },
   { key: 'description', column: 'description', label: 'Description', type: 'textarea' },
   { key: 'price', column: 'price', label: 'Price', type: 'number', min: 0, step: '0.01' },
   { key: 'stock', column: 'stock', label: 'Stock', type: 'number', min: 0, step: '1' },
+  { key: 'warrantyStatus', column: 'warranty_status', label: 'Warranty status', type: 'text' },
+  { key: 'distributorInformation', column: 'distributor_information', label: 'Distributor information', type: 'text' },
   { key: 'discountRate', column: 'discount_rate', label: 'Discount %', type: 'number', min: 0, step: '0.01' },
   { key: 'taxRate', column: 'tax', label: 'Tax %', type: 'number', min: 0, step: '1' },
   { key: 'origin', column: 'origin', label: 'Origin', type: 'text' },
@@ -203,12 +207,17 @@ const productEditFieldGroups = [
   {
     title: 'Storefront identity',
     description: 'Customer-facing names, descriptions, codes, and product media.',
-    fieldKeys: ['name', 'productCode', 'description', 'imageUrl'],
+    fieldKeys: ['name', 'productCode', 'model', 'serialNumber', 'description', 'imageUrl'],
   },
   {
     title: 'Pricing and inventory',
     description: 'Numbers that affect availability and checkout totals.',
     fieldKeys: ['price', 'stock', 'discountRate', 'taxRate'],
+  },
+  {
+    title: 'Fulfillment details',
+    description: 'Required product traceability and supplier information.',
+    fieldKeys: ['warrantyStatus', 'distributorInformation'],
   },
   {
     title: 'Coffee profile',
@@ -226,6 +235,18 @@ const productEditFieldGroups = [
     .map((fieldKey) => productEditFields.find((field) => field.key === fieldKey))
     .filter(Boolean),
 }))
+
+const requiredProductCreateFields = [
+  ['name', 'Name'],
+  ['model', 'Model'],
+  ['serial_number', 'Serial number'],
+  ['description', 'Description'],
+  ['price', 'Price'],
+  ['stock', 'Stock'],
+  ['warranty_status', 'Warranty status'],
+  ['distributor_information', 'Distributor information'],
+]
+const requiredProductCreateColumnSet = new Set(requiredProductCreateFields.map(([column]) => column))
 
 function formatCommentDate(value) {
   try {
@@ -733,12 +754,10 @@ function buildProductCreatePayload(form, categoryId) {
     }
   }
 
-  if (!payload.name) {
-    throw new Error('Name is required.')
-  }
-
-  if (payload.price === undefined) {
-    throw new Error('Price is required.')
+  for (const [column, label] of requiredProductCreateFields) {
+    if (payload[column] === undefined || payload[column] === null || payload[column] === '') {
+      throw new Error(`${label} is required.`)
+    }
   }
 
   const normalizedCategoryId = Number(categoryId)
@@ -823,7 +842,7 @@ function getInventoryTone(stock) {
   return 'In stock'
 }
 
-function ProductEditField({ field, defaultValue, idPrefix = 'product-edit' }) {
+function ProductEditField({ field, defaultValue, idPrefix = 'product-edit', required = field.required }) {
   const fieldId = `${idPrefix}-${field.key}`
   const inputClassName =
     field.type === 'textarea'
@@ -847,6 +866,7 @@ function ProductEditField({ field, defaultValue, idPrefix = 'product-edit' }) {
           name={field.key}
           className={`${inputClassName} mt-3`}
           defaultValue={defaultValue}
+          required={required}
         />
       ) : (
         <input
@@ -857,7 +877,7 @@ function ProductEditField({ field, defaultValue, idPrefix = 'product-edit' }) {
           min={field.min}
           step={field.step}
           defaultValue={defaultValue}
-          required={field.required}
+          required={required}
         />
       )}
     </label>
@@ -3599,6 +3619,7 @@ function ProductEditPanel({ products, loading }) {
                           field={field}
                           defaultValue=""
                           idPrefix="product-create"
+                          required={requiredProductCreateColumnSet.has(field.column)}
                         />
                       ))}
                     </div>

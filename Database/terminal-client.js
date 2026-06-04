@@ -202,6 +202,16 @@ async function productsMenu() {
                 console.log('\x1b[31m%s\x1b[0m', 'Product Name is required.');
                 continue;
             }
+            const model = await question('Model (Required): ');
+            if (!model.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Model is required.');
+                continue;
+            }
+            const serial_number = await question('Serial Number (Required): ');
+            if (!serial_number.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Serial Number is required.');
+                continue;
+            }
             const priceInput = await question('Price (Required): ');
             const price = parseFloat(priceInput);
             if (isNaN(price)) {
@@ -209,10 +219,18 @@ async function productsMenu() {
                 continue;
             }
             const description = await question('Description: ');
+            if (!description.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Description is required.');
+                continue;
+            }
             const costInput = await question('Cost (Default 0): ');
             const cost = parseFloat(costInput) || 0;
-            const stockInput = await question('Stock (Default 0): ');
-            const stock = parseInt(stockInput) || 0;
+            const stockInput = await question('Stock (Required): ');
+            const stock = parseInt(stockInput);
+            if (isNaN(stock) || stock < 0) {
+                console.log('\x1b[31m%s\x1b[0m', 'Invalid stock.');
+                continue;
+            }
             const hasVariants = (await question('Has Variants? (y/n): ')).toLowerCase() === 'y';
             const categoryIdInput = await question('Category ID (optional, Enter to skip): ');
             const category_id = categoryIdInput.trim() ? parseInt(categoryIdInput) : null;
@@ -229,13 +247,23 @@ async function productsMenu() {
             const image_url = await question('Primary Image URL: ');
             const discountRateInput = await question('Discount Rate (%): ');
             const discount_rate = discountRateInput.trim() ? parseFloat(discountRateInput) : 0;
-            const warranty_status = await question('Warranty Status: ');
-            const distributor_information = await question('Distributor Information: ');
+            const warranty_status = await question('Warranty Status (Required): ');
+            if (!warranty_status.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Warranty Status is required.');
+                continue;
+            }
+            const distributor_information = await question('Distributor Information (Required): ');
+            if (!distributor_information.trim()) {
+                console.log('\x1b[31m%s\x1b[0m', 'Distributor Information is required.');
+                continue;
+            }
 
             const productData = {
                 name,
+                model: model.trim(),
+                serial_number: serial_number.trim(),
                 price,
-                description: description.trim() || null,
+                description: description.trim(),
                 cost,
                 stock,
                 has_variants: hasVariants,
@@ -250,8 +278,8 @@ async function productsMenu() {
                 capacity: capacity.trim() || null,
                 image_url: image_url.trim() || null,
                 discount_rate,
-                warranty_status: warranty_status.trim() || null,
-                distributor_information: distributor_information.trim() || null
+                warranty_status: warranty_status.trim(),
+                distributor_information: distributor_information.trim()
             };
 
             const res = await apiFetch('products', 'POST', productData);
