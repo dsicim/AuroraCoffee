@@ -508,10 +508,10 @@ func.getTodaysPick = async function (userId, isManager = false) {
             ${w}
             ORDER BY
                 CASE WHEN COALESCE(v.variant_stock, p.stock, 0) > 0 THEN 1 ELSE 0 END DESC,
-                CASE WHEN c.name = 'Coffee' OR pc.name = 'Coffee' THEN 1 ELSE 0 END DESC,
                 (
                     ${personalizationScore}
                 ) DESC,
+                CASE WHEN c.name = 'Coffee' OR pc.name = 'Coffee' THEN 1 ELSE 0 END DESC,
                 (
                     (COALESCE(r.averageRating, 0) * 100) +
                     (LEAST(COALESCE(r.review_count, 0), 20) * 4) +
@@ -534,7 +534,7 @@ func.getTodaysPick = async function (userId, isManager = false) {
             success: true,
             product,
             reason: userId
-                ? 'Prioritizes in-stock coffee, then personalizes ties with your wishlist, cart, delivered-order category history, approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
+                ? 'Prioritizes in-stock products, then your wishlist, cart, and delivered-order category history, then coffee over accessories, then approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
                 : 'Prioritizes in-stock coffee, then ranks by approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.'
         };
     } catch (error) {

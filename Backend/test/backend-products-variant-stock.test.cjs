@@ -130,7 +130,7 @@ test('today pick endpoint returns personalized reason for logged-in users', asyn
     getTodaysPick: async (userId) => ({
       success: true,
       reason: userId
-        ? 'Prioritizes in-stock coffee, then personalizes ties with your wishlist, cart, delivered-order category history, approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
+        ? 'Prioritizes in-stock products, then your wishlist, cart, and delivered-order category history, then coffee over accessories, then approved ratings, aggregate demand, discount, sales, freshness, and daily rotation.'
         : 'Prioritizes in-stock coffee, then ranks by approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.',
       product: {
         id: 22,
@@ -153,6 +153,6 @@ test('today pick endpoint returns personalized reason for logged-in users', asyn
   );
 
   assert.equal(response.s, 200);
-  assert.match(response.d.reason, /personalizes ties/);
-  assert.match(response.d.reason, /in-stock coffee/);
+  assert.match(response.d.reason, /your wishlist, cart/);
+  assert.match(response.d.reason, /then coffee over accessories/);
 });
