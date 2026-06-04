@@ -1390,7 +1390,7 @@ function ProductVariantManager({ product }) {
 
       {!canManageVariants ? (
         <div className="aurora-product-image-empty">
-          <p>No variant options</p>
+          <p>No variant option groups</p>
           <span>This product does not expose backend variant option groups.</span>
         </div>
       ) : (
