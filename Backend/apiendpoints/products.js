@@ -5,6 +5,11 @@ const uploader = require("../components/upload.js");
 
 function sanitizeProductForResponse(product) {
     delete product.sales;
+    delete product.pick_stock;
+    delete product.pick_review_count;
+    delete product.pick_cart_count;
+    delete product.pick_wishlist_count;
+    delete product.pick_delivered_count;
     product.variants = (Array.isArray(product.variants) ? product.variants : []).map(v => {
         if (!v) return v;
         delete v.sales;
@@ -96,6 +101,23 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 }
             }).catch(err => {
                 console.error("Remove product error:", err);
+                if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
+            });
+        }
+        else return { s: 405, j: true, d: { e: "Method Not Allowed" } };
+    }
+    else if (endpoint[0] === "todays-pick") {
+        if (method === "GET") {
+            return await sql.getTodaysPick(userId,isManager).then(async result => {
+                if (result.success) {
+                    return { s: 200, j: true, d: { product: result.product ? sanitizeProductForResponse(result.product) : null, reason: result.reason } };
+                }
+                else {
+                    return { s: 400, j: true, d: { e: "An unknown error occurred" } };
+                }
+            }).catch(err => {
+                console.error("Get today pick error:", err);
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });

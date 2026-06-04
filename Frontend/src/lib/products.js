@@ -572,6 +572,29 @@ export async function fetchProductsBySlugs(slugs) {
     .filter(Boolean)
 }
 
+export async function fetchTodaysPick() {
+  const scope = getProductCatalogScope()
+  ensureProductCatalogScope(scope)
+
+  const payload = await requestJson('/products/todays-pick')
+  const rawProduct = payload?.product
+
+  if (!rawProduct) {
+    return {
+      product: null,
+      reason: normalizeText(payload?.reason),
+    }
+  }
+
+  const hydratedProduct = hydrateWithKnownSlugs([rawProduct])[0]
+  const [normalizedProduct] = updateProductLookup([hydratedProduct], scope)
+
+  return {
+    product: productLookupById.get(normalizedProduct.id) || normalizedProduct,
+    reason: normalizeText(payload?.reason),
+  }
+}
+
 export async function searchProducts(query, sortBy = 'newest') {
   const scope = getProductCatalogScope()
   ensureProductCatalogScope(scope)
@@ -1367,6 +1390,70 @@ export function useProductCatalog() {
   return {
     products: snapshot.products,
     loaded: snapshot.loaded,
+    loading,
+    error,
+  }
+}
+
+export function useTodaysPick() {
+  const [pick, setPick] = useState({
+    product: null,
+    reason: '',
+  })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let active = true
+
+    const loadPick = () => {
+      setLoading(true)
+
+      return fetchTodaysPick()
+        .then((nextPick) => {
+          if (!active) {
+            return
+          }
+
+          setPick(nextPick)
+          setError('')
+        })
+        .catch((fetchError) => {
+          if (!active) {
+            return
+          }
+
+          setError(getProductRequestErrorMessage(fetchError))
+        })
+        .finally(() => {
+          if (active) {
+            setLoading(false)
+          }
+        })
+    }
+
+    const handleAuthChange = () => {
+      if (!active) {
+        return
+      }
+
+      setPick({ product: null, reason: '' })
+      setError('')
+      void loadPick()
+    }
+
+    window.addEventListener(authChangeEvent, handleAuthChange)
+    void loadPick()
+
+    return () => {
+      active = false
+      window.removeEventListener(authChangeEvent, handleAuthChange)
+    }
+  }, [])
+
+  return {
+    product: pick.product,
+    reason: pick.reason,
     loading,
     error,
   }

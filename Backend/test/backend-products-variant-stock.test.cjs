@@ -54,3 +54,39 @@ test('products endpoint reports variant stock sum for variant products', async (
   assert.equal(product.sales, undefined);
   assert.equal(product.variants[0].sales, undefined);
 });
+
+test('today pick endpoint uses dedicated product selection', async () => {
+  let usedDedicatedPick = false;
+  const sql = {
+    getAllProducts: async () => {
+      throw new Error('today pick should not use products/all');
+    },
+    getTodaysPick: async () => {
+      usedDedicatedPick = true;
+      return {
+        success: true,
+        reason: 'Dedicated daily selection',
+        product: {
+          id: 14,
+          name: 'Daily Pick',
+          stock: 2,
+          sales: 20,
+          has_variants: 1,
+          variants: [
+            { id: 41, stock: 5, sales: 8 },
+            { id: 42, stock: 1, sales: 3 },
+          ],
+        },
+      };
+    },
+  };
+  const { handleAPI } = loadProductsEndpoint(sql);
+  const response = await handleAPI({}, 'GET', ['todays-pick'], {}, null, {}, null);
+
+  assert.equal(response.s, 200);
+  assert.equal(usedDedicatedPick, true);
+  assert.equal(response.d.product.stock, 6);
+  assert.equal(response.d.product.sales, undefined);
+  assert.equal(response.d.product.variants[0].sales, undefined);
+  assert.equal(response.d.reason, 'Dedicated daily selection');
+});

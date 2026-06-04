@@ -426,6 +426,85 @@ func.getProductsByIds = async function (userId, productId, isUrl = false, isMana
     }
 };
 
+func.getTodaysPick = async function (userId, isManager = false) {
+    try {
+        let q = [];
+        let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
+        let ww = ", (w.product_id IS NOT NULL) AS is_wishlisted";
+        if (userId) q.push(userId);
+        else {w = "";ww = "";}
+        if (userId && isManager) {
+            w += "\nLEFT JOIN (SELECT product_id, COUNT(user_id) AS users_wishing_for_product FROM wishlist GROUP BY product_id) ww ON ww.product_id = p.id";
+            ww += ", ww.users_wishing_for_product AS users_wishing_for_product";
+        }
+        const [rows] = await pool.execute(`
+            SELECT p.*, c.name AS category_name, pc.name AS parent_category_name, r.averageRating AS averageRating${ww},
+                   COALESCE(v.variant_stock, p.stock, 0) AS pick_stock,
+                   COALESCE(r.review_count, 0) AS pick_review_count,
+                   COALESCE(cart.cart_count, 0) AS pick_cart_count,
+                   COALESCE(wish.wishlist_count, 0) AS pick_wishlist_count,
+                   COALESCE(delivered.delivered_count, 0) AS pick_delivered_count
+            FROM products p
+            LEFT JOIN categories c ON p.category_id = c.id
+            LEFT JOIN categories pc ON c.parent_id = pc.id
+            LEFT JOIN (
+                SELECT product_id, ROUND(AVG(rating) / 2, 2) AS averageRating, COUNT(*) AS review_count
+                FROM comments
+                WHERE rating IS NOT NULL AND status = 'approved'
+                GROUP BY product_id
+            ) r ON r.product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, SUM(GREATEST(COALESCE(stock, 0), 0)) AS variant_stock
+                FROM product_variants
+                GROUP BY product_id
+            ) v ON v.product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, COUNT(*) AS cart_count
+                FROM cart
+                GROUP BY product_id
+            ) cart ON cart.product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, COUNT(*) AS wishlist_count
+                FROM wishlist
+                GROUP BY product_id
+            ) wish ON wish.product_id = p.id
+            LEFT JOIN (
+                SELECT product_id, COUNT(*) AS delivered_count
+                FROM delivered_items
+                GROUP BY product_id
+            ) delivered ON delivered.product_id = p.id
+            ${w}
+            ORDER BY
+                CASE WHEN COALESCE(v.variant_stock, p.stock, 0) > 0 THEN 1 ELSE 0 END DESC,
+                (
+                    (COALESCE(r.averageRating, 0) * 100) +
+                    (LEAST(COALESCE(r.review_count, 0), 20) * 4) +
+                    (LEAST(COALESCE(cart.cart_count, 0), 30) * 3) +
+                    (LEAST(COALESCE(wish.wishlist_count, 0), 30) * 2) +
+                    (LEAST(COALESCE(delivered.delivered_count, 0), 50) * 2) +
+                    (COALESCE(p.discount_rate, 0) * 3) +
+                    LEAST(COALESCE(p.sales, 0), 100) +
+                    (MOD((p.id * 37) + TO_DAYS(CURRENT_DATE), 31) * 2)
+                ) DESC,
+                p.created_at DESC,
+                p.id ASC
+            LIMIT 1
+        `, q);
+        if (rows.length === 0) {
+            return { success: true, product: null, reason: 'No products are available right now.' };
+        }
+        const product = (await func.enrichProductsWithOptions(userId, rows))[0];
+        return {
+            success: true,
+            product,
+            reason: 'Ranked by stock availability, approved ratings, cart activity, wishlist demand, delivered orders, discount, sales, freshness, and daily rotation.'
+        };
+    } catch (error) {
+        console.error('Get today pick error:', error);
+        throw new DBError(500, 'Failed to fetch today pick: ' + error.message);
+    }
+};
+
 func.searchProducts = async function (userId, query, sortBy = 'newest') {
     try {
         let q = [];

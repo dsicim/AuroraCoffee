@@ -1,32 +1,17 @@
-import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import AuroraWidget from '../shared/components/ui/AuroraWidget'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import ProductCard from '../features/products/presentation/ProductCard'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import coffeeSketch from '../assets/coffee-sketch.jpeg'
-import { useProductCatalog } from '../lib/products'
+import { useTodaysPick } from '../lib/products'
 
 export default function HomePage() {
-  const { products, loading, error } = useProductCatalog()
-
-  const suggestedProduct = useMemo(
-    () => {
-      if (!products.length) {
-        return null
-      }
-
-      const seed = products.reduce((total, product) => {
-        return (
-          total +
-          product.slug.split('').reduce((productTotal, character) => productTotal + character.charCodeAt(0), 0)
-        )
-      }, 0)
-
-      return products[seed % products.length] || products[0]
-    },
-    [products],
-  )
+  const {
+    product: suggestedProduct,
+    loading,
+    error,
+  } = useTodaysPick()
 
   const hero = (
     <section className="aurora-home-hero">
