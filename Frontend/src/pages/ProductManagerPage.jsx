@@ -702,6 +702,25 @@ function buildProductEdits(product, form) {
   return edits
 }
 
+function applyProductEditsToSnapshot(product, edits) {
+  if (!product || !edits) {
+    return product
+  }
+
+  const columnToField = new Map(productEditFields.map((field) => [field.column, field.key]))
+  const nextProduct = { ...product }
+
+  for (const [column, value] of Object.entries(edits)) {
+    const fieldKey = columnToField.get(column)
+
+    if (fieldKey) {
+      nextProduct[fieldKey] = value
+    }
+  }
+
+  return nextProduct
+}
+
 function buildProductCreatePayload(form, categoryId) {
   const payload = {}
 
