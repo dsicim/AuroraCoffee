@@ -171,11 +171,12 @@ export default function AccountLayout({
   })
   const session = authState.session
   const currentUserState = authState.currentUserState
-  const canRenderAccountShell = authState.hasVerifiedUser || authState.isProfileError
   const user = currentUserState.status === currentUserFetchStatus.ok
     ? currentUserState.user
     : null
-  const accessLevels = getAccessibleRoleLevels(user?.role)
+  const displayUser = user || authState.lastVerifiedUser
+  const canRenderAccountShell = Boolean(displayUser) || authState.isProfileError
+  const accessLevels = getAccessibleRoleLevels(displayUser?.role)
 
   useEffect(() => {
     const syncAuthState = () => {
