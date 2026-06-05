@@ -431,4 +431,8 @@ INSERT INTO products (name, product_code, model, serial_number, warranty_status,
 SELECT 'Electric Burr Grinder', 'electric-burr-grinder', 'EBG-04', 'SN-EBG-4004', '2 Years', 'Brewing Tech Ltd.', 'Professional conical burr grinder with 30 precise grind settings from espresso to French press.', 3200.00, 15, id, 'Steel/Plastic', '250g'
 FROM categories WHERE name = 'Grinder' LIMIT 1;
 
+INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
+SELECT 'AeroPress Micro-Filters (350 pcs)', 'aeropress-micro-filters', 'AP-FIL-05', 'SN-APF-5005', 'No Warranty', 'AeroPress Inc.', 'Compostable paper micro-filters designed specifically for the AeroPress coffee maker.', 180.00, 200, id, 'Paper', '350 pcs'
+FROM categories WHERE name = 'Filter Paper' LIMIT 1;
+
 SET FOREIGN_KEY_CHECKS=1;
