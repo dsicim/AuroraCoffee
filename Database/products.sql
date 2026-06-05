@@ -435,4 +435,8 @@ INSERT INTO products (name, product_code, model, serial_number, warranty_status,
 SELECT 'AeroPress Micro-Filters (350 pcs)', 'aeropress-micro-filters', 'AP-FIL-05', 'SN-APF-5005', 'No Warranty', 'AeroPress Inc.', 'Compostable paper micro-filters designed specifically for the AeroPress coffee maker.', 180.00, 200, id, 'Paper', '350 pcs'
 FROM categories WHERE name = 'Filter Paper' LIMIT 1;
 
+INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
+SELECT 'Classic Moka Pot (3-Cup)', 'classic-moka-pot', 'CMP-06', 'SN-CMP-6006', '1 Year', 'Aurora Coffee', 'Traditional Italian stovetop espresso maker. Brews rich, authentic coffee in minutes without a machine.', 450.00, 80, id, 'Aluminum', '150ml'
+FROM categories WHERE name = 'Brewing Equipment' LIMIT 1;
+
 SET FOREIGN_KEY_CHECKS=1;
