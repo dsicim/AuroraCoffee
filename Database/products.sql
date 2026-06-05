@@ -414,4 +414,13 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (24, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 12),
 (24, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 8);
 
+-- 8. Inserting missing accessories
+INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
+SELECT 'Pro Stainless Steel French Press', 'pro-stainless-french-press', 'PRO-FP-01', 'SN-PFP-1001', '2 Years', 'Aurora Coffee', 'Premium double-walled stainless steel French press. Retains heat significantly longer than glass and is virtually indestructible for professional use.', 1400.00, 40, id, 'Stainless Steel', '1000ml'
+FROM categories WHERE name = 'French Press' LIMIT 1;
+
+INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
+SELECT 'Campfire Enamel Mug', 'campfire-enamel-mug', 'CE-MUG-02', 'SN-CEM-2002', 'No Warranty', 'Aurora Coffee', 'Durable and lightweight vintage-style enamel mug. Perfect for camping or daily outdoor use.', 250.00, 150, id, 'Enamel/Steel', '400ml'
+FROM categories WHERE name = 'Mug' LIMIT 1;
+
 SET FOREIGN_KEY_CHECKS=1;
