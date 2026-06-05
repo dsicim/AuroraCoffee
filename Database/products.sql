@@ -423,4 +423,8 @@ INSERT INTO products (name, product_code, model, serial_number, warranty_status,
 SELECT 'Campfire Enamel Mug', 'campfire-enamel-mug', 'CE-MUG-02', 'SN-CEM-2002', 'No Warranty', 'Aurora Coffee', 'Durable and lightweight vintage-style enamel mug. Perfect for camping or daily outdoor use.', 250.00, 150, id, 'Enamel/Steel', '400ml'
 FROM categories WHERE name = 'Mug' LIMIT 1;
 
+INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
+SELECT 'Smart Temperature Thermos', 'smart-temperature-thermos', 'STT-03', 'SN-STT-3003', '2 Years', 'Aurora Coffee', 'Insulated thermos with an integrated LED temperature display on the lid. Keeps drinks hot for 12 hours.', 650.00, 50, id, 'Stainless Steel', '500ml'
+FROM categories WHERE name = 'Thermos' LIMIT 1;
+
 SET FOREIGN_KEY_CHECKS=1;
