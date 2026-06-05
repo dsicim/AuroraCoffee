@@ -414,7 +414,7 @@ INSERT INTO product_variants (product_id, variant_code, price_add, price_mult, s
 (24, 'eyJ3ZWlnaHQiOiI1MDBnIn0=', 350.00, 1, 12),
 (24, 'eyJ3ZWlnaHQiOiIxMDAwZyJ9', 650.00, 1, 8);
 
--- 8. Inserting missing accessories
+-- 8. Inserting missing 6 accessories
 INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
 SELECT 'Pro Stainless Steel French Press', 'pro-stainless-french-press', 'PRO-FP-01', 'SN-PFP-1001', '2 Years', 'Aurora Coffee', 'Premium double-walled stainless steel French press. Retains heat significantly longer than glass and is virtually indestructible for professional use.', 1400.00, 40, id, 'Stainless Steel', '1000ml'
 FROM categories WHERE name = 'French Press' LIMIT 1;
@@ -432,8 +432,8 @@ SELECT 'Electric Burr Grinder', 'electric-burr-grinder', 'EBG-04', 'SN-EBG-4004'
 FROM categories WHERE name = 'Grinder' LIMIT 1;
 
 INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
-SELECT 'AeroPress Micro-Filters (350 pcs)', 'aeropress-micro-filters', 'AP-FIL-05', 'SN-APF-5005', 'No Warranty', 'AeroPress Inc.', 'Compostable paper micro-filters designed specifically for the AeroPress coffee maker.', 180.00, 200, id, 'Paper', '350 pcs'
-FROM categories WHERE name = 'Filter Paper' LIMIT 1;
+SELECT 'Minimalist Large White Mug', 'large-white-ceramic-mug', 'WCM-L05', 'SN-WCM-5005', 'No Warranty', 'Aurora Coffee', 'A sleek, minimalist oversized white ceramic mug with a comfortable handle. Perfect for huge servings of your favorite filter coffee or latte.', 280.00, 100, id, 'Ceramic', '500ml'
+FROM categories WHERE name = 'Mug' LIMIT 1;
 
 INSERT INTO products (name, product_code, model, serial_number, warranty_status, distributor_information, description, price, stock, category_id, material, capacity)
 SELECT 'Classic Moka Pot (3-Cup)', 'classic-moka-pot', 'CMP-06', 'SN-CMP-6006', '1 Year', 'Aurora Coffee', 'Traditional Italian stovetop espresso maker. Brews rich, authentic coffee in minutes without a machine.', 450.00, 80, id, 'Aluminum', '150ml'
