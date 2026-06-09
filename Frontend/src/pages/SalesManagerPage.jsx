@@ -169,42 +169,38 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
   const totalOrders = Math.max(1, orders.length)
 
   return (
-    <section className="aurora-ops-panel p-8">
-      <div className="aurora-widget-header">
+    <section className="aurora-ops-panel p-6">
+      <div className="aurora-widget-header items-start">
         <div className="aurora-widget-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--aurora-olive-deep)]">
             Sales graphics
           </p>
-          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+          <h2 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)]">
             Order movement at a glance
           </h2>
         </div>
         <span className="aurora-chip">{orders.length} orders</span>
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-        <div className="aurora-ops-card p-5">
-          <div className="flex min-h-full flex-col gap-5">
-            <div>
-              <p className="aurora-kicker">Recent orders</p>
-              <p className="mt-3 text-sm leading-7 text-[var(--aurora-text)]">
-                Daily order count for the latest seven-day window in the order feed.
-              </p>
+      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="aurora-ops-card p-4">
+          <div className="flex min-h-full flex-col gap-4">
+            <div className="flex items-center justify-between gap-4">
+              <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">Recent orders</p>
+              <span className="text-xs font-semibold text-[var(--aurora-text)]">Last 7 days</span>
             </div>
-            <div className="grid min-h-44 grid-cols-7 items-end gap-2" aria-label="Recent order count chart">
+            <div className="grid h-32 grid-cols-7 items-end gap-2 rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.16)] px-3 pb-3 pt-4" aria-label="Recent order count chart">
               {recentBuckets.map((bucket) => {
-                const heightPercent = bucket.count ? Math.max(12, (bucket.count / maxRecentCount) * 100) : 6
+                const heightPercent = bucket.count ? Math.max(18, (bucket.count / maxRecentCount) * 100) : 4
 
                 return (
-                  <div key={bucket.key} className="flex h-full min-w-0 flex-col justify-end gap-2 text-center">
-                    <span className="text-xs font-semibold text-[var(--aurora-text-strong)]">
-                      {bucket.count}
-                    </span>
+                  <div key={bucket.key} className="flex h-full min-w-0 flex-col justify-end gap-1.5 text-center">
+                    <span className="text-[11px] font-semibold text-[var(--aurora-text-strong)]">{bucket.count}</span>
                     <div
-                      className="rounded-full border border-[rgba(73,92,65,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(117,150,107,0.44))]"
+                      className="mx-auto w-full max-w-7 rounded-full border border-[rgba(117,150,107,0.18)] bg-[linear-gradient(180deg,rgba(196,168,108,0.78),rgba(117,150,107,0.64))]"
                       style={{ height: `${heightPercent}%` }}
                     />
-                    <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--aurora-text)]">
+                    <span className="truncate text-[10px] font-semibold text-[var(--aurora-text)]">
                       {bucket.label}
                     </span>
                   </div>
@@ -214,15 +210,18 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
           </div>
         </div>
 
-        <div className="aurora-ops-card p-5">
-          <p className="aurora-kicker">Status mix</p>
-          <div className="mt-5 space-y-4">
+        <div className="aurora-ops-card p-4">
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">Status mix</p>
+            <span className="text-xs font-semibold text-[var(--aurora-text)]">{statusBreakdown.length} states</span>
+          </div>
+          <div className="mt-4 space-y-3">
             {statusBreakdown.map((status) => {
               const percent = Math.round((status.count / totalOrders) * 100)
 
               return (
                 <div key={status.key}>
-                  <div className="flex items-center justify-between gap-4 text-sm">
+                  <div className="flex items-center justify-between gap-4 text-xs">
                     <span className="font-semibold text-[var(--aurora-text-strong)]">
                       {status.label}
                     </span>
@@ -230,9 +229,9 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
                       {status.count} · {percent}%
                     </span>
                   </div>
-                  <div className="mt-2 h-3 overflow-hidden rounded-full border border-[rgba(73,92,65,0.16)] bg-[rgba(255,255,255,0.38)]">
+                  <div className="mt-1.5 h-2 overflow-hidden rounded-full border border-[rgba(73,92,65,0.14)] bg-[rgba(255,255,255,0.2)]">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(117,150,107,0.72),rgba(196,168,108,0.82))]"
+                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(117,150,107,0.82),rgba(196,168,108,0.72))]"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
@@ -256,13 +255,13 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   ].map((value) => Math.abs(value))))
 
   return (
-    <section className="aurora-ops-panel p-8">
-      <div className="aurora-widget-header">
+    <section className="aurora-ops-panel p-6">
+      <div className="aurora-widget-header items-start">
         <div className="aurora-widget-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--aurora-olive-deep)]">
             Sales analytics
           </p>
-          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+          <h2 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)]">
             Revenue and profit trend
           </h2>
         </div>
@@ -271,37 +270,37 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
         </span>
       </div>
 
-      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_280px]">
-        <div className="aurora-ops-card p-5">
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="aurora-ops-card p-4">
           {error ? (
             <p className="aurora-message aurora-message-error" role="alert">
               {error}
             </p>
           ) : loading ? (
-            <div className="flex min-h-56 items-center justify-center text-sm font-semibold text-[var(--aurora-text)]">
+            <div className="flex h-40 items-center justify-center text-sm font-semibold text-[var(--aurora-text)]">
               Loading sales analytics
             </div>
           ) : visiblePoints.length ? (
-            <div className="grid min-h-56 grid-cols-[repeat(auto-fit,minmax(44px,1fr))] items-end gap-3" aria-label="Sales analytics chart">
+            <div className="grid h-40 grid-cols-[repeat(auto-fit,minmax(48px,1fr))] items-end gap-3 rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.16)] px-3 pb-3 pt-4" aria-label="Sales analytics chart">
               {visiblePoints.map((point) => {
                 const salesHeight = Math.max(8, (Math.abs(point.sales) / maxAmount) * 100)
                 const profitHeight = Math.max(8, (Math.abs(point.profit) / maxAmount) * 100)
 
                 return (
                   <div key={point.date} className="flex h-full min-w-0 flex-col justify-end gap-2 text-center">
-                    <div className="flex h-44 items-end justify-center gap-1.5">
+                    <div className="flex h-24 items-end justify-center gap-1.5">
                       <div
-                        className="w-4 rounded-full border border-[rgba(73,92,65,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(117,150,107,0.58))]"
+                        className="w-4 rounded-full border border-[rgba(117,150,107,0.18)] bg-[linear-gradient(180deg,rgba(196,168,108,0.78),rgba(117,150,107,0.64))]"
                         title={`Sales ${formatCurrency(point.sales)}`}
                         style={{ height: `${salesHeight}%` }}
                       />
                       <div
-                        className="w-4 rounded-full border border-[rgba(132,88,46,0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(196,168,108,0.74))]"
+                        className="w-4 rounded-full border border-[rgba(132,88,46,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(196,168,108,0.74))]"
                         title={`Profit ${formatCurrency(point.profit)}`}
                         style={{ height: `${profitHeight}%` }}
                       />
                     </div>
-                    <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--aurora-text)]">
+                    <span className="truncate text-[10px] font-semibold text-[var(--aurora-text)]">
                       {formatShortDate(point.date)}
                     </span>
                   </div>
@@ -309,32 +308,29 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
               })}
             </div>
           ) : (
-            <div className="flex min-h-56 items-center justify-center text-center text-sm leading-7 text-[var(--aurora-text)]">
+            <div className="flex h-40 items-center justify-center text-center text-sm leading-7 text-[var(--aurora-text)]">
               Sales analytics will appear after completed order data is available.
             </div>
           )}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-          <MetricTile
-            label="Total sales"
-            value={formatCurrency(summary.totalSales || 0)}
-            description="Gross sales returned by analytics."
-          />
-          <MetricTile
-            label="Net profit"
-            value={formatCurrency(summary.netProfit || 0)}
-            description="Sales minus cost and refunds."
-          />
-          <MetricTile
-            label="Refunds"
-            value={formatCurrency(summary.totalRefunds || 0)}
-            description="Refunded sales included in analytics."
-          />
+        <div className="aurora-ops-card grid gap-3 p-4 sm:grid-cols-3 xl:grid-cols-1">
+          {[
+            ['Total sales', summary.totalSales || 0],
+            ['Net profit', summary.netProfit || 0],
+            ['Refunds', summary.totalRefunds || 0],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-[1rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.12)] px-4 py-3">
+              <p className="text-xs font-semibold text-[var(--aurora-olive-deep)]">{label}</p>
+              <p className="mt-1 font-display text-2xl text-[var(--aurora-text-strong)]">
+                {formatCurrency(value)}
+              </p>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text)]">
+      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-[var(--aurora-text)]">
         <span className="inline-flex items-center gap-2">
           <span className="h-3 w-3 rounded-full bg-[rgba(117,150,107,0.72)]" />
           Sales
@@ -700,7 +696,7 @@ export default function SalesManagerPage() {
       title="Manage live orders"
       description="A focused fulfillment console for order lookup, invoice access, delivery review, and status movement."
     >
-      <div className="mb-8 space-y-8">
+      <div className="mb-8 space-y-4">
         <SalesAnalyticsGraph
           analytics={salesAnalytics}
           loading={analyticsLoading}
