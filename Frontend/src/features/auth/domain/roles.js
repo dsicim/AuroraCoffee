@@ -66,7 +66,8 @@ export function getAccessibleRoleLevels(role) {
   if (normalizedRole === userRoles.productManager) {
     return roleAccessLevels.filter(({ role: accessRole }) => (
       accessRole === userRoles.customer ||
-      accessRole === userRoles.productManager
+      accessRole === userRoles.productManager ||
+      accessRole === userRoles.salesManager
     ))
   }
 
