@@ -223,7 +223,7 @@ const productEditFieldGroups = [
   },
   {
     title: 'Fulfillment details',
-    description: 'Required product traceability and supplier information.',
+    description: 'Traceability and supplier information.',
     fieldKeys: ['warrantyStatus', 'distributorInformation'],
   },
   {
@@ -245,12 +245,8 @@ const productEditFieldGroups = [
 
 const requiredProductCreateFields = [
   ['name', 'Name'],
-  ['serial_number', 'Serial number'],
-  ['description', 'Description'],
   ['price', 'Price'],
   ['stock', 'Stock'],
-  ['warranty_status', 'Warranty status'],
-  ['distributor_information', 'Distributor information'],
 ]
 const requiredProductCreateColumnSet = new Set(requiredProductCreateFields.map(([column]) => column))
 
