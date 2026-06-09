@@ -724,13 +724,44 @@ async function accountSettingsMenu() {
     while (true) {
         console.log('\n--- Account Settings ---');
         console.log('1. View My Profile');
-        console.log('2. Delete My Account');
-        console.log('3. Back');
+        console.log('2. Update Profile');
+        console.log('3. Delete My Account');
+        console.log('4. Logout');
+        console.log('5. Back');
 
         const choice = await question('Select: ');
         if (choice === '1') {
             console.log(JSON.stringify(currentUser, null, 2));
         } else if (choice === '2') {
+            console.log('Leave empty to keep current value.');
+            const name = await question('Display Name (e.g. John Doe): ');
+            const privacy = name ? await question('Privacy for each word (s=show, h=hide, i=initial) e.g. "s s": ') : '';
+            const emailblockStr = await question('Email Block? (true/false): ');
+            const taxId = await question('Tax ID: ');
+
+            const data = {};
+            if (name.trim() && privacy.trim()) {
+                data.name = name;
+                data.privacy = privacy;
+            }
+            if (emailblockStr.trim() === 'true') data.emailblock = true;
+            else if (emailblockStr.trim() === 'false') data.emailblock = false;
+            
+            if (taxId.trim()) data.taxId = taxId.trim();
+
+            if (Object.keys(data).length > 0) {
+                const res = await apiFetch('users/me', 'PATCH', data);
+                if (res.ok) {
+                    console.log('\x1b[32m%s\x1b[0m', 'Profile updated successfully!');
+                    // Refresh currentUser
+                    const me = await apiFetch('users/me');
+                    if (me.ok) currentUser = me.data.user;
+                }
+                else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
+            } else {
+                console.log('No changes made.');
+            }
+        } else if (choice === '3') {
             const confirm = await question('ARE YOU SURE? This cannot be undone. Type "DELETE" to confirm: ');
             if (confirm === 'DELETE') {
                 const res = await apiFetch('users/me', 'DELETE');
@@ -743,7 +774,12 @@ async function accountSettingsMenu() {
                     console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
                 }
             }
-        } else if (choice === '3') break;
+        } else if (choice === '4') {
+            console.log('\x1b[32m%s\x1b[0m', 'Logged out successfully.');
+            sessionToken = null;
+            currentUser = null;
+            return;
+        } else if (choice === '5') break;
     }
 }
 async function wishlistMenu() {
