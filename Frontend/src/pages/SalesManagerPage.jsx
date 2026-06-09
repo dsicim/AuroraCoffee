@@ -92,6 +92,16 @@ function toFiniteNumber(value) {
   return Number.isFinite(numberValue) ? numberValue : 0
 }
 
+function formatCompactCurrency(value) {
+  return new Intl.NumberFormat('tr-TR', {
+    compactDisplay: 'short',
+    currency: 'TRY',
+    maximumFractionDigits: 1,
+    notation: 'compact',
+    style: 'currency',
+  }).format(toFiniteNumber(value))
+}
+
 function getRefundStatus(item) {
   if (item.refunded) {
     return { key: 'refunded', label: 'Refunded', chipClass: 'is-delivered' }
@@ -167,6 +177,7 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
   const recentBuckets = useMemo(() => getRecentOrderBuckets(orders), [orders])
   const maxRecentCount = Math.max(1, ...recentBuckets.map((bucket) => bucket.count))
   const totalOrders = Math.max(1, orders.length)
+  const orderTicks = [maxRecentCount, Math.ceil(maxRecentCount / 2), 0]
 
   return (
     <section className="aurora-ops-panel p-6">
@@ -189,23 +200,54 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
               <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">Recent orders</p>
               <span className="text-xs font-semibold text-[var(--aurora-text)]">Last 7 days</span>
             </div>
-            <div className="grid h-32 grid-cols-7 items-end gap-2 rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.16)] px-3 pb-3 pt-4" aria-label="Recent order count chart">
-              {recentBuckets.map((bucket) => {
-                const heightPercent = bucket.count ? Math.max(18, (bucket.count / maxRecentCount) * 100) : 4
+            <div className="rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.13)] px-3 py-3" aria-label="Recent order count chart">
+              <svg className="h-44 w-full overflow-visible" viewBox="0 0 640 190" role="img" aria-label="Recent orders by day">
+                <defs>
+                  <linearGradient id="recentOrderBar" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(196,168,108,0.92)" />
+                    <stop offset="100%" stopColor="rgba(117,150,107,0.72)" />
+                  </linearGradient>
+                </defs>
+                {orderTicks.map((tick) => {
+                  const y = 20 + ((maxRecentCount - tick) / maxRecentCount) * 108
 
-                return (
-                  <div key={bucket.key} className="flex h-full min-w-0 flex-col justify-end gap-1.5 text-center">
-                    <span className="text-[11px] font-semibold text-[var(--aurora-text-strong)]">{bucket.count}</span>
-                    <div
-                      className="mx-auto w-full max-w-7 rounded-full border border-[rgba(117,150,107,0.18)] bg-[linear-gradient(180deg,rgba(196,168,108,0.78),rgba(117,150,107,0.64))]"
-                      style={{ height: `${heightPercent}%` }}
-                    />
-                    <span className="truncate text-[10px] font-semibold text-[var(--aurora-text)]">
-                      {bucket.label}
-                    </span>
-                  </div>
-                )
-              })}
+                  return (
+                    <g key={tick}>
+                      <line x1="46" x2="614" y1={y} y2={y} stroke="rgba(255,255,255,0.14)" strokeDasharray={tick ? '4 8' : '0'} />
+                      <text x="12" y={y + 4} fill="var(--aurora-text)" fontSize="11" fontWeight="600">
+                        {tick}
+                      </text>
+                    </g>
+                  )
+                })}
+                <line x1="46" x2="614" y1="128" y2="128" stroke="rgba(255,255,255,0.26)" />
+                {recentBuckets.map((bucket, index) => {
+                  const slotWidth = 568 / recentBuckets.length
+                  const barWidth = Math.min(42, slotWidth * 0.48)
+                  const x = 46 + (slotWidth * index) + (slotWidth - barWidth) / 2
+                  const barHeight = bucket.count ? Math.max(6, (bucket.count / maxRecentCount) * 108) : 2
+                  const y = 128 - barHeight
+
+                  return (
+                    <g key={bucket.key}>
+                      <rect
+                        fill="url(#recentOrderBar)"
+                        height={barHeight}
+                        rx="8"
+                        width={barWidth}
+                        x={x}
+                        y={y}
+                      />
+                      <text x={x + barWidth / 2} y={Math.max(14, y - 8)} fill="var(--aurora-text-strong)" fontSize="12" fontWeight="700" textAnchor="middle">
+                        {bucket.count}
+                      </text>
+                      <text x={x + barWidth / 2} y="158" fill="var(--aurora-text)" fontSize="11" fontWeight="600" textAnchor="middle">
+                        {bucket.label}
+                      </text>
+                    </g>
+                  )
+                })}
+              </svg>
             </div>
           </div>
         </div>
@@ -253,6 +295,33 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
     point.sales,
     point.profit,
   ].map((value) => Math.abs(value))))
+  const chartWidth = 700
+  const chartHeight = 260
+  const chartLeft = 64
+  const chartRight = 28
+  const chartTop = 22
+  const chartBottom = 48
+  const plotWidth = chartWidth - chartLeft - chartRight
+  const plotHeight = chartHeight - chartTop - chartBottom
+  const xStep = visiblePoints.length > 1 ? plotWidth / (visiblePoints.length - 1) : 0
+  const chartPoints = visiblePoints.map((point, index) => {
+    const x = chartLeft + (visiblePoints.length > 1 ? index * xStep : plotWidth / 2)
+    const salesY = chartTop + (1 - (point.sales / maxAmount)) * plotHeight
+    const profitY = chartTop + (1 - (point.profit / maxAmount)) * plotHeight
+
+    return {
+      ...point,
+      x,
+      salesY,
+      profitY,
+    }
+  })
+  const salesPath = chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.salesY}`).join(' ')
+  const profitPath = chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.profitY}`).join(' ')
+  const salesAreaPath = chartPoints.length
+    ? `${salesPath} L ${chartPoints.at(-1).x} ${chartTop + plotHeight} L ${chartPoints[0].x} ${chartTop + plotHeight} Z`
+    : ''
+  const amountTicks = [1, 0.75, 0.5, 0.25, 0].map((ratio) => Math.round(maxAmount * ratio))
 
   return (
     <section className="aurora-ops-panel p-6">
@@ -281,31 +350,42 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
               Loading sales analytics
             </div>
           ) : visiblePoints.length ? (
-            <div className="grid h-40 grid-cols-[repeat(auto-fit,minmax(48px,1fr))] items-end gap-3 rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.16)] px-3 pb-3 pt-4" aria-label="Sales analytics chart">
-              {visiblePoints.map((point) => {
-                const salesHeight = Math.max(8, (Math.abs(point.sales) / maxAmount) * 100)
-                const profitHeight = Math.max(8, (Math.abs(point.profit) / maxAmount) * 100)
+            <div className="rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.13)] px-3 py-3" aria-label="Sales analytics chart">
+              <svg className="h-72 w-full overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Sales and profit trend">
+                <defs>
+                  <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(117,150,107,0.34)" />
+                    <stop offset="100%" stopColor="rgba(117,150,107,0.02)" />
+                  </linearGradient>
+                </defs>
+                {amountTicks.map((tick) => {
+                  const y = chartTop + (1 - (tick / maxAmount)) * plotHeight
 
-                return (
-                  <div key={point.date} className="flex h-full min-w-0 flex-col justify-end gap-2 text-center">
-                    <div className="flex h-24 items-end justify-center gap-1.5">
-                      <div
-                        className="w-4 rounded-full border border-[rgba(117,150,107,0.18)] bg-[linear-gradient(180deg,rgba(196,168,108,0.78),rgba(117,150,107,0.64))]"
-                        title={`Sales ${formatCurrency(point.sales)}`}
-                        style={{ height: `${salesHeight}%` }}
-                      />
-                      <div
-                        className="w-4 rounded-full border border-[rgba(132,88,46,0.14)] bg-[linear-gradient(180deg,rgba(255,255,255,0.68),rgba(196,168,108,0.74))]"
-                        title={`Profit ${formatCurrency(point.profit)}`}
-                        style={{ height: `${profitHeight}%` }}
-                      />
-                    </div>
-                    <span className="truncate text-[10px] font-semibold text-[var(--aurora-text)]">
+                  return (
+                    <g key={tick}>
+                      <line x1={chartLeft} x2={chartLeft + plotWidth} y1={y} y2={y} stroke="rgba(255,255,255,0.14)" strokeDasharray={tick ? '4 8' : '0'} />
+                      <text x="8" y={y + 4} fill="var(--aurora-text)" fontSize="11" fontWeight="600">
+                        {formatCompactCurrency(tick)}
+                      </text>
+                    </g>
+                  )
+                })}
+                <line x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartTop + plotHeight} stroke="rgba(255,255,255,0.2)" />
+                <line x1={chartLeft} x2={chartLeft + plotWidth} y1={chartTop + plotHeight} y2={chartTop + plotHeight} stroke="rgba(255,255,255,0.26)" />
+                <path d={salesAreaPath} fill="url(#salesAreaGradient)" />
+                <path d={salesPath} fill="none" stroke="rgba(117,150,107,0.95)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+                <path d={profitPath} fill="none" stroke="rgba(196,168,108,0.92)" strokeDasharray="7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+                {chartPoints.map((point) => (
+                  <g key={point.date}>
+                    <line x1={point.x} x2={point.x} y1={chartTop + plotHeight} y2={chartTop + plotHeight + 5} stroke="rgba(255,255,255,0.26)" />
+                    <circle cx={point.x} cy={point.salesY} fill="rgb(117,150,107)" r="5" stroke="rgba(255,255,255,0.82)" strokeWidth="2" />
+                    <circle cx={point.x} cy={point.profitY} fill="rgb(196,168,108)" r="4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" />
+                    <text x={point.x} y={chartTop + plotHeight + 24} fill="var(--aurora-text)" fontSize="11" fontWeight="600" textAnchor="middle">
                       {formatShortDate(point.date)}
-                    </span>
-                  </div>
-                )
-              })}
+                    </text>
+                  </g>
+                ))}
+              </svg>
             </div>
           ) : (
             <div className="flex h-40 items-center justify-center text-center text-sm leading-7 text-[var(--aurora-text)]">
