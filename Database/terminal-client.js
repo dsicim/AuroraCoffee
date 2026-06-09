@@ -49,7 +49,7 @@ async function register() {
     else console.log('\x1b[31m%s\x1b[0m', 'Error: ' + res.data.e);
 }
 
-async function login() {
+async function login() { if (sessionToken) { console.log('Already logged in.'); return; }
     console.log('\n--- Login ---');
     const u = await question('Email/Username: ');
     const p = await question('Password: ');
