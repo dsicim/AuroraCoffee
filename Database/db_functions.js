@@ -84,6 +84,7 @@ func.loginUser = async function (username, password) {
         if (config.verifyemail && !user.verified) {
             return { success: false, message: 'User unverified', userId: user.id };
         }
+        await pool.execute('UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?', [user.id]);
         return { success: true, message: 'Login successful', userId: user.id };
     } catch (error) {
         if (error instanceof DBError) throw error; // Re-throw known DBErrors
