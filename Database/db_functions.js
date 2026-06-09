@@ -1455,6 +1455,7 @@ func.updateProduct = async function (productId, data) {
         }
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = Object.values(data);
+        productId = Number(productId);
         values.push(productId);
         if (Object.keys(data).includes("discount_rate") || Object.keys(data).includes("stock")) {
             const [old] = await connection.execute('SELECT stock, discount_rate FROM products WHERE id = ? FOR UPDATE', [productId]);
@@ -1494,10 +1495,10 @@ func.removeProduct = async function (productId) {
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
+    productId = Number(productId);
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
-
         const [products] = await connection.execute('SELECT * FROM products WHERE id = ? FOR UPDATE', [productId]);
         if (products.length === 0) {
             throw new DBError(404, 'Product not found');
@@ -1521,6 +1522,7 @@ func.removeProduct = async function (productId) {
 
 func.applyDiscount = async function (productId, rate) {
     const connection = await pool.getConnection();
+    productId = Number(productId);
     if (!productId || rate === undefined) {
         throw new DBError(400, 'Product ID and discount rate are required');
     }
@@ -1549,6 +1551,7 @@ func.applyDiscount = async function (productId, rate) {
 };
 
 func.setVariantDiscount = async function (variantId, rate) {
+    variantId = Number(variantId);
     if (!variantId || rate === undefined) {
         throw new DBError(400, 'Variant ID and discount rate are required');
     }
@@ -1569,6 +1572,7 @@ func.addProductImage = async function (productId, imageUrl, isPrimary = false, s
         throw new DBError(400, 'Product ID and Image URL are required');
     }
     const connection = await pool.getConnection();
+    productId = Number(productId);
     try {
         await connection.beginTransaction();
         if (isPrimary) {
@@ -1596,7 +1600,7 @@ func.reorderProductImages = async function (productId, urlToOrder) {
     if (!productId || !urlToOrder || typeof urlToOrder !== 'object' || Array.isArray(urlToOrder)) {
         throw new DBError(400, 'Product ID and image order map are required');
     }
-
+    productId = Number(productId);
     const entries = Object.entries(urlToOrder);
     if (entries.length === 0) {
         throw new DBError(400, 'Image order map cannot be empty');
@@ -1630,6 +1634,7 @@ func.setPrimaryImage = async function (productId, imageUrl) {
     if (!imageUrl) {
         throw new DBError(400, 'Image URL is required');
     }
+    productId = Number(productId);
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -1683,18 +1688,19 @@ func.deleteUser = async function (userId) {
     if (!userId) {
         throw new DBError(400, 'User ID is required');
     }
-    try {
-        // Tokens are invalidated in the API layer before calling this, but we can also do it here if needed.
-        // Most tables have ON DELETE CASCADE.
-        const [result] = await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
-        if (result.affectedRows === 0) {
-            throw new DBError(404, 'User not found');
-        }
-        return { success: true, message: 'Account deleted successfully' };
-    } catch (error) {
-        console.error('Delete user error:', error);
-        throw new DBError(500, 'Failed to delete user account');
-    }
+    // DO NOT UNCOMMENT. This is a dangerous operation that can cause data integrity issues if not handled with extreme care. Always prefer deactivation or anonymization over deletion in user management.
+    // try {
+    //     // Tokens are invalidated in the API layer before calling this, but we can also do it here if needed.
+    //     // Most tables have ON DELETE CASCADE.
+    //     const [result] = await pool.execute('DELETE FROM users WHERE id = ?', [userId]);
+    //     if (result.affectedRows === 0) {
+    //         throw new DBError(404, 'User not found');
+    //     }
+    //     return { success: true, message: 'Account deleted successfully' };
+    // } catch (error) {
+    //     console.error('Delete user error:', error);
+    //     throw new DBError(500, 'Failed to delete user account');
+    // }
 };
 
 // --- User Role Management ---
@@ -1755,6 +1761,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
     if (!userId || !productId || (!text && rating === null)) {
         throw new DBError(400, 'User ID, Product ID and (text or rating) are required');
     }
+    productId = Number(productId);
     try {
         // Check if user has already commented on the product
         const commented = await func.hasUserAlreadyCommented(userId, productId);
@@ -1798,6 +1805,7 @@ func.addComment = async function (userId, productId, text, rating, namesnapshot)
 
 func.deleteComment = async function (userId, productId) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    productId = Number(productId);
     try {
         const [result] = await pool.execute('DELETE FROM comments WHERE product_id = ? AND user_id = ?', [productId, userId]);
         if (result.affectedRows === 0) throw new DBError(404, 'Comment not found');
@@ -1846,6 +1854,7 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
+    productId = Number(productId);
     try {
         const params = [];
         let where = productId === "all" ? '1' : `c.product_id = ?`;
@@ -2061,6 +2070,7 @@ func.cancelOrder = async function (orderId, userId, products) {
 };
 
 func.hasUserAlreadyCommented = async function (userId, productId) {
+    productId = Number(productId);
     try {
         const [rows] = await pool.execute(`
             SELECT id, status, comment_text, edited_text, name_snapshot FROM comments c
@@ -2108,6 +2118,7 @@ func.getCart = async function (userId) {
 
 func.addToCart = async function (userId, productId, quantity = 1, options, variantId = null) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    productId = Number(productId);
     try {
         let sql = 'SELECT id, quantity FROM cart WHERE user_id = ? AND product_id = ?';
         let params = [userId, productId];
@@ -2263,6 +2274,7 @@ func.deleteAddress = async function (userId, addressId) {
 
 func.getUsersWishingForProduct = async function (productId) {
     if (!productId) throw new DBError(400, 'Product ID is required');
+    productId = Number(productId);
     try {
         const [rows] = await pool.execute('SELECT u.id, u.displayname, u.username, u.nameprivacy FROM wishlist w JOIN users u ON w.user_id = u.id WHERE w.product_id = ?', [productId]);
         return { success: true, users: rows };
@@ -2325,6 +2337,7 @@ func.getWishlists = async function (userId) {
 
 func.addToWishlist = async function (userId, productId) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    productId = Number(productId);
     try {
         const [result] = await pool.execute(
             'INSERT IGNORE INTO wishlist (user_id, product_id) VALUES (?, ?)',
@@ -2342,6 +2355,7 @@ func.addToWishlist = async function (userId, productId) {
 
 func.removeFromWishlist = async function (userId, productId) {
     if (!userId || !productId) throw new DBError(400, 'User ID and Product ID are required');
+    productId = Number(productId);
     try {
         const [result] = await pool.execute('DELETE FROM wishlist WHERE user_id = ? AND product_id = ?', [userId, productId]);
         if (result.affectedRows === 0) throw new DBError(404, 'Product not found in wishlist');
