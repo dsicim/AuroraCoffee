@@ -549,7 +549,7 @@ func.getTodaysPick = async function (userId, isManager = false) {
     }
 };
 
-func.searchProducts = async function (userId, query, sortBy = 'newest') {
+func.searchProducts = async function (userId, query, sortBy = 'newest', isManager = false) {
     try {
         let q = [];
         let w = "LEFT JOIN wishlist w ON w.product_id = p.id AND w.user_id = ?";
