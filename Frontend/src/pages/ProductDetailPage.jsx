@@ -295,6 +295,20 @@ function getDisplayPrice(product, selectedOptionRecords, matchingVariant) {
   return Math.round(nextPrice * 100) / 100
 }
 
+function formatPriceDelta(delta) {
+  const roundedDelta = Math.round((Number(delta) || 0) * 100) / 100
+
+  if (Math.abs(roundedDelta) < 0.01) {
+    return ''
+  }
+
+  if (roundedDelta > 0) {
+    return `+${formatCurrency(roundedDelta)}`
+  }
+
+  return `-${formatCurrency(Math.abs(roundedDelta))}`
+}
+
 function formatOptionPriceDelta(optionValue, selectedOptionValue, basePrice = 0) {
   const priceAdd = Number(optionValue?.priceAdd) || 0
   const priceMult = Number(optionValue?.priceMult) || 1
@@ -304,7 +318,6 @@ function formatOptionPriceDelta(optionValue, selectedOptionValue, basePrice = 0)
 
   const optionTotal = (normalizedBasePrice + priceAdd) * priceMult
   const selectedTotal = (normalizedBasePrice + selectedPriceAdd) * selectedPriceMult
-  const delta = Math.round((optionTotal - selectedTotal) * 100) / 100
 
   if (!selectedOptionValue) {
     if (priceAdd > 0) {
@@ -322,15 +335,45 @@ function formatOptionPriceDelta(optionValue, selectedOptionValue, basePrice = 0)
     return ''
   }
 
-  if (Math.abs(delta) < 0.01) {
+  return formatPriceDelta(optionTotal - selectedTotal)
+}
+
+function formatVariantOptionPriceDelta({
+  product,
+  optionGroups,
+  selectedOptionsByGroup,
+  group,
+  optionValue,
+  selectedValue,
+  matchingVariant,
+}) {
+  if (!group?.storeAsVariant) {
+    return formatOptionPriceDelta(optionValue, selectedValue, product?.price)
+  }
+
+  const groupKey = getOptionGroupKey(group)
+  const optionValueCode = getOptionValueCode(optionValue)
+
+  if (!groupKey || !optionValueCode) {
     return ''
   }
 
-  if (delta > 0) {
-    return `+${formatCurrency(delta)}`
+  const candidateVariant = getMatchingVariant(product, optionGroups, {
+    ...selectedOptionsByGroup,
+    [groupKey]: optionValueCode,
+  })
+  const candidatePrice = Number(candidateVariant?.price)
+
+  if (!Number.isFinite(candidatePrice)) {
+    return formatOptionPriceDelta(optionValue, selectedValue, product?.price)
   }
 
-  return `-${formatCurrency(Math.abs(delta))}`
+  const selectedPrice = Number(matchingVariant?.price)
+  const comparisonPrice = Number.isFinite(selectedPrice)
+    ? selectedPrice
+    : Number(product?.price) || 0
+
+  return formatPriceDelta(candidatePrice - comparisonPrice)
 }
 
 function buildSelectedOptionsSnapshot(selectedOptionRecords) {
@@ -1818,7 +1861,15 @@ export default function ProductDetailPage() {
                           value: getOptionValueCode(optionValue),
                           label: optionValue.label,
                           description: optionValue.description,
-                          sideLabel: formatOptionPriceDelta(optionValue, selectedValue, product.price),
+                          sideLabel: formatVariantOptionPriceDelta({
+                            product,
+                            optionGroups,
+                            selectedOptionsByGroup,
+                            group,
+                            optionValue,
+                            selectedValue,
+                            matchingVariant,
+                          }),
                         }))}
                         menuMode="flow"
                         open={activeOptionMenu === groupKey}
