@@ -3,7 +3,13 @@ const path = require("path");
 const sql = require("../../Database/server.js");
 const uploader = require("../components/upload.js");
 
-function sanitizeProductForResponse(product) {
+function sanitizeProductForResponse(product, removeSalesData) {
+    if (removeSalesData) {
+        delete product.cost;
+        product.variants.forEach(variant => {
+            if (variant) delete variant.cost;
+        });
+    }
     delete product.sales;
     delete product.pick_stock;
     delete product.pick_review_count;
@@ -31,7 +37,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (ids.length > 0) {
                     return await sql.getProductsByIds(userId, ids, Boolean(query.urls && !query.ids), isManager).then(async result => {
                         if (result.success) {
-                            return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse), idsnotfound: result.idsnotfound } };
+                            return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse, !isManager), idsnotfound: result.idsnotfound } };
                         }
                         else {
                             return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -111,7 +117,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getTodaysPick(userId,isManager).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { product: result.product ? sanitizeProductForResponse(result.product) : null, personalized: result.personalized } };
+                    return { s: 200, j: true, d: { product: result.product ? sanitizeProductForResponse(result.product, !isManager) : null, personalized: result.personalized } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -128,7 +134,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "GET") {
             return await sql.getAllProducts(userId,isManager).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
+                    return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse, !isManager) } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -147,7 +153,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 query.q = query.q.replaceAll("%20", " ").trim();
                 return await sql.searchProducts(userId, query.q.trim(), query.s ? (["newest", "oldest", "price_asc", "price_desc", "sales", "rating"].includes(query.s.trim())) ? query.s : "newest" : "newest", isManager).then(async result => {
                     if (result.success) {
-                        return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse) } };
+                        return { s: 200, j: true, d: { products: result.products.map(sanitizeProductForResponse, !isManager) } };
                     }
                     else {
                         return { s: 400, j: true, d: { e: "An unknown error occurred" } };
@@ -168,7 +174,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const parent = endpoint.length > 0 ? endpoint[0] : null;
             return await sql.getCategories(parent).then(async result => {
                 if (result.success) {
-                    return { s: 200, j: true, d: { categories: result.categories, products: result.products ? result.products.map(sanitizeProductForResponse) : [] } };
+                    return { s: 200, j: true, d: { categories: result.categories, products: result.products ? result.products.map(sanitizeProductForResponse, !isManager) : [] } };
                 }
                 else {
                     return { s: 400, j: true, d: { e: "An unknown error occurred" } };
