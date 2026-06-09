@@ -246,7 +246,9 @@ function buildSlugMap(rawProducts) {
 
 function normalizeProduct(rawProduct) {
   const optionGroups = Array.isArray(rawProduct?.options)
-    ? rawProduct.options.map(normalizeProductOptionGroup)
+    ? rawProduct.options
+        .map(normalizeProductOptionGroup)
+        .sort((left, right) => left.priority - right.priority || left.name.localeCompare(right.name))
     : []
   const images = Array.isArray(rawProduct?.images)
     ? rawProduct.images
@@ -956,6 +958,113 @@ export async function createProductOption(productId, payload) {
     ...data,
     product,
   }
+}
+
+export async function updateProductOption(optionGroupId, edits) {
+  const normalizedOptionGroupId = Number(optionGroupId)
+  const normalizedEdits = normalizeVariantMutationPayload(edits)
+
+  if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+    throw new Error('Select a valid option before saving.')
+  }
+
+  if (!Object.keys(normalizedEdits).length) {
+    throw new Error('No option changes to save.')
+  }
+
+  const data = await requestJson('/products/options', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: normalizedOptionGroupId,
+      edits: normalizedEdits,
+    }),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function deleteProductOption(optionGroupId) {
+  const normalizedOptionGroupId = Number(optionGroupId)
+
+  if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+    throw new Error('Select a valid option before deleting.')
+  }
+
+  const data = await requestJson(
+    `/products/options?id=${encodeURIComponent(String(normalizedOptionGroupId))}`,
+    { method: 'DELETE' },
+  )
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function createProductOptionValue(optionGroupId, payload) {
+  const normalizedOptionGroupId = Number(optionGroupId)
+  const label = normalizeText(payload?.label ?? payload?.valueLabel ?? payload?.value_label)
+
+  if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+    throw new Error('Select a valid option before adding a variant.')
+  }
+
+  if (!label) {
+    throw new Error('Variant name is required.')
+  }
+
+  const data = await requestJson('/products/options/values', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      option_group_id: normalizedOptionGroupId,
+      label,
+    }),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function updateProductOptionValue(optionValueId, edits) {
+  const normalizedOptionValueId = Number(optionValueId)
+  const normalizedEdits = normalizeVariantMutationPayload(edits)
+
+  if (!Number.isFinite(normalizedOptionValueId) || normalizedOptionValueId <= 0) {
+    throw new Error('Select a valid variant before saving.')
+  }
+
+  if (!Object.keys(normalizedEdits).length) {
+    throw new Error('No variant changes to save.')
+  }
+
+  const data = await requestJson('/products/options/values', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id: normalizedOptionValueId,
+      edits: normalizedEdits,
+    }),
+  })
+
+  await fetchAllProducts({ force: true })
+  return data
+}
+
+export async function deleteProductOptionValue(optionValueId) {
+  const normalizedOptionValueId = Number(optionValueId)
+
+  if (!Number.isFinite(normalizedOptionValueId) || normalizedOptionValueId <= 0) {
+    throw new Error('Select a valid variant before deleting.')
+  }
+
+  const data = await requestJson(
+    `/products/options/values?id=${encodeURIComponent(String(normalizedOptionValueId))}`,
+    { method: 'DELETE' },
+  )
+
+  await fetchAllProducts({ force: true })
+  return data
 }
 
 function normalizeVariantMutationPayload(payload) {

@@ -26,9 +26,12 @@ import {
   isCoffeeProduct,
   createProduct,
   createProductOption,
+  createProductOptionValue,
   createProductVariant,
   createProductCategory,
   deleteProduct,
+  deleteProductOption,
+  deleteProductOptionValue,
   deleteProductVariant,
   deleteProductCategory,
   deleteProductImage,
@@ -36,6 +39,8 @@ import {
   updateProductImageSet,
   updateProductCategory,
   updateProductDetails,
+  updateProductOption,
+  updateProductOptionValue,
   updateProductVariant,
   uploadProductImage,
   useProductCatalog,
@@ -1239,12 +1244,102 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
   const optionGroups = useMemo(() => getVariantOptionGroups(product), [product])
   const [optionName, setOptionName] = useState('')
   const [optionValue, setOptionValue] = useState('')
+  const [editingOptionId, setEditingOptionId] = useState('')
+  const [optionDrafts, setOptionDrafts] = useState({})
+  const [editingValueId, setEditingValueId] = useState('')
+  const [valueDrafts, setValueDrafts] = useState({})
+  const [newValueDrafts, setNewValueDrafts] = useState({})
+  const [dragState, setDragState] = useState(null)
   const [optionState, setOptionState] = useState({
     busy: false,
     error: '',
     success: '',
   })
   const optionBusy = Boolean(optionState.busy)
+
+  function setOptionFeedback(nextState) {
+    setOptionState({
+      busy: false,
+      error: '',
+      success: '',
+      ...nextState,
+    })
+  }
+
+  function setOptionError(error) {
+    setOptionFeedback({
+      error: error?.message || 'Could not update product options.',
+      success: '',
+    })
+  }
+
+  function hasDuplicateOptionName(name, currentGroupId = null) {
+    const normalizedName = name.trim().toLowerCase()
+    return optionGroups.some((group) => (
+      String(group.id) !== String(currentGroupId) &&
+      String(group.name || '').trim().toLowerCase() === normalizedName
+    ))
+  }
+
+  function hasDuplicateValueName(group, label, currentValueId = null) {
+    const normalizedLabel = label.trim().toLowerCase()
+    return (group?.values || []).some((value) => (
+      String(value.id) !== String(currentValueId) &&
+      String(value.label || '').trim().toLowerCase() === normalizedLabel
+    ))
+  }
+
+  function getOptionDraft(group) {
+    return optionDrafts[String(group.id)] ?? group.name ?? ''
+  }
+
+  function getValueDraft(value) {
+    return valueDrafts[String(value.id)] ?? value.label ?? ''
+  }
+
+  function updateOptionDraft(groupId, value) {
+    setOptionDrafts((current) => ({
+      ...current,
+      [String(groupId)]: value,
+    }))
+  }
+
+  function updateValueDraft(valueId, value) {
+    setValueDrafts((current) => ({
+      ...current,
+      [String(valueId)]: value,
+    }))
+  }
+
+  function updateNewValueDraft(groupId, value) {
+    setNewValueDrafts((current) => ({
+      ...current,
+      [String(groupId)]: value,
+    }))
+  }
+
+  function beginEditOption(group) {
+    setEditingOptionId(String(group.id))
+    updateOptionDraft(group.id, group.name || '')
+    setOptionFeedback({})
+  }
+
+  function beginEditValue(value) {
+    setEditingValueId(String(value.id))
+    updateValueDraft(value.id, value.label || '')
+    setOptionFeedback({})
+  }
+
+  function finishOptionRequest(request, successMessage) {
+    setOptionState({ busy: true, error: '', success: '' })
+    void request
+      .then((result) => {
+        setOptionFeedback({
+          success: result?.msg || successMessage,
+        })
+      })
+      .catch(setOptionError)
+  }
 
   function handleAddOption() {
     const name = optionName.trim()
@@ -1259,10 +1354,29 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       return
     }
 
+    if (hasDuplicateOptionName(name)) {
+      setOptionState({
+        busy: false,
+        error: 'An option with this name already exists.',
+        success: '',
+      })
+      return
+    }
+
     if (!valueLabel) {
       setOptionState({
         busy: false,
         error: 'Option value is required.',
+        success: '',
+      })
+      return
+    }
+
+    const duplicateValueInNewOption = name.trim().toLowerCase() === valueLabel.trim().toLowerCase()
+    if (duplicateValueInNewOption) {
+      setOptionState({
+        busy: false,
+        error: 'Use a distinct variant name for the first value.',
         success: '',
       })
       return
@@ -1296,6 +1410,171 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       })
   }
 
+  function handleSaveOption(group) {
+    const name = getOptionDraft(group).trim()
+
+    if (!name) {
+      setOptionError(new Error('Option name is required.'))
+      return
+    }
+
+    if (hasDuplicateOptionName(name, group.id)) {
+      setOptionError(new Error('An option with this name already exists.'))
+      return
+    }
+
+    if (name === group.name) {
+      setEditingOptionId('')
+      setOptionFeedback({ success: 'No option changes to save.' })
+      return
+    }
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void updateProductOption(group.id, { name })
+      .then((result) => {
+        setEditingOptionId('')
+        setOptionFeedback({ success: result?.msg || 'Option updated.' })
+      })
+      .catch(setOptionError)
+  }
+
+  function handleDeleteOption(group) {
+    if (!window.confirm(`Delete "${group.name}" and its variants?`)) {
+      return
+    }
+
+    finishOptionRequest(
+      deleteProductOption(group.id),
+      'Option deleted.',
+    )
+  }
+
+  function handleAddValue(group) {
+    const label = String(newValueDrafts[String(group.id)] || '').trim()
+
+    if (!label) {
+      setOptionError(new Error('Variant name is required.'))
+      return
+    }
+
+    if (hasDuplicateValueName(group, label)) {
+      setOptionError(new Error('A variant with this name already exists in this option.'))
+      return
+    }
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void createProductOptionValue(group.id, { label })
+      .then((result) => {
+        updateNewValueDraft(group.id, '')
+        setOptionFeedback({ success: result?.msg || 'Variant added.' })
+      })
+      .catch(setOptionError)
+  }
+
+  function handleSaveValue(group, value) {
+    const label = getValueDraft(value).trim()
+
+    if (!label) {
+      setOptionError(new Error('Variant name is required.'))
+      return
+    }
+
+    if (hasDuplicateValueName(group, label, value.id)) {
+      setOptionError(new Error('A variant with this name already exists in this option.'))
+      return
+    }
+
+    if (label === value.label) {
+      setEditingValueId('')
+      setOptionFeedback({ success: 'No variant changes to save.' })
+      return
+    }
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void updateProductOptionValue(value.id, { label })
+      .then((result) => {
+        setEditingValueId('')
+        setOptionFeedback({ success: result?.msg || 'Variant updated.' })
+      })
+      .catch(setOptionError)
+  }
+
+  function handleDeleteValue(group, value) {
+    if ((group.values || []).length <= 1) {
+      setOptionError(new Error('An option must have at least one variant.'))
+      return
+    }
+
+    if (!window.confirm(`Delete "${value.label}" from ${group.name}?`)) {
+      return
+    }
+
+    finishOptionRequest(
+      deleteProductOptionValue(value.id),
+      'Variant deleted.',
+    )
+  }
+
+  function moveItem(items, fromIndex, toIndex) {
+    if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= items.length || toIndex >= items.length) {
+      return null
+    }
+
+    const nextItems = [...items]
+    const [item] = nextItems.splice(fromIndex, 1)
+    nextItems.splice(toIndex, 0, item)
+    return nextItems
+  }
+
+  function handleReorderOptions(fromIndex, toIndex) {
+    const reorderedOptions = moveItem(optionGroups, fromIndex, toIndex)
+    if (!reorderedOptions) {
+      return
+    }
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void Promise.all(
+      reorderedOptions.map((group, index) => updateProductOption(group.id, { priority: index + 1 })),
+    )
+      .then(() => {
+        setOptionFeedback({ success: 'Options reordered.' })
+      })
+      .catch(setOptionError)
+  }
+
+  function handleReorderValues(group, fromIndex, toIndex) {
+    const values = group.values || []
+    const reorderedValues = moveItem(values, fromIndex, toIndex)
+    if (!reorderedValues) {
+      return
+    }
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void Promise.all(
+      reorderedValues.map((value, index) => updateProductOptionValue(value.id, { sort_order: index })),
+    )
+      .then(() => {
+        setOptionFeedback({ success: 'Variants reordered.' })
+      })
+      .catch(setOptionError)
+  }
+
+  function handleDropOption(targetIndex) {
+    if (dragState?.type !== 'option') {
+      return
+    }
+    handleReorderOptions(dragState.index, targetIndex)
+    setDragState(null)
+  }
+
+  function handleDropValue(group, targetIndex) {
+    if (dragState?.type !== 'value' || String(dragState.groupId) !== String(group.id)) {
+      return
+    }
+    handleReorderValues(group, dragState.index, targetIndex)
+    setDragState(null)
+  }
+
   return (
     <section
       className="aurora-product-edit-group aurora-product-option-manager"
@@ -1304,7 +1583,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       <div className="aurora-product-image-manager-header">
         <div>
           <p className="aurora-product-edit-label">Product options</p>
-          <h3>Add selectable options</h3>
+          <h3>Edit options and variants</h3>
         </div>
         <span>{optionGroups.length} {optionGroups.length === 1 ? 'option' : 'options'}</span>
       </div>
@@ -1331,7 +1610,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
             type="text"
             value={optionValue}
             disabled={optionBusy}
-            placeholder="250g"
+            placeholder="250g, 500g, 1kg"
             onChange={(event) => {
               setOptionValue(event.target.value)
             }}
@@ -1377,16 +1656,310 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       ) : null}
 
       {optionGroups.length ? (
-        <div className="aurora-product-variant-list" aria-label="Current product options">
-          {optionGroups.map((group) => (
-            <article key={getVariantGroupKey(group)} className="aurora-product-variant-row">
-              <div>
-                <p className="aurora-product-image-name">{group.name || 'Option'}</p>
-                <p className="aurora-product-image-meta">
-                  {(group.values || []).map((value) => value.label).join(', ') || 'No values yet'}
-                </p>
+        <div className="aurora-product-option-tree" role="tree" aria-label="Current product options">
+          {optionGroups.map((group, groupIndex) => (
+            <article
+              key={getVariantGroupKey(group)}
+              className="aurora-product-option-node"
+              role="treeitem"
+              aria-level={1}
+              aria-expanded="true"
+              draggable={!optionBusy}
+              onDragStart={() => {
+                setDragState({ type: 'option', index: groupIndex })
+              }}
+              onDragOver={(event) => {
+                event.preventDefault()
+              }}
+              onDrop={() => {
+                handleDropOption(groupIndex)
+              }}
+            >
+              <div className="aurora-product-option-node-header">
+                <button
+                  type="button"
+                  className="aurora-product-option-drag"
+                  aria-label={`Drag ${group.name || 'option'} to reorder`}
+                  disabled={optionBusy}
+                >
+                  ::
+                </button>
+                {editingOptionId === String(group.id) ? (
+                  <label className="aurora-product-edit-field aurora-product-option-name-editor">
+                    <span className="sr-only">Option name</span>
+                    <input
+                      className="aurora-input aurora-product-edit-input"
+                      type="text"
+                      value={getOptionDraft(group)}
+                      disabled={optionBusy}
+                      onChange={(event) => {
+                        updateOptionDraft(group.id, event.target.value)
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          handleSaveOption(group)
+                        }
+                        if (event.key === 'Escape') {
+                          setEditingOptionId('')
+                          setOptionFeedback({})
+                        }
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <div>
+                    <p className="aurora-product-image-name">{group.name || 'Option'}</p>
+                    <p className="aurora-product-image-meta">
+                      {(group.values || []).length} {(group.values || []).length === 1 ? 'variant' : 'variants'}
+                    </p>
+                  </div>
+                )}
+                <div className="aurora-product-option-node-actions">
+                  {editingOptionId === String(group.id) ? (
+                    <>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="secondary"
+                        size="compact"
+                        disabled={optionBusy}
+                        onClick={() => {
+                          handleSaveOption(group)
+                        }}
+                      >
+                        Save
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled={optionBusy}
+                        onClick={() => {
+                          setEditingOptionId('')
+                          setOptionFeedback({})
+                        }}
+                      >
+                        Cancel
+                      </LiquidGlassButton>
+                    </>
+                  ) : (
+                    <>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled={optionBusy}
+                        onClick={() => {
+                          beginEditOption(group)
+                        }}
+                      >
+                        Rename
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled={optionBusy || groupIndex === 0}
+                        onClick={() => {
+                          handleReorderOptions(groupIndex, groupIndex - 1)
+                        }}
+                      >
+                        Up
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="quiet"
+                        size="compact"
+                        disabled={optionBusy || groupIndex === optionGroups.length - 1}
+                        onClick={() => {
+                          handleReorderOptions(groupIndex, groupIndex + 1)
+                        }}
+                      >
+                        Down
+                      </LiquidGlassButton>
+                      <LiquidGlassButton
+                        type="button"
+                        variant="danger"
+                        size="compact"
+                        disabled={optionBusy}
+                        onClick={() => {
+                          handleDeleteOption(group)
+                        }}
+                      >
+                        Delete
+                      </LiquidGlassButton>
+                    </>
+                  )}
+                </div>
               </div>
-              <strong>{(group.values || []).length}</strong>
+
+              <div className="aurora-product-option-value-list" role="group">
+                {(group.values || []).map((value, valueIndex) => (
+                  <div
+                    key={value.id}
+                    className="aurora-product-option-value-row"
+                    role="treeitem"
+                    aria-level={2}
+                    draggable={!optionBusy}
+                    onDragStart={() => {
+                      setDragState({ type: 'value', groupId: group.id, index: valueIndex })
+                    }}
+                    onDragOver={(event) => {
+                      event.preventDefault()
+                    }}
+                    onDrop={() => {
+                      handleDropValue(group, valueIndex)
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="aurora-product-option-drag"
+                      aria-label={`Drag ${value.label || 'variant'} to reorder`}
+                      disabled={optionBusy}
+                    >
+                      ::
+                    </button>
+                    {editingValueId === String(value.id) ? (
+                      <label className="aurora-product-edit-field aurora-product-option-name-editor">
+                        <span className="sr-only">Variant name</span>
+                        <input
+                          className="aurora-input aurora-product-edit-input"
+                          type="text"
+                          value={getValueDraft(value)}
+                          disabled={optionBusy}
+                          onChange={(event) => {
+                            updateValueDraft(value.id, event.target.value)
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              handleSaveValue(group, value)
+                            }
+                            if (event.key === 'Escape') {
+                              setEditingValueId('')
+                              setOptionFeedback({})
+                            }
+                          }}
+                        />
+                      </label>
+                    ) : (
+                      <div>
+                        <p className="aurora-product-image-name">{value.label || 'Variant'}</p>
+                        <p className="aurora-product-image-meta">Value #{value.id}</p>
+                      </div>
+                    )}
+                    <div className="aurora-product-option-node-actions">
+                      {editingValueId === String(value.id) ? (
+                        <>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="secondary"
+                            size="compact"
+                            disabled={optionBusy}
+                            onClick={() => {
+                              handleSaveValue(group, value)
+                            }}
+                          >
+                            Save
+                          </LiquidGlassButton>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="quiet"
+                            size="compact"
+                            disabled={optionBusy}
+                            onClick={() => {
+                              setEditingValueId('')
+                              setOptionFeedback({})
+                            }}
+                          >
+                            Cancel
+                          </LiquidGlassButton>
+                        </>
+                      ) : (
+                        <>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="quiet"
+                            size="compact"
+                            disabled={optionBusy}
+                            onClick={() => {
+                              beginEditValue(value)
+                            }}
+                          >
+                            Rename
+                          </LiquidGlassButton>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="quiet"
+                            size="compact"
+                            disabled={optionBusy || valueIndex === 0}
+                            onClick={() => {
+                              handleReorderValues(group, valueIndex, valueIndex - 1)
+                            }}
+                          >
+                            Up
+                          </LiquidGlassButton>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="quiet"
+                            size="compact"
+                            disabled={optionBusy || valueIndex === (group.values || []).length - 1}
+                            onClick={() => {
+                              handleReorderValues(group, valueIndex, valueIndex + 1)
+                            }}
+                          >
+                            Down
+                          </LiquidGlassButton>
+                          <LiquidGlassButton
+                            type="button"
+                            variant="danger"
+                            size="compact"
+                            disabled={optionBusy || (group.values || []).length <= 1}
+                            onClick={() => {
+                              handleDeleteValue(group, value)
+                            }}
+                          >
+                            Delete
+                          </LiquidGlassButton>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="aurora-product-option-add-value">
+                <label className="aurora-product-edit-field">
+                  <span className="aurora-product-edit-label">Add variant to {group.name || 'option'}</span>
+                  <input
+                    className="aurora-input aurora-product-edit-input mt-3"
+                    type="text"
+                    value={newValueDrafts[String(group.id)] || ''}
+                    disabled={optionBusy}
+                    placeholder="500g"
+                    onChange={(event) => {
+                      updateNewValueDraft(group.id, event.target.value)
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault()
+                        handleAddValue(group)
+                      }
+                    }}
+                  />
+                </label>
+                <LiquidGlassButton
+                  type="button"
+                  variant="secondary"
+                  size="compact"
+                  disabled={optionBusy}
+                  onClick={() => {
+                    handleAddValue(group)
+                  }}
+                >
+                  Add variant
+                </LiquidGlassButton>
+              </div>
             </article>
           ))}
         </div>

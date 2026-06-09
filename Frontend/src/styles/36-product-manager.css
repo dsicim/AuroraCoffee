@@ -619,6 +619,75 @@
     gap: 0.65rem;
   }
 
+  .aurora-product-option-tree {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .aurora-product-option-node {
+    display: grid;
+    gap: 0.75rem;
+    border: 1px solid rgba(255, 248, 241, 0.22);
+    border-radius: 1rem;
+    padding: 0.85rem;
+    background: rgba(255, 252, 248, 0.16);
+  }
+
+  .aurora-product-option-node:focus-within {
+    border-color: rgba(126, 159, 135, 0.42);
+  }
+
+  .aurora-product-option-node-header,
+  .aurora-product-option-value-row,
+  .aurora-product-option-add-value {
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .aurora-product-option-node-header,
+  .aurora-product-option-value-row {
+    align-items: center;
+  }
+
+  .aurora-product-option-value-list {
+    display: grid;
+    gap: 0.55rem;
+    padding-inline-start: 1rem;
+  }
+
+  .aurora-product-option-value-row {
+    border: 1px solid rgba(126, 159, 135, 0.18);
+    border-radius: 0.85rem;
+    padding: 0.7rem;
+    background: rgba(255, 252, 248, 0.13);
+  }
+
+  .aurora-product-option-drag {
+    width: 2rem;
+    height: 2rem;
+    border: 1px solid rgba(126, 159, 135, 0.22);
+    border-radius: 0.7rem;
+    background: rgba(255, 252, 248, 0.2);
+    color: var(--aurora-text);
+    font-weight: 900;
+    cursor: grab;
+  }
+
+  .aurora-product-option-drag:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .aurora-product-option-name-editor {
+    min-width: 0;
+  }
+
+  .aurora-product-option-node-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
   .aurora-product-variant-row {
     display: flex;
     align-items: center;
@@ -723,6 +792,8 @@
   [data-theme='dark'] .aurora-product-edit-stats div,
   [data-theme='dark'] .aurora-product-edit-attribute-summary,
   [data-theme='dark'] .aurora-product-image-row,
+  [data-theme='dark'] .aurora-product-option-node,
+  [data-theme='dark'] .aurora-product-option-value-row,
   [data-theme='dark'] .aurora-product-variant-row {
     border-color: rgba(211, 227, 216, 0.13);
     background: rgba(17, 27, 24, 0.46);
@@ -778,6 +849,17 @@
 
     .aurora-product-variant-form {
       grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .aurora-product-option-node-header,
+    .aurora-product-option-value-row {
+      grid-template-columns: auto minmax(0, 1fr) auto;
+    }
+
+    .aurora-product-option-add-value {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+      padding-inline-start: 3rem;
     }
 
     .aurora-product-image-row {

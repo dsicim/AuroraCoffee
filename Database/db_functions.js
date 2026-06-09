@@ -829,6 +829,29 @@ function buildOptionCode(value, fallback) {
     return code || null;
 }
 
+async function syncProductVariantFlag(connection, productId) {
+    const [variantRows] = await connection.execute('SELECT COUNT(*) AS count FROM product_variants WHERE product_id = ?', [productId]);
+    const [optionRows] = await connection.execute('SELECT COUNT(*) AS count FROM product_option_groups WHERE product_id = ?', [productId]);
+    const hasVariants = Number(variantRows[0] && variantRows[0].count) > 0 || Number(optionRows[0] && optionRows[0].count) > 0;
+    await connection.execute('UPDATE products SET has_variants = ? WHERE id = ?', [hasVariants, productId]);
+}
+
+async function deleteVariantsForOptionValues(connection, optionValueIds) {
+    const ids = (Array.isArray(optionValueIds) ? optionValueIds : [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0);
+    if (!ids.length) return;
+
+    const [variantRows] = await connection.query(
+        'SELECT DISTINCT product_variant_id AS id FROM product_variant_values WHERE product_option_value_id IN (?)',
+        [ids]
+    );
+    const variantIds = variantRows.map(row => Number(row.id)).filter(id => Number.isFinite(id) && id > 0);
+    if (variantIds.length) {
+        await connection.query('DELETE FROM product_variants WHERE id IN (?)', [variantIds]);
+    }
+}
+
 func.addProductOption = async function (data) {
     const { product_id, name, group_code, value_label, value_code } = data;
     const normalizedProductId = Number(product_id);
@@ -874,6 +897,216 @@ func.addProductOption = async function (data) {
         if (error instanceof DBError) throw error;
         console.error('Add product option error:', error);
         throw new DBError(500, 'Failed to add product option: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.updateProductOption = async function (optionGroupId, data) {
+    const normalizedOptionGroupId = Number(optionGroupId);
+    if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+        throw new DBError(400, 'Option ID is required');
+    }
+
+    const allowedFields = [];
+    const values = [];
+    if (data.name !== undefined) {
+        const name = String(data.name || "").trim();
+        if (!name) {
+            throw new DBError(400, 'Option name is required');
+        }
+        allowedFields.push('name = ?', 'group_code = ?');
+        values.push(name, buildOptionCode(data.group_code, name));
+    }
+    if (data.priority !== undefined) {
+        const priority = Number(data.priority);
+        if (!Number.isFinite(priority)) {
+            throw new DBError(400, 'Option priority must be a number');
+        }
+        allowedFields.push('priority = ?');
+        values.push(Math.round(priority));
+    }
+    if (!allowedFields.length) {
+        throw new DBError(400, 'No option changes to save');
+    }
+
+    values.push(normalizedOptionGroupId);
+    try {
+        const [result] = await pool.execute(`UPDATE product_option_groups SET ${allowedFields.join(', ')} WHERE id = ?`, values);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Option not found');
+        }
+        return { success: true, message: 'Product option updated successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Update product option error:', error);
+        throw new DBError(500, 'Failed to update product option: ' + error.message);
+    }
+};
+
+func.deleteProductOption = async function (optionGroupId) {
+    const normalizedOptionGroupId = Number(optionGroupId);
+    if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+        throw new DBError(400, 'Option ID is required');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [groups] = await connection.execute(
+            'SELECT product_id FROM product_option_groups WHERE id = ? FOR UPDATE',
+            [normalizedOptionGroupId]
+        );
+        if (!groups.length) {
+            throw new DBError(404, 'Option not found');
+        }
+        const productId = groups[0].product_id;
+        const [values] = await connection.execute(
+            'SELECT id FROM product_option_values WHERE product_option_group_id = ?',
+            [normalizedOptionGroupId]
+        );
+        await deleteVariantsForOptionValues(connection, values.map(value => value.id));
+        const [result] = await connection.execute('DELETE FROM product_option_groups WHERE id = ?', [normalizedOptionGroupId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Option not found');
+        }
+        await syncProductVariantFlag(connection, productId);
+        await connection.commit();
+        return { success: true, message: 'Product option deleted successfully' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Delete product option error:', error);
+        throw new DBError(500, 'Failed to delete product option: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.addProductOptionValue = async function (data) {
+    const { option_group_id, label, value_code } = data;
+    const normalizedOptionGroupId = Number(option_group_id);
+    const valueLabel = String(label || data.value_label || "").trim();
+    if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
+        throw new DBError(400, 'Option ID is required');
+    }
+    if (!valueLabel) {
+        throw new DBError(400, 'Variant name is required');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [groups] = await connection.execute(
+            'SELECT id FROM product_option_groups WHERE id = ? FOR UPDATE',
+            [normalizedOptionGroupId]
+        );
+        if (!groups.length) {
+            throw new DBError(404, 'Option not found');
+        }
+        const [orders] = await connection.execute(
+            'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM product_option_values WHERE product_option_group_id = ?',
+            [normalizedOptionGroupId]
+        );
+        const [result] = await connection.execute(`
+            INSERT INTO product_option_values (
+                product_option_group_id, label, value_code, price_add, price_mult, sort_order
+            ) VALUES (?, ?, ?, 0.00, 1.0000, ?)
+        `, [normalizedOptionGroupId, valueLabel, buildOptionCode(value_code, valueLabel), Number(orders[0].next_order) || 0]);
+        await connection.commit();
+        return { success: true, message: 'Option variant added successfully', optionValueId: result.insertId };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Add option variant error:', error);
+        throw new DBError(500, 'Failed to add option variant: ' + error.message);
+    } finally {
+        connection.release();
+    }
+};
+
+func.updateProductOptionValue = async function (optionValueId, data) {
+    const normalizedOptionValueId = Number(optionValueId);
+    if (!Number.isFinite(normalizedOptionValueId) || normalizedOptionValueId <= 0) {
+        throw new DBError(400, 'Variant ID is required');
+    }
+
+    const fields = [];
+    const values = [];
+    if (data.label !== undefined || data.value_label !== undefined) {
+        const label = String(data.label || data.value_label || "").trim();
+        if (!label) {
+            throw new DBError(400, 'Variant name is required');
+        }
+        fields.push('label = ?', 'value_code = ?');
+        values.push(label, buildOptionCode(data.value_code, label));
+    }
+    if (data.sort_order !== undefined) {
+        const sortOrder = Number(data.sort_order);
+        if (!Number.isFinite(sortOrder)) {
+            throw new DBError(400, 'Variant sort order must be a number');
+        }
+        fields.push('sort_order = ?');
+        values.push(Math.round(sortOrder));
+    }
+    if (!fields.length) {
+        throw new DBError(400, 'No variant changes to save');
+    }
+
+    values.push(normalizedOptionValueId);
+    try {
+        const [result] = await pool.execute(`UPDATE product_option_values SET ${fields.join(', ')} WHERE id = ?`, values);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Variant not found');
+        }
+        return { success: true, message: 'Option variant updated successfully' };
+    } catch (error) {
+        if (error instanceof DBError) throw error;
+        console.error('Update option variant error:', error);
+        throw new DBError(500, 'Failed to update option variant: ' + error.message);
+    }
+};
+
+func.deleteProductOptionValue = async function (optionValueId) {
+    const normalizedOptionValueId = Number(optionValueId);
+    if (!Number.isFinite(normalizedOptionValueId) || normalizedOptionValueId <= 0) {
+        throw new DBError(400, 'Variant ID is required');
+    }
+
+    const connection = await pool.getConnection();
+    try {
+        await connection.beginTransaction();
+        const [values] = await connection.execute(`
+            SELECT pov.id, pog.product_id, pov.product_option_group_id
+            FROM product_option_values pov
+            JOIN product_option_groups pog ON pov.product_option_group_id = pog.id
+            WHERE pov.id = ? FOR UPDATE
+        `, [normalizedOptionValueId]);
+        if (!values.length) {
+            throw new DBError(404, 'Variant not found');
+        }
+        const currentValue = values[0];
+        const [countRows] = await connection.execute(
+            'SELECT COUNT(*) AS count FROM product_option_values WHERE product_option_group_id = ?',
+            [currentValue.product_option_group_id]
+        );
+        if (Number(countRows[0] && countRows[0].count) <= 1) {
+            throw new DBError(400, 'An option must have at least one variant');
+        }
+
+        await deleteVariantsForOptionValues(connection, [normalizedOptionValueId]);
+        const [result] = await connection.execute('DELETE FROM product_option_values WHERE id = ?', [normalizedOptionValueId]);
+        if (result.affectedRows === 0) {
+            throw new DBError(404, 'Variant not found');
+        }
+        await syncProductVariantFlag(connection, currentValue.product_id);
+        await connection.commit();
+        return { success: true, message: 'Option variant deleted successfully' };
+    } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
+        console.error('Delete option variant error:', error);
+        throw new DBError(500, 'Failed to delete option variant: ' + error.message);
     } finally {
         connection.release();
     }
