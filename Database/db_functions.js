@@ -970,23 +970,6 @@ async function buildVariantCodeForOptionValueIds(connection, optionValueIds) {
         : null;
 }
 
-async function refreshVariantCodes(connection, variantIds) {
-    const ids = Array.from(new Set((Array.isArray(variantIds) ? variantIds : [])
-        .map(id => Number(id))
-        .filter(id => Number.isFinite(id) && id > 0)));
-    for (const variantId of ids) {
-        const [valueRows] = await connection.execute(
-            'SELECT product_option_value_id FROM product_variant_values WHERE product_variant_id = ?',
-            [variantId]
-        );
-        const variantCode = await buildVariantCodeForOptionValueIds(
-            connection,
-            valueRows.map(row => row.product_option_value_id)
-        );
-        await connection.execute('UPDATE product_variants SET variant_code = ? WHERE id = ?', [variantCode, variantId]);
-    }
-}
-
 async function syncVariantOptionValueMappings(connection, variantId, optionValueIds) {
     const normalizedVariantId = Number(variantId);
     const normalizedIds = Array.from(new Set((Array.isArray(optionValueIds) ? optionValueIds : [])
