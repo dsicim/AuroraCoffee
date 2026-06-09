@@ -4,6 +4,8 @@ import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { formatCurrency } from '../lib/currency'
 import { fetchAuthJson } from '../lib/authRequest'
+import { getAuthStateSnapshot } from '../features/auth/application/auth'
+import { normalizeUserRole, userRoles } from '../features/auth/domain/roles'
 import {
   fetchAdminOrderById,
   fetchAdminOrders,
@@ -450,6 +452,7 @@ function MetricTile({ label, value, description }) {
 }
 
 export default function SalesManagerPage() {
+  const [viewerRole] = useState(() => normalizeUserRole(getAuthStateSnapshot().user?.role))
   const [orders, setOrders] = useState([])
   const [salesAnalytics, setSalesAnalytics] = useState(null)
   const [selectedOrderId, setSelectedOrderId] = useState('')
@@ -465,6 +468,7 @@ export default function SalesManagerPage() {
   const [analyticsError, setAnalyticsError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [pendingDeliveredStatus, setPendingDeliveredStatus] = useState('')
+  const isProductManagerView = viewerRole === userRoles.productManager
 
   useEffect(() => {
     let active = true
@@ -508,6 +512,15 @@ export default function SalesManagerPage() {
   useEffect(() => {
     let active = true
 
+    if (isProductManagerView) {
+      setSalesAnalytics(null)
+      setAnalyticsLoading(false)
+      setAnalyticsError('')
+      return () => {
+        active = false
+      }
+    }
+
     setAnalyticsLoading(true)
     setAnalyticsError('')
 
@@ -536,7 +549,7 @@ export default function SalesManagerPage() {
     return () => {
       active = false
     }
-  }, [])
+  }, [isProductManagerView])
 
   useEffect(() => {
     let active = true
@@ -638,7 +651,7 @@ export default function SalesManagerPage() {
 
   const handleRefresh = async () => {
     setOrdersLoading(true)
-    setAnalyticsLoading(true)
+    setAnalyticsLoading(!isProductManagerView)
     setFeedback('')
     setError('')
     setAnalyticsError('')
@@ -646,7 +659,7 @@ export default function SalesManagerPage() {
     try {
       const [ordersResult, analyticsResult] = await Promise.allSettled([
         fetchAdminOrders(),
-        fetchSalesAnalytics(),
+        isProductManagerView ? Promise.resolve(null) : fetchSalesAnalytics(),
       ])
 
       if (ordersResult.status === 'fulfilled') {
@@ -664,18 +677,20 @@ export default function SalesManagerPage() {
 
       if (analyticsResult.status === 'fulfilled') {
         setSalesAnalytics(analyticsResult.value)
-      } else {
+      } else if (!isProductManagerView) {
         setAnalyticsError(analyticsResult.reason?.message || 'Could not refresh sales analytics.')
       }
 
       if (ordersResult.status === 'fulfilled' || analyticsResult.status === 'fulfilled') {
-        setFeedback('Sales manager data refreshed.')
+        setFeedback(isProductManagerView ? 'Shipping queue refreshed.' : 'Sales manager data refreshed.')
       }
     } catch (refreshError) {
       setError(refreshError?.message || 'Could not refresh orders.')
     } finally {
       setOrdersLoading(false)
-      setAnalyticsLoading(false)
+      if (!isProductManagerView) {
+        setAnalyticsLoading(false)
+      }
     }
   }
 
@@ -777,19 +792,23 @@ export default function SalesManagerPage() {
 
   return (
     <RoleOverviewLayout
-      eyebrow="Sales manager"
-      title="Manage live orders"
-      description="A focused fulfillment console for order lookup, invoice access, delivery review, and status movement."
+      eyebrow={isProductManagerView ? 'Product manager' : 'Sales manager'}
+      title={isProductManagerView ? 'Review shipping details' : 'Manage live orders'}
+      description={isProductManagerView
+        ? 'A focused fulfillment view for order lookup, delivery review, and shipping status.'
+        : 'A focused fulfillment console for order lookup, invoice access, delivery review, and status movement.'}
     >
       <div className="aurora-sales-manager-page space-y-6">
-        <div className="space-y-4">
-          <SalesAnalyticsGraph
-            analytics={salesAnalytics}
-            loading={analyticsLoading}
-            error={analyticsError}
-          />
-          <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
-        </div>
+        {!isProductManagerView ? (
+          <div className="space-y-4">
+            <SalesAnalyticsGraph
+              analytics={salesAnalytics}
+              loading={analyticsLoading}
+              error={analyticsError}
+            />
+            <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
+          </div>
+        ) : null}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricTile
@@ -887,7 +906,7 @@ export default function SalesManagerPage() {
                   Loading orders
                 </p>
                 <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                  Fetching the sales manager order list from the backend.
+                  Fetching the order list from the backend.
                 </p>
               </div>
             ) : !orders.length ? (
@@ -988,7 +1007,7 @@ export default function SalesManagerPage() {
               {selectedOrder ? (
                 <>
                   <div className="aurora-widget-subsurface p-5">
-                    <div className="grid gap-4 sm:grid-cols-4">
+                    <div className={`grid gap-4 ${isProductManagerView ? 'sm:grid-cols-2' : 'sm:grid-cols-4'}`}>
                       <div>
                         <p className="aurora-kicker">Status</p>
                         <p className="mt-2 text-lg font-semibold text-[var(--aurora-text-strong)]">
@@ -1001,22 +1020,27 @@ export default function SalesManagerPage() {
                           {formatTimestamp(selectedOrder.submittedAt)}
                         </p>
                       </div>
-                      <div>
-                        <p className="aurora-kicker">Items</p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--aurora-text-strong)]">
-                          {selectedOrder.itemCount}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="aurora-kicker">Total</p>
-                        <p className="mt-2 text-lg font-semibold text-[var(--aurora-text-strong)]">
-                          {formatCurrency(selectedOrder.total)}
-                        </p>
-                      </div>
+                      {!isProductManagerView ? (
+                        <>
+                          <div>
+                            <p className="aurora-kicker">Items</p>
+                            <p className="mt-2 text-lg font-semibold text-[var(--aurora-text-strong)]">
+                              {selectedOrder.itemCount}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="aurora-kicker">Total</p>
+                            <p className="mt-2 text-lg font-semibold text-[var(--aurora-text-strong)]">
+                              {formatCurrency(selectedOrder.total)}
+                            </p>
+                          </div>
+                        </>
+                      ) : null}
                     </div>
                   </div>
 
-                  <div className="aurora-widget-subsurface p-5">
+                  {!isProductManagerView ? (
+                    <div className="aurora-widget-subsurface p-5">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                       <label>
                         <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
@@ -1050,6 +1074,7 @@ export default function SalesManagerPage() {
                       </div>
                     </div>
                   </div>
+                  ) : null}
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="aurora-widget-subsurface p-5">
@@ -1085,7 +1110,8 @@ export default function SalesManagerPage() {
                       </div>
                     </div>
 
-                    <div className="aurora-widget-subsurface p-5">
+                    {!isProductManagerView ? (
+                      <div className="aurora-widget-subsurface p-5">
                       <p className="aurora-kicker">Payment</p>
                       <p className="mt-3 text-sm font-semibold text-[var(--aurora-text-strong)]">
                         {selectedOrder.payment?.summary || 'Payment details unavailable'}
@@ -1093,12 +1119,13 @@ export default function SalesManagerPage() {
                       <p className="text-sm leading-7 text-[var(--aurora-text)]">
                         {selectedOrder.payment?.installmentCount > 1
                           ? `${selectedOrder.payment.installmentCount} installments`
-                          : 'Single payment'}
+                        : 'Single payment'}
                       </p>
                     </div>
+                    ) : null}
                   </div>
 
-                  {selectedRefundItems.length ? (
+                  {!isProductManagerView && selectedRefundItems.length ? (
                     <div className="aurora-widget-subsurface p-5">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
@@ -1116,7 +1143,8 @@ export default function SalesManagerPage() {
                     </div>
                   ) : null}
 
-                  <div className="aurora-widget-subsurface p-5">
+                  {!isProductManagerView ? (
+                    <div className="aurora-widget-subsurface p-5">
                     <div className="flex items-center justify-between gap-4">
                       <p className="aurora-kicker">Items</p>
                       <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
@@ -1202,6 +1230,7 @@ export default function SalesManagerPage() {
                       })}
                     </div>
                   </div>
+                  ) : null}
                 </>
               ) : null}
             </div>
