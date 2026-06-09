@@ -6,7 +6,7 @@ import LiquidGlassFrame from '../shared/components/ui/LiquidGlassFrame'
 import ProductCard from '../features/products/presentation/ProductCard'
 import StorefrontLayout from '../shared/components/layout/StorefrontLayout'
 import {
-  getProductCategories,
+  getProductCategoryPath,
   getProductRequestErrorMessage,
   productMatchesCategory,
   searchProducts,
@@ -23,6 +23,43 @@ const sortOptions = [
 ]
 const defaultCategory = 'All'
 const sortOptionValues = new Set(sortOptions.map((option) => option.value))
+
+function buildCustomerCategoryTree(products) {
+  const parentsByName = new Map()
+
+  for (const product of products || []) {
+    const parentName = String(product?.parentCategoryName || '').trim()
+    const categoryName = String(product?.categoryName || '').trim()
+    const categoryPath = getProductCategoryPath(product)
+    const parentLabel = parentName || categoryName || categoryPath
+
+    if (!parentLabel) {
+      continue
+    }
+
+    if (!parentsByName.has(parentLabel)) {
+      parentsByName.set(parentLabel, {
+        label: parentLabel,
+        value: parentLabel,
+        children: new Map(),
+      })
+    }
+
+    if (parentName && categoryName && categoryName !== parentName && categoryPath) {
+      parentsByName.get(parentLabel).children.set(categoryPath, {
+        label: categoryName,
+        value: categoryPath,
+      })
+    }
+  }
+
+  return [...parentsByName.values()]
+    .map((parent) => ({
+      ...parent,
+      children: [...parent.children.values()].sort((left, right) => left.label.localeCompare(right.label)),
+    }))
+    .sort((left, right) => left.label.localeCompare(right.label))
+}
 
 function sortProducts(items, sortBy) {
   const sortableItems = [...items]
@@ -68,12 +105,29 @@ export default function ProductsPage() {
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState('')
 
-  const categories = useMemo(
-    () => (loaded ? getProductCategories(products) : []),
+  const categoryTree = useMemo(
+    () => (loaded ? buildCustomerCategoryTree(products) : []),
     [loaded, products],
   )
+  const categoryOptions = useMemo(
+    () => [
+      defaultCategory,
+      ...categoryTree.flatMap((parent) => [
+        parent.value,
+        ...parent.children.map((child) => child.value),
+      ]),
+    ],
+    [categoryTree],
+  )
   const categoryParam = searchParams.get('category') || defaultCategory
-  const category = categories.includes(categoryParam) ? categoryParam : defaultCategory
+  const category = categoryOptions.includes(categoryParam) ? categoryParam : defaultCategory
+  const activeParentCategory = category === defaultCategory
+    ? null
+    : categoryTree.find((parent) => (
+        parent.value === category ||
+        parent.children.some((child) => child.value === category)
+      )) || null
+  const childCategoryOptions = activeParentCategory?.children || []
   const sortParam = searchParams.get('sort') || 'newest'
   const sortBy = sortOptionValues.has(sortParam) ? sortParam : 'newest'
   const normalizedSearch = search.trim().toLowerCase()
@@ -286,21 +340,50 @@ export default function ProductsPage() {
                 Loading categories
               </p>
             ) : (
-              categories.map((option) => (
+              [
+                { label: defaultCategory, value: defaultCategory },
+                ...categoryTree.map((parent) => ({ label: parent.label, value: parent.value })),
+              ].map((option) => (
                 <LiquidGlassButton
-                  key={option}
+                  key={option.value}
                   type="button"
                   variant="chip"
                   size="compact"
-                  selected={category === option}
-                  aria-pressed={category === option}
-                  onClick={() => updateCategory(option)}
+                  selected={
+                    option.value === defaultCategory
+                      ? category === defaultCategory
+                      : activeParentCategory?.value === option.value
+                  }
+                  aria-pressed={
+                    option.value === defaultCategory
+                      ? category === defaultCategory
+                      : activeParentCategory?.value === option.value
+                  }
+                  onClick={() => updateCategory(option.value)}
                 >
-                  {option}
+                  {option.label}
                 </LiquidGlassButton>
               ))
             )}
           </div>
+
+          {loaded && childCategoryOptions.length && activeParentCategory ? (
+            <div className="aurora-product-filter-row mt-3 flex flex-wrap gap-2.5">
+              {childCategoryOptions.map((option) => (
+                <LiquidGlassButton
+                  key={option.value}
+                  type="button"
+                  variant="chip"
+                  size="compact"
+                  selected={category === option.value}
+                  aria-pressed={category === option.value}
+                  onClick={() => updateCategory(option.value)}
+                >
+                  {option.label}
+                </LiquidGlassButton>
+              ))}
+            </div>
+          ) : null}
         </LiquidGlassFrame>
 
         <AuroraWidget
