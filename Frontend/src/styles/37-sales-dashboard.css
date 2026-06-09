@@ -1,25 +1,76 @@
 @layer components {
+  .aurora-sales-manager-page {
+    --sales-page-panel:
+      linear-gradient(180deg, var(--aurora-surface-strong), var(--aurora-surface)),
+      var(--aurora-surface);
+    --sales-page-subpanel:
+      linear-gradient(180deg, color-mix(in srgb, var(--aurora-surface-strong) 84%, transparent), color-mix(in srgb, var(--aurora-surface) 88%, transparent)),
+      var(--aurora-surface-soft);
+    --sales-page-accent: var(--aurora-olive-deep);
+    --sales-page-warm-accent: var(--aurora-primary);
+    --sales-page-border: var(--aurora-border);
+    --sales-page-row-hover: color-mix(in srgb, var(--aurora-surface-strong) 54%, transparent);
+    --sales-page-row-selected: color-mix(in srgb, var(--aurora-olive) 20%, transparent);
+  }
+
+  .aurora-sales-manager-page .aurora-ops-panel,
+  .aurora-sales-manager-page .aurora-summary-card {
+    border-color: var(--sales-page-border);
+    background: var(--sales-page-panel);
+    box-shadow: var(--aurora-shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  }
+
+  .aurora-sales-manager-page .aurora-widget-subsurface,
+  .aurora-sales-manager-page .aurora-ops-card {
+    border-color: var(--sales-page-border);
+    background: var(--sales-page-subpanel);
+  }
+
+  .aurora-sales-manager-page .aurora-sales-order-table {
+    border-color: var(--sales-page-border);
+    background: var(--sales-page-subpanel);
+  }
+
+  .aurora-sales-manager-page .aurora-sales-order-row {
+    background: transparent;
+  }
+
+  .aurora-sales-manager-page .aurora-sales-order-row:hover {
+    background: var(--sales-page-row-hover);
+  }
+
+  .aurora-sales-manager-page .aurora-sales-order-row.is-selected {
+    background: var(--sales-page-row-selected);
+  }
+
+  .aurora-sales-manager-page .aurora-sales-table-divider,
+  .aurora-sales-manager-page .aurora-sales-item-divider {
+    border-color: color-mix(in srgb, var(--aurora-border) 78%, var(--aurora-text) 10%);
+  }
+
   .aurora-sales-dashboard {
     --sales-dashboard-bg:
-      radial-gradient(circle at 8% 12%, rgba(255, 255, 255, 0.92), transparent 30%),
-      linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(239, 229, 214, 0.82));
-    --sales-dashboard-card: rgba(255, 252, 246, 0.74);
-    --sales-dashboard-card-strong: rgba(255, 255, 255, 0.86);
-    --sales-dashboard-border: rgba(128, 91, 47, 0.14);
-    --sales-dashboard-text: #23170f;
-    --sales-dashboard-muted: rgba(57, 42, 30, 0.68);
-    --sales-dashboard-kicker: #8a5b24;
-    --sales-dashboard-line: #9b6420;
-    --sales-dashboard-profit: #547443;
-    --sales-dashboard-grid: rgba(88, 65, 42, 0.13);
-    --sales-dashboard-axis: rgba(67, 45, 26, 0.32);
-    --sales-dashboard-shadow: 0 24px 70px rgba(73, 53, 36, 0.16);
+      radial-gradient(circle at 8% 12%, color-mix(in srgb, var(--aurora-surface-strong) 92%, transparent), transparent 30%),
+      var(--sales-page-panel);
+    --sales-dashboard-card: color-mix(in srgb, var(--aurora-surface) 74%, transparent);
+    --sales-dashboard-card-strong: color-mix(in srgb, var(--aurora-surface-strong) 88%, transparent);
+    --sales-dashboard-border: var(--sales-page-border);
+    --sales-dashboard-text: var(--aurora-text-strong);
+    --sales-dashboard-muted: var(--aurora-text);
+    --sales-dashboard-kicker: var(--sales-page-accent);
+    --sales-dashboard-line: var(--sales-page-accent);
+    --sales-dashboard-profit: var(--sales-page-warm-accent);
+    --sales-dashboard-grid: color-mix(in srgb, var(--aurora-border) 76%, transparent);
+    --sales-dashboard-axis: color-mix(in srgb, var(--aurora-text) 34%, transparent);
+    --sales-dashboard-shadow: var(--aurora-shadow-soft);
     border: 1px solid var(--sales-dashboard-border);
     border-radius: 1.8rem;
     background: var(--sales-dashboard-bg);
-    box-shadow: var(--sales-dashboard-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    box-shadow: var(--sales-dashboard-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.18);
     color: var(--sales-dashboard-text);
     overflow: hidden;
+    backdrop-filter: blur(7px) saturate(108%);
+    -webkit-backdrop-filter: blur(7px) saturate(108%);
   }
 
   .aurora-sales-dashboard-card {
@@ -28,8 +79,8 @@
     background:
       linear-gradient(180deg, var(--sales-dashboard-card-strong), var(--sales-dashboard-card));
     box-shadow:
-      0 14px 34px rgba(73, 53, 36, 0.08),
-      inset 0 1px 0 rgba(255, 255, 255, 0.62);
+      var(--aurora-shadow-soft),
+      inset 0 1px 0 color-mix(in srgb, var(--aurora-surface-strong) 62%, transparent);
   }
 
   .aurora-sales-dashboard-chart {
@@ -40,7 +91,7 @@
 
   .aurora-sales-dashboard-kicker {
     color: var(--sales-dashboard-kicker);
-    letter-spacing: 0.12em;
+    letter-spacing: 0;
   }
 
   .aurora-sales-dashboard-muted {
@@ -80,38 +131,20 @@
   }
 
   .aurora-sales-status-bar {
-    background: rgba(67, 45, 26, 0.08);
+    background: color-mix(in srgb, var(--aurora-text) 8%, transparent);
   }
 
   .aurora-sales-status-fill {
-    background: linear-gradient(90deg, var(--sales-dashboard-line), #d2ad6d);
+    background: linear-gradient(90deg, var(--sales-dashboard-line), var(--sales-dashboard-profit));
   }
 
-  [data-theme='dark'] .aurora-sales-dashboard {
-    --sales-dashboard-bg:
-      radial-gradient(circle at 10% 12%, rgba(235, 220, 193, 0.12), transparent 30%),
-      linear-gradient(135deg, rgba(28, 24, 20, 0.98), rgba(17, 23, 30, 0.94));
-    --sales-dashboard-card: rgba(34, 31, 27, 0.72);
-    --sales-dashboard-card-strong: rgba(48, 43, 36, 0.8);
-    --sales-dashboard-border: rgba(232, 207, 170, 0.16);
-    --sales-dashboard-text: #fff6e9;
-    --sales-dashboard-muted: rgba(244, 232, 213, 0.68);
-    --sales-dashboard-kicker: #d3a96b;
-    --sales-dashboard-line: #d29a4a;
-    --sales-dashboard-profit: #8ab276;
-    --sales-dashboard-grid: rgba(255, 244, 226, 0.13);
-    --sales-dashboard-axis: rgba(255, 244, 226, 0.28);
-    --sales-dashboard-shadow: 0 26px 78px rgba(0, 8, 17, 0.34);
-    box-shadow: var(--sales-dashboard-shadow), inset 0 1px 0 rgba(255, 246, 232, 0.12);
-  }
-
-  [data-theme='dark'] .aurora-sales-dashboard-card {
-    box-shadow:
-      0 16px 42px rgba(0, 8, 17, 0.24),
-      inset 0 1px 0 rgba(255, 246, 232, 0.1);
+  [data-theme='dark'] .aurora-sales-manager-page {
+    --sales-page-row-hover: color-mix(in srgb, var(--aurora-surface-strong) 66%, transparent);
+    --sales-page-row-selected: color-mix(in srgb, var(--aurora-olive) 18%, transparent);
+    --sales-page-warm-accent: var(--aurora-primary-soft);
   }
 
   [data-theme='dark'] .aurora-sales-status-bar {
-    background: rgba(255, 246, 232, 0.1);
+    background: color-mix(in srgb, var(--aurora-text) 10%, transparent);
   }
 }

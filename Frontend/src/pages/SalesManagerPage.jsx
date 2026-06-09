@@ -193,7 +193,7 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
             Order movement at a glance
           </h2>
         </div>
-        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sales-dashboard-text)]">
+        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-normal text-[var(--sales-dashboard-text)]">
           {orders.length} orders
         </span>
       </div>
@@ -339,7 +339,7 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
             Revenue and profit trend
           </h2>
         </div>
-        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sales-dashboard-text)]">
+        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-normal text-[var(--sales-dashboard-text)]">
           {loading ? 'Loading' : `${visiblePoints.length} days`}
         </span>
       </div>
@@ -434,7 +434,7 @@ function MetricTile({ label, value, description }) {
     <div className="aurora-summary-card p-5">
       <div className="aurora-widget-body gap-3">
         <div className="aurora-widget-heading">
-          <p className="text-xs uppercase tracking-[0.2em] text-[var(--aurora-olive-deep)]">
+          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
             {label}
           </p>
           <p className="mt-2 font-display text-3xl text-[var(--aurora-text-strong)]">
@@ -781,44 +781,45 @@ export default function SalesManagerPage() {
       title="Manage live orders"
       description="A focused fulfillment console for order lookup, invoice access, delivery review, and status movement."
     >
-      <div className="mb-8 space-y-4">
-        <SalesAnalyticsGraph
-          analytics={salesAnalytics}
-          loading={analyticsLoading}
-          error={analyticsError}
-        />
-        <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
-      </div>
+      <div className="aurora-sales-manager-page space-y-6">
+        <div className="space-y-4">
+          <SalesAnalyticsGraph
+            analytics={salesAnalytics}
+            loading={analyticsLoading}
+            error={analyticsError}
+          />
+          <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
+        </div>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <MetricTile
+            label="Active"
+            value={activeOrders.length}
+            description="Not delivered or cancelled."
+          />
+          <MetricTile
+            label="All orders"
+            value={orders.length}
+            description="Visible through admin order access."
+          />
+          <MetricTile
+            label="Delivered"
+            value={deliveredOrders.length}
+            description="Completed fulfillment records."
+          />
+          <MetricTile
+            label="Cancelled"
+            value={cancelledOrders.length}
+            description="Stopped or voided orders."
+          />
+        </section>
 
       <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <MetricTile
-              label="Active"
-              value={activeOrders.length}
-              description="Not delivered or cancelled."
-            />
-            <MetricTile
-              label="All orders"
-              value={orders.length}
-              description="Visible through admin order access."
-            />
-            <MetricTile
-              label="Delivered"
-              value={deliveredOrders.length}
-              description="Completed fulfillment records."
-            />
-            <MetricTile
-              label="Cancelled"
-              value={cancelledOrders.length}
-              description="Stopped or voided orders."
-            />
-          </section>
-
           <section id="activity" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Orders
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -909,12 +910,12 @@ export default function SalesManagerPage() {
               </div>
             ) : (
               <div className="aurora-widget-subsurface mt-8">
-                <div className="grid grid-cols-[minmax(0,1.2fr)_140px_120px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)] max-md:hidden">
+                <div className="grid grid-cols-[minmax(0,1.2fr)_140px_120px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)] max-md:hidden">
                   <span>Order</span>
                   <span>Date</span>
                   <span className="text-right">Status</span>
                 </div>
-                <div className="divide-y divide-[rgba(73,92,65,0.12)]">
+                <div className="aurora-sales-table-divider divide-y">
                   {filteredOrders.map((order) => {
                   const status = getOrderStatusPresentation(order)
                   const selected = order.id === selectedOrderId
@@ -923,7 +924,7 @@ export default function SalesManagerPage() {
                     <button
                       key={order.id}
                       type="button"
-                      className={`grid w-full gap-4 px-5 py-4 text-left transition hover:bg-[rgba(255,255,255,0.42)] md:grid-cols-[minmax(0,1.2fr)_140px_120px] md:items-center ${selected ? 'bg-[rgba(117,150,107,0.14)]' : ''}`.trim()}
+                      className={`aurora-sales-order-row grid w-full gap-4 px-5 py-4 text-left transition md:grid-cols-[minmax(0,1.2fr)_140px_120px] md:items-center ${selected ? 'is-selected' : ''}`.trim()}
                       onClick={() => {
                         setFeedback('')
                         setSelectedOrderId(order.id)
@@ -960,7 +961,7 @@ export default function SalesManagerPage() {
             <div className="aurora-widget-body">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="aurora-widget-heading">
-                  <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                  <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                     Selected order
                   </p>
                   <h2 className="mt-3 break-all font-display text-3xl text-[var(--aurora-text-strong)]">
@@ -1018,7 +1019,7 @@ export default function SalesManagerPage() {
                   <div className="aurora-widget-subsurface p-5">
                     <div className="grid gap-4 md:grid-cols-[1fr_auto] md:items-end">
                       <label>
-                        <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                        <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                           Fulfillment status
                         </span>
                         <select
@@ -1122,7 +1123,7 @@ export default function SalesManagerPage() {
                         {formatCurrency(selectedOrder.subtotal)}
                       </p>
                     </div>
-                    <div className="mt-4 divide-y divide-[rgba(73,92,65,0.12)]">
+                    <div className="aurora-sales-item-divider mt-4 divide-y">
                       {selectedOrder.items.map((item) => {
                         const refundStatus = getRefundStatus(item)
                         const hasPendingRefund = refundStatus?.key === 'requested'
@@ -1206,6 +1207,7 @@ export default function SalesManagerPage() {
             </div>
           </section>
         </div>
+      </div>
       </div>
 
       {pendingDeliveredStatus ? (
