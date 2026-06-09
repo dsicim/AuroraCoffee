@@ -1990,7 +1990,7 @@ func.addDeliveredItems = async function (userId, products) {
     try {
         await connection.beginTransaction();
         for (const p of products) {
-            await pool.execute('INSERT IGNORE INTO delivered_items (user_id, product_id) VALUES (?, ?)', [userId, p.product_id]);
+            await connection.execute('INSERT IGNORE INTO delivered_items (user_id, product_id) VALUES (?, ?)', [userId, p.product_id]);
         }
         await connection.commit();
         return { success: true, message: 'Delivered items recorded successfully' };
