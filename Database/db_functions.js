@@ -987,6 +987,43 @@ async function refreshVariantCodes(connection, variantIds) {
     }
 }
 
+async function syncVariantOptionValueMappings(connection, variantId, optionValueIds) {
+    const normalizedVariantId = Number(variantId);
+    const normalizedIds = Array.from(new Set((Array.isArray(optionValueIds) ? optionValueIds : [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0)));
+
+    const [existingRows] = await connection.execute(
+        'SELECT product_option_value_id FROM product_variant_values WHERE product_variant_id = ?',
+        [normalizedVariantId]
+    );
+    const existingIds = new Set(
+        existingRows
+            .map(row => Number(row.product_option_value_id))
+            .filter(id => Number.isFinite(id) && id > 0)
+    );
+    const nextIds = new Set(normalizedIds);
+
+    const idsToRemove = [...existingIds].filter(id => !nextIds.has(id));
+    const idsToAdd = normalizedIds.filter(id => !existingIds.has(id));
+
+    if (idsToRemove.length > 0) {
+        await connection.execute(
+            'DELETE FROM product_variant_values WHERE product_variant_id = ? AND product_option_value_id IN (?)',
+            [normalizedVariantId, idsToRemove]
+        );
+    }
+
+    for (const optionValueId of idsToAdd) {
+        await connection.execute(
+            'INSERT INTO product_variant_values (product_variant_id, product_option_value_id) VALUES (?, ?)',
+            [normalizedVariantId, optionValueId]
+        );
+    }
+
+    return idsToRemove.length > 0 || idsToAdd.length > 0;
+}
+
 func.addProductOption = async function (data) {
     const { product_id, name, group_code, value_label, value_code } = data;
     const normalizedProductId = Number(product_id);
@@ -1050,8 +1087,8 @@ func.updateProductOption = async function (optionGroupId, data) {
         if (!name) {
             throw new DBError(400, 'Option name is required');
         }
-        allowedFields.push('name = ?', 'group_code = ?');
-        values.push(name, buildOptionCode(data.group_code, name));
+        allowedFields.push('name = ?');
+        values.push(name);
     }
     if (data.priority !== undefined) {
         const priority = Number(data.priority);
@@ -1118,8 +1155,7 @@ func.deleteProductOption = async function (optionGroupId) {
     }
 };
 
-func.addProductOptionValue = async function (data) {
-    const { option_group_id, label, value_code } = data;
+func.addProductOptionValue = async function (option_group_id, data, value_code) {
     const normalizedOptionGroupId = Number(option_group_id);
     const valueLabel = String(label || data.value_label || "").trim();
     if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
@@ -1147,7 +1183,7 @@ func.addProductOptionValue = async function (data) {
             INSERT INTO product_option_values (
                 product_option_group_id, label, value_code, price_add, price_mult, sort_order
             ) VALUES (?, ?, ?, 0.00, 1.0000, ?)
-        `, [normalizedOptionGroupId, valueLabel, buildOptionCode(value_code, valueLabel), Number(orders[0].next_order) || 0]);
+        `, [normalizedOptionGroupId, valueLabel, value_code, Number(orders[0].next_order) || 0]);
         await connection.commit();
         return { success: true, message: 'Option variant added successfully', optionValueId: result.insertId };
     } catch (error) {
@@ -1173,8 +1209,8 @@ func.updateProductOptionValue = async function (optionValueId, data) {
         if (!label) {
             throw new DBError(400, 'Variant name is required');
         }
-        fields.push('label = ?', 'value_code = ?');
-        values.push(label, buildOptionCode(data.value_code, label));
+        fields.push('label = ?');
+        values.push(label);
     }
     if (data.sort_order !== undefined) {
         const sortOrder = Number(data.sort_order);
@@ -1206,16 +1242,11 @@ func.updateProductOptionValue = async function (optionValueId, data) {
                 throw new DBError(404, 'Option not found');
             }
         }
-        const [variantRows] = await connection.execute(
-            'SELECT product_variant_id FROM product_variant_values WHERE product_option_value_id = ?',
-            [normalizedOptionValueId]
-        );
         values.push(normalizedOptionValueId);
         const [result] = await connection.execute(`UPDATE product_option_values SET ${fields.join(', ')} WHERE id = ?`, values);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Variant not found');
         }
-        await refreshVariantCodes(connection, variantRows.map(row => row.product_variant_id));
         await connection.commit();
         return { success: true, message: 'Option variant updated successfully' };
     } catch (error) {
@@ -1371,36 +1402,7 @@ func.updateVariant = async function (variantId, data) {
         }
 
         if (option_value_ids !== undefined) {
-            // Re-generate variant code
-            let variant_code = null;
-            if (option_value_ids && option_value_ids.length > 0) {
-                const [optRows] = await connection.query(`
-                    SELECT pog.group_code, pov.value_code
-                    FROM product_option_values pov
-                    JOIN product_option_groups pog ON pov.product_option_group_id = pog.id
-                    WHERE pov.id IN (?)
-                `, [option_value_ids]);
-
-                const optionMap = {};
-                for (const row of optRows) {
-                    if (row.group_code && row.value_code) {
-                        optionMap[row.group_code] = row.value_code;
-                    }
-                }
-                variant_code = Buffer.from(JSON.stringify(optionMap)).toString('base64');
-            }
-            updateData.variant_code = variant_code;
-
-            // Delete old mapping and insert new mapping
-            await connection.execute('DELETE FROM product_variant_values WHERE product_variant_id = ?', [variantId]);
-            if (option_value_ids && option_value_ids.length > 0) {
-                for (const valId of option_value_ids) {
-                    await connection.execute(`
-                        INSERT INTO product_variant_values (product_variant_id, product_option_value_id)
-                        VALUES (?, ?)
-                    `, [variantId, valId]);
-                }
-            }
+            await syncVariantOptionValueMappings(connection, variantId, option_value_ids);
         }
 
         if (Object.keys(updateData).length > 0) {

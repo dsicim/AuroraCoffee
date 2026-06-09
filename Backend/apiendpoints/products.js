@@ -294,7 +294,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (endpoint[1] === "values") {
             if (method === "POST") {
                 if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 400, j: true, d: { e: "Invalid request body" } };
-                return await sql.addProductOptionValue(body.data).then(async result => {
+                if (!body.data.option_group_id || !body.data.label) return { s: 400, j: true, d: { e: "Option group ID and label are required" } };
+                const value_code = body.data.label.toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_]/g, "");
+                return await sql.addProductOptionValue(body.data.option_group_id, body.data.label, value_code).then(async result => {
                     if (result.success) {
                         return { s: 200, j: true, d: { msg: result.message, optionValueId: result.optionValueId } };
                     }
