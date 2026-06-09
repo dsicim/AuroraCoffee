@@ -841,21 +841,22 @@ async function ensureProductDesignColumns(connection) {
     productDesignColumnsReady = true;
 }
 
-function normalizeRequiredProductText(value, label) {
+function normalizeProductText(value, label, required = false) {
     const text = typeof value === 'string' || typeof value === 'number'
         ? String(value).trim()
         : '';
 
-    if (!text) {
+    if (required && !text) {
         throw new DBError(400, `${label} is required`);
     }
 
     return text;
 }
 
-function normalizeRequiredProductNumber(value, label, { integer = false } = {}) {
+function normalizeProductNumber(value, label, { integer = false } = {}, required = false) {
     if (value === undefined || value === null || value === '') {
-        throw new DBError(400, `${label} is required`);
+        if (required) throw new DBError(400, `${label} is required`);
+        else return 0;
     }
 
     const numberValue = Number(value);
@@ -874,14 +875,14 @@ func.addProduct = async function (data) {
         material, capacity, image_url, discount_rate,
         warranty_status, distributor_information
     } = data;
-    const model = normalizeRequiredProductText(data.model, 'Model');
-    const serial_number = normalizeRequiredProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number');
-    const productName = normalizeRequiredProductText(name, 'Name');
-    const productDescription = normalizeRequiredProductText(description, 'Description');
-    const productPrice = normalizeRequiredProductNumber(price, 'Price');
-    const productStock = normalizeRequiredProductNumber(stock, 'Stock', { integer: true });
-    const warrantyStatus = normalizeRequiredProductText(warranty_status ?? data.warrantyStatus, 'Warranty status');
-    const distributorInformation = normalizeRequiredProductText(distributor_information ?? data.distributorInformation, 'Distributor information');
+    const model = normalizeProductText(data.model, 'Model');
+    const serial_number = normalizeProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number');
+    const productName = normalizeProductText(name, 'Name', true);
+    const productDescription = normalizeProductText(description, 'Description');
+    const productPrice = normalizeProductNumber(price, 'Price', true);
+    const productStock = normalizeProductNumber(stock, 'Stock', { integer: true }, true);
+    const warrantyStatus = normalizeProductText(warranty_status ?? data.warrantyStatus, 'Warranty status');
+    const distributorInformation = normalizeProductText(distributor_information ?? data.distributorInformation, 'Distributor information');
     const connection = await pool.getConnection();
     try {
         await ensureProductDesignColumns(connection);
