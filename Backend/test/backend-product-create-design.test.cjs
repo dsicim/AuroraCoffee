@@ -174,27 +174,24 @@ test('updateProduct rejects negative manufacturing cost edits', async () => {
   assert.equal(connection.calls.some((call) => call.sql.includes('UPDATE products')), false);
 });
 
-test('addProduct rejects records missing PDF-required design fields', async () => {
+test('addProduct accepts records without optional model', async () => {
   const connection = createFakeConnection();
   const db = loadDbFunctions(connection);
   await db.initDB();
 
-  await assert.rejects(
-    () => db.addProduct({
-      product_code: 'SKU-8',
-      serial_number: 'SN-8',
-      name: 'Incomplete Product',
-      description: 'Missing model.',
-      price: 8,
-      stock: 3,
-      warranty_status: 'One year',
-      distributor_information: 'Aurora Supply',
-    }),
-    {
-      status: 400,
-      message: 'Model is required',
-    },
-  );
+  const result = await db.addProduct({
+    product_code: 'SKU-8',
+    serial_number: 'SN-8',
+    name: 'Model Optional Product',
+    description: 'Model is optional for this product.',
+    price: 8,
+    stock: 3,
+    warranty_status: 'One year',
+    distributor_information: 'Aurora Supply',
+  });
 
-  assert.equal(connection.calls.some((call) => call.sql.includes('INSERT INTO products')), false);
+  const insertCall = connection.calls.find((call) => call.sql.includes('INSERT INTO products'));
+
+  assert.equal(result.productId, 321);
+  assert.equal(insertCall.values[1], null);
 });

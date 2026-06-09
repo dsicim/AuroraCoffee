@@ -245,7 +245,6 @@ const productEditFieldGroups = [
 
 const requiredProductCreateFields = [
   ['name', 'Name'],
-  ['model', 'Model'],
   ['serial_number', 'Serial number'],
   ['description', 'Description'],
   ['price', 'Price'],

@@ -851,7 +851,7 @@ function normalizeProductText(value, label, required = false) {
         throw new DBError(400, `${label} is required`);
     }
 
-    return text;
+    return text || null;
 }
 
 function normalizeProductNumber(value, label, { integer = false } = {}, required = false) {
@@ -877,13 +877,13 @@ func.addProduct = async function (data) {
         warranty_status, distributor_information
     } = data;
     const model = normalizeProductText(data.model, 'Model');
-    const serial_number = normalizeProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number');
+    const serial_number = normalizeProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number', true);
     const productName = normalizeProductText(name, 'Name', true);
-    const productDescription = normalizeProductText(description, 'Description');
-    const productPrice = normalizeProductNumber(price, 'Price', true);
+    const productDescription = normalizeProductText(description, 'Description', true);
+    const productPrice = normalizeProductNumber(price, 'Price', {}, true);
     const productStock = normalizeProductNumber(stock, 'Stock', { integer: true }, true);
-    const warrantyStatus = normalizeProductText(warranty_status ?? data.warrantyStatus, 'Warranty status');
-    const distributorInformation = normalizeProductText(distributor_information ?? data.distributorInformation, 'Distributor information');
+    const warrantyStatus = normalizeProductText(warranty_status ?? data.warrantyStatus, 'Warranty status', true);
+    const distributorInformation = normalizeProductText(distributor_information ?? data.distributorInformation, 'Distributor information', true);
     const connection = await pool.getConnection();
     try {
         await ensureProductDesignColumns(connection);
