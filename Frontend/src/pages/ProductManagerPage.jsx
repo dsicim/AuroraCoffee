@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { fetchManagerProductComments, moderateProductComment } from '../features/comments/infrastructure/commentsApi'
+import OrderPdfDownloadButton from '../features/invoices/presentation/OrderPdfDownloadButton'
 import { mergeUploadedProductImage } from '../features/products/domain/productImageCache'
 import { formatCurrency } from '../lib/currency'
 import {
@@ -17,7 +18,12 @@ import {
   fetchWishlistNotifyQueue,
   sendWishlistNotifications,
 } from '../lib/wishlist'
-import { fetchAdminOrderById, fetchAdminOrders, getOrderStatusPresentation } from '../features/orders/application/orders'
+import {
+  fetchAdminOrderById,
+  fetchAdminOrders,
+  getOrderStatusPresentation,
+  updateOrderStatus,
+} from '../features/orders/application/orders'
 import {
   getProductAvailability,
   getProductCategories,
@@ -73,6 +79,33 @@ const moderationScopeOptions = [
 const productManagerSelectionStorageKey = 'aurora-product-manager-selected-product'
 const productManagerDebugPrefix = '[Aurora Product Manager]'
 const productImageDrafts = new Map()
+const productManagerTabs = [
+  {
+    key: 'fulfillment',
+    label: 'Fulfillment',
+    description: 'Order tracking, invoice access, and shipping handoff.',
+  },
+  {
+    key: 'catalog',
+    label: 'Catalog',
+    description: 'Category structure and catalog grouping.',
+  },
+  {
+    key: 'products',
+    label: 'Products',
+    description: 'Product details, variants, images, and costs.',
+  },
+  {
+    key: 'notifications',
+    label: 'Notifications',
+    description: 'Wishlist stock and discount email queues.',
+  },
+  {
+    key: 'review',
+    label: 'Review',
+    description: 'Low-stock watch and comment moderation.',
+  },
+]
 
 function logProductManagerDebug(event, details = {}, issueContext = {}) {
   const entry = logFrontendDebug(`product-manager:${event}`, details, 'info', issueContext)
@@ -5652,7 +5685,9 @@ function ProductOrderLookupPanel() {
   const [orderId, setOrderId] = useState('')
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [statusBusy, setStatusBusy] = useState(false)
   const [error, setError] = useState('')
+  const [feedback, setFeedback] = useState('')
   const [query, setQuery] = useState('')
 
   const filteredOrders = useMemo(() => {
@@ -5672,10 +5707,13 @@ function ProductOrderLookupPanel() {
 
   const selectedOrderId = order?.id || ''
 
-  const loadOrderDetail = useCallback((nextOrderId) => {
+  const loadOrderDetail = useCallback((nextOrderId, { clearFeedback = true } = {}) => {
     const normalizedOrderId = String(nextOrderId || '').trim()
 
     setError('')
+    if (clearFeedback) {
+      setFeedback('')
+    }
 
     if (!normalizedOrderId) {
       setOrder(null)
@@ -5769,6 +5807,30 @@ function ProductOrderLookupPanel() {
   }
 
   const status = getOrderStatusPresentation(order)
+  const canMarkShipped = status.key === 'processing'
+
+  function handleMarkShipped() {
+    if (!order?.id || !canMarkShipped) {
+      return
+    }
+
+    setStatusBusy(true)
+    setError('')
+    setFeedback('')
+
+    void updateOrderStatus(order.id, 'shipped')
+      .then(() => {
+        setFeedback(`Order ${order.id} marked as shipped.`)
+        loadOrderDetail(order.id, { clearFeedback: false })
+        loadOrderQueue({ preferredOrderId: order.id, quiet: true })
+      })
+      .catch((statusError) => {
+        setError(statusError?.message || 'Could not mark order as shipped.')
+      })
+      .finally(() => {
+        setStatusBusy(false)
+      })
+  }
 
   return (
     <section id="order-tracking" className="aurora-ops-panel p-8">
@@ -5796,7 +5858,7 @@ function ProductOrderLookupPanel() {
 
       <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
         Product managers can review the fulfillment queue, delivery region, and product line
-        details without payment, refund, or sales status controls.
+        details, download invoices, and move processing orders into shipped status.
       </p>
 
       <form className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
@@ -5823,6 +5885,11 @@ function ProductOrderLookupPanel() {
           {error}
         </div>
       ) : null}
+      {feedback ? (
+        <div className="aurora-message aurora-message-success mt-6" role="status" aria-live="polite">
+          {feedback}
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
         <div className="aurora-widget-subsurface p-5">
@@ -5833,7 +5900,7 @@ function ProductOrderLookupPanel() {
                 {ordersLoading ? 'Loading orders...' : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} visible`}
               </p>
             </div>
-            <span className="aurora-chip">Read only</span>
+            <span className="aurora-chip">Fulfillment tools</span>
           </div>
 
           <label className="mt-4 block">
@@ -5940,6 +6007,30 @@ function ProductOrderLookupPanel() {
               {getManagerOrderLocation(order)}
             </p>
 
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-5">
+              <OrderPdfDownloadButton
+                orderId={order.id}
+                label="Invoice"
+                downloadingLabel="Invoice"
+                variant="secondary"
+                size="compact"
+                onError={(message) => setError(message)}
+                onSuccess={() => setFeedback('Invoice download started.')}
+              />
+              {canMarkShipped ? (
+                <LiquidGlassButton
+                  type="button"
+                  variant="soft"
+                  size="compact"
+                  loading={statusBusy}
+                  disabled={statusBusy}
+                  onClick={handleMarkShipped}
+                >
+                  Mark shipped
+                </LiquidGlassButton>
+              ) : null}
+            </div>
+
             <div className="mt-5 border-t border-[var(--aurora-border)] pt-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="aurora-kicker">Products</p>
@@ -6003,6 +6094,7 @@ export default function ProductManagerPage() {
     error: '',
     success: '',
   })
+  const [activeTab, setActiveTab] = useState('fulfillment')
 
   const lowStockProducts = useMemo(
     () =>
@@ -6083,6 +6175,9 @@ export default function ProductManagerPage() {
     Boolean(activeModerationKey) && moderationResult.key !== activeModerationKey
   const inventoryStatus =
     error || (loading ? 'Syncing backend catalog.' : 'Backend-backed catalog is active.')
+  const activeTabDescription =
+    productManagerTabs.find((tab) => tab.key === activeTab)?.description ||
+    productManagerTabs[0].description
   const selectedProductTheme = useMemo(
     () => getProductSelectTheme(allProductsSelected ? null : selectedProduct, resolvedTheme),
     [allProductsSelected, resolvedTheme, selectedProduct],
@@ -6230,16 +6325,49 @@ export default function ProductManagerPage() {
           />
         </section>
 
-        <p className="text-sm leading-7 text-[var(--aurora-text)]">{inventoryStatus}</p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <p className="text-sm leading-7 text-[var(--aurora-text)]">{inventoryStatus}</p>
+          <p className="max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
+            {activeTabDescription}
+          </p>
+        </div>
 
-        <CategoryManagementPanel products={products} />
+        <section className="aurora-widget-subsurface p-3">
+          <div className="grid gap-2 md:grid-cols-5" role="tablist" aria-label="Product manager sections">
+            {productManagerTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.key ? 'true' : 'false'}
+                className={`aurora-sales-order-row rounded-[1.1rem] px-4 py-3 text-left text-sm font-semibold transition ${activeTab === tab.key ? 'is-selected' : ''}`.trim()}
+                onClick={() => {
+                  setActiveTab(tab.key)
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </section>
 
-        <ProductEditPanel products={products} loading={loading} />
+        {activeTab === 'fulfillment' ? (
+          <ProductOrderLookupPanel />
+        ) : null}
 
-        <WishlistNotifyPanel />
+        {activeTab === 'catalog' ? (
+          <CategoryManagementPanel products={products} />
+        ) : null}
 
-        <ProductOrderLookupPanel />
+        {activeTab === 'products' ? (
+          <ProductEditPanel products={products} loading={loading} />
+        ) : null}
 
+        {activeTab === 'notifications' ? (
+          <WishlistNotifyPanel />
+        ) : null}
+
+        {activeTab === 'review' ? (
         <div className="grid gap-8 xl:grid-cols-[0.82fr_1.18fr]">
           <section id="stock-watch" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
@@ -6505,6 +6633,7 @@ export default function ProductManagerPage() {
             )}
           </section>
         </div>
+        ) : null}
       </div>
     </RoleOverviewLayout>
   )

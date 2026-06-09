@@ -334,8 +334,18 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "PATCH") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
-            if (currentUser.role === "Product Manager" && (body.data.status !== "shipped" || body.data.status !== "delivered")) return { s: 403, j: true, d: { e: "Forbidden" } }; // Product Managers can only set as shipped or delivered.
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.status) return { s: 400, j: true, d: { e: "Invalid request body" } };
+            if (currentUser.role === "Product Manager") {
+                if (body.data.status !== "shipped") return { s: 403, j: true, d: { e: "Product Managers can only mark processing orders as shipped" } };
+                const orderResult = await sql.getAllOrders(body.data.id).catch(err => {
+                    console.error("Product manager status order lookup error:", err);
+                    return null;
+                });
+                if (!orderResult || !orderResult.success) return { s: 400, j: true, d: { e: "Could not verify order status" } };
+                const targetOrder = orderResult.orders.find(order => String(order.id) === String(body.data.id));
+                if (!targetOrder) return { s: 404, j: true, d: { e: "Order not found" } };
+                if (targetOrder.status !== "processing") return { s: 400, j: true, d: { e: "Product Managers can only mark processing orders as shipped" } };
+            }
             const updateResult = await sql.updateOrderStatus(body.data.id, body.data.status).then(result => {
                 if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully" } };
                 else return { s: 500, j:true, d: {e: "An unknown error occurred"} };
