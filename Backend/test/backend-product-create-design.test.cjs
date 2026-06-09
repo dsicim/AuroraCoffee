@@ -59,6 +59,14 @@ function createFakeConnection() {
         return [{ insertId: 321 }];
       }
 
+      if (String(sql).includes('UPDATE products')) {
+        return [{ affectedRows: 1 }];
+      }
+
+      if (String(sql).includes('UPDATE product_variants')) {
+        return [{ affectedRows: 1 }];
+      }
+
       return [{}];
     },
     async beginTransaction() {
@@ -117,6 +125,53 @@ test('addProduct inserts the PDF-required product design fields', async () => {
   assert.equal(connection.beginTransactionCalled, true);
   assert.equal(connection.commitCalled, true);
   assert.equal(connection.released, true);
+});
+
+test('updateVariant accepts non-negative manufacturing cost edits', async () => {
+  const connection = createFakeConnection();
+  const db = loadDbFunctions(connection);
+  await db.initDB();
+
+  await db.updateVariant(42, { cost: 14.75 });
+
+  const updateCall = connection.calls.find((call) => call.sql.includes('UPDATE product_variants'));
+
+  assert.ok(updateCall);
+  assert.ok(updateCall.sql.includes('cost = ?'));
+  assert.deepEqual(Array.from(updateCall.values), [14.75, 42]);
+  assert.equal(connection.commitCalled, true);
+});
+
+test('updateVariant rejects negative manufacturing cost edits', async () => {
+  const connection = createFakeConnection();
+  const db = loadDbFunctions(connection);
+  await db.initDB();
+
+  await assert.rejects(
+    () => db.updateVariant(42, { cost: -1 }),
+    {
+      status: 400,
+      message: 'Variant manufacturing cost must be a non-negative number',
+    },
+  );
+
+  assert.equal(connection.calls.some((call) => call.sql.includes('UPDATE product_variants')), false);
+});
+
+test('updateProduct rejects negative manufacturing cost edits', async () => {
+  const connection = createFakeConnection();
+  const db = loadDbFunctions(connection);
+  await db.initDB();
+
+  await assert.rejects(
+    () => db.updateProduct(7, { cost: -3 }),
+    {
+      status: 400,
+      message: 'Manufacturing cost must be a non-negative number',
+    },
+  );
+
+  assert.equal(connection.calls.some((call) => call.sql.includes('UPDATE products')), false);
 });
 
 test('addProduct rejects records missing PDF-required design fields', async () => {

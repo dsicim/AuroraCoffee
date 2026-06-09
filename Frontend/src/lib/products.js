@@ -224,6 +224,7 @@ function normalizeProductVariant(rawVariant, optionGroups) {
     price: toNumber(rawVariant?.price),
     priceAdd: toNumber(rawVariant?.price_add ?? rawVariant?.priceAdd),
     priceMult: toNullableNumber(rawVariant?.price_mult ?? rawVariant?.priceMult) ?? 1,
+    cost: toNumber(rawVariant?.cost),
     stock: Math.max(0, Number(rawVariant?.stock) || 0),
     discountRate: toNullableNumber(rawVariant?.discount_rate ?? rawVariant?.discountRate) ?? 0,
     optionValueCodes: normalizeVariantOptionValueCodes(
@@ -286,6 +287,7 @@ function normalizeProduct(rawProduct) {
     name: normalizeText(rawProduct.name),
     description: normalizeText(rawProduct.description),
     price: toNumber(rawProduct.price),
+    cost: toNumber(rawProduct.cost),
     stock: Math.max(0, Number(rawProduct.stock) || 0),
     origin: normalizeText(rawProduct.origin),
     roastLevel: normalizeText(rawProduct.roast_level),

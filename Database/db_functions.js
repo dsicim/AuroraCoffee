@@ -224,7 +224,7 @@ func.enrichProductsWithOptions = async function (userId, products, adminView = f
 
     // Fetch variants
     const [variants] = await pool.query(`
-        SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price_add, pv.price_mult, pv.stock, pv.discount_rate,
+        SELECT pv.id as variant_id, pv.product_id, pv.variant_code, pv.price_add, pv.price_mult, pv.cost, pv.stock, pv.discount_rate,
                pvv.product_option_value_id
         FROM product_variants pv
         LEFT JOIN product_variant_values pvv ON pv.id = pvv.product_variant_id
@@ -343,6 +343,7 @@ func.enrichProductsWithOptions = async function (userId, products, adminView = f
                     price: vBasePrice,
                     price_add: parseFloat(v.price_add ?? 0),
                     price_mult: parseFloat(v.price_mult ?? 1),
+                    cost: parseFloat(v.cost ?? 0),
                     discount_rate: vDiscountRate,
                     discounted_price: vDiscountRate > 0 ? vBasePrice * (1 - vDiscountRate / 100) : vBasePrice,
                     stock: v.stock,
@@ -1295,11 +1296,15 @@ func.addVariant = async function (data) {
     }
     const normalizedPriceAdd = price_add === undefined || price_add === null ? 0.00 : Number(price_add);
     const normalizedPriceMult = price_mult === undefined || price_mult === null ? 1.0000 : Number(price_mult);
+    const normalizedCost = cost === undefined || cost === null ? 0.00 : Number(cost);
     if (!Number.isFinite(normalizedPriceAdd) || normalizedPriceAdd < 0) {
         throw new DBError(400, 'Variant addition factor must be a non-negative number');
     }
     if (!Number.isFinite(normalizedPriceMult) || normalizedPriceMult < 0) {
         throw new DBError(400, 'Variant multiplication factor must be a non-negative number');
+    }
+    if (!Number.isFinite(normalizedCost) || normalizedCost < 0) {
+        throw new DBError(400, 'Variant manufacturing cost must be a non-negative number');
     }
     const connection = await pool.getConnection();
     try {
@@ -1329,7 +1334,7 @@ func.addVariant = async function (data) {
                 product_id, variant_code, price_add, price_mult, cost, stock, discount_rate
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [
-            product_id, variant_code, normalizedPriceAdd, normalizedPriceMult, cost || 0.00, stock || 0, discount_rate || 0.00
+            product_id, variant_code, normalizedPriceAdd, normalizedPriceMult, normalizedCost, stock || 0, discount_rate || 0.00
         ]);
 
         const variantId = result.insertId;
@@ -1384,6 +1389,13 @@ func.updateVariant = async function (variantId, data) {
             }
             updateData.price_mult = normalizedPriceMult;
         }
+        if (updateData.cost !== undefined) {
+            const normalizedCost = Number(updateData.cost);
+            if (!Number.isFinite(normalizedCost) || normalizedCost < 0) {
+                throw new DBError(400, 'Variant manufacturing cost must be a non-negative number');
+            }
+            updateData.cost = normalizedCost;
+        }
 
         if (option_value_ids !== undefined) {
             await syncVariantOptionValueMappings(connection, variantId, option_value_ids);
@@ -1434,6 +1446,13 @@ func.updateProduct = async function (productId, data) {
     }
     try {
         await connection.beginTransaction();
+        if (data.cost !== undefined) {
+            const normalizedCost = Number(data.cost);
+            if (!Number.isFinite(normalizedCost) || normalizedCost < 0) {
+                throw new DBError(400, 'Manufacturing cost must be a non-negative number');
+            }
+            data.cost = normalizedCost;
+        }
         const fields = Object.keys(data).map(key => `${key} = ?`).join(', ');
         const values = Object.values(data);
         values.push(productId);
@@ -1463,6 +1482,7 @@ func.updateProduct = async function (productId, data) {
         return { success: true, message: 'Product updated successfully' };
     } catch (error) {
         await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Update product error:', error);
         throw new DBError(500, 'Failed to update product');
     } finally {

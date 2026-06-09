@@ -195,6 +195,7 @@ const productEditFields = [
   { key: 'serialNumber', column: 'serial_number', label: 'Serial number', type: 'text' },
   { key: 'description', column: 'description', label: 'Description', type: 'textarea' },
   { key: 'price', column: 'price', label: 'Price', type: 'number', min: 0, step: '0.01' },
+  { key: 'cost', column: 'cost', label: 'Manufacturing cost', type: 'number', min: 0, step: '0.01' },
   { key: 'stock', column: 'stock', label: 'Stock', type: 'number', min: 0, step: '1' },
   { key: 'warrantyStatus', column: 'warranty_status', label: 'Warranty status', type: 'text' },
   { key: 'distributorInformation', column: 'distributor_information', label: 'Distributor information', type: 'text' },
@@ -217,8 +218,8 @@ const productEditFieldGroups = [
   },
   {
     title: 'Pricing and inventory',
-    description: 'Numbers that affect availability and checkout totals.',
-    fieldKeys: ['price', 'stock', 'discountRate', 'taxRate'],
+    description: 'Numbers that affect availability, checkout totals, and manager reporting.',
+    fieldKeys: ['price', 'cost', 'stock', 'discountRate', 'taxRate'],
   },
   {
     title: 'Fulfillment details',
@@ -1156,6 +1157,7 @@ function getVariantForm(product, variant = null) {
     optionValueIdsByGroup: getVariantOptionSelection(product, variant),
     priceAdd: String(Number.isFinite(priceAdd) ? priceAdd : 0),
     priceMult: String(Number.isFinite(priceMult) ? priceMult : 1),
+    cost: String(Math.max(0, Number(variant?.cost) || 0)),
     stock: String(Math.max(0, Number(variant?.stock) || 0)),
     discountRate: String(Math.max(0, Number(variant?.discountRate) || 0)),
   }
@@ -1271,6 +1273,7 @@ function buildCreateVariantPayload(product, form) {
   const basePrice = Number(product?.price) || 0
   const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: 0 })
   const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
+  const cost = normalizeVariantNumber(form.cost, 'Manufacturing cost', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
   const totalPrice = getVariantTotalPrice(basePrice, priceAdd, priceMult)
@@ -1284,6 +1287,7 @@ function buildCreateVariantPayload(product, form) {
   return {
     price_add: roundCurrency(priceAdd),
     price_mult: roundFactor(priceMult),
+    cost: roundCurrency(cost),
     stock,
     discount_rate: discountRate,
     option_value_ids: optionValueIds,
@@ -1296,6 +1300,7 @@ function buildUpdateVariantEdits(product, variant, form) {
   const basePrice = Number(product?.price) || 0
   const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: 0 })
   const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
+  const cost = normalizeVariantNumber(form.cost, 'Manufacturing cost', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
   const nextSelectionKey = getVariantSelectionKeyFromIds(product, form.optionValueIdsByGroup)
@@ -1318,6 +1323,10 @@ function buildUpdateVariantEdits(product, variant, form) {
 
   if (roundFactor(priceMult) !== roundFactor(variant?.priceMult ?? 1)) {
     edits.price_mult = roundFactor(priceMult)
+  }
+
+  if (roundCurrency(cost) !== roundCurrency(variant?.cost)) {
+    edits.cost = roundCurrency(cost)
   }
 
   if (stock !== Math.max(0, Number(variant?.stock) || 0)) {
@@ -2570,6 +2579,21 @@ function ProductVariantManager({ product }) {
             </label>
 
             <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Manufacturing cost</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="number"
+                min="0"
+                step="0.01"
+                value={variantForm.cost}
+                disabled={variantBusy}
+                onChange={(event) => {
+                  updateVariantField('cost', event.target.value)
+                }}
+              />
+            </label>
+
+            <label className="aurora-product-edit-field">
               <span className="aurora-product-edit-label">Discount %</span>
               <input
                 className="aurora-input aurora-product-edit-input mt-3"
@@ -2660,7 +2684,7 @@ function ProductVariantManager({ product }) {
                       {getProductImageVariantLabel(product, variant.id)}
                     </p>
                     <p className="aurora-product-image-meta">
-                      #{variant.id} · {Math.max(0, Number(variant.stock) || 0)} in stock · add {formatCurrency(variant.priceAdd)} · x{Number(variant.priceMult || 1)}
+                      #{variant.id} · {Math.max(0, Number(variant.stock) || 0)} in stock · cost {formatCurrency(variant.cost)} · add {formatCurrency(variant.priceAdd)} · x{Number(variant.priceMult || 1)}
                     </p>
                   </div>
                   <strong>{formatCurrency(variant.price)}</strong>
