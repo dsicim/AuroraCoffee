@@ -1972,9 +1972,9 @@ func.addDeliveredItems = async function (userId, products) {
         connection.release();
     }
 };
-func.getAllOrders = async function (orderId = null, getDetails = false) {
+func.getAllOrders = async function (orderId = null, startingDate = null, endingDate = null) {
     try {
-        const [orders] = await pool.execute('SELECT o.*, u.displayname AS customer_name, u.username AS customer_email FROM orders o LEFT JOIN users u ON o.user_id = u.id' + (orderId ? ' WHERE o.id = ?' : ' ')+' ORDER BY o.created_at DESC', orderId ? [orderId] : []);
+        const [orders] = await pool.execute('SELECT o.*, u.displayname AS customer_name, u.username AS customer_email FROM orders o LEFT JOIN users u ON o.user_id = u.id' + (orderId ? ' WHERE o.id = ?' : '') + (startingDate ? ' AND o.created_at >= ?' : '') + (endingDate ? ' AND o.created_at <= ?' : '') + ' ORDER BY o.created_at DESC', [orderId, startingDate, endingDate].filter((v) => typeof v == 'string' || typeof v == 'number'));
         return { success: true, orders: orders };
     } catch (error) {
         console.error('Get user orders error:', error);

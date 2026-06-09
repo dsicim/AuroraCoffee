@@ -33,7 +33,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             const startDate = query.startDate || null;
             const endDate = query.endDate || null;
 
-            const allOrders = await sql.getAllOrders(specificorder).then(async result => {
+            const allOrders = await sql.getAllOrders(specificorder, ).then(async result => {
                 if (result.success) {
                     const errors = [];
                     const orders = result.orders.map(ordr => {
