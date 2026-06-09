@@ -337,6 +337,8 @@ func.enrichProductsWithOptions = async function (userId, products) {
                     id: v.variant_id,
                     variant_code: v.variant_code,
                     price: vBasePrice,
+                    price_add: parseFloat(v.price_add ?? 0),
+                    price_mult: parseFloat(v.price_mult ?? 1),
                     discount_rate: vDiscountRate,
                     discounted_price: vDiscountRate > 0 ? vBasePrice * (1 - vDiscountRate / 100) : vBasePrice,
                     stock: v.stock,

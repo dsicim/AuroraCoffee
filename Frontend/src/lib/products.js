@@ -298,9 +298,9 @@ function normalizeProduct(rawProduct) {
       normalizeProductImageUrl(rawProduct.image_url) ||
       getGeneratedProductImageUrl(rawProduct),
     images,
-    categoryId: Number(rawProduct.category_id) || null,
-    categoryName: normalizeText(rawProduct.category_name),
-    parentCategoryName: normalizeText(rawProduct.parent_category_name),
+    categoryId: Number(rawProduct.category_id ?? rawProduct.categoryId) || null,
+    categoryName: normalizeText(rawProduct.category_name ?? rawProduct.categoryName),
+    parentCategoryName: normalizeText(rawProduct.parent_category_name ?? rawProduct.parentCategoryName),
     hasVariants: toBoolean(rawProduct.has_variants ?? rawProduct.hasVariants),
     canComment: toBoolean(
       rawProduct.can_comment ??

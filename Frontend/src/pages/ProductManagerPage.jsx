@@ -4988,7 +4988,7 @@ function ProductEditPanel({ products, loading }) {
               <label className="aurora-product-edit-picker-field">
                 <span className="aurora-product-edit-label">Category</span>
                 <select
-                  key={`edit-category:${selectedProduct?.id || 'none'}`}
+                  key={`edit-category:${selectedProduct?.id || 'none'}:${selectedProduct?.categoryId || 'none'}`}
                   ref={editCategoryRef}
                   className="aurora-select aurora-product-edit-input mt-3"
                   disabled={productActionBusy || categoriesLoading || !selectedProduct}
