@@ -676,6 +676,28 @@
     gap: 0.55rem;
   }
 
+  .aurora-product-variant-price-total {
+    display: grid;
+    gap: 0.35rem;
+    border: 1px solid rgba(126, 159, 135, 0.22);
+    border-radius: 1rem;
+    padding: 0.85rem;
+    background: rgba(255, 252, 248, 0.2);
+  }
+
+  .aurora-product-variant-price-total strong {
+    color: var(--aurora-text-strong);
+    font-size: 1rem;
+    font-weight: 900;
+  }
+
+  .aurora-product-variant-price-total small {
+    color: var(--aurora-text);
+    font-size: 0.78rem;
+    font-weight: 700;
+    line-height: 1.5;
+  }
+
   .aurora-product-variant-list {
     display: grid;
     gap: 0.65rem;

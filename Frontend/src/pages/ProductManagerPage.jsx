@@ -1151,7 +1151,8 @@ function getVariantOptionSelection(product, variant) {
 function getVariantForm(product, variant = null) {
   return {
     optionValueIdsByGroup: getVariantOptionSelection(product, variant),
-    price: String(Number(variant?.price ?? product?.price ?? 0) || 0),
+    priceAdd: String(Number(variant?.priceAdd) || 0),
+    priceMult: String(Number(variant?.priceMult ?? 1) || 1),
     stock: String(Math.max(0, Number(variant?.stock) || 0)),
     discountRate: String(Math.max(0, Number(variant?.discountRate) || 0)),
   }
@@ -1170,7 +1171,7 @@ function normalizeVariantNumber(value, label, { min = 0, max = null, integer = f
     throw new Error(`${label} must be a valid number.`)
   }
 
-  if (numericValue < min) {
+  if (min !== null && numericValue < min) {
     throw new Error(`${label} cannot be below ${min}.`)
   }
 
@@ -1183,6 +1184,22 @@ function normalizeVariantNumber(value, label, { min = 0, max = null, integer = f
 
 function roundCurrency(value) {
   return Math.round((Number(value) || 0) * 100) / 100
+}
+
+function getVariantTotalPrice(basePrice, priceAdd, priceMult) {
+  return roundCurrency((Number(basePrice) + Number(priceAdd)) * Number(priceMult))
+}
+
+function getVariantPricePreview(product, form) {
+  const basePrice = Number(product?.price) || 0
+  const priceAdd = Number(form?.priceAdd)
+  const priceMult = Number(form?.priceMult)
+
+  if (!Number.isFinite(priceAdd) || !Number.isFinite(priceMult)) {
+    return null
+  }
+
+  return getVariantTotalPrice(basePrice, priceAdd, priceMult)
 }
 
 function getVariantSelectionKeyFromIds(product, optionValueIdsByGroup) {
@@ -1241,15 +1258,21 @@ function ensureUniqueVariantSelection(product, form, currentVariantId = null) {
 function buildCreateVariantPayload(product, form) {
   const optionValueIds = getVariantOptionValueIds(product, form)
   const basePrice = Number(product?.price) || 0
-  const price = normalizeVariantNumber(form.price, 'Variant price', { min: basePrice })
+  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: null })
+  const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
+  const totalPrice = getVariantTotalPrice(basePrice, priceAdd, priceMult)
 
   ensureUniqueVariantSelection(product, form)
 
+  if (totalPrice < 0) {
+    throw new Error('Variant price total cannot be below 0.')
+  }
+
   return {
-    price_add: roundCurrency(price - basePrice),
-    price_mult: 1,
+    price_add: roundCurrency(priceAdd),
+    price_mult: priceMult,
     stock,
     discount_rate: discountRate,
     option_value_ids: optionValueIds,
@@ -1260,21 +1283,30 @@ function buildUpdateVariantEdits(product, variant, form) {
   const edits = {}
   const optionValueIds = getVariantOptionValueIds(product, form)
   const basePrice = Number(product?.price) || 0
-  const price = normalizeVariantNumber(form.price, 'Variant price', { min: basePrice })
+  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: null })
+  const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
   const nextSelectionKey = getVariantSelectionKeyFromIds(product, form.optionValueIdsByGroup)
   const currentSelectionKey = getVariantSelectionKey(product, variant)
+  const totalPrice = getVariantTotalPrice(basePrice, priceAdd, priceMult)
 
   ensureUniqueVariantSelection(product, form, variant?.id)
+
+  if (totalPrice < 0) {
+    throw new Error('Variant price total cannot be below 0.')
+  }
 
   if (nextSelectionKey !== currentSelectionKey) {
     edits.option_value_ids = optionValueIds
   }
 
-  if (roundCurrency(price) !== roundCurrency(variant?.price)) {
-    edits.price_add = roundCurrency(price - basePrice)
-    edits.price_mult = 1
+  if (roundCurrency(priceAdd) !== roundCurrency(variant?.priceAdd)) {
+    edits.price_add = roundCurrency(priceAdd)
+  }
+
+  if (roundCurrency(priceMult) !== roundCurrency(variant?.priceMult ?? 1)) {
+    edits.price_mult = priceMult
   }
 
   if (stock !== Math.max(0, Number(variant?.stock) || 0)) {
@@ -2185,6 +2217,7 @@ function ProductVariantManager({ product }) {
   })
   const variantBusy = Boolean(variantState.busy)
   const canManageVariants = Boolean(product?.hasVariants || variants.length || optionGroups.length)
+  const variantPricePreview = getVariantPricePreview(product, variantForm)
 
   function setVariantBusy(busy) {
     setVariantState({
@@ -2418,16 +2451,30 @@ function ProductVariantManager({ product }) {
             })}
 
             <label className="aurora-product-edit-field">
-              <span className="aurora-product-edit-label">Variant price</span>
+              <span className="aurora-product-edit-label">Addition factor</span>
               <input
                 className="aurora-input aurora-product-edit-input mt-3"
                 type="number"
-                min={Number(product.price) || 0}
                 step="0.01"
-                value={variantForm.price}
+                value={variantForm.priceAdd}
                 disabled={variantBusy}
                 onChange={(event) => {
-                  updateVariantField('price', event.target.value)
+                  updateVariantField('priceAdd', event.target.value)
+                }}
+              />
+            </label>
+
+            <label className="aurora-product-edit-field">
+              <span className="aurora-product-edit-label">Multiplication factor</span>
+              <input
+                className="aurora-input aurora-product-edit-input mt-3"
+                type="number"
+                min="0"
+                step="0.0001"
+                value={variantForm.priceMult}
+                disabled={variantBusy}
+                onChange={(event) => {
+                  updateVariantField('priceMult', event.target.value)
                 }}
               />
             </label>
@@ -2462,6 +2509,16 @@ function ProductVariantManager({ product }) {
                 }}
               />
             </label>
+
+            <div className="aurora-product-variant-price-total" role="status" aria-live="polite">
+              <span className="aurora-product-edit-label">Price total</span>
+              <strong>
+                {variantPricePreview === null ? 'Enter valid factors' : formatCurrency(variantPricePreview)}
+              </strong>
+              <small>
+                Base {formatCurrency(product.price)} + addition, then multiplied.
+              </small>
+            </div>
           </div>
 
           <div className="aurora-product-variant-actions">
@@ -2528,7 +2585,7 @@ function ProductVariantManager({ product }) {
                       {getProductImageVariantLabel(product, variant.id)}
                     </p>
                     <p className="aurora-product-image-meta">
-                      #{variant.id} · {Math.max(0, Number(variant.stock) || 0)} in stock · {Number(variant.discountRate || 0)}% discount
+                      #{variant.id} · {Math.max(0, Number(variant.stock) || 0)} in stock · add {formatCurrency(variant.priceAdd)} · x{Number(variant.priceMult || 1)}
                     </p>
                   </div>
                   <strong>{formatCurrency(variant.price)}</strong>
