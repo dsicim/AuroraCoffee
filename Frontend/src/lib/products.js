@@ -146,7 +146,12 @@ function normalizeCode(value) {
     : ''
 }
 
-function normalizeProductOptionValue(rawValue) {
+function normalizeOrderValue(value, fallback = 0) {
+  const numericValue = Number(value)
+  return Number.isFinite(numericValue) ? numericValue : fallback
+}
+
+function normalizeProductOptionValue(rawValue, sourceOrder = 0) {
   return {
     id: Number(rawValue?.id ?? rawValue?.value_id) || 0,
     label: normalizeText(rawValue?.label) || 'Option',
@@ -154,7 +159,8 @@ function normalizeProductOptionValue(rawValue) {
     valueCode: normalizeCode(rawValue?.value_code ?? rawValue?.valueCode ?? rawValue?.label ?? rawValue?.id),
     priceAdd: toNumber(rawValue?.price_add ?? rawValue?.priceAdd),
     priceMult: toNullableNumber(rawValue?.price_mult ?? rawValue?.priceMult) ?? 1,
-    sortOrder: Number(rawValue?.sort_order ?? rawValue?.sortOrder) || 0,
+    sortOrder: normalizeOrderValue(rawValue?.sort_order ?? rawValue?.sortOrder, sourceOrder),
+    sourceOrder,
   }
 }
 
@@ -162,7 +168,7 @@ function normalizeProductOptionGroup(rawGroup) {
   const id = normalizeCode(rawGroup?.id ?? rawGroup?.group_id)
   const code = normalizeCode(rawGroup?.group_code ?? rawGroup?.groupCode ?? rawGroup?.code) || id
   const values = Array.isArray(rawGroup?.values)
-    ? rawGroup.values.map(normalizeProductOptionValue)
+    ? rawGroup.values.map((value, index) => normalizeProductOptionValue(value, index))
     : []
 
   return {
@@ -178,8 +184,13 @@ function normalizeProductOptionGroup(rawGroup) {
         ? true
         : toBoolean(rawGroup?.is_required ?? rawGroup?.isRequired),
     multiSelect: toBoolean(rawGroup?.multi_select ?? rawGroup?.multiSelect),
-    priority: Number(rawGroup?.priority) || 0,
-    values: values.sort((left, right) => left.sortOrder - right.sortOrder || left.label.localeCompare(right.label)),
+    priority: normalizeOrderValue(rawGroup?.priority, 0),
+    values: values.sort(
+      (left, right) =>
+        left.sortOrder - right.sortOrder ||
+        left.sourceOrder - right.sourceOrder ||
+        Number(left.id || 0) - Number(right.id || 0),
+    ),
   }
 }
 
@@ -248,7 +259,12 @@ function normalizeProduct(rawProduct) {
   const optionGroups = Array.isArray(rawProduct?.options)
     ? rawProduct.options
         .map(normalizeProductOptionGroup)
-        .sort((left, right) => left.priority - right.priority || left.name.localeCompare(right.name))
+        .sort(
+          (left, right) =>
+            left.priority - right.priority ||
+            Number(left.id || 0) - Number(right.id || 0) ||
+            left.name.localeCompare(right.name),
+        )
     : []
   const images = Array.isArray(rawProduct?.images)
     ? rawProduct.images
@@ -732,14 +748,15 @@ export async function deleteProduct(productId) {
 const categoryTreeTimeoutMs = 8000
 const categoryTreeMaxDepth = 20
 
-function normalizeProductCategory(rawCategory, fallbackParentId = null) {
+function normalizeProductCategory(rawCategory, fallbackParentId = null, sourceOrder = 0) {
   const parentId = rawCategory?.parent_id ?? rawCategory?.parentId ?? fallbackParentId
 
   return {
     id: Number(rawCategory?.id) || 0,
     name: normalizeText(rawCategory?.name),
     parentId: Number(parentId) || null,
-    sortOrder: Number(rawCategory?.sort_order ?? rawCategory?.sortOrder) || 0,
+    sortOrder: normalizeOrderValue(rawCategory?.sort_order ?? rawCategory?.sortOrder, sourceOrder),
+    sourceOrder,
   }
 }
 
@@ -758,7 +775,7 @@ export async function fetchProductCategories(parentId = null) {
   const payload = await requestJsonWithTimeout(path)
 
   return (payload?.categories || [])
-    .map((category) => normalizeProductCategory(category, normalizedParentId))
+    .map((category, index) => normalizeProductCategory(category, normalizedParentId, index))
     .filter((category) => category.id && category.name)
 }
 
@@ -809,8 +826,9 @@ async function fetchProductCategoryTreeNetwork() {
 
     let hasNestedChildren = false
 
-    for (const rawCategory of rawCategories) {
-      const category = normalizeProductCategory(rawCategory, fallbackParentId)
+    for (let index = 0; index < rawCategories.length; index += 1) {
+      const rawCategory = rawCategories[index]
+      const category = normalizeProductCategory(rawCategory, fallbackParentId, index)
 
       if (!category.id || !category.name || categoriesById.has(category.id)) {
         continue
@@ -851,7 +869,7 @@ async function fetchProductCategoryTreeNetwork() {
     categoriesById.clear()
     await collectFlatChildren(
       rootCategories
-        .map((category) => normalizeProductCategory(category))
+        .map((category, index) => normalizeProductCategory(category, null, index))
         .filter((category) => category.id && category.name),
     )
   }
@@ -860,7 +878,8 @@ async function fetchProductCategoryTreeNetwork() {
     (left, right) =>
       (left.parentId || 0) - (right.parentId || 0) ||
       left.sortOrder - right.sortOrder ||
-      left.name.localeCompare(right.name),
+      left.sourceOrder - right.sourceOrder ||
+      Number(left.id || 0) - Number(right.id || 0),
   )
 }
 
@@ -883,7 +902,7 @@ export async function createProductCategory({ name, parentId = null }) {
   return data
 }
 
-export async function updateProductCategory(categoryId, edits = {}) {
+export async function updateProductCategory(categoryId, edits = {}, { refreshProducts = true } = {}) {
   const normalizedCategoryId = Number(categoryId)
   const normalizedName = normalizeText(edits.name)
 
@@ -903,12 +922,14 @@ export async function updateProductCategory(categoryId, edits = {}) {
       name: normalizedName,
       parent_id: normalizeCategoryParentId(edits.parentId),
       ...(edits.sortOrder !== undefined || edits.sort_order !== undefined
-        ? { sort_order: Number(edits.sortOrder ?? edits.sort_order) || 0 }
+        ? { sort_order: normalizeOrderValue(edits.sortOrder ?? edits.sort_order, 0) }
         : {}),
     }),
   })
 
-  await fetchAllProducts({ force: true })
+  if (refreshProducts) {
+    await fetchAllProducts({ force: true })
+  }
   return data
 }
 
@@ -965,7 +986,7 @@ export async function createProductOption(productId, payload) {
   }
 }
 
-export async function updateProductOption(optionGroupId, edits) {
+export async function updateProductOption(optionGroupId, edits, { refreshProducts = true } = {}) {
   const normalizedOptionGroupId = Number(optionGroupId)
   const normalizedEdits = normalizeVariantMutationPayload(edits)
 
@@ -986,7 +1007,9 @@ export async function updateProductOption(optionGroupId, edits) {
     }),
   })
 
-  await fetchAllProducts({ force: true })
+  if (refreshProducts) {
+    await fetchAllProducts({ force: true })
+  }
   return data
 }
 
@@ -1031,7 +1054,7 @@ export async function createProductOptionValue(optionGroupId, payload) {
   return data
 }
 
-export async function updateProductOptionValue(optionValueId, edits) {
+export async function updateProductOptionValue(optionValueId, edits, { refreshProducts = true } = {}) {
   const normalizedOptionValueId = Number(optionValueId)
   const normalizedEdits = normalizeVariantMutationPayload(edits)
 
@@ -1052,7 +1075,9 @@ export async function updateProductOptionValue(optionValueId, edits) {
     }),
   })
 
-  await fetchAllProducts({ force: true })
+  if (refreshProducts) {
+    await fetchAllProducts({ force: true })
+  }
   return data
 }
 

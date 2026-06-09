@@ -219,7 +219,7 @@ func.enrichProductsWithOptions = async function (userId, products) {
         FROM product_option_groups pog
         LEFT JOIN product_option_values pov ON pog.id = pov.product_option_group_id
         WHERE pog.product_id IN (?)
-        ORDER BY pog.priority, pov.sort_order
+        ORDER BY pog.priority ASC, pog.id ASC, pov.sort_order ASC, pov.id ASC
     `, [productIds]);
 
     // Fetch variants
@@ -625,7 +625,7 @@ func.getCategories = async function (parent = null) {
             query += ' WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?');
             if (parent !== null) params.push(parent);
         }
-        query += ' ORDER BY sort_order ASC, name ASC';
+        query += ' ORDER BY sort_order ASC, id ASC';
         const [rows] = await pool.execute(query, params);
         let [rows2] = [[]];
         if (parent !== null) [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE id = ?)', [params[0]]);

@@ -35,6 +35,7 @@ import {
   deleteProductVariant,
   deleteProductCategory,
   deleteProductImage,
+  fetchAllProducts,
   fetchProductCategoryTree,
   updateProductImageSet,
   updateProductCategory,
@@ -823,7 +824,12 @@ function getCategoryChildren(categories, parentId) {
       const categoryParentId = category.parentId ? Number(category.parentId) : null
       return categoryParentId === normalizedParentId
     })
-    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
+    .sort(
+      (left, right) =>
+        left.sortOrder - right.sortOrder ||
+        (left.sourceOrder || 0) - (right.sourceOrder || 0) ||
+        Number(left.id || 0) - Number(right.id || 0),
+    )
 }
 
 function getCategoryDescendantIds(categories, categoryId) {
@@ -1632,8 +1638,13 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
 
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all(
-      reorderedOptions.map((group, index) => updateProductOption(group.id, { priority: index + 1 })),
+      reorderedOptions.map((group, index) => updateProductOption(
+        group.id,
+        { priority: index + 1 },
+        { refreshProducts: false },
+      )),
     )
+      .then(() => fetchAllProducts({ force: true }))
       .then(() => {
         setOptionFeedback({ success: 'Options reordered.' })
       })
@@ -1649,8 +1660,13 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
 
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all(
-      reorderedValues.map((value, index) => updateProductOptionValue(value.id, { sort_order: index })),
+      reorderedValues.map((value, index) => updateProductOptionValue(
+        value.id,
+        { sort_order: index },
+        { refreshProducts: false },
+      )),
     )
+      .then(() => fetchAllProducts({ force: true }))
       .then(() => {
         setOptionFeedback({ success: 'Variants reordered.' })
       })
@@ -1687,14 +1703,21 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
 
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all([
-      ...targetValues.map((entry, index) => updateProductOptionValue(entry.id, {
-        ...(String(entry.id) === String(value.id) ? { option_group_id: targetGroup.id } : {}),
-        sort_order: index,
-      })),
-      ...sourceValues.map((entry, index) => updateProductOptionValue(entry.id, {
-        sort_order: index,
-      })),
+      ...targetValues.map((entry, index) => updateProductOptionValue(
+        entry.id,
+        {
+          ...(String(entry.id) === String(value.id) ? { option_group_id: targetGroup.id } : {}),
+          sort_order: index,
+        },
+        { refreshProducts: false },
+      )),
+      ...sourceValues.map((entry, index) => updateProductOptionValue(
+        entry.id,
+        { sort_order: index },
+        { refreshProducts: false },
+      )),
     ])
+      .then(() => fetchAllProducts({ force: true }))
       .then(() => {
         setOptionFeedback({ success: 'Variant moved.' })
       })
@@ -3754,15 +3777,16 @@ function CategoryManagementPanel({ products }) {
           name: entry.name,
           parentId: normalizedParentId,
           sortOrder: index,
-        })),
+        }, { refreshProducts: false })),
         ...sourceSiblings.map((entry, index) => updateProductCategory(entry.id, {
           name: entry.name,
           parentId: currentParentId,
           sortOrder: index,
-        })),
+        }, { refreshProducts: false })),
       ]
 
       await Promise.all(updateRequests)
+      await fetchAllProducts({ force: true })
       await loadCategories({ quiet: true })
       setSelectedCategoryId(String(category.id))
       setActionSuccess('Category moved successfully.')
