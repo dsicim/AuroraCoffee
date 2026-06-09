@@ -54,7 +54,6 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 ordr.details = order;
                                 if (currentUser.role === "Product Manager") {
                                     const o = sanitizeProductManagerOrder(ordr);
-                                    delete o.details.products;
                                     return { order: o };
                                 }
                             }
