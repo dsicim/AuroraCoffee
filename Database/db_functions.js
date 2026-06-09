@@ -1138,13 +1138,9 @@ func.deleteProductOption = async function (optionGroupId) {
     }
 };
 
-func.addProductOptionValue = async function (option_group_id, data, value_code) {
+func.addProductOptionValue = async function (option_group_id, label, value_code) {
     const normalizedOptionGroupId = Number(option_group_id);
-    const valueLabel = String(
-        typeof data === 'string'
-            ? data
-            : (data && (data.label || data.value_label)) || ""
-    ).trim();
+    const valueLabel = String(label || "").trim();
     if (!Number.isFinite(normalizedOptionGroupId) || normalizedOptionGroupId <= 0) {
         throw new DBError(400, 'Option ID is required');
     }
