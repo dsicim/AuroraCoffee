@@ -333,7 +333,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     else if (endpoint[0] === "status") {
         if (method === "PATCH") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
-            if (!["Admin", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (!["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+            if (currentUser.role === "Product Manager" && (body.data.status !== "shipped" || body.data.status !== "delivered")) return { s: 403, j: true, d: { e: "Forbidden" } }; // Product Managers can only set as shipped or delivered.
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.status) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const updateResult = await sql.updateOrderStatus(body.data.id, body.data.status).then(result => {
                 if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully" } };
