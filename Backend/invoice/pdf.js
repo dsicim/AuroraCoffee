@@ -56,7 +56,7 @@ async function generatePDF(orderData, print = false) {
                 doc.x = 280;
                 doc.font("InvoiceRegular").fontSize(12).text("Billed to", { align: "left" });
                 doc.font("InvoiceMedium").fontSize(12).text(customername, { align: "left" });
-                doc.font("InvoiceMedium").fontSize(12).text("Tax ID: " + orderData.details.taxId, { align: "left" });
+                if (orderData.details.taxId) doc.font("InvoiceMedium").fontSize(12).text("Tax ID: " + orderData.details.taxId, { align: "left" });
                 const addr = orderData.details.billingAddress;
                 doc.font("InvoiceLight").fontSize(12).text(addr.address+"\n"+(addr.address2?addr.address2+"\n":"")+addr.zip+" "+addr.city+"/"+addr.province+", "+addr.country+"\n"+addr.phone, { align: "left", width: 300 });
                 doc.x = margin;
