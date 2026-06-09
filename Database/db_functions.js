@@ -1272,6 +1272,14 @@ func.addVariant = async function (data) {
     if (!product_id) {
         throw new DBError(400, 'Product ID is required');
     }
+    const normalizedPriceAdd = price_add === undefined || price_add === null ? 0.00 : Number(price_add);
+    const normalizedPriceMult = price_mult === undefined || price_mult === null ? 1.0000 : Number(price_mult);
+    if (!Number.isFinite(normalizedPriceAdd) || normalizedPriceAdd < 0) {
+        throw new DBError(400, 'Variant addition factor must be a non-negative number');
+    }
+    if (!Number.isFinite(normalizedPriceMult) || normalizedPriceMult < 0) {
+        throw new DBError(400, 'Variant multiplication factor must be a non-negative number');
+    }
     const connection = await pool.getConnection();
     try {
         await connection.beginTransaction();
@@ -1300,7 +1308,7 @@ func.addVariant = async function (data) {
                 product_id, variant_code, price_add, price_mult, cost, stock, discount_rate
             ) VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [
-            product_id, variant_code, price_add || 0.00, price_mult || 1.0000, cost || 0.00, stock || 0, discount_rate || 0.00
+            product_id, variant_code, normalizedPriceAdd, normalizedPriceMult, cost || 0.00, stock || 0, discount_rate || 0.00
         ]);
 
         const variantId = result.insertId;
@@ -1321,6 +1329,7 @@ func.addVariant = async function (data) {
         return { success: true, message: 'Variant added successfully', variantId };
     } catch (error) {
         await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Add variant error:', error);
         throw new DBError(500, 'Failed to add variant: ' + error.message);
     } finally {
@@ -1339,6 +1348,21 @@ func.updateVariant = async function (variantId, data) {
         const updateData = { ...data };
         const option_value_ids = updateData.option_value_ids;
         delete updateData.option_value_ids;
+
+        if (updateData.price_add !== undefined) {
+            const normalizedPriceAdd = Number(updateData.price_add);
+            if (!Number.isFinite(normalizedPriceAdd) || normalizedPriceAdd < 0) {
+                throw new DBError(400, 'Variant addition factor must be a non-negative number');
+            }
+            updateData.price_add = normalizedPriceAdd;
+        }
+        if (updateData.price_mult !== undefined) {
+            const normalizedPriceMult = Number(updateData.price_mult);
+            if (!Number.isFinite(normalizedPriceMult) || normalizedPriceMult < 0) {
+                throw new DBError(400, 'Variant multiplication factor must be a non-negative number');
+            }
+            updateData.price_mult = normalizedPriceMult;
+        }
 
         if (option_value_ids !== undefined) {
             // Re-generate variant code
@@ -1387,6 +1411,7 @@ func.updateVariant = async function (variantId, data) {
         return { success: true, message: 'Variant updated successfully' };
     } catch (error) {
         await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Update variant error:', error);
         throw new DBError(500, 'Failed to update variant: ' + error.message);
     } finally {

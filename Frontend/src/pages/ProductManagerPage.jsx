@@ -1149,10 +1149,13 @@ function getVariantOptionSelection(product, variant) {
 }
 
 function getVariantForm(product, variant = null) {
+  const priceAdd = Number(variant?.priceAdd)
+  const priceMult = Number(variant?.priceMult)
+
   return {
     optionValueIdsByGroup: getVariantOptionSelection(product, variant),
-    priceAdd: String(Number(variant?.priceAdd) || 0),
-    priceMult: String(Number(variant?.priceMult ?? 1) || 1),
+    priceAdd: String(Number.isFinite(priceAdd) ? priceAdd : 0),
+    priceMult: String(Number.isFinite(priceMult) ? priceMult : 1),
     stock: String(Math.max(0, Number(variant?.stock) || 0)),
     discountRate: String(Math.max(0, Number(variant?.discountRate) || 0)),
   }
@@ -1186,11 +1189,19 @@ function roundCurrency(value) {
   return Math.round((Number(value) || 0) * 100) / 100
 }
 
+function roundFactor(value) {
+  return Math.round((Number(value) || 0) * 10000) / 10000
+}
+
 function getVariantTotalPrice(basePrice, priceAdd, priceMult) {
   return roundCurrency((Number(basePrice) + Number(priceAdd)) * Number(priceMult))
 }
 
 function getVariantPricePreview(product, form) {
+  if (!String(form?.priceAdd ?? '').trim() || !String(form?.priceMult ?? '').trim()) {
+    return null
+  }
+
   const basePrice = Number(product?.price) || 0
   const priceAdd = Number(form?.priceAdd)
   const priceMult = Number(form?.priceMult)
@@ -1258,7 +1269,7 @@ function ensureUniqueVariantSelection(product, form, currentVariantId = null) {
 function buildCreateVariantPayload(product, form) {
   const optionValueIds = getVariantOptionValueIds(product, form)
   const basePrice = Number(product?.price) || 0
-  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: null })
+  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: 0 })
   const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
@@ -1272,7 +1283,7 @@ function buildCreateVariantPayload(product, form) {
 
   return {
     price_add: roundCurrency(priceAdd),
-    price_mult: priceMult,
+    price_mult: roundFactor(priceMult),
     stock,
     discount_rate: discountRate,
     option_value_ids: optionValueIds,
@@ -1283,7 +1294,7 @@ function buildUpdateVariantEdits(product, variant, form) {
   const edits = {}
   const optionValueIds = getVariantOptionValueIds(product, form)
   const basePrice = Number(product?.price) || 0
-  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: null })
+  const priceAdd = normalizeVariantNumber(form.priceAdd, 'Addition factor', { min: 0 })
   const priceMult = normalizeVariantNumber(form.priceMult, 'Multiplication factor', { min: 0 })
   const stock = normalizeVariantNumber(form.stock, 'Variant stock', { integer: true })
   const discountRate = normalizeVariantNumber(form.discountRate, 'Variant discount', { max: 100 })
@@ -1305,8 +1316,8 @@ function buildUpdateVariantEdits(product, variant, form) {
     edits.price_add = roundCurrency(priceAdd)
   }
 
-  if (roundCurrency(priceMult) !== roundCurrency(variant?.priceMult ?? 1)) {
-    edits.price_mult = priceMult
+  if (roundFactor(priceMult) !== roundFactor(variant?.priceMult ?? 1)) {
+    edits.price_mult = roundFactor(priceMult)
   }
 
   if (stock !== Math.max(0, Number(variant?.stock) || 0)) {
@@ -2518,6 +2529,7 @@ function ProductVariantManager({ product }) {
               <input
                 className="aurora-input aurora-product-edit-input mt-3"
                 type="number"
+                min="0"
                 step="0.01"
                 value={variantForm.priceAdd}
                 disabled={variantBusy}
