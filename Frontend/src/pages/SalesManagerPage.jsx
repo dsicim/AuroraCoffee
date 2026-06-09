@@ -93,13 +93,16 @@ function toFiniteNumber(value) {
 }
 
 function formatCompactCurrency(value) {
-  return new Intl.NumberFormat('tr-TR', {
-    compactDisplay: 'short',
-    currency: 'TRY',
-    maximumFractionDigits: 1,
-    notation: 'compact',
-    style: 'currency',
-  }).format(toFiniteNumber(value))
+  const numberValue = toFiniteNumber(value)
+
+  if (Math.abs(numberValue) >= 1000) {
+    return `₺${new Intl.NumberFormat('en-US', {
+      maximumFractionDigits: 1,
+      minimumFractionDigits: 0,
+    }).format(numberValue / 1000)}K`
+  }
+
+  return formatCurrency(numberValue)
 }
 
 function getRefundStatus(item) {
