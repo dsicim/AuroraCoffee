@@ -1989,7 +1989,7 @@ func.addDeliveredItems = async function (userId, products) {
         connection.release();
     }
 };
-func.getAllOrders = async function (orderId = null) {
+func.getAllOrders = async function (orderId = null, getDetails = false) {
     try {
         const [orders] = await pool.execute('SELECT o.*, u.displayname AS customer_name, u.username AS customer_email FROM orders o LEFT JOIN users u ON o.user_id = u.id' + (orderId ? ' WHERE o.id = ?' : ' ')+' ORDER BY o.created_at DESC', orderId ? [orderId] : []);
         return { success: true, orders: orders };
