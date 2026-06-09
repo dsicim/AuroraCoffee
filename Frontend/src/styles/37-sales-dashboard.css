@@ -1,0 +1,117 @@
+@layer components {
+  .aurora-sales-dashboard {
+    --sales-dashboard-bg:
+      radial-gradient(circle at 8% 12%, rgba(255, 255, 255, 0.92), transparent 30%),
+      linear-gradient(135deg, rgba(255, 252, 246, 0.96), rgba(239, 229, 214, 0.82));
+    --sales-dashboard-card: rgba(255, 252, 246, 0.74);
+    --sales-dashboard-card-strong: rgba(255, 255, 255, 0.86);
+    --sales-dashboard-border: rgba(128, 91, 47, 0.14);
+    --sales-dashboard-text: #23170f;
+    --sales-dashboard-muted: rgba(57, 42, 30, 0.68);
+    --sales-dashboard-kicker: #8a5b24;
+    --sales-dashboard-line: #9b6420;
+    --sales-dashboard-profit: #547443;
+    --sales-dashboard-grid: rgba(88, 65, 42, 0.13);
+    --sales-dashboard-axis: rgba(67, 45, 26, 0.32);
+    --sales-dashboard-shadow: 0 24px 70px rgba(73, 53, 36, 0.16);
+    border: 1px solid var(--sales-dashboard-border);
+    border-radius: 1.8rem;
+    background: var(--sales-dashboard-bg);
+    box-shadow: var(--sales-dashboard-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.78);
+    color: var(--sales-dashboard-text);
+    overflow: hidden;
+  }
+
+  .aurora-sales-dashboard-card {
+    border: 1px solid var(--sales-dashboard-border);
+    border-radius: 1.25rem;
+    background:
+      linear-gradient(180deg, var(--sales-dashboard-card-strong), var(--sales-dashboard-card));
+    box-shadow:
+      0 14px 34px rgba(73, 53, 36, 0.08),
+      inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  }
+
+  .aurora-sales-dashboard-chart {
+    border: 1px solid var(--sales-dashboard-border);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--sales-dashboard-card-strong) 72%, transparent);
+  }
+
+  .aurora-sales-dashboard-kicker {
+    color: var(--sales-dashboard-kicker);
+    letter-spacing: 0.12em;
+  }
+
+  .aurora-sales-dashboard-muted {
+    color: var(--sales-dashboard-muted);
+  }
+
+  .aurora-sales-chart-grid {
+    stroke: var(--sales-dashboard-grid);
+  }
+
+  .aurora-sales-chart-axis {
+    stroke: var(--sales-dashboard-axis);
+  }
+
+  .aurora-sales-chart-text {
+    fill: var(--sales-dashboard-muted);
+  }
+
+  .aurora-sales-chart-sales {
+    stroke: var(--sales-dashboard-line);
+  }
+
+  .aurora-sales-chart-profit {
+    stroke: var(--sales-dashboard-profit);
+  }
+
+  .aurora-sales-chart-sales-fill {
+    fill: color-mix(in srgb, var(--sales-dashboard-line) 18%, transparent);
+  }
+
+  .aurora-sales-chart-dot-sales {
+    fill: var(--sales-dashboard-line);
+  }
+
+  .aurora-sales-chart-dot-profit {
+    fill: var(--sales-dashboard-profit);
+  }
+
+  .aurora-sales-status-bar {
+    background: rgba(67, 45, 26, 0.08);
+  }
+
+  .aurora-sales-status-fill {
+    background: linear-gradient(90deg, var(--sales-dashboard-line), #d2ad6d);
+  }
+
+  [data-theme='dark'] .aurora-sales-dashboard {
+    --sales-dashboard-bg:
+      radial-gradient(circle at 10% 12%, rgba(235, 220, 193, 0.12), transparent 30%),
+      linear-gradient(135deg, rgba(28, 24, 20, 0.98), rgba(17, 23, 30, 0.94));
+    --sales-dashboard-card: rgba(34, 31, 27, 0.72);
+    --sales-dashboard-card-strong: rgba(48, 43, 36, 0.8);
+    --sales-dashboard-border: rgba(232, 207, 170, 0.16);
+    --sales-dashboard-text: #fff6e9;
+    --sales-dashboard-muted: rgba(244, 232, 213, 0.68);
+    --sales-dashboard-kicker: #d3a96b;
+    --sales-dashboard-line: #d29a4a;
+    --sales-dashboard-profit: #8ab276;
+    --sales-dashboard-grid: rgba(255, 244, 226, 0.13);
+    --sales-dashboard-axis: rgba(255, 244, 226, 0.28);
+    --sales-dashboard-shadow: 0 26px 78px rgba(0, 8, 17, 0.34);
+    box-shadow: var(--sales-dashboard-shadow), inset 0 1px 0 rgba(255, 246, 232, 0.12);
+  }
+
+  [data-theme='dark'] .aurora-sales-dashboard-card {
+    box-shadow:
+      0 16px 42px rgba(0, 8, 17, 0.24),
+      inset 0 1px 0 rgba(255, 246, 232, 0.1);
+  }
+
+  [data-theme='dark'] .aurora-sales-status-bar {
+    background: rgba(255, 246, 232, 0.1);
+  }
+}

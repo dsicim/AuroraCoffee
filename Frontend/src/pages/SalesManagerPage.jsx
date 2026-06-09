@@ -183,32 +183,34 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
   const orderTicks = [maxRecentCount, Math.ceil(maxRecentCount / 2), 0]
 
   return (
-    <section className="aurora-ops-panel p-6">
-      <div className="aurora-widget-header items-start">
+    <section className="aurora-sales-dashboard p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="aurora-widget-heading">
-          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--aurora-olive-deep)]">
+          <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">
             Sales graphics
           </p>
-          <h2 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)]">
+          <h2 className="mt-2 font-display text-2xl text-[var(--sales-dashboard-text)]">
             Order movement at a glance
           </h2>
         </div>
-        <span className="aurora-chip">{orders.length} orders</span>
+        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sales-dashboard-text)]">
+          {orders.length} orders
+        </span>
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="aurora-ops-card p-4">
+        <div className="aurora-sales-dashboard-card p-4">
           <div className="flex min-h-full flex-col gap-4">
             <div className="flex items-center justify-between gap-4">
-              <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">Recent orders</p>
-              <span className="text-xs font-semibold text-[var(--aurora-text)]">Last 7 days</span>
+              <p className="text-sm font-semibold text-[var(--sales-dashboard-text)]">Recent orders</p>
+              <span className="aurora-sales-dashboard-muted text-xs font-semibold">Last 7 days</span>
             </div>
-            <div className="rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.13)] px-3 py-3" aria-label="Recent order count chart">
+            <div className="aurora-sales-dashboard-chart px-3 py-3" aria-label="Recent order count chart">
               <svg className="h-44 w-full overflow-visible" viewBox="0 0 640 190" role="img" aria-label="Recent orders by day">
                 <defs>
                   <linearGradient id="recentOrderBar" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(196,168,108,0.92)" />
-                    <stop offset="100%" stopColor="rgba(117,150,107,0.72)" />
+                    <stop offset="0%" stopColor="var(--sales-dashboard-line)" />
+                    <stop offset="100%" stopColor="var(--sales-dashboard-profit)" />
                   </linearGradient>
                 </defs>
                 {orderTicks.map((tick) => {
@@ -216,14 +218,14 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
 
                   return (
                     <g key={tick}>
-                      <line x1="46" x2="614" y1={y} y2={y} stroke="rgba(255,255,255,0.14)" strokeDasharray={tick ? '4 8' : '0'} />
-                      <text x="12" y={y + 4} fill="var(--aurora-text)" fontSize="11" fontWeight="600">
+                      <line className="aurora-sales-chart-grid" x1="46" x2="614" y1={y} y2={y} strokeDasharray={tick ? '4 8' : '0'} />
+                      <text className="aurora-sales-chart-text" x="12" y={y + 4} fontSize="11" fontWeight="600">
                         {tick}
                       </text>
                     </g>
                   )
                 })}
-                <line x1="46" x2="614" y1="128" y2="128" stroke="rgba(255,255,255,0.26)" />
+                <line className="aurora-sales-chart-axis" x1="46" x2="614" y1="128" y2="128" />
                 {recentBuckets.map((bucket, index) => {
                   const slotWidth = 568 / recentBuckets.length
                   const barWidth = Math.min(42, slotWidth * 0.48)
@@ -241,10 +243,10 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
                         x={x}
                         y={y}
                       />
-                      <text x={x + barWidth / 2} y={Math.max(14, y - 8)} fill="var(--aurora-text-strong)" fontSize="12" fontWeight="700" textAnchor="middle">
+                      <text x={x + barWidth / 2} y={Math.max(14, y - 8)} fill="var(--sales-dashboard-text)" fontSize="12" fontWeight="700" textAnchor="middle">
                         {bucket.count}
                       </text>
-                      <text x={x + barWidth / 2} y="158" fill="var(--aurora-text)" fontSize="11" fontWeight="600" textAnchor="middle">
+                      <text className="aurora-sales-chart-text" x={x + barWidth / 2} y="158" fontSize="11" fontWeight="600" textAnchor="middle">
                         {bucket.label}
                       </text>
                     </g>
@@ -255,10 +257,10 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
           </div>
         </div>
 
-        <div className="aurora-ops-card p-4">
+        <div className="aurora-sales-dashboard-card p-4">
           <div className="flex items-center justify-between gap-4">
-            <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">Status mix</p>
-            <span className="text-xs font-semibold text-[var(--aurora-text)]">{statusBreakdown.length} states</span>
+            <p className="text-sm font-semibold text-[var(--sales-dashboard-text)]">Status mix</p>
+            <span className="aurora-sales-dashboard-muted text-xs font-semibold">{statusBreakdown.length} states</span>
           </div>
           <div className="mt-4 space-y-3">
             {statusBreakdown.map((status) => {
@@ -267,16 +269,16 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
               return (
                 <div key={status.key}>
                   <div className="flex items-center justify-between gap-4 text-xs">
-                    <span className="font-semibold text-[var(--aurora-text-strong)]">
+                    <span className="font-semibold text-[var(--sales-dashboard-text)]">
                       {status.label}
                     </span>
-                    <span className="text-[var(--aurora-text)]">
+                    <span className="aurora-sales-dashboard-muted">
                       {status.count} · {percent}%
                     </span>
                   </div>
-                  <div className="mt-1.5 h-2 overflow-hidden rounded-full border border-[rgba(73,92,65,0.14)] bg-[rgba(255,255,255,0.2)]">
+                  <div className="aurora-sales-status-bar mt-1.5 h-2 overflow-hidden rounded-full">
                     <div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,rgba(117,150,107,0.82),rgba(196,168,108,0.72))]"
+                      className="aurora-sales-status-fill h-full rounded-full"
                       style={{ width: `${percent}%` }}
                     />
                   </div>
@@ -327,38 +329,38 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   const amountTicks = [1, 0.75, 0.5, 0.25, 0].map((ratio) => Math.round(maxAmount * ratio))
 
   return (
-    <section className="aurora-ops-panel p-6">
-      <div className="aurora-widget-header items-start">
+    <section className="aurora-sales-dashboard p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="aurora-widget-heading">
-          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--aurora-olive-deep)]">
+          <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">
             Sales analytics
           </p>
-          <h2 className="mt-2 font-display text-2xl text-[var(--aurora-text-strong)]">
+          <h2 className="mt-2 font-display text-2xl text-[var(--sales-dashboard-text)]">
             Revenue and profit trend
           </h2>
         </div>
-        <span className="aurora-chip">
+        <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--sales-dashboard-text)]">
           {loading ? 'Loading' : `${visiblePoints.length} days`}
         </span>
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="aurora-ops-card p-4">
+        <div className="aurora-sales-dashboard-card p-4">
           {error ? (
             <p className="aurora-message aurora-message-error" role="alert">
               {error}
             </p>
           ) : loading ? (
-            <div className="flex h-40 items-center justify-center text-sm font-semibold text-[var(--aurora-text)]">
+            <div className="aurora-sales-dashboard-muted flex h-40 items-center justify-center text-sm font-semibold">
               Loading sales analytics
             </div>
           ) : visiblePoints.length ? (
-            <div className="rounded-[1.25rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.13)] px-3 py-3" aria-label="Sales analytics chart">
+            <div className="aurora-sales-dashboard-chart px-3 py-3" aria-label="Sales analytics chart">
               <svg className="h-72 w-full overflow-visible" viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Sales and profit trend">
                 <defs>
                   <linearGradient id="salesAreaGradient" x1="0" x2="0" y1="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(117,150,107,0.34)" />
-                    <stop offset="100%" stopColor="rgba(117,150,107,0.02)" />
+                    <stop offset="0%" stopColor="color-mix(in srgb, var(--sales-dashboard-line) 28%, transparent)" />
+                    <stop offset="100%" stopColor="color-mix(in srgb, var(--sales-dashboard-line) 3%, transparent)" />
                   </linearGradient>
                 </defs>
                 {amountTicks.map((tick) => {
@@ -366,24 +368,24 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
 
                   return (
                     <g key={tick}>
-                      <line x1={chartLeft} x2={chartLeft + plotWidth} y1={y} y2={y} stroke="rgba(255,255,255,0.14)" strokeDasharray={tick ? '4 8' : '0'} />
-                      <text x="8" y={y + 4} fill="var(--aurora-text)" fontSize="11" fontWeight="600">
+                      <line className="aurora-sales-chart-grid" x1={chartLeft} x2={chartLeft + plotWidth} y1={y} y2={y} strokeDasharray={tick ? '4 8' : '0'} />
+                      <text className="aurora-sales-chart-text" x="8" y={y + 4} fontSize="11" fontWeight="600">
                         {formatCompactCurrency(tick)}
                       </text>
                     </g>
                   )
                 })}
-                <line x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartTop + plotHeight} stroke="rgba(255,255,255,0.2)" />
-                <line x1={chartLeft} x2={chartLeft + plotWidth} y1={chartTop + plotHeight} y2={chartTop + plotHeight} stroke="rgba(255,255,255,0.26)" />
+                <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartTop + plotHeight} />
+                <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft + plotWidth} y1={chartTop + plotHeight} y2={chartTop + plotHeight} />
                 <path d={salesAreaPath} fill="url(#salesAreaGradient)" />
-                <path d={salesPath} fill="none" stroke="rgba(117,150,107,0.95)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
-                <path d={profitPath} fill="none" stroke="rgba(196,168,108,0.92)" strokeDasharray="7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
+                <path className="aurora-sales-chart-sales" d={salesPath} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
+                <path className="aurora-sales-chart-profit" d={profitPath} fill="none" strokeDasharray="7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
                 {chartPoints.map((point) => (
                   <g key={point.date}>
-                    <line x1={point.x} x2={point.x} y1={chartTop + plotHeight} y2={chartTop + plotHeight + 5} stroke="rgba(255,255,255,0.26)" />
-                    <circle cx={point.x} cy={point.salesY} fill="rgb(117,150,107)" r="5" stroke="rgba(255,255,255,0.82)" strokeWidth="2" />
-                    <circle cx={point.x} cy={point.profitY} fill="rgb(196,168,108)" r="4" stroke="rgba(255,255,255,0.82)" strokeWidth="2" />
-                    <text x={point.x} y={chartTop + plotHeight + 24} fill="var(--aurora-text)" fontSize="11" fontWeight="600" textAnchor="middle">
+                    <line className="aurora-sales-chart-axis" x1={point.x} x2={point.x} y1={chartTop + plotHeight} y2={chartTop + plotHeight + 5} />
+                    <circle className="aurora-sales-chart-dot-sales" cx={point.x} cy={point.salesY} r="5" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2" />
+                    <circle className="aurora-sales-chart-dot-profit" cx={point.x} cy={point.profitY} r="4" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2" />
+                    <text className="aurora-sales-chart-text" x={point.x} y={chartTop + plotHeight + 24} fontSize="11" fontWeight="600" textAnchor="middle">
                       {formatShortDate(point.date)}
                     </text>
                   </g>
@@ -391,21 +393,21 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
               </svg>
             </div>
           ) : (
-            <div className="flex h-40 items-center justify-center text-center text-sm leading-7 text-[var(--aurora-text)]">
+            <div className="aurora-sales-dashboard-muted flex h-40 items-center justify-center text-center text-sm leading-7">
               Sales analytics will appear after completed order data is available.
             </div>
           )}
         </div>
 
-        <div className="aurora-ops-card grid gap-3 p-4 sm:grid-cols-3 xl:grid-cols-1">
+        <div className="aurora-sales-dashboard-card grid gap-3 p-4 sm:grid-cols-3 xl:grid-cols-1">
           {[
             ['Total sales', summary.totalSales || 0],
             ['Net profit', summary.netProfit || 0],
             ['Refunds', summary.totalRefunds || 0],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-[1rem] border border-[rgba(73,92,65,0.12)] bg-[rgba(255,255,255,0.12)] px-4 py-3">
-              <p className="text-xs font-semibold text-[var(--aurora-olive-deep)]">{label}</p>
-              <p className="mt-1 font-display text-2xl text-[var(--aurora-text-strong)]">
+            <div key={label} className="rounded-[1rem] border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-3">
+              <p className="aurora-sales-dashboard-kicker text-xs font-semibold">{label}</p>
+              <p className="mt-1 font-display text-2xl text-[var(--sales-dashboard-text)]">
                 {formatCurrency(value)}
               </p>
             </div>
@@ -413,13 +415,13 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold text-[var(--aurora-text)]">
+      <div className="aurora-sales-dashboard-muted mt-4 flex flex-wrap items-center gap-4 text-xs font-semibold">
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-[rgba(117,150,107,0.72)]" />
+          <span className="h-3 w-3 rounded-full bg-[var(--sales-dashboard-line)]" />
           Sales
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="h-3 w-3 rounded-full bg-[rgba(196,168,108,0.82)]" />
+          <span className="h-3 w-3 rounded-full bg-[var(--sales-dashboard-profit)]" />
           Profit
         </span>
       </div>
