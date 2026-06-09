@@ -201,7 +201,7 @@ func.runCode = async function (code) {
 //     }
 // };
 
-func.enrichProductsWithOptions = async function (userId, products) {
+func.enrichProductsWithOptions = async function (userId, products, adminView = false) {
     if (!products || products.length === 0) return products;
     const productIds = products.map(p => p.id);
 
@@ -315,6 +315,10 @@ func.enrichProductsWithOptions = async function (userId, products) {
                     price_mult: parseFloat(opt.price_mult),
                     sort_order: opt.sort_order
                 });
+                if (!adminView) {
+                    delete groups[opt.group_id].values[groups[opt.group_id].values.length - 1].price_add;
+                    delete groups[opt.group_id].values[groups[opt.group_id].values.length - 1].price_mult;
+                }
             }
         }
         p.options.push(...Object.values(groups));
@@ -379,7 +383,7 @@ func.getAllProducts = async function (userId,isManager = false) {
             ) r ON r.product_id = p.id
             ${w}
         `, q);
-        rows = await func.enrichProductsWithOptions(userId, rows);
+        rows = await func.enrichProductsWithOptions(userId, rows, isManager);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Get all products error:', error);
@@ -418,7 +422,7 @@ func.getProductsByIds = async function (userId, productId, isUrl = false, isMana
         if (rows.length === 0) {
             throw new DBError(404, 'No products found');
         }
-        rows = await func.enrichProductsWithOptions(userId, rows);
+        rows = await func.enrichProductsWithOptions(userId, rows, isManager);
         const foundIds = rows.map(r => r["" + (isUrl ? 'product_code' : 'id')]);
         const missingIds = productId.filter(id => !foundIds.includes(id));
         return { success: true, products: rows, idsnotfound: missingIds };
@@ -532,7 +536,7 @@ func.getTodaysPick = async function (userId, isManager = false) {
         if (rows.length === 0) {
             return { success: true, product: null, reason: 'No products are available right now.' };
         }
-        const product = (await func.enrichProductsWithOptions(userId, rows))[0];
+        const product = (await func.enrichProductsWithOptions(userId, rows, isManager))[0];
         return {
             success: true,
             product,
@@ -594,7 +598,7 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
         }
 
         let [rows] = await pool.execute(sql, params);
-        rows = await func.enrichProductsWithOptions(userId, rows);
+        rows = await func.enrichProductsWithOptions(userId, rows, isManager);
         return { success: true, products: rows };
     } catch (error) {
         console.error('Search products error:', error);
