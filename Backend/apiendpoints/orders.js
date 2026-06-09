@@ -292,7 +292,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!query || !query.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const specificorder = Boolean(query.id) ? query.id : null;
             if (!specificorder) return { s: 400, j: true, d: { e: "Order ID is required" } };
-            const admin = (["Admin","Sales Manager"].includes(currentUser.role)) ? true : false;
+            const admin = (["Admin","Sales Manager", "Product Manager"].includes(currentUser.role)) ? true : false;
             async function getOrderResult(result) {
                 if (result.success) {
                     const errors = [];
