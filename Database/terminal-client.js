@@ -39,7 +39,7 @@ async function apiFetch(endpoint, method = 'GET', body = null) {
 
 // --- Auth & Profile ---
 
-async function register() {
+async function register() { if (sessionToken) { console.log('Already logged in.'); return; }
     console.log('\n--- Register ---');
     const u = await question('Email/Username: ');
     const n = await question('Display Name: ');
