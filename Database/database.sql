@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     cctoken JSON DEFAULT NULL,
     emailblocked BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    last_login TIMESTAMP NULL DEFAULT NULL
 );
 
 -- Create comments table
