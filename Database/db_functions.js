@@ -876,14 +876,14 @@ func.addProduct = async function (data) {
         material, capacity, image_url, discount_rate,
         warranty_status, distributor_information
     } = data;
-    const model = normalizeProductText(data.model, 'Model');
-    const serial_number = normalizeProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number', true);
+    const model = normalizeProductText(data.model, 'Model', false); // OPTIONAL!
+    const serial_number = normalizeProductText(data.serial_number ?? data.serialNumber ?? product_code, 'Serial number', false); // OPTIONAL!
     const productName = normalizeProductText(name, 'Name', true);
-    const productDescription = normalizeProductText(description, 'Description', true);
+    const productDescription = normalizeProductText(description, 'Description', false); // OPTIONAL!
     const productPrice = normalizeProductNumber(price, 'Price', {}, true);
     const productStock = normalizeProductNumber(stock, 'Stock', { integer: true }, true);
-    const warrantyStatus = normalizeProductText(warranty_status ?? data.warrantyStatus, 'Warranty status', true);
-    const distributorInformation = normalizeProductText(distributor_information ?? data.distributorInformation, 'Distributor information', true);
+    const warrantyStatus = normalizeProductText(warranty_status ?? data.warrantyStatus, 'Warranty status', false); // OPTIONAL!
+    const distributorInformation = normalizeProductText(distributor_information ?? data.distributorInformation, 'Distributor information', false); // OPTIONAL!
     const connection = await pool.getConnection();
     try {
         await ensureProductDesignColumns(connection);
