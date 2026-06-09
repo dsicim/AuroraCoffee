@@ -53,7 +53,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                                 ordr.details = order;
                                 if (currentUser.role === "Product Manager") {
-                                    return { order: sanitizeProductManagerOrder(ordr) };
+                                    const o = sanitizeProductManagerOrder(ordr);
+                                    delete o.details.products;
+                                    return { order: o };
                                 }
                             }
                             else delete ordr.details;
