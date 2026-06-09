@@ -1957,10 +1957,10 @@ func.updateOrderStatus = async function (orderId, status, paymentId = null, rest
                 await connection.execute('UPDATE product_variants pv SET pv.stock = pv.stock + ? WHERE pv.id = ?', [restock.quantity, restock.variantId]);
             }
         }
-        connection.commit();
+        await connection.commit();
         return { success: true, message: 'Order status updated successfully' };
     } catch (error) {
-        connection.rollback();
+        await connection.rollback();
         console.error('Update order status error:', error);
         throw new DBError(500, 'Failed to update order status');
     } finally {
