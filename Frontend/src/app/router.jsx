@@ -33,7 +33,7 @@ export default function AppRoutes() {
       <Route
         path="/account"
         element={(
-          <ProtectedRoleRoute requiredRole={userRoles.customer}>
+          <ProtectedRoleRoute requiredRole={userRoles.customer} allowAnyVerifiedRole>
             <AccountPage />
           </ProtectedRoleRoute>
         )}

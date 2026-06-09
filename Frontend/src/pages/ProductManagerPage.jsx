@@ -17,7 +17,7 @@ import {
   fetchWishlistNotifyQueue,
   sendWishlistNotifications,
 } from '../lib/wishlist'
-import { fetchAdminOrderById, getOrderStatusPresentation } from '../features/orders/application/orders'
+import { fetchAdminOrderById, fetchAdminOrders, getOrderStatusPresentation } from '../features/orders/application/orders'
 import {
   getProductAvailability,
   getProductCategories,
@@ -640,7 +640,7 @@ function ManagerMetricCard({ label, value, detail }) {
     <div className="aurora-summary-card p-6">
       <div className="aurora-widget-body">
         <div className="aurora-widget-heading">
-          <p className="text-xs uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+          <p className="text-xs uppercase tracking-normal text-[var(--sales-page-accent)]">
             {label}
           </p>
           <p className="mt-3 font-display text-3xl text-[var(--aurora-text-strong)]">
@@ -4086,7 +4086,7 @@ function CategoryManagementPanel({ products }) {
       <div className="aurora-product-edit-hero">
         <div className="aurora-widget-header">
           <div className="aurora-widget-heading">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
               Category management
             </p>
             <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -4898,7 +4898,7 @@ function ProductEditPanel({ products, loading }) {
       <div className="aurora-product-edit-hero">
         <div className="aurora-widget-header">
           <div className="aurora-widget-heading">
-            <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
               Product editor
             </p>
             <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -5340,7 +5340,7 @@ function CommentSnapshotCard({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p
-            className="text-xs font-semibold uppercase tracking-[0.24em]"
+            className="text-xs font-semibold uppercase tracking-normal"
             style={{ color: labelColor }}
           >
             {title}
@@ -5377,7 +5377,7 @@ function CommentSnapshotCard({
       </p>
 
       <div
-        className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.18em]"
+        className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-normal"
         style={{ color: metaColor }}
       >
         <span>Created {formatCommentDate(snapshot.createdAt)}</span>
@@ -5533,7 +5533,7 @@ function WishlistNotifyPanel() {
     <section id="wishlist-notifications" className="aurora-ops-panel p-8">
       <div className="aurora-widget-header">
         <div className="aurora-widget-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
             Wishlist notifications
           </p>
           <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -5567,7 +5567,7 @@ function WishlistNotifyPanel() {
           <article key={card.type} className="aurora-ops-card p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   {card.summary.entries} queued
                 </p>
                 <h3 className="mt-3 text-xl font-semibold text-[var(--aurora-text-strong)]">
@@ -5585,7 +5585,7 @@ function WishlistNotifyPanel() {
 
             <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Products
                 </p>
                 <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
@@ -5593,7 +5593,7 @@ function WishlistNotifyPanel() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Entries
                 </p>
                 <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
@@ -5601,7 +5601,7 @@ function WishlistNotifyPanel() {
                 </p>
               </div>
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-olive-deep)]">
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Blocked
                 </p>
                 <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
@@ -5647,15 +5647,33 @@ function WishlistNotifyPanel() {
 }
 
 function ProductOrderLookupPanel() {
+  const [orders, setOrders] = useState([])
+  const [ordersLoading, setOrdersLoading] = useState(true)
   const [orderId, setOrderId] = useState('')
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [query, setQuery] = useState('')
 
-  function handleSubmit(event) {
-    event.preventDefault()
+  const filteredOrders = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase()
 
-    const normalizedOrderId = orderId.trim()
+    if (!normalizedQuery) {
+      return orders
+    }
+
+    return orders.filter((entry) => [
+      entry.id,
+      entry.purchaseId,
+      entry.statusLabel,
+      entry.submittedAt,
+    ].some((value) => String(value || '').toLowerCase().includes(normalizedQuery)))
+  }, [orders, query])
+
+  const selectedOrderId = order?.id || ''
+
+  const loadOrderDetail = useCallback((nextOrderId) => {
+    const normalizedOrderId = String(nextOrderId || '').trim()
 
     setError('')
 
@@ -5670,6 +5688,7 @@ function ProductOrderLookupPanel() {
     void fetchAdminOrderById(normalizedOrderId)
       .then((nextOrder) => {
         setOrder(nextOrder)
+        setOrderId(nextOrder?.id || normalizedOrderId)
       })
       .catch((lookupError) => {
         setOrder(null)
@@ -5678,25 +5697,106 @@ function ProductOrderLookupPanel() {
       .finally(() => {
         setLoading(false)
       })
+  }, [])
+
+  const loadOrderQueue = useCallback(({ preferredOrderId = '', quiet = false, autoSelect = false } = {}) => {
+    if (!quiet) {
+      setOrdersLoading(true)
+    }
+
+    void fetchAdminOrders()
+      .then((nextOrders) => {
+        setOrders(nextOrders)
+
+        const nextSelectedOrder =
+          nextOrders.find((entry) => entry.id === preferredOrderId) ||
+          nextOrders[0] ||
+          null
+
+        if (nextSelectedOrder && autoSelect) {
+          loadOrderDetail(nextSelectedOrder.id)
+        }
+      })
+      .catch((lookupError) => {
+        setError(lookupError?.message || 'Could not load the order queue.')
+      })
+      .finally(() => {
+        setOrdersLoading(false)
+      })
+  }, [loadOrderDetail])
+
+  useEffect(() => {
+    let active = true
+
+    void fetchAdminOrders()
+      .then((nextOrders) => {
+        if (!active) {
+          return
+        }
+
+        setOrders(nextOrders)
+
+        const nextSelectedOrder = nextOrders[0] || null
+
+        if (nextSelectedOrder) {
+          loadOrderDetail(nextSelectedOrder.id)
+        }
+      })
+      .catch((lookupError) => {
+        if (!active) {
+          return
+        }
+
+        setError(lookupError?.message || 'Could not load the order queue.')
+      })
+      .finally(() => {
+        if (active) {
+          setOrdersLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [loadOrderDetail])
+
+  function handleSubmit(event) {
+    event.preventDefault()
+
+    const normalizedOrderId = orderId.trim()
+
+    loadOrderDetail(normalizedOrderId)
   }
 
   const status = getOrderStatusPresentation(order)
 
   return (
-    <section className="aurora-ops-panel p-8">
+    <section id="order-tracking" className="aurora-ops-panel p-8">
       <div className="aurora-widget-header">
         <div className="aurora-widget-heading">
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
-            Order lookup
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+            Order tracking
           </p>
           <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
-            Inspect order details
+            Track product fulfillment
           </h2>
         </div>
+        <LiquidGlassButton
+          type="button"
+          variant="quiet"
+          size="compact"
+          disabled={ordersLoading}
+          onClick={() => {
+            loadOrderQueue({ preferredOrderId: selectedOrderId, quiet: false })
+          }}
+        >
+          Refresh
+        </LiquidGlassButton>
       </div>
 
       <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
-        Look up a known order number to review delivery region, totals, and product line details.
+        Product managers can review the fulfillment queue, delivery region, and product line
+        details without payment, refund, or sales status controls.
       </p>
 
       <form className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
@@ -5724,15 +5824,80 @@ function ProductOrderLookupPanel() {
         </div>
       ) : null}
 
-      {!order && !error ? (
-        <SectionEmptyState
-          title="No order selected"
-          description="Enter an order number to load the detail record available to product operations."
-        />
-      ) : null}
+      <div className="mt-6 grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="aurora-widget-subsurface p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="aurora-kicker">Shipping queue</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--aurora-text)]">
+                {ordersLoading ? 'Loading orders...' : `${filteredOrders.length} order${filteredOrders.length === 1 ? '' : 's'} visible`}
+              </p>
+            </div>
+            <span className="aurora-chip">Read only</span>
+          </div>
 
-      {order ? (
-        <div className="mt-6 grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+          <label className="mt-4 block">
+            <span className="sr-only">Filter orders</span>
+            <input
+              type="search"
+              className="aurora-input"
+              value={query}
+              onChange={(event) => {
+                setQuery(event.target.value)
+              }}
+              placeholder="Filter by order, purchase, or status"
+            />
+          </label>
+
+          <div className="aurora-sales-table-divider mt-4 max-h-[32rem] overflow-auto">
+            {ordersLoading ? (
+              <div className="px-2 py-6 text-sm leading-7 text-[var(--aurora-text)]">
+                Loading the latest order queue.
+              </div>
+            ) : filteredOrders.length ? (
+              filteredOrders.map((entry) => {
+                const entryStatus = getOrderStatusPresentation(entry)
+                const selected = entry.id === selectedOrderId
+
+                return (
+                  <button
+                    key={entry.id}
+                    type="button"
+                    className={`aurora-sales-order-row grid w-full gap-3 px-4 py-4 text-left transition ${selected ? 'is-selected' : ''}`.trim()}
+                    onClick={() => {
+                      loadOrderDetail(entry.id)
+                    }}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="break-all text-sm font-semibold text-[var(--aurora-text-strong)]">
+                          #{entry.id}
+                        </p>
+                        <p className="mt-1 text-xs text-[var(--aurora-text)]">
+                          {formatManagerOrderDate(entry.submittedAt)}
+                        </p>
+                      </div>
+                      <span className={`aurora-order-status-chip is-${entryStatus.key} inline-flex`}>
+                        {entryStatus.label}
+                      </span>
+                    </div>
+                    {entry.purchaseId ? (
+                      <p className="truncate text-xs text-[var(--aurora-text)]">
+                        Purchase {entry.purchaseId}
+                      </p>
+                    ) : null}
+                  </button>
+                )
+              })
+            ) : (
+              <div className="px-2 py-6 text-sm leading-7 text-[var(--aurora-text)]">
+                No orders match this filter.
+              </div>
+            )}
+          </div>
+        </div>
+
+        {order ? (
           <div className="aurora-widget-subsurface p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -5774,37 +5939,49 @@ function ProductOrderLookupPanel() {
             <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
               {getManagerOrderLocation(order)}
             </p>
-          </div>
 
-          <div className="aurora-widget-subsurface p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="aurora-kicker">Products</p>
-              <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
-                {order.itemCount} item{order.itemCount === 1 ? '' : 's'}
-              </p>
-            </div>
-            <div className="mt-4 divide-y divide-[rgba(73,92,65,0.12)]">
-              {(order.items || []).map((item) => (
-                <div key={`${order.id}:${item.lineItemId || item.id || item.name}`} className="py-3 text-sm">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-[var(--aurora-text-strong)]">
-                        {item.name}
-                      </p>
-                      <p className="mt-1 text-[var(--aurora-text)]">
-                        Qty {item.quantity}
+            <div className="mt-5 border-t border-[var(--aurora-border)] pt-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="aurora-kicker">Products</p>
+                <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+                  {order.itemCount} item{order.itemCount === 1 ? '' : 's'}
+                </p>
+              </div>
+              <div className="aurora-sales-item-divider mt-4">
+                {(order.items || []).map((item) => (
+                  <div key={`${order.id}:${item.lineItemId || item.id || item.name}`} className="py-3 text-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-[var(--aurora-text-strong)]">
+                          {item.name}
+                        </p>
+                        <p className="mt-1 text-[var(--aurora-text)]">
+                          Qty {item.quantity}
+                        </p>
+                      </div>
+                      <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">
+                        {formatCurrency(item.price * item.quantity)}
                       </p>
                     </div>
-                    <p className="shrink-0 font-semibold text-[var(--aurora-text-strong)]">
-                      {formatCurrency(item.price * item.quantity)}
-                    </p>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : !error ? (
+          <div className="aurora-widget-subsurface p-5">
+            <div className="py-10 text-center">
+              <p className="font-display text-3xl text-[var(--aurora-text-strong)]">
+                No order selected
+              </p>
+              <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
+                Choose a queue item or enter an order number to load the detail record available
+                to product operations.
+              </p>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </section>
   )
 }
@@ -6029,7 +6206,7 @@ export default function ProductManagerPage() {
       title="Manage the live catalog"
       description="Use this page to watch inventory pressure and inspect product-scoped comment queues without extra dashboard filler."
     >
-      <div className="space-y-8">
+      <div className="aurora-sales-manager-page space-y-6">
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <ManagerMetricCard
             label="Products"
@@ -6067,7 +6244,7 @@ export default function ProductManagerPage() {
           <section id="stock-watch" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Stock watch
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -6124,7 +6301,7 @@ export default function ProductManagerPage() {
           <section id="comment-moderation" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
               <div className="aurora-widget-heading">
-                <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+                <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Comment moderation
                 </p>
                 <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
@@ -6135,7 +6312,7 @@ export default function ProductManagerPage() {
 
             <div className="mt-6 grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
               <label className="block">
-                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Product
                 </span>
                 <select
@@ -6158,7 +6335,7 @@ export default function ProductManagerPage() {
                 {activeModerationProductId ? (
                   <div className="mt-3 flex flex-wrap items-center gap-3">
                     <span
-                      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
+                      className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-normal"
                       style={selectedProductTheme.badgeStyle}
                     >
                       <span
@@ -6175,7 +6352,7 @@ export default function ProductManagerPage() {
               </label>
 
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                   Scope
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -6259,7 +6436,7 @@ export default function ProductManagerPage() {
                     <article key={record.id} className="aurora-ops-card p-5">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div>
-                          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--aurora-olive-deep)]">
+                          <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
                             {record.meta.userName || 'Anonymous'}
                           </p>
                           <p className="mt-3 text-lg font-semibold text-[var(--aurora-text-strong)]">

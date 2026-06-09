@@ -13,7 +13,7 @@ function buildLoginPath(pathname, search) {
   return `/login?next=${encodeURIComponent(pathname + search)}`
 }
 
-export default function ProtectedRoleRoute({ requiredRole, children }) {
+export default function ProtectedRoleRoute({ requiredRole, allowAnyVerifiedRole = false, children }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [authState, setAuthState] = useState(() => getAuthStateSnapshot())
@@ -64,7 +64,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
         return
       }
 
-      if (requiredRole && !canAccessRole(resolvedRole, requiredRole)) {
+      if (!allowAnyVerifiedRole && requiredRole && !canAccessRole(resolvedRole, requiredRole)) {
         navigate(getRoleLandingPath(resolvedRole), { replace: true })
         return
       }
@@ -83,7 +83,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
         session.token,
         location.pathname,
         location.search,
-        requiredRole || '',
+        allowAnyVerifiedRole ? 'any' : requiredRole || '',
       ].join('|')
       const shouldValidateRouteEntry =
         lastGuardValidationKeyRef.current !== guardValidationKey
@@ -127,6 +127,7 @@ export default function ProtectedRoleRoute({ requiredRole, children }) {
     location.pathname,
     location.search,
     navigate,
+    allowAnyVerifiedRole,
     requiredRole,
     session?.token,
     status,

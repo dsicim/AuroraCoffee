@@ -13,7 +13,7 @@ import {
   getAuthStateSnapshot,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { getAccessibleRoleLevels } from '../lib/roles'
+import { getAccessibleRoleLevels, normalizeUserRole, userRoles } from '../lib/roles'
 
 const accountLinks = [
   { label: 'Overview', to: '/account' },
@@ -177,6 +177,10 @@ export default function AccountLayout({
   const displayUser = user || authState.lastVerifiedUser
   const canRenderAccountShell = Boolean(displayUser) || authState.isProfileError
   const accessLevels = getAccessibleRoleLevels(displayUser?.role)
+  const displayRole = normalizeUserRole(displayUser?.role)
+  const visibleAccountLinks = displayRole === userRoles.customer
+    ? accountLinks
+    : accountLinks.filter((item) => item.to === '/account')
 
   useEffect(() => {
     const syncAuthState = () => {
@@ -306,7 +310,7 @@ export default function AccountLayout({
                   pathname={location.pathname}
                 />
 
-                {accountLinks.map((item) => {
+                {visibleAccountLinks.map((item) => {
                   const isActive =
                     isRouteActive(location.pathname, item.to)
 
@@ -328,7 +332,9 @@ export default function AccountLayout({
 
               <div className="aurora-divider my-5" />
               <p className="text-sm text-[var(--aurora-text)]">
-                Orders, saved addresses, cards, and favorites stay one tap apart.
+                {displayRole === userRoles.customer
+                  ? 'Orders, saved addresses, cards, and favorites stay one tap apart.'
+                  : 'Profile settings stay available without exposing customer account tools.'}
               </p>
             </aside>
 
