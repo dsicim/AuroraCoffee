@@ -1,4 +1,5 @@
 const sql = require("../../Database/server.js");
+const aes = require("../components/aes256.js");
 
 async function handleAPI(config, method, endpoint, query, body, headers, currentUser) {
     const userId = currentUser && !currentUser.e && currentUser.id ? currentUser.id : null;
@@ -47,7 +48,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                 if (order.e && order.e.startsWith("Failed to parse JSON: ")) throw new Error("Malformed data found on decrypted database");
                                 ordr.details = order;
                                 if (currentUser.role === "Product Manager") {
-                                    return { order: ordr.details };
+                                    return { order: ordr.details.products };
                                 }
                             }
                             else delete ordr.details;
@@ -69,6 +70,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
                 else return { s: 500, j: true, d: { e: "An unknown error occurred" } };
             });
+            if (allOrders.s !== 200) return { s: allOrders.s, j: true, d: allOrders.d };
+            return { s: 200, j: true, d: allOrders.d };
         }
     }
     return { s: 404, j: true, d: { e: "Not Found" } };
