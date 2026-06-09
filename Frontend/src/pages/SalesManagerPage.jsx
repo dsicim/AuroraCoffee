@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
 import RoleOverviewLayout from '../components/RoleOverviewLayout'
 import { formatCurrency } from '../lib/currency'
+import { fetchAuthJson } from '../lib/authRequest'
 import {
   fetchAdminOrderById,
   fetchAdminOrders,
@@ -85,6 +86,12 @@ function getDeliveryAddressLines(delivery) {
   ].filter(Boolean)
 }
 
+function toFiniteNumber(value) {
+  const numberValue = Number(value)
+
+  return Number.isFinite(numberValue) ? numberValue : 0
+}
+
 function getRefundStatus(item) {
   if (item.refunded) {
     return { key: 'refunded', label: 'Refunded', chipClass: 'is-delivered' }
@@ -128,6 +135,32 @@ function getRecentOrderBuckets(orders) {
       count,
     }
   })
+}
+
+async function fetchSalesAnalytics() {
+  const { response, payload, data } = await fetchAuthJson('/analytics')
+
+  if (!response.ok || data?.e || payload?.e) {
+    throw new Error(data?.e || payload?.e || 'Could not load sales analytics.')
+  }
+
+  return {
+    summary: {
+      totalSales: toFiniteNumber(data?.summary?.totalSales),
+      totalCost: toFiniteNumber(data?.summary?.totalCost),
+      totalRefunds: toFiniteNumber(data?.summary?.totalRefunds),
+      netProfit: toFiniteNumber(data?.summary?.netProfit),
+    },
+    timeseries: Array.isArray(data?.timeseries)
+      ? data.timeseries.map((point) => ({
+        date: point?.date || '',
+        sales: toFiniteNumber(point?.sales),
+        cost: toFiniteNumber(point?.cost),
+        profit: toFiniteNumber(point?.profit),
+        refunds: toFiniteNumber(point?.refunds),
+      })).filter((point) => point.date)
+      : [],
+  }
 }
 
 function SalesGraphicsPanel({ orders, statusBreakdown }) {
@@ -213,6 +246,108 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
   )
 }
 
+function SalesAnalyticsGraph({ analytics, loading, error }) {
+  const timeseries = analytics?.timeseries || []
+  const summary = analytics?.summary || {}
+  const visiblePoints = timeseries.slice(-10)
+  const maxAmount = Math.max(1, ...visiblePoints.flatMap((point) => [
+    point.sales,
+    point.profit,
+  ].map((value) => Math.abs(value))))
+
+  return (
+    <section className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
+            Sales analytics
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Revenue and profit trend
+          </h2>
+        </div>
+        <span className="aurora-chip">
+          {loading ? 'Loading' : `${visiblePoints.length} days`}
+        </span>
+      </div>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_280px]">
+        <div className="aurora-ops-card p-5">
+          {error ? (
+            <p className="aurora-message aurora-message-error" role="alert">
+              {error}
+            </p>
+          ) : loading ? (
+            <div className="flex min-h-56 items-center justify-center text-sm font-semibold text-[var(--aurora-text)]">
+              Loading sales analytics
+            </div>
+          ) : visiblePoints.length ? (
+            <div className="grid min-h-56 grid-cols-[repeat(auto-fit,minmax(44px,1fr))] items-end gap-3" aria-label="Sales analytics chart">
+              {visiblePoints.map((point) => {
+                const salesHeight = Math.max(8, (Math.abs(point.sales) / maxAmount) * 100)
+                const profitHeight = Math.max(8, (Math.abs(point.profit) / maxAmount) * 100)
+
+                return (
+                  <div key={point.date} className="flex h-full min-w-0 flex-col justify-end gap-2 text-center">
+                    <div className="flex h-44 items-end justify-center gap-1.5">
+                      <div
+                        className="w-4 rounded-full border border-[rgba(73,92,65,0.18)] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(117,150,107,0.58))]"
+                        title={`Sales ${formatCurrency(point.sales)}`}
+                        style={{ height: `${salesHeight}%` }}
+                      />
+                      <div
+                        className="w-4 rounded-full border border-[rgba(132,88,46,0.16)] bg-[linear-gradient(180deg,rgba(255,255,255,0.88),rgba(196,168,108,0.74))]"
+                        title={`Profit ${formatCurrency(point.profit)}`}
+                        style={{ height: `${profitHeight}%` }}
+                      />
+                    </div>
+                    <span className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--aurora-text)]">
+                      {formatShortDate(point.date)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="flex min-h-56 items-center justify-center text-center text-sm leading-7 text-[var(--aurora-text)]">
+              Sales analytics will appear after completed order data is available.
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+          <MetricTile
+            label="Total sales"
+            value={formatCurrency(summary.totalSales || 0)}
+            description="Gross sales returned by analytics."
+          />
+          <MetricTile
+            label="Net profit"
+            value={formatCurrency(summary.netProfit || 0)}
+            description="Sales minus cost and refunds."
+          />
+          <MetricTile
+            label="Refunds"
+            value={formatCurrency(summary.totalRefunds || 0)}
+            description="Refunded sales included in analytics."
+          />
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap items-center gap-4 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--aurora-text)]">
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-[rgba(117,150,107,0.72)]" />
+          Sales
+        </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-[rgba(196,168,108,0.82)]" />
+          Profit
+        </span>
+      </div>
+    </section>
+  )
+}
+
 function MetricTile({ label, value, description }) {
   return (
     <div className="aurora-summary-card p-5">
@@ -235,15 +370,18 @@ function MetricTile({ label, value, description }) {
 
 export default function SalesManagerPage() {
   const [orders, setOrders] = useState([])
+  const [salesAnalytics, setSalesAnalytics] = useState(null)
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [ordersLoading, setOrdersLoading] = useState(true)
+  const [analyticsLoading, setAnalyticsLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [statusBusy, setStatusBusy] = useState(false)
   const [refundBusyKey, setRefundBusyKey] = useState('')
   const [error, setError] = useState('')
+  const [analyticsError, setAnalyticsError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [pendingDeliveredStatus, setPendingDeliveredStatus] = useState('')
 
@@ -278,6 +416,39 @@ export default function SalesManagerPage() {
       .finally(() => {
         if (active) {
           setOrdersLoading(false)
+        }
+      })
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let active = true
+
+    setAnalyticsLoading(true)
+    setAnalyticsError('')
+
+    void fetchSalesAnalytics()
+      .then((nextAnalytics) => {
+        if (!active) {
+          return
+        }
+
+        setSalesAnalytics(nextAnalytics)
+      })
+      .catch((nextAnalyticsError) => {
+        if (!active) {
+          return
+        }
+
+        setSalesAnalytics(null)
+        setAnalyticsError(nextAnalyticsError?.message || 'Could not load sales analytics.')
+      })
+      .finally(() => {
+        if (active) {
+          setAnalyticsLoading(false)
         }
       })
 
@@ -386,22 +557,44 @@ export default function SalesManagerPage() {
 
   const handleRefresh = async () => {
     setOrdersLoading(true)
+    setAnalyticsLoading(true)
     setFeedback('')
     setError('')
+    setAnalyticsError('')
 
     try {
-      const nextOrders = await fetchAdminOrders()
-      setOrders(nextOrders)
-      setSelectedOrderId((currentOrderId) => (
-        currentOrderId && nextOrders.some((order) => order.id === currentOrderId)
-          ? currentOrderId
-          : nextOrders[0]?.id || ''
-      ))
-      setFeedback('Orders refreshed.')
+      const [ordersResult, analyticsResult] = await Promise.allSettled([
+        fetchAdminOrders(),
+        fetchSalesAnalytics(),
+      ])
+
+      if (ordersResult.status === 'fulfilled') {
+        const nextOrders = ordersResult.value
+
+        setOrders(nextOrders)
+        setSelectedOrderId((currentOrderId) => (
+          currentOrderId && nextOrders.some((order) => order.id === currentOrderId)
+            ? currentOrderId
+            : nextOrders[0]?.id || ''
+        ))
+      } else {
+        setError(ordersResult.reason?.message || 'Could not refresh orders.')
+      }
+
+      if (analyticsResult.status === 'fulfilled') {
+        setSalesAnalytics(analyticsResult.value)
+      } else {
+        setAnalyticsError(analyticsResult.reason?.message || 'Could not refresh sales analytics.')
+      }
+
+      if (ordersResult.status === 'fulfilled' || analyticsResult.status === 'fulfilled') {
+        setFeedback('Sales manager data refreshed.')
+      }
     } catch (refreshError) {
       setError(refreshError?.message || 'Could not refresh orders.')
     } finally {
       setOrdersLoading(false)
+      setAnalyticsLoading(false)
     }
   }
 
@@ -507,6 +700,15 @@ export default function SalesManagerPage() {
       title="Manage live orders"
       description="A focused fulfillment console for order lookup, invoice access, delivery review, and status movement."
     >
+      <div className="mb-8 space-y-8">
+        <SalesAnalyticsGraph
+          analytics={salesAnalytics}
+          loading={analyticsLoading}
+          error={analyticsError}
+        />
+        <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
+      </div>
+
       <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -531,8 +733,6 @@ export default function SalesManagerPage() {
               description="Stopped or voided orders."
             />
           </section>
-
-          <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
 
           <section id="activity" className="aurora-ops-panel p-8">
             <div className="aurora-widget-header">
