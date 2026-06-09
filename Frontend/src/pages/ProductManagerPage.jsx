@@ -1377,7 +1377,11 @@ function moveItemToInsertionIndex(items, fromIndex, insertionIndex) {
 }
 
 function ProductOptionManager({ product, onProductOptionsChange }) {
-  const optionGroups = useMemo(() => getVariantOptionGroups(product), [product])
+  const sourceOptionGroups = useMemo(() => getVariantOptionGroups(product), [product])
+  const [optimisticOptionGroups, setOptimisticOptionGroups] = useState(null)
+  const optionGroups = optimisticOptionGroups?.productId === product?.id
+    ? optimisticOptionGroups.groups
+    : sourceOptionGroups
   const [optionName, setOptionName] = useState('')
   const [optionValue, setOptionValue] = useState('')
   const [editingOptionId, setEditingOptionId] = useState('')
@@ -1668,6 +1672,14 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       return
     }
 
+    const previousOptionGroups = optionGroups
+    setOptimisticOptionGroups({
+      productId: product?.id,
+      groups: reorderedOptions.map((group, index) => ({
+        ...group,
+        priority: index + 1,
+      })),
+    })
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all(
       reorderedOptions.map((group, index) => updateProductOption(
@@ -1680,7 +1692,10 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       .then(() => {
         setOptionFeedback({ success: 'Options reordered.' })
       })
-      .catch(setOptionError)
+      .catch((error) => {
+        setOptimisticOptionGroups({ productId: product?.id, groups: previousOptionGroups })
+        setOptionError(error)
+      })
   }
 
   function handleReorderValues(group, fromIndex, insertionIndex) {
@@ -1690,6 +1705,21 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       return
     }
 
+    const previousOptionGroups = optionGroups
+    setOptimisticOptionGroups({
+      productId: product?.id,
+      groups: optionGroups.map((entry) => (
+        String(entry.id) === String(group.id)
+          ? {
+              ...entry,
+              values: reorderedValues.map((value, index) => ({
+                ...value,
+                sortOrder: index,
+              })),
+            }
+          : entry
+      )),
+    })
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all(
       reorderedValues.map((value, index) => updateProductOptionValue(
@@ -1702,7 +1732,10 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       .then(() => {
         setOptionFeedback({ success: 'Variants reordered.' })
       })
-      .catch(setOptionError)
+      .catch((error) => {
+        setOptimisticOptionGroups({ productId: product?.id, groups: previousOptionGroups })
+        setOptionError(error)
+      })
   }
 
   function handleMoveValueToOption(sourceGroup, targetGroup, sourceIndex, insertionIndex = null) {
@@ -1733,6 +1766,33 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
     targetValues.splice(insertIndex, 0, value)
     const sourceValues = (sourceGroup.values || []).filter((entry) => String(entry.id) !== String(value.id))
 
+    const previousOptionGroups = optionGroups
+    setOptimisticOptionGroups({
+      productId: product?.id,
+      groups: optionGroups.map((entry) => {
+        if (String(entry.id) === String(targetGroup.id)) {
+          return {
+            ...entry,
+            values: targetValues.map((targetValue, index) => ({
+              ...targetValue,
+              sortOrder: index,
+            })),
+          }
+        }
+
+        if (String(entry.id) === String(sourceGroup.id)) {
+          return {
+            ...entry,
+            values: sourceValues.map((sourceValue, index) => ({
+              ...sourceValue,
+              sortOrder: index,
+            })),
+          }
+        }
+
+        return entry
+      }),
+    })
     setOptionState({ busy: true, error: '', success: '' })
     void Promise.all([
       ...targetValues.map((entry, index) => updateProductOptionValue(
@@ -1753,7 +1813,10 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       .then(() => {
         setOptionFeedback({ success: 'Variant moved.' })
       })
-      .catch(setOptionError)
+      .catch((error) => {
+        setOptimisticOptionGroups({ productId: product?.id, groups: previousOptionGroups })
+        setOptionError(error)
+      })
   }
 
   function handleDropOption(targetIndex) {
@@ -3800,6 +3863,7 @@ function CategoryManagementPanel({ products }) {
     }
 
     setActionBusy(`move:${category.id}`)
+    const previousCategories = categories
 
     try {
       const currentParentId = category.parentId || null
@@ -3829,6 +3893,23 @@ function CategoryManagementPanel({ products }) {
         : getCategoryChildren(categories, currentParentId)
             .filter((entry) => Number(entry.id) !== Number(category.id))
 
+      const nextCategoriesById = new Map(categories.map((entry) => [Number(entry.id), entry]))
+      reorderedTargetSiblings.forEach((entry, index) => {
+        nextCategoriesById.set(Number(entry.id), {
+          ...entry,
+          parentId: normalizedParentId,
+          sortOrder: index,
+        })
+      })
+      sourceSiblings.forEach((entry, index) => {
+        nextCategoriesById.set(Number(entry.id), {
+          ...entry,
+          parentId: currentParentId,
+          sortOrder: index,
+        })
+      })
+      setCategories(Array.from(nextCategoriesById.values()))
+
       const updateRequests = [
         ...reorderedTargetSiblings.map((entry, index) => updateProductCategory(entry.id, {
           name: entry.name,
@@ -3848,6 +3929,7 @@ function CategoryManagementPanel({ products }) {
       setSelectedCategoryId(String(category.id))
       setActionSuccess('Category moved successfully.')
     } catch (moveError) {
+      setCategories(previousCategories)
       setActionError(moveError)
     } finally {
       setDragCategoryId('')
