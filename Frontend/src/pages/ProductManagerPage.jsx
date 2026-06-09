@@ -2102,7 +2102,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
 
               <div className="aurora-product-option-add-value">
                 <label className="aurora-product-edit-field">
-                  <span className="aurora-product-edit-label">Add variant to {group.name || 'option'}</span>
+                  <span className="aurora-product-edit-label">Add option to {group.name || 'option'}</span>
                   <input
                     className="aurora-input aurora-product-edit-input mt-3"
                     type="text"
