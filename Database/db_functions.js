@@ -20,6 +20,7 @@ class DBError extends Error {
 
 let pool;
 const func = {};
+let categorySortOrderColumnReady = false;
 func.initDB = async function () {
     try {
         pool = mysql.createPool({
@@ -599,14 +600,32 @@ func.searchProducts = async function (userId, query, sortBy = 'newest') {
     }
 };
 
+async function ensureCategorySortOrderColumn() {
+    if (categorySortOrderColumnReady) return;
+
+    const [columns] = await pool.execute(`
+        SELECT COLUMN_NAME
+        FROM INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'categories' AND COLUMN_NAME = 'sort_order'
+    `, [config.database]);
+
+    if (!columns.length) {
+        await pool.execute('ALTER TABLE categories ADD COLUMN sort_order INT DEFAULT 0');
+    }
+
+    categorySortOrderColumnReady = true;
+}
+
 func.getCategories = async function (parent = null) {
     try {
+        await ensureCategorySortOrderColumn();
         let query = 'SELECT * FROM categories ';
         const params = [];
         if (parent !== undefined) {
             query += ' WHERE parent_id ' + (parent === null ? 'IS NULL' : '= ?');
             if (parent !== null) params.push(parent);
         }
+        query += ' ORDER BY sort_order ASC, name ASC';
         const [rows] = await pool.execute(query, params);
         let [rows2] = [[]];
         if (parent !== null) [rows2] = await pool.execute('SELECT * FROM products WHERE category_id IN (SELECT id FROM categories WHERE id = ?)', [params[0]]);
@@ -623,37 +642,106 @@ func.getCategories = async function (parent = null) {
 };
 
 func.addCategory = async function (name, parent_id = null) {
-    if (!name) {
+    const categoryName = String(name || "").trim();
+    const parentId = parent_id ? Number(parent_id) : null;
+    if (!categoryName) {
         throw new DBError(400, 'Category name is required');
     }
     try {
+        await ensureCategorySortOrderColumn();
+        if (parentId) {
+            const [parents] = await pool.execute('SELECT id FROM categories WHERE id = ?', [parentId]);
+            if (!parents.length) {
+                throw new DBError(404, 'Parent category not found');
+            }
+        }
+        const [orders] = await pool.execute(
+            'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next_order FROM categories WHERE parent_id ' + (parentId ? '= ?' : 'IS NULL'),
+            parentId ? [parentId] : []
+        );
         const [result] = await pool.execute(
-            'INSERT INTO categories (name, parent_id) VALUES (?, ?)',
-            [name, parent_id]
+            'INSERT INTO categories (name, parent_id, sort_order) VALUES (?, ?, ?)',
+            [categoryName, parentId, Number(orders[0] && orders[0].next_order) || 0]
         );
         return { success: true, message: 'Category added successfully', categoryId: result.insertId };
     } catch (error) {
+        if (error instanceof DBError) throw error;
         console.error('Add category error:', error);
         throw new DBError(500, 'Failed to add category: ' + error.message);
     }
 };
 
-func.updateCategory = async function (categoryId, name, parent_id = null) {
-    if (!categoryId) {
+func.updateCategory = async function (categoryId, name, parent_id = null, sort_order = undefined) {
+    const normalizedCategoryId = Number(categoryId);
+    const categoryName = String(name || "").trim();
+    const parentId = parent_id ? Number(parent_id) : null;
+    const nextSortOrder = sort_order === undefined ? null : Number(sort_order);
+    if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
         throw new DBError(400, 'Category ID is required');
     }
+    if (!categoryName) {
+        throw new DBError(400, 'Category name is required');
+    }
+    if (parentId === normalizedCategoryId) {
+        throw new DBError(400, 'A category cannot be its own parent');
+    }
+    if (sort_order !== undefined && !Number.isFinite(nextSortOrder)) {
+        throw new DBError(400, 'Category sort order must be a number');
+    }
+    const connection = await pool.getConnection();
     try {
-        const [result] = await pool.execute(
-            'UPDATE categories SET name = ?, parent_id = ? WHERE id = ?',
-            [name, parent_id, categoryId]
+        await ensureCategorySortOrderColumn();
+        await connection.beginTransaction();
+        const [categories] = await connection.execute('SELECT id FROM categories WHERE id = ? FOR UPDATE', [normalizedCategoryId]);
+        if (!categories.length) {
+            throw new DBError(404, 'Category not found');
+        }
+        if (parentId) {
+            const [parents] = await connection.execute('SELECT id FROM categories WHERE id = ?', [parentId]);
+            if (!parents.length) {
+                throw new DBError(404, 'Parent category not found');
+            }
+
+            const pendingIds = [normalizedCategoryId];
+            const descendantIds = new Set();
+            while (pendingIds.length) {
+                const currentId = pendingIds.pop();
+                const [children] = await connection.execute('SELECT id FROM categories WHERE parent_id = ?', [currentId]);
+                for (const child of children) {
+                    const childId = Number(child.id);
+                    if (descendantIds.has(childId)) continue;
+                    descendantIds.add(childId);
+                    pendingIds.push(childId);
+                }
+            }
+            if (descendantIds.has(parentId)) {
+                throw new DBError(400, 'A category cannot be moved under one of its subcategories');
+            }
+        }
+
+        const updateFields = ['name = ?', 'parent_id = ?'];
+        const updateValues = [categoryName, parentId];
+        if (sort_order !== undefined) {
+            updateFields.push('sort_order = ?');
+            updateValues.push(Math.round(nextSortOrder));
+        }
+        updateValues.push(normalizedCategoryId);
+        const [result] = await connection.execute(
+            `UPDATE categories SET ${updateFields.join(', ')} WHERE id = ?`,
+            updateValues
         );
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Category not found');
         }
+        await connection.commit();
         return { success: true, message: 'Category updated successfully' };
     } catch (error) {
+        await connection.rollback();
+        if (error instanceof DBError) throw error;
         console.error('Update category error:', error);
         throw new DBError(500, 'Failed to update category: ' + error.message);
+    } finally {
+        connection.release();
     }
 };
 
@@ -849,6 +937,47 @@ async function deleteVariantsForOptionValues(connection, optionValueIds) {
     const variantIds = variantRows.map(row => Number(row.id)).filter(id => Number.isFinite(id) && id > 0);
     if (variantIds.length) {
         await connection.query('DELETE FROM product_variants WHERE id IN (?)', [variantIds]);
+    }
+}
+
+async function buildVariantCodeForOptionValueIds(connection, optionValueIds) {
+    const ids = (Array.isArray(optionValueIds) ? optionValueIds : [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0);
+    if (!ids.length) return null;
+
+    const [optRows] = await connection.query(`
+        SELECT pog.group_code, pov.value_code
+        FROM product_option_values pov
+        JOIN product_option_groups pog ON pov.product_option_group_id = pog.id
+        WHERE pov.id IN (?)
+    `, [ids]);
+
+    const optionMap = {};
+    for (const row of optRows) {
+        if (row.group_code && row.value_code) {
+            optionMap[row.group_code] = row.value_code;
+        }
+    }
+    return Object.keys(optionMap).length
+        ? Buffer.from(JSON.stringify(optionMap)).toString('base64')
+        : null;
+}
+
+async function refreshVariantCodes(connection, variantIds) {
+    const ids = Array.from(new Set((Array.isArray(variantIds) ? variantIds : [])
+        .map(id => Number(id))
+        .filter(id => Number.isFinite(id) && id > 0)));
+    for (const variantId of ids) {
+        const [valueRows] = await connection.execute(
+            'SELECT product_option_value_id FROM product_variant_values WHERE product_variant_id = ?',
+            [variantId]
+        );
+        const variantCode = await buildVariantCodeForOptionValueIds(
+            connection,
+            valueRows.map(row => row.product_option_value_id)
+        );
+        await connection.execute('UPDATE product_variants SET variant_code = ? WHERE id = ?', [variantCode, variantId]);
     }
 }
 
@@ -1049,21 +1178,47 @@ func.updateProductOptionValue = async function (optionValueId, data) {
         fields.push('sort_order = ?');
         values.push(Math.round(sortOrder));
     }
+    if (data.option_group_id !== undefined || data.product_option_group_id !== undefined) {
+        const optionGroupId = Number(data.option_group_id || data.product_option_group_id);
+        if (!Number.isFinite(optionGroupId) || optionGroupId <= 0) {
+            throw new DBError(400, 'Option ID is required');
+        }
+        fields.push('product_option_group_id = ?');
+        values.push(optionGroupId);
+    }
     if (!fields.length) {
         throw new DBError(400, 'No variant changes to save');
     }
 
-    values.push(normalizedOptionValueId);
+    const connection = await pool.getConnection();
     try {
-        const [result] = await pool.execute(`UPDATE product_option_values SET ${fields.join(', ')} WHERE id = ?`, values);
+        await connection.beginTransaction();
+        if (data.option_group_id !== undefined || data.product_option_group_id !== undefined) {
+            const optionGroupId = Number(data.option_group_id || data.product_option_group_id);
+            const [groups] = await connection.execute('SELECT id FROM product_option_groups WHERE id = ?', [optionGroupId]);
+            if (!groups.length) {
+                throw new DBError(404, 'Option not found');
+            }
+        }
+        const [variantRows] = await connection.execute(
+            'SELECT product_variant_id FROM product_variant_values WHERE product_option_value_id = ?',
+            [normalizedOptionValueId]
+        );
+        values.push(normalizedOptionValueId);
+        const [result] = await connection.execute(`UPDATE product_option_values SET ${fields.join(', ')} WHERE id = ?`, values);
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Variant not found');
         }
+        await refreshVariantCodes(connection, variantRows.map(row => row.product_variant_id));
+        await connection.commit();
         return { success: true, message: 'Option variant updated successfully' };
     } catch (error) {
+        await connection.rollback();
         if (error instanceof DBError) throw error;
         console.error('Update option variant error:', error);
         throw new DBError(500, 'Failed to update option variant: ' + error.message);
+    } finally {
+        connection.release();
     }
 };
 

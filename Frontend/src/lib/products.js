@@ -739,6 +739,7 @@ function normalizeProductCategory(rawCategory, fallbackParentId = null) {
     id: Number(rawCategory?.id) || 0,
     name: normalizeText(rawCategory?.name),
     parentId: Number(parentId) || null,
+    sortOrder: Number(rawCategory?.sort_order ?? rawCategory?.sortOrder) || 0,
   }
 }
 
@@ -858,6 +859,7 @@ async function fetchProductCategoryTreeNetwork() {
   return Array.from(categoriesById.values()).sort(
     (left, right) =>
       (left.parentId || 0) - (right.parentId || 0) ||
+      left.sortOrder - right.sortOrder ||
       left.name.localeCompare(right.name),
   )
 }
@@ -881,9 +883,9 @@ export async function createProductCategory({ name, parentId = null }) {
   return data
 }
 
-export async function updateProductCategory(categoryId, { name, parentId = null }) {
+export async function updateProductCategory(categoryId, edits = {}) {
   const normalizedCategoryId = Number(categoryId)
-  const normalizedName = normalizeText(name)
+  const normalizedName = normalizeText(edits.name)
 
   if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
     throw new Error('Select a valid category before saving.')
@@ -899,7 +901,10 @@ export async function updateProductCategory(categoryId, { name, parentId = null 
     body: JSON.stringify({
       id: normalizedCategoryId,
       name: normalizedName,
-      parent_id: normalizeCategoryParentId(parentId),
+      parent_id: normalizeCategoryParentId(edits.parentId),
+      ...(edits.sortOrder !== undefined || edits.sort_order !== undefined
+        ? { sort_order: Number(edits.sortOrder ?? edits.sort_order) || 0 }
+        : {}),
     }),
   })
 

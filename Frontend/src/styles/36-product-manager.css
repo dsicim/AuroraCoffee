@@ -135,6 +135,53 @@
       transform 160ms ease;
   }
 
+  .aurora-category-row-main {
+    display: grid;
+    min-width: 0;
+    flex: 1 1 auto;
+    gap: 0.25rem;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+  }
+
+  .aurora-category-row-actions {
+    display: flex;
+    flex: 0 0 auto;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+  }
+
+  .aurora-category-drag {
+    width: 2rem;
+    height: 2rem;
+    flex: 0 0 auto;
+    border: 1px solid rgba(126, 159, 135, 0.22);
+    border-radius: 0.7rem;
+    background: rgba(255, 252, 248, 0.2);
+    color: var(--aurora-text);
+    font-weight: 900;
+    cursor: grab;
+  }
+
+  .aurora-category-drag:disabled {
+    cursor: default;
+    opacity: 0.5;
+  }
+
+  .aurora-category-inline-editor {
+    flex: 1 1 14rem;
+    min-width: 0;
+  }
+
+  .aurora-category-add-child {
+    display: grid;
+    gap: 0.7rem;
+    padding-left: 3rem;
+  }
+
   .aurora-category-row:hover,
   .aurora-category-row:focus-visible,
   .aurora-category-row-active {
@@ -835,6 +882,11 @@
 
     .aurora-category-grid .aurora-category-form {
       grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aurora-category-add-child {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
     }
 
     .aurora-product-image-upload {

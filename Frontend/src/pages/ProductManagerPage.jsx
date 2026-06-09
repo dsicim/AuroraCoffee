@@ -774,7 +774,13 @@ function buildProductCreatePayload(form, categoryId) {
 }
 
 function getCategoryChildren(categories, parentId) {
-  return categories.filter((category) => Number(category.parentId) === Number(parentId))
+  const normalizedParentId = parentId ? Number(parentId) : null
+  return categories
+    .filter((category) => {
+      const categoryParentId = category.parentId ? Number(category.parentId) : null
+      return categoryParentId === normalizedParentId
+    })
+    .sort((left, right) => left.sortOrder - right.sortOrder || left.name.localeCompare(right.name))
 }
 
 function getCategoryDescendantIds(categories, categoryId) {
@@ -804,17 +810,24 @@ function getCategoryProductCount(products, categories, categoryId) {
   return (products || []).filter((product) => categoryIds.has(Number(product.categoryId))).length
 }
 
-function getCategoryName(categories, categoryId) {
-  return categories.find((category) => Number(category.id) === Number(categoryId))?.name || ''
+function getCategoryPathLabel(categories, categoryId) {
+  const path = []
+  const visitedIds = new Set()
+  let current = categories.find((category) => Number(category.id) === Number(categoryId))
+
+  while (current && !visitedIds.has(Number(current.id))) {
+    visitedIds.add(Number(current.id))
+    path.unshift(current.name)
+    current = current.parentId
+      ? categories.find((category) => Number(category.id) === Number(current.parentId))
+      : null
+  }
+
+  return path.join(' / ')
 }
 
 function getCategorySelectLabel(categories, category) {
-  if (!category?.parentId) {
-    return category?.name || 'Category'
-  }
-
-  const parentName = getCategoryName(categories, category.parentId)
-  return parentName ? `${parentName} / ${category.name}` : category.name
+  return getCategoryPathLabel(categories, category?.id) || category?.name || 'Category'
 }
 
 function hasSiblingCategoryName(categories, { name, parentId, excludedId = null }) {
@@ -831,6 +844,21 @@ function hasSiblingCategoryName(categories, { name, parentId, excludedId = null 
       (category.parentId || null) === normalizedParentId
     )
   })
+}
+
+function getAvailableCategoryParents(categories, categoryId = null) {
+  const normalizedCategoryId = categoryId ? Number(categoryId) : null
+  const blockedIds = normalizedCategoryId
+    ? getCategoryDescendantIds(categories, normalizedCategoryId)
+    : new Set()
+
+  if (normalizedCategoryId) {
+    blockedIds.add(normalizedCategoryId)
+  }
+
+  return categories
+    .filter((category) => !blockedIds.has(Number(category.id)))
+    .sort((left, right) => getCategorySelectLabel(categories, left).localeCompare(getCategorySelectLabel(categories, right)))
 }
 
 function getInventoryTone(stock) {
@@ -1240,6 +1268,33 @@ function preventProductImageEnterAction(event) {
   event.stopPropagation()
 }
 
+function confirmDestructiveAction(message) {
+  if (!window.confirm(message)) {
+    return false
+  }
+
+  return window.confirm('Are you sure? This cannot be undone.')
+}
+
+function getInsertionIndexFromDrop(event, targetIndex) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  const heldBelowMiddle = event.clientY > rect.top + rect.height / 2
+  return targetIndex + (heldBelowMiddle ? 1 : 0)
+}
+
+function moveItemToInsertionIndex(items, fromIndex, insertionIndex) {
+  if (fromIndex < 0 || fromIndex >= items.length) {
+    return null
+  }
+
+  const nextItems = [...items]
+  const [item] = nextItems.splice(fromIndex, 1)
+  const adjustedIndex = fromIndex < insertionIndex ? insertionIndex - 1 : insertionIndex
+  const safeIndex = Math.max(0, Math.min(adjustedIndex, nextItems.length))
+  nextItems.splice(safeIndex, 0, item)
+  return nextItems
+}
+
 function ProductOptionManager({ product, onProductOptionsChange }) {
   const optionGroups = useMemo(() => getVariantOptionGroups(product), [product])
   const [optionName, setOptionName] = useState('')
@@ -1439,7 +1494,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
   }
 
   function handleDeleteOption(group) {
-    if (!window.confirm(`Delete "${group.name}" and its variants?`)) {
+    if (!confirmDestructiveAction(`Delete "${group.name}" and its variants?`)) {
       return
     }
 
@@ -1505,7 +1560,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       return
     }
 
-    if (!window.confirm(`Delete "${value.label}" from ${group.name}?`)) {
+    if (!confirmDestructiveAction(`Delete "${value.label}" from ${group.name}?`)) {
       return
     }
 
@@ -1542,9 +1597,9 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       .catch(setOptionError)
   }
 
-  function handleReorderValues(group, fromIndex, toIndex) {
+  function handleReorderValues(group, fromIndex, insertionIndex) {
     const values = group.values || []
-    const reorderedValues = moveItem(values, fromIndex, toIndex)
+    const reorderedValues = moveItemToInsertionIndex(values, fromIndex, insertionIndex)
     if (!reorderedValues) {
       return
     }
@@ -1559,6 +1614,50 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
       .catch(setOptionError)
   }
 
+  function handleMoveValueToOption(sourceGroup, targetGroup, sourceIndex, insertionIndex = null) {
+    const value = sourceGroup?.values?.[sourceIndex]
+    if (!value || !targetGroup) {
+      return
+    }
+
+    if (String(sourceGroup.id) === String(targetGroup.id)) {
+      handleReorderValues(sourceGroup, sourceIndex, insertionIndex ?? (sourceGroup.values || []).length)
+      return
+    }
+
+    if ((sourceGroup.values || []).length <= 1) {
+      setOptionError(new Error('An option must have at least one variant.'))
+      return
+    }
+
+    if (hasDuplicateValueName(targetGroup, value.label)) {
+      setOptionError(new Error('A variant with this name already exists in the destination option.'))
+      return
+    }
+
+    const targetValues = [...(targetGroup.values || [])]
+    const insertIndex = insertionIndex === null
+      ? targetValues.length
+      : Math.max(0, Math.min(insertionIndex, targetValues.length))
+    targetValues.splice(insertIndex, 0, value)
+    const sourceValues = (sourceGroup.values || []).filter((entry) => String(entry.id) !== String(value.id))
+
+    setOptionState({ busy: true, error: '', success: '' })
+    void Promise.all([
+      ...targetValues.map((entry, index) => updateProductOptionValue(entry.id, {
+        ...(String(entry.id) === String(value.id) ? { option_group_id: targetGroup.id } : {}),
+        sort_order: index,
+      })),
+      ...sourceValues.map((entry, index) => updateProductOptionValue(entry.id, {
+        sort_order: index,
+      })),
+    ])
+      .then(() => {
+        setOptionFeedback({ success: 'Variant moved.' })
+      })
+      .catch(setOptionError)
+  }
+
   function handleDropOption(targetIndex) {
     if (dragState?.type !== 'option') {
       return
@@ -1567,11 +1666,12 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
     setDragState(null)
   }
 
-  function handleDropValue(group, targetIndex) {
-    if (dragState?.type !== 'value' || String(dragState.groupId) !== String(group.id)) {
+  function handleDropValue(targetGroup, insertionIndex = null) {
+    if (dragState?.type !== 'value') {
       return
     }
-    handleReorderValues(group, dragState.index, targetIndex)
+    const sourceGroup = optionGroups.find((group) => String(group.id) === String(dragState.groupId))
+    handleMoveValueToOption(sourceGroup, targetGroup, dragState.index, insertionIndex)
     setDragState(null)
   }
 
@@ -1665,14 +1765,19 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
               aria-level={1}
               aria-expanded="true"
               draggable={!optionBusy}
-              onDragStart={() => {
+              onDragStart={(event) => {
+                event.dataTransfer.effectAllowed = 'move'
                 setDragState({ type: 'option', index: groupIndex })
               }}
               onDragOver={(event) => {
-                event.preventDefault()
+                if (dragState?.type === 'option') {
+                  event.preventDefault()
+                }
               }}
               onDrop={() => {
-                handleDropOption(groupIndex)
+                if (dragState?.type === 'option') {
+                  handleDropOption(groupIndex)
+                }
               }}
             >
               <div className="aurora-product-option-node-header">
@@ -1793,7 +1898,23 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
                 </div>
               </div>
 
-              <div className="aurora-product-option-value-list" role="group">
+              <div
+                className="aurora-product-option-value-list"
+                role="group"
+                onDragOver={(event) => {
+                  if (dragState?.type === 'value') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                  }
+                }}
+                onDrop={(event) => {
+                  if (dragState?.type === 'value') {
+                    event.preventDefault()
+                    event.stopPropagation()
+                    handleDropValue(group)
+                  }
+                }}
+              >
                 {(group.values || []).map((value, valueIndex) => (
                   <div
                     key={value.id}
@@ -1801,14 +1922,22 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
                     role="treeitem"
                     aria-level={2}
                     draggable={!optionBusy}
-                    onDragStart={() => {
+                    onDragStart={(event) => {
+                      event.dataTransfer.effectAllowed = 'move'
                       setDragState({ type: 'value', groupId: group.id, index: valueIndex })
                     }}
                     onDragOver={(event) => {
-                      event.preventDefault()
+                      if (dragState?.type === 'value') {
+                        event.preventDefault()
+                        event.stopPropagation()
+                      }
                     }}
-                    onDrop={() => {
-                      handleDropValue(group, valueIndex)
+                    onDrop={(event) => {
+                      if (dragState?.type === 'value') {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        handleDropValue(group, getInsertionIndexFromDrop(event, valueIndex))
+                      }
                     }}
                   >
                     <button
@@ -1905,7 +2034,7 @@ function ProductOptionManager({ product, onProductOptionsChange }) {
                             size="compact"
                             disabled={optionBusy || valueIndex === (group.values || []).length - 1}
                             onClick={() => {
-                              handleReorderValues(group, valueIndex, valueIndex + 1)
+                              handleReorderValues(group, valueIndex, valueIndex + 2)
                             }}
                           >
                             Down
@@ -3043,6 +3172,224 @@ function ProductImageManager({ product, onProductImagesChange }) {
   )
 }
 
+function CategoryTreeNode({
+  category,
+  categories,
+  products,
+  selectedCategoryId,
+  busy,
+  editingCategoryId,
+  editDrafts,
+  childDrafts,
+  dragCategoryId,
+  onSelect,
+  onBeginRename,
+  onEditDraftChange,
+  onSaveRename,
+  onCancelRename,
+  onChildDraftChange,
+  onAddChild,
+  onDelete,
+  onDragStart,
+  onDragEnd,
+  onDropOnCategory,
+  level = 1,
+  siblingIndex = 0,
+}) {
+  const children = getCategoryChildren(categories, category.id)
+  const selected = String(category.id) === String(selectedCategoryId)
+  const editing = String(category.id) === String(editingCategoryId)
+  const productCount = getCategoryProductCount(products, categories, category.id)
+  const childCount = getCategoryDescendantIds(categories, category.id).size
+  const dragBlocked = dragCategoryId && (
+    String(dragCategoryId) === String(category.id) ||
+    getCategoryDescendantIds(categories, dragCategoryId).has(Number(category.id))
+  )
+
+  return (
+    <div className="aurora-category-branch" role="treeitem" aria-level={level} aria-expanded="true">
+      <div
+        className={`aurora-category-row ${selected ? 'aurora-category-row-active' : ''}`.trim()}
+        draggable={!busy}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = 'move'
+          onDragStart(category.id)
+        }}
+        onDragEnd={onDragEnd}
+        onDragOver={(event) => {
+          if (!dragBlocked) {
+            event.preventDefault()
+            event.stopPropagation()
+          }
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          event.stopPropagation()
+          if (!dragBlocked) {
+            onDropOnCategory(category, getInsertionIndexFromDrop(event, siblingIndex))
+          }
+        }}
+      >
+        <button
+          type="button"
+          className="aurora-category-drag"
+          aria-label={`Drag ${category.name} to move it`}
+          disabled={busy}
+        >
+          ::
+        </button>
+
+        {editing ? (
+          <label className="aurora-product-edit-field aurora-category-inline-editor">
+            <span className="sr-only">Category name</span>
+            <input
+              className="aurora-input aurora-product-edit-input"
+              type="text"
+              value={editDrafts[String(category.id)] ?? category.name}
+              disabled={busy}
+              onChange={(event) => {
+                onEditDraftChange(category.id, event.target.value)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                  event.preventDefault()
+                  onSaveRename(category)
+                }
+                if (event.key === 'Escape') {
+                  onCancelRename()
+                }
+              }}
+            />
+          </label>
+        ) : (
+          <button
+            type="button"
+            className="aurora-category-row-main"
+            onClick={() => {
+              onSelect(category.id)
+            }}
+          >
+            <span>{category.name}</span>
+            <small>
+              {productCount} product{productCount === 1 ? '' : 's'}
+              {childCount ? ` · ${childCount} nested` : ''}
+            </small>
+          </button>
+        )}
+
+        <div className="aurora-category-row-actions">
+          {editing ? (
+            <>
+              <LiquidGlassButton
+                type="button"
+                variant="secondary"
+                size="compact"
+                disabled={busy}
+                onClick={() => {
+                  onSaveRename(category)
+                }}
+              >
+                Save
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                variant="quiet"
+                size="compact"
+                disabled={busy}
+                onClick={onCancelRename}
+              >
+                Cancel
+              </LiquidGlassButton>
+            </>
+          ) : (
+            <>
+              <LiquidGlassButton
+                type="button"
+                variant="quiet"
+                size="compact"
+                disabled={busy}
+                onClick={() => {
+                  onBeginRename(category)
+                }}
+              >
+                Rename
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
+                variant="danger"
+                size="compact"
+                disabled={busy}
+                onClick={() => {
+                  onDelete(category)
+                }}
+              >
+                Delete
+              </LiquidGlassButton>
+            </>
+          )}
+        </div>
+      </div>
+
+      <form
+        className="aurora-category-add-child"
+        onSubmit={(event) => {
+          event.preventDefault()
+          onAddChild(category)
+        }}
+      >
+        <label className="aurora-product-edit-field">
+          <span className="aurora-product-edit-label">Add child category</span>
+          <input
+            className="aurora-input aurora-product-edit-input mt-3"
+            type="text"
+            value={childDrafts[String(category.id)] || ''}
+            disabled={busy}
+            placeholder={`New category under ${category.name}`}
+            onChange={(event) => {
+              onChildDraftChange(category.id, event.target.value)
+            }}
+          />
+        </label>
+        <LiquidGlassButton type="submit" variant="secondary" size="compact" disabled={busy}>
+          Add child
+        </LiquidGlassButton>
+      </form>
+
+      {children.length ? (
+        <div className="aurora-category-children" role="group">
+          {children.map((child, childIndex) => (
+            <CategoryTreeNode
+              key={child.id}
+              category={child}
+              categories={categories}
+              products={products}
+              selectedCategoryId={selectedCategoryId}
+              busy={busy}
+              editingCategoryId={editingCategoryId}
+              editDrafts={editDrafts}
+              childDrafts={childDrafts}
+              dragCategoryId={dragCategoryId}
+              onSelect={onSelect}
+              onBeginRename={onBeginRename}
+              onEditDraftChange={onEditDraftChange}
+              onSaveRename={onSaveRename}
+              onCancelRename={onCancelRename}
+              onChildDraftChange={onChildDraftChange}
+              onAddChild={onAddChild}
+              onDelete={onDelete}
+              onDragStart={onDragStart}
+              onDragEnd={onDragEnd}
+              onDropOnCategory={onDropOnCategory}
+              level={level + 1}
+              siblingIndex={childIndex}
+            />
+          ))}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 function CategoryManagementPanel({ products }) {
   const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
@@ -3052,6 +3399,10 @@ function CategoryManagementPanel({ products }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [editName, setEditName] = useState('')
   const [editParentId, setEditParentId] = useState('')
+  const [editingCategoryId, setEditingCategoryId] = useState('')
+  const [categoryEditDrafts, setCategoryEditDrafts] = useState({})
+  const [childCategoryDrafts, setChildCategoryDrafts] = useState({})
+  const [dragCategoryId, setDragCategoryId] = useState('')
   const [actionState, setActionState] = useState({
     busy: '',
     error: '',
@@ -3060,7 +3411,7 @@ function CategoryManagementPanel({ products }) {
   const loadRequestRef = useRef(0)
 
   const rootCategories = useMemo(
-    () => categories.filter((category) => !category.parentId),
+    () => getCategoryChildren(categories, null),
     [categories],
   )
   const selectedCategory = useMemo(
@@ -3073,7 +3424,15 @@ function CategoryManagementPanel({ products }) {
   const selectedChildCount = selectedCategory
     ? getCategoryDescendantIds(categories, selectedCategory.id).size
     : 0
-  const canChangeSelectedParent = selectedCategory ? selectedChildCount === 0 : true
+  const availableCreateParents = useMemo(
+    () => getAvailableCategoryParents(categories),
+    [categories],
+  )
+  const availableEditParents = useMemo(
+    () => getAvailableCategoryParents(categories, selectedCategory?.id),
+    [categories, selectedCategory?.id],
+  )
+  const categoryBusy = Boolean(actionState.busy)
 
   const loadCategories = useCallback(async ({ quiet = false } = {}) => {
     const requestId = loadRequestRef.current + 1
@@ -3144,6 +3503,177 @@ function CategoryManagementPanel({ products }) {
     })
   }
 
+  function handleSelectCategory(categoryId) {
+    setSelectedCategoryId(String(categoryId))
+    setActionState({ busy: '', error: '', success: '' })
+  }
+
+  function updateCategoryEditDraft(categoryId, value) {
+    setCategoryEditDrafts((current) => ({
+      ...current,
+      [String(categoryId)]: value,
+    }))
+  }
+
+  function updateChildCategoryDraft(categoryId, value) {
+    setChildCategoryDrafts((current) => ({
+      ...current,
+      [String(categoryId)]: value,
+    }))
+  }
+
+  function beginRenameCategory(category) {
+    setEditingCategoryId(String(category.id))
+    updateCategoryEditDraft(category.id, category.name)
+    handleSelectCategory(category.id)
+  }
+
+  function cancelRenameCategory() {
+    setEditingCategoryId('')
+    setActionState({ busy: '', error: '', success: '' })
+  }
+
+  async function saveCategoryName(category) {
+    const name = String(categoryEditDrafts[String(category.id)] ?? category.name).trim()
+    const parentId = category.parentId ? Number(category.parentId) : null
+
+    if (!name) {
+      setActionError(new Error('Category name is required.'))
+      return
+    }
+
+    if (hasSiblingCategoryName(categories, { name, parentId, excludedId: category.id })) {
+      setActionError(new Error('A category with that name already exists at this level.'))
+      return
+    }
+
+    if (name === category.name) {
+      setEditingCategoryId('')
+      setActionSuccess('No category changes to save.')
+      return
+    }
+
+    setActionBusy(`rename:${category.id}`)
+
+    try {
+      const result = await updateProductCategory(category.id, { name, parentId })
+      await loadCategories({ quiet: true })
+      setEditingCategoryId('')
+      setActionSuccess(result?.msg || 'Category updated successfully.')
+    } catch (renameError) {
+      setActionError(renameError)
+    }
+  }
+
+  async function addChildCategory(parentCategory) {
+    const name = String(childCategoryDrafts[String(parentCategory.id)] || '').trim()
+    const parentId = Number(parentCategory.id)
+
+    if (!name) {
+      setActionError(new Error('Category name is required.'))
+      return
+    }
+
+    if (hasSiblingCategoryName(categories, { name, parentId })) {
+      setActionError(new Error('A category with that name already exists at this level.'))
+      return
+    }
+
+    setActionBusy(`create-child:${parentCategory.id}`)
+
+    try {
+      const result = await createProductCategory({ name, parentId })
+      await loadCategories({ quiet: true })
+      updateChildCategoryDraft(parentCategory.id, '')
+      setSelectedCategoryId(String(result?.categoryId || ''))
+      setActionSuccess(result?.msg || 'Category created successfully.')
+    } catch (createError) {
+      setActionError(createError)
+    }
+  }
+
+  async function moveCategory(categoryId, parentId, insertionIndex = null) {
+    const category = categories.find((entry) => Number(entry.id) === Number(categoryId))
+    const normalizedParentId = parentId ? Number(parentId) : null
+
+    if (!category) {
+      setActionError(new Error('Select a valid category before moving.'))
+      return
+    }
+
+    if (normalizedParentId === Number(category.id)) {
+      setActionError(new Error('A category cannot be its own parent.'))
+      return
+    }
+
+    if (normalizedParentId && getCategoryDescendantIds(categories, category.id).has(normalizedParentId)) {
+      setActionError(new Error('A category cannot be moved under one of its subcategories.'))
+      return
+    }
+
+    if (hasSiblingCategoryName(categories, {
+      name: category.name,
+      parentId: normalizedParentId,
+      excludedId: category.id,
+    })) {
+      setActionError(new Error('A category with that name already exists at the destination level.'))
+      return
+    }
+
+    setActionBusy(`move:${category.id}`)
+
+    try {
+      const currentParentId = category.parentId || null
+      const movingWithinSameParent = currentParentId === normalizedParentId
+      let reorderedTargetSiblings = []
+
+      if (movingWithinSameParent) {
+        const siblings = getCategoryChildren(categories, normalizedParentId)
+        const sourceIndex = siblings.findIndex((entry) => Number(entry.id) === Number(category.id))
+        reorderedTargetSiblings = moveItemToInsertionIndex(
+          siblings,
+          sourceIndex,
+          insertionIndex ?? siblings.length,
+        ) || siblings
+      } else {
+        const targetSiblings = getCategoryChildren(categories, normalizedParentId)
+          .filter((entry) => Number(entry.id) !== Number(category.id))
+        const safeIndex = insertionIndex === null
+          ? targetSiblings.length
+          : Math.max(0, Math.min(insertionIndex, targetSiblings.length))
+        reorderedTargetSiblings = [...targetSiblings]
+        reorderedTargetSiblings.splice(safeIndex, 0, category)
+      }
+
+      const sourceSiblings = movingWithinSameParent
+        ? []
+        : getCategoryChildren(categories, currentParentId)
+            .filter((entry) => Number(entry.id) !== Number(category.id))
+
+      const updateRequests = [
+        ...reorderedTargetSiblings.map((entry, index) => updateProductCategory(entry.id, {
+          name: entry.name,
+          parentId: normalizedParentId,
+          sortOrder: index,
+        })),
+        ...sourceSiblings.map((entry, index) => updateProductCategory(entry.id, {
+          name: entry.name,
+          parentId: currentParentId,
+          sortOrder: index,
+        })),
+      ]
+
+      await Promise.all(updateRequests)
+      await loadCategories({ quiet: true })
+      setSelectedCategoryId(String(category.id))
+      setActionSuccess('Category moved successfully.')
+    } catch (moveError) {
+      setActionError(moveError)
+    } finally {
+      setDragCategoryId('')
+    }
+  }
+
   async function handleCreateCategory(event) {
     event.preventDefault()
 
@@ -3190,8 +3720,13 @@ function CategoryManagementPanel({ products }) {
       return
     }
 
-    if (!canChangeSelectedParent && parentId) {
-      setActionError(new Error('Move or delete subcategories before nesting this category.'))
+    if (parentId === Number(selectedCategory.id)) {
+      setActionError(new Error('A category cannot be its own parent.'))
+      return
+    }
+
+    if (parentId && getCategoryDescendantIds(categories, selectedCategory.id).has(parentId)) {
+      setActionError(new Error('A category cannot be moved under one of its subcategories.'))
       return
     }
 
@@ -3216,31 +3751,37 @@ function CategoryManagementPanel({ products }) {
     }
   }
 
-  async function handleDeleteCategory() {
-    if (!selectedCategory) {
+  async function handleDeleteCategory(categoryOverride = null) {
+    const targetCategory = categoryOverride || selectedCategory
+
+    if (!targetCategory) {
       setActionError(new Error('Select a category before deleting.'))
       return
     }
 
+    const targetProductCount = getCategoryProductCount(products, categories, targetCategory.id)
+    const targetChildCount = getCategoryDescendantIds(categories, targetCategory.id).size
     const impactParts = [
-      selectedProductCount
-        ? `${selectedProductCount} product${selectedProductCount === 1 ? '' : 's'} will lose this category`
+      targetProductCount
+        ? `${targetProductCount} product${targetProductCount === 1 ? '' : 's'} will lose this category`
         : 'no products currently use this category',
-      selectedChildCount
-        ? `${selectedChildCount} subcategor${selectedChildCount === 1 ? 'y' : 'ies'} will also be deleted`
+      targetChildCount
+        ? `${targetChildCount} subcategor${targetChildCount === 1 ? 'y' : 'ies'} will also be deleted`
         : '',
     ].filter(Boolean)
 
-    if (!window.confirm(`Delete ${selectedCategory.name}? ${impactParts.join('. ')}.`)) {
+    if (!confirmDestructiveAction(`Delete ${targetCategory.name}? ${impactParts.join('. ')}.`)) {
       return
     }
 
     setActionBusy('delete')
 
     try {
-      const result = await deleteProductCategory(selectedCategory.id)
+      const result = await deleteProductCategory(targetCategory.id)
       await loadCategories({ quiet: true })
-      setSelectedCategoryId('')
+      if (String(targetCategory.id) === selectedCategoryId) {
+        setSelectedCategoryId('')
+      }
       setActionSuccess(result?.msg || 'Category deleted successfully.')
     } catch (deleteError) {
       setActionError(deleteError)
@@ -3301,9 +3842,9 @@ function CategoryManagementPanel({ products }) {
               }}
             >
               <option value="">Top-level category</option>
-              {rootCategories.map((category) => (
+              {availableCreateParents.map((category) => (
                 <option key={category.id} value={String(category.id)}>
-                  {category.name}
+                  {getCategorySelectLabel(categories, category)}
                 </option>
               ))}
             </select>
@@ -3345,50 +3886,65 @@ function CategoryManagementPanel({ products }) {
                 <span>Fetching the current category tree.</span>
               </div>
             ) : categories.length ? (
-              <div className="aurora-category-tree">
-                {rootCategories.map((category) => {
-                  const children = getCategoryChildren(categories, category.id)
-                  const selected = String(category.id) === selectedCategoryId
-
-                  return (
-                    <div key={category.id} className="aurora-category-branch">
-                      <button
-                        type="button"
-                        className={`aurora-category-row ${selected ? 'aurora-category-row-active' : ''}`.trim()}
-                        onClick={() => {
-                          setSelectedCategoryId(String(category.id))
-                          setActionState({ busy: '', error: '', success: '' })
-                        }}
-                      >
-                        <span>{category.name}</span>
-                        <small>{getCategoryProductCount(products, categories, category.id)} products</small>
-                      </button>
-
-                      {children.length ? (
-                        <div className="aurora-category-children">
-                          {children.map((child) => {
-                            const childSelected = String(child.id) === selectedCategoryId
-
-                            return (
-                              <button
-                                key={child.id}
-                                type="button"
-                                className={`aurora-category-row ${childSelected ? 'aurora-category-row-active' : ''}`.trim()}
-                                onClick={() => {
-                                  setSelectedCategoryId(String(child.id))
-                                  setActionState({ busy: '', error: '', success: '' })
-                                }}
-                              >
-                                <span>{child.name}</span>
-                                <small>{getCategoryProductCount(products, categories, child.id)} products</small>
-                              </button>
-                            )
-                          })}
-                        </div>
-                      ) : null}
-                    </div>
-                  )
-                })}
+              <div
+                className="aurora-category-tree"
+                role="tree"
+                aria-label="Catalog category tree"
+                onDragOver={(event) => {
+                  if (dragCategoryId) {
+                    event.preventDefault()
+                  }
+                }}
+                onDrop={(event) => {
+                  event.preventDefault()
+                  if (dragCategoryId) {
+                    void moveCategory(dragCategoryId, null, rootCategories.length)
+                  }
+                }}
+              >
+                {rootCategories.map((category, categoryIndex) => (
+                  <CategoryTreeNode
+                    key={category.id}
+                    category={category}
+                    categories={categories}
+                    products={products}
+                    selectedCategoryId={selectedCategoryId}
+                    busy={categoryBusy}
+                    editingCategoryId={editingCategoryId}
+                    editDrafts={categoryEditDrafts}
+                    childDrafts={childCategoryDrafts}
+                    dragCategoryId={dragCategoryId}
+                    onSelect={handleSelectCategory}
+                    onBeginRename={beginRenameCategory}
+                    onEditDraftChange={updateCategoryEditDraft}
+                    onSaveRename={saveCategoryName}
+                    onCancelRename={cancelRenameCategory}
+                    onChildDraftChange={updateChildCategoryDraft}
+                    onAddChild={addChildCategory}
+                    onDelete={handleDeleteCategory}
+                    onDragStart={(categoryId) => {
+                      setDragCategoryId(String(categoryId))
+                    }}
+                    onDragEnd={() => {
+                      setDragCategoryId('')
+                    }}
+                    onDropOnCategory={(targetCategory, insertionIndex) => {
+                      const draggedCategory = categories.find(
+                        (entry) => String(entry.id) === String(dragCategoryId),
+                      )
+                      const targetParentId = draggedCategory &&
+                        (draggedCategory.parentId || null) === (targetCategory.parentId || null)
+                        ? targetCategory.parentId || null
+                        : targetCategory.id
+                      const targetInsertionIndex = draggedCategory &&
+                        (draggedCategory.parentId || null) === (targetCategory.parentId || null)
+                        ? insertionIndex
+                        : null
+                      void moveCategory(dragCategoryId, targetParentId, targetInsertionIndex)
+                    }}
+                    siblingIndex={categoryIndex}
+                  />
+                ))}
               </div>
             ) : (
               <div className="aurora-product-image-empty">
@@ -3418,8 +3974,7 @@ function CategoryManagementPanel({ products }) {
                 <option value="">Select a category</option>
                 {categories.map((category) => (
                   <option key={category.id} value={String(category.id)}>
-                    {category.parentId ? `${getCategoryName(categories, category.parentId)} / ` : ''}
-                    {category.name}
+                    {getCategorySelectLabel(categories, category)}
                   </option>
                 ))}
               </select>
@@ -3443,17 +3998,16 @@ function CategoryManagementPanel({ products }) {
               <select
                 className="aurora-select aurora-product-edit-input mt-3"
                 value={editParentId}
-                disabled={!selectedCategory || !canChangeSelectedParent || Boolean(actionState.busy)}
+                disabled={!selectedCategory || Boolean(actionState.busy)}
                 onChange={(event) => {
                   setEditParentId(event.target.value)
                 }}
               >
                 <option value="">Top-level category</option>
-                {rootCategories
-                  .filter((category) => Number(category.id) !== Number(selectedCategory?.id))
+                {availableEditParents
                   .map((category) => (
                     <option key={category.id} value={String(category.id)}>
-                      {category.name}
+                      {getCategorySelectLabel(categories, category)}
                     </option>
                   ))}
               </select>
@@ -3463,12 +4017,6 @@ function CategoryManagementPanel({ products }) {
               <p className="aurora-category-impact">
                 {selectedProductCount} product{selectedProductCount === 1 ? '' : 's'} currently use
                 this category{selectedChildCount ? ` or its ${selectedChildCount} subcategories` : ''}.
-              </p>
-            ) : null}
-
-            {!canChangeSelectedParent ? (
-              <p className="aurora-category-impact">
-                Parent changes are locked while this category has subcategories.
               </p>
             ) : null}
 
@@ -3486,7 +4034,9 @@ function CategoryManagementPanel({ products }) {
                 variant="danger"
                 loading={actionState.busy === 'delete'}
                 disabled={!selectedCategory || Boolean(actionState.busy)}
-                onClick={handleDeleteCategory}
+                onClick={() => {
+                  void handleDeleteCategory()
+                }}
               >
                 Delete category
               </LiquidGlassButton>

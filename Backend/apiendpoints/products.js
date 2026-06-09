@@ -202,7 +202,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Category ID is required" } };
             const name = body.data.name !== undefined ? body.data.name : (body.data.edits ? body.data.edits.name : null);
             const parent_id = body.data.parent_id !== undefined ? body.data.parent_id : (body.data.edits ? body.data.edits.parent_id : null);
-            return await sql.updateCategory(body.data.id, name, parent_id).then(async result => {
+            const sort_order = body.data.sort_order !== undefined ? body.data.sort_order : (body.data.edits ? body.data.edits.sort_order : undefined);
+            return await sql.updateCategory(body.data.id, name, parent_id, sort_order).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: result.message } };
                 }
