@@ -729,7 +729,46 @@ function buildProductEdits(product, form) {
   return edits
 }
 
-function applyProductEditsToSnapshot(product, edits) {
+function normalizeProductCategoryEdit(value) {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue) {
+    return null
+  }
+
+  const categoryId = Number(normalizedValue)
+
+  if (!Number.isFinite(categoryId) || categoryId <= 0) {
+    throw new Error('Select a valid category.')
+  }
+
+  return categoryId
+}
+
+function getProductCategorySnapshotFields(categories, categoryId) {
+  const normalizedCategoryId = Number(categoryId)
+
+  if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
+    return {
+      categoryId: null,
+      categoryName: '',
+      parentCategoryName: '',
+    }
+  }
+
+  const category = categories.find((entry) => Number(entry.id) === normalizedCategoryId)
+  const parentCategory = category?.parentId
+    ? categories.find((entry) => Number(entry.id) === Number(category.parentId))
+    : null
+
+  return {
+    categoryId: normalizedCategoryId,
+    categoryName: category?.name || '',
+    parentCategoryName: parentCategory?.name || '',
+  }
+}
+
+function applyProductEditsToSnapshot(product, edits, categories = []) {
   if (!product || !edits) {
     return product
   }
@@ -743,6 +782,10 @@ function applyProductEditsToSnapshot(product, edits) {
     if (fieldKey) {
       nextProduct[fieldKey] = value
     }
+  }
+
+  if (Object.hasOwn(edits, 'category_id')) {
+    Object.assign(nextProduct, getProductCategorySnapshotFields(categories, edits.category_id))
   }
 
   return nextProduct
@@ -3181,6 +3224,7 @@ function CategoryTreeNode({
   editingCategoryId,
   editDrafts,
   childDrafts,
+  openChildCategoryId,
   dragCategoryId,
   onSelect,
   onBeginRename,
@@ -3188,6 +3232,8 @@ function CategoryTreeNode({
   onSaveRename,
   onCancelRename,
   onChildDraftChange,
+  onToggleChildEditor,
+  onCloseChildEditor,
   onAddChild,
   onDelete,
   onDragStart,
@@ -3199,12 +3245,21 @@ function CategoryTreeNode({
   const children = getCategoryChildren(categories, category.id)
   const selected = String(category.id) === String(selectedCategoryId)
   const editing = String(category.id) === String(editingCategoryId)
+  const childEditorOpen = String(category.id) === String(openChildCategoryId)
+  const childEditorId = `aurora-category-child-${category.id}`
+  const childNameInputRef = useRef(null)
   const productCount = getCategoryProductCount(products, categories, category.id)
   const childCount = getCategoryDescendantIds(categories, category.id).size
   const dragBlocked = dragCategoryId && (
     String(dragCategoryId) === String(category.id) ||
     getCategoryDescendantIds(categories, dragCategoryId).has(Number(category.id))
   )
+
+  useEffect(() => {
+    if (childEditorOpen) {
+      childNameInputRef.current?.focus()
+    }
+  }, [childEditorOpen])
 
   return (
     <div className="aurora-category-branch" role="treeitem" aria-level={level} aria-expanded="true">
@@ -3305,6 +3360,19 @@ function CategoryTreeNode({
             <>
               <LiquidGlassButton
                 type="button"
+                variant="secondary"
+                size="compact"
+                disabled={busy}
+                aria-expanded={childEditorOpen}
+                aria-controls={childEditorId}
+                onClick={() => {
+                  onToggleChildEditor(category)
+                }}
+              >
+                Add child
+              </LiquidGlassButton>
+              <LiquidGlassButton
+                type="button"
                 variant="quiet"
                 size="compact"
                 disabled={busy}
@@ -3330,30 +3398,50 @@ function CategoryTreeNode({
         </div>
       </div>
 
-      <form
-        className="aurora-category-add-child"
-        onSubmit={(event) => {
-          event.preventDefault()
-          onAddChild(category)
-        }}
-      >
-        <label className="aurora-product-edit-field">
-          <span className="aurora-product-edit-label">Add child category</span>
-          <input
-            className="aurora-input aurora-product-edit-input mt-3"
-            type="text"
-            value={childDrafts[String(category.id)] || ''}
-            disabled={busy}
-            placeholder={`New category under ${category.name}`}
-            onChange={(event) => {
-              onChildDraftChange(category.id, event.target.value)
-            }}
-          />
-        </label>
-        <LiquidGlassButton type="submit" variant="secondary" size="compact" disabled={busy}>
-          Add child
-        </LiquidGlassButton>
-      </form>
+      {childEditorOpen ? (
+        <form
+          id={childEditorId}
+          className="aurora-category-add-child"
+          onSubmit={(event) => {
+            event.preventDefault()
+            onAddChild(category)
+          }}
+        >
+          <label className="aurora-product-edit-field">
+            <span className="aurora-product-edit-label">Child category name</span>
+            <input
+              ref={childNameInputRef}
+              className="aurora-input aurora-product-edit-input mt-3"
+              type="text"
+              value={childDrafts[String(category.id)] || ''}
+              disabled={busy}
+              placeholder={`New category under ${category.name}`}
+              onChange={(event) => {
+                onChildDraftChange(category.id, event.target.value)
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  onCloseChildEditor()
+                }
+              }}
+            />
+          </label>
+          <div className="aurora-category-add-child-actions">
+            <LiquidGlassButton type="submit" variant="secondary" size="compact" disabled={busy}>
+              Add
+            </LiquidGlassButton>
+            <LiquidGlassButton
+              type="button"
+              variant="quiet"
+              size="compact"
+              disabled={busy}
+              onClick={onCloseChildEditor}
+            >
+              Cancel
+            </LiquidGlassButton>
+          </div>
+        </form>
+      ) : null}
 
       {children.length ? (
         <div className="aurora-category-children" role="group">
@@ -3368,6 +3456,7 @@ function CategoryTreeNode({
               editingCategoryId={editingCategoryId}
               editDrafts={editDrafts}
               childDrafts={childDrafts}
+              openChildCategoryId={openChildCategoryId}
               dragCategoryId={dragCategoryId}
               onSelect={onSelect}
               onBeginRename={onBeginRename}
@@ -3375,6 +3464,8 @@ function CategoryTreeNode({
               onSaveRename={onSaveRename}
               onCancelRename={onCancelRename}
               onChildDraftChange={onChildDraftChange}
+              onToggleChildEditor={onToggleChildEditor}
+              onCloseChildEditor={onCloseChildEditor}
               onAddChild={onAddChild}
               onDelete={onDelete}
               onDragStart={onDragStart}
@@ -3402,6 +3493,7 @@ function CategoryManagementPanel({ products }) {
   const [editingCategoryId, setEditingCategoryId] = useState('')
   const [categoryEditDrafts, setCategoryEditDrafts] = useState({})
   const [childCategoryDrafts, setChildCategoryDrafts] = useState({})
+  const [openChildCategoryId, setOpenChildCategoryId] = useState('')
   const [dragCategoryId, setDragCategoryId] = useState('')
   const [actionState, setActionState] = useState({
     busy: '',
@@ -3522,6 +3614,12 @@ function CategoryManagementPanel({ products }) {
     }))
   }
 
+  function toggleChildCategoryEditor(category) {
+    setOpenChildCategoryId((current) => (
+      String(current) === String(category.id) ? '' : String(category.id)
+    ))
+  }
+
   function beginRenameCategory(category) {
     setEditingCategoryId(String(category.id))
     updateCategoryEditDraft(category.id, category.name)
@@ -3585,6 +3683,7 @@ function CategoryManagementPanel({ products }) {
       const result = await createProductCategory({ name, parentId })
       await loadCategories({ quiet: true })
       updateChildCategoryDraft(parentCategory.id, '')
+      setOpenChildCategoryId('')
       setSelectedCategoryId(String(result?.categoryId || ''))
       setActionSuccess(result?.msg || 'Category created successfully.')
     } catch (createError) {
@@ -3913,6 +4012,7 @@ function CategoryManagementPanel({ products }) {
                     editingCategoryId={editingCategoryId}
                     editDrafts={categoryEditDrafts}
                     childDrafts={childCategoryDrafts}
+                    openChildCategoryId={openChildCategoryId}
                     dragCategoryId={dragCategoryId}
                     onSelect={handleSelectCategory}
                     onBeginRename={beginRenameCategory}
@@ -3920,6 +4020,10 @@ function CategoryManagementPanel({ products }) {
                     onSaveRename={saveCategoryName}
                     onCancelRename={cancelRenameCategory}
                     onChildDraftChange={updateChildCategoryDraft}
+                    onToggleChildEditor={toggleChildCategoryEditor}
+                    onCloseChildEditor={() => {
+                      setOpenChildCategoryId('')
+                    }}
                     onAddChild={addChildCategory}
                     onDelete={handleDeleteCategory}
                     onDragStart={(categoryId) => {
@@ -4098,6 +4202,7 @@ function ProductEditPanel({ products, loading }) {
     success: '',
   })
   const editFieldsRef = useRef(null)
+  const editCategoryRef = useRef(null)
   const createFieldsRef = useRef(null)
   const createCategoryRef = useRef(null)
   const createImageInputRef = useRef(null)
@@ -4332,6 +4437,10 @@ function ProductEditPanel({ products, loading }) {
         input.value = nextForm[field.key] || ''
       }
     }
+
+    if (editCategoryRef.current) {
+      editCategoryRef.current.value = selectedProduct.categoryId ? String(selectedProduct.categoryId) : ''
+    }
   }
 
   function handleSave() {
@@ -4349,6 +4458,12 @@ function ProductEditPanel({ products, loading }) {
     try {
       const form = getCurrentEditForm()
       edits = buildProductEdits(selectedProduct, form)
+      const nextCategoryId = normalizeProductCategoryEdit(editCategoryRef.current?.value || '')
+      const currentCategoryId = selectedProduct.categoryId ? Number(selectedProduct.categoryId) : null
+
+      if (nextCategoryId !== currentCategoryId) {
+        edits.category_id = nextCategoryId
+      }
     } catch (validationError) {
       setSaveState({
         saving: false,
@@ -4375,7 +4490,9 @@ function ProductEditPanel({ products, loading }) {
 
     void updateProductDetails(selectedProduct.id, edits)
       .then((result) => {
-        handleSelectedProductSnapshotChange(applyProductEditsToSnapshot(selectedProduct, edits))
+        handleSelectedProductSnapshotChange(
+          applyProductEditsToSnapshot(selectedProduct, edits, createCategories),
+        )
         setSaveState({
           saving: false,
           error: '',
@@ -4647,51 +4764,72 @@ function ProductEditPanel({ products, loading }) {
           </div>
 
           {activeEditorMode === 'edit' ? (
-            <label className="aurora-product-edit-picker-field">
-              <span className="aurora-product-edit-label">Product</span>
-              <select
-                className="aurora-select aurora-product-edit-input mt-3"
-                value={selectedProductSelectKey}
-                disabled={productActionBusy}
-                onChange={(event) => {
-                  const nextProductKey = event.target.value
-                  const nextProduct =
-                    editableProducts.find(
-                      (product) => getProductManagerSelectKey(product) === nextProductKey,
-                    ) || null
+            <>
+              <label className="aurora-product-edit-picker-field">
+                <span className="aurora-product-edit-label">Product</span>
+                <select
+                  className="aurora-select aurora-product-edit-input mt-3"
+                  value={selectedProductSelectKey}
+                  disabled={productActionBusy}
+                  onChange={(event) => {
+                    const nextProductKey = event.target.value
+                    const nextProduct =
+                      editableProducts.find(
+                        (product) => getProductManagerSelectKey(product) === nextProductKey,
+                      ) || null
 
-                  logProductManagerDebug('edit-panel:product-select-change', {
-                    instance: debugInstance,
-                    nextProductKey,
-                    nextProductId: nextProduct?.id || null,
-                    nextProductCode: nextProduct?.productCode || '',
-                    previousProductId: selectedProductId,
-                    previousProductKey: selectedProductKey,
-                  })
-                  setSelectedProductKey(nextProductKey)
-                  setSelectedProductId(nextProduct?.id ?? null)
-                  setSelectedProductSnapshot(nextProduct)
-                  writeStoredProductManagerSelection(nextProduct)
-                  setSaveState({
-                    saving: false,
-                    error: '',
-                    success: '',
-                  })
-                  setDeleteState({
-                    deleting: false,
-                    error: '',
-                    success: '',
-                  })
-                }}
-              >
-                <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
-                {editableProducts.map((product) => (
-                  <option key={product.id} value={getProductManagerSelectKey(product)}>
-                    {product.name}
+                    logProductManagerDebug('edit-panel:product-select-change', {
+                      instance: debugInstance,
+                      nextProductKey,
+                      nextProductId: nextProduct?.id || null,
+                      nextProductCode: nextProduct?.productCode || '',
+                      previousProductId: selectedProductId,
+                      previousProductKey: selectedProductKey,
+                    })
+                    setSelectedProductKey(nextProductKey)
+                    setSelectedProductId(nextProduct?.id ?? null)
+                    setSelectedProductSnapshot(nextProduct)
+                    writeStoredProductManagerSelection(nextProduct)
+                    setSaveState({
+                      saving: false,
+                      error: '',
+                      success: '',
+                    })
+                    setDeleteState({
+                      deleting: false,
+                      error: '',
+                      success: '',
+                    })
+                  }}
+                >
+                  <option value="">{loading ? 'Loading products' : 'Select a product'}</option>
+                  {editableProducts.map((product) => (
+                    <option key={product.id} value={getProductManagerSelectKey(product)}>
+                      {product.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="aurora-product-edit-picker-field">
+                <span className="aurora-product-edit-label">Category</span>
+                <select
+                  key={`edit-category:${selectedProduct?.id || 'none'}`}
+                  ref={editCategoryRef}
+                  className="aurora-select aurora-product-edit-input mt-3"
+                  disabled={productActionBusy || categoriesLoading || !selectedProduct}
+                  defaultValue={selectedProduct?.categoryId ? String(selectedProduct.categoryId) : ''}
+                >
+                  <option value="">
+                    {categoriesLoading ? 'Loading categories' : 'No category'}
                   </option>
-                ))}
-              </select>
-            </label>
+                  {createCategories.map((category) => (
+                    <option key={category.id} value={String(category.id)}>
+                      {getCategorySelectLabel(createCategories, category)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
           ) : (
             <label className="aurora-product-edit-picker-field">
               <span className="aurora-product-edit-label">Category</span>
