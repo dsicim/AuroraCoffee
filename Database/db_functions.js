@@ -138,7 +138,7 @@ func.findUser = async function (username, id) {
     }
     try {
         const [rows] = await pool.execute(
-            'SELECT id, displayname, username, verified, role, nameprivacy, tax_id, emailblocked, created_at FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
+            'SELECT id, displayname, username, verified, role, nameprivacy, tax_id, emailblocked, created_at, last_login FROM users WHERE ' + (id ? 'id = ?' : 'username = ?'),
             [username]
         );
         if (rows.length === 0) {
