@@ -232,9 +232,19 @@ export default function AccountPage() {
     setProfileName(nextProfileName)
     const nextProfileTaxId = getUserTaxId(currentUser)
     setProfileTaxId(sanitizeProfileIdentity(nextProfileTaxId, nextProfileTaxId))
-    setProfilePrivacySelection(
-      buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
-    )
+    setProfilePrivacySelection((currentSelection) => {
+      const savedPrivacy = getUserPrivacy(currentUser)
+
+      if (savedPrivacy) {
+        return buildReviewPrivacySelectionFromCode(savedPrivacy, nextProfileName)
+      }
+
+      return resolveReviewPrivacySelection(
+        currentSelection,
+        nextProfileName,
+        getReviewPrivacyFallbackMode(currentSelection),
+      )
+    })
     setProfilePrivacyMenuOpen(false)
   }, [currentUser])
 
