@@ -167,7 +167,7 @@ function normalizeSummaryAddress(summaryAddress) {
     district: descParts[0] || '',
     city: descParts[0] || '',
     province: descParts[1] || descParts[0] || '',
-    country: descParts[2] || 'Turkey',
+    country: descParts[2] || 'Türkiye',
     postalCode: '',
     phone: '',
     summaryTitle: String(summaryAddress.title || '').trim(),
@@ -193,7 +193,7 @@ function normalizeDetailAddress(addressRecord) {
     district: String(addressRecord.city || '').trim(),
     city: String(addressRecord.city || '').trim(),
     province: String(addressRecord.province || '').trim(),
-    country: String(addressRecord.country || 'Turkey').trim(),
+    country: String(addressRecord.country || 'Türkiye').trim(),
     postalCode: String(addressRecord.zip || '').trim(),
     phone: String(addressRecord.phone || '').trim(),
     summaryTitle: String(addressRecord.alias || '').trim(),
@@ -345,7 +345,7 @@ function normalizeLegacyAddressRecord(record) {
     district,
     city: district,
     province,
-    country: String(record.country || 'Turkey').trim(),
+    country: String(record.country || 'Türkiye').trim(),
     postalCode: String(record.postalCode || '').trim(),
     phone: String(record.phone || '').trim(),
   }
@@ -359,7 +359,7 @@ function createAddressSignature(address) {
     String(address.addressLine2 || '').trim().toLowerCase(),
     String(address.district || address.city || '').trim().toLowerCase(),
     String(address.province || '').trim().toLowerCase(),
-    String(address.country || 'Turkey').trim().toLowerCase(),
+    String(address.country || 'Türkiye').trim().toLowerCase(),
     String(address.postalCode || '').trim(),
     String(address.phone || '').trim(),
   ]
@@ -530,7 +530,7 @@ function normalizeAddressInput(addressInput) {
     district,
     city: district,
     province,
-    country: String(addressInput.country || 'Turkey').trim(),
+    country: String(addressInput.country || 'Türkiye').trim(),
     postalCode: String(addressInput.postalCode || '').trim(),
     phone: String(addressInput.phone || '').trim(),
   }
@@ -547,7 +547,7 @@ function buildBackendAddressPayload(addressInput) {
     address2: normalizedAddress.addressLine2 || undefined,
     city: normalizedAddress.city,
     province: normalizedAddress.province || normalizedAddress.city,
-    country: normalizedAddress.country || 'Turkey',
+    country: normalizedAddress.country || 'Türkiye',
     zip: normalizedAddress.postalCode,
     phone: normalizedAddress.phone,
   }
