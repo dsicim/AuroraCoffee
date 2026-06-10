@@ -290,7 +290,7 @@ export default function AccountLayout({
       <main className="aurora-main">
         <div className="aurora-container aurora-page-rail">
           <section className="aurora-shell aurora-shell-soft aurora-account-intro rounded-[2.3rem] p-6 sm:p-8 lg:p-7 xl:p-9">
-            <div className="max-w-3xl">
+            <div className="max-w-4xl">
               <p className="aurora-kicker">{eyebrow}</p>
               <h1 className="aurora-heading mt-4 text-5xl md:text-6xl lg:text-5xl xl:text-6xl">
                 {title}
