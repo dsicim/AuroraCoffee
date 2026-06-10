@@ -336,7 +336,11 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.status) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if (currentUser.role === "Product Manager") {
-                if (body.data.status !== "shipped") return { s: 403, j: true, d: { e: "Product Managers can only mark processing orders as shipped" } };
+                const productManagerStatusTransitions = {
+                    processing: "shipped",
+                    shipped: "delivered",
+                };
+                if (!Object.values(productManagerStatusTransitions).includes(body.data.status)) return { s: 403, j: true, d: { e: "Product Managers can only mark processing orders as shipped or shipped orders as delivered" } };
                 const orderResult = await sql.getAllOrders(body.data.id).catch(err => {
                     console.error("Product manager status order lookup error:", err);
                     return null;
@@ -344,7 +348,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (!orderResult || !orderResult.success) return { s: 400, j: true, d: { e: "Could not verify order status" } };
                 const targetOrder = orderResult.orders.find(order => String(order.id) === String(body.data.id));
                 if (!targetOrder) return { s: 404, j: true, d: { e: "Order not found" } };
-                if (targetOrder.status !== "processing") return { s: 400, j: true, d: { e: "Product Managers can only mark processing orders as shipped" } };
+                if (productManagerStatusTransitions[targetOrder.status] !== body.data.status) return { s: 400, j: true, d: { e: "Product Managers can only mark processing orders as shipped or shipped orders as delivered" } };
             }
             const updateResult = await sql.updateOrderStatus(body.data.id, body.data.status).then(result => {
                 if (result.success) return { s: 200, j:true, d: { msg: "Order status updated successfully" } };

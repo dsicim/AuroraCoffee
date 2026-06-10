@@ -5808,9 +5808,10 @@ function ProductOrderLookupPanel() {
 
   const status = getOrderStatusPresentation(order)
   const canMarkShipped = status.key === 'processing'
+  const canMarkDelivered = status.key === 'shipped'
 
-  function handleMarkShipped() {
-    if (!order?.id || !canMarkShipped) {
+  function handleStatusChange(nextStatus, successLabel, errorLabel) {
+    if (!order?.id) {
       return
     }
 
@@ -5818,18 +5819,34 @@ function ProductOrderLookupPanel() {
     setError('')
     setFeedback('')
 
-    void updateOrderStatus(order.id, 'shipped')
+    void updateOrderStatus(order.id, nextStatus)
       .then(() => {
-        setFeedback(`Order ${order.id} marked as shipped.`)
+        setFeedback(`Order ${order.id} marked as ${successLabel}.`)
         loadOrderDetail(order.id, { clearFeedback: false })
         loadOrderQueue({ preferredOrderId: order.id, quiet: true })
       })
       .catch((statusError) => {
-        setError(statusError?.message || 'Could not mark order as shipped.')
+        setError(statusError?.message || `Could not mark order as ${errorLabel}.`)
       })
       .finally(() => {
         setStatusBusy(false)
       })
+  }
+
+  function handleMarkShipped() {
+    if (!canMarkShipped) {
+      return
+    }
+
+    handleStatusChange('shipped', 'shipped', 'shipped')
+  }
+
+  function handleMarkDelivered() {
+    if (!canMarkDelivered) {
+      return
+    }
+
+    handleStatusChange('delivered', 'delivered', 'delivered')
   }
 
   return (
@@ -5858,7 +5875,8 @@ function ProductOrderLookupPanel() {
 
       <p className="mt-5 text-sm leading-7 text-[var(--aurora-text)]">
         Product managers can review the fulfillment queue, delivery region, and product line
-        details, download invoices, and move processing orders into shipped status.
+        details, download invoices, and move processing orders through shipped and delivered
+        status.
       </p>
 
       <form className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]" onSubmit={handleSubmit}>
@@ -6027,6 +6045,18 @@ function ProductOrderLookupPanel() {
                   onClick={handleMarkShipped}
                 >
                   Mark shipped
+                </LiquidGlassButton>
+              ) : null}
+              {canMarkDelivered ? (
+                <LiquidGlassButton
+                  type="button"
+                  variant="soft"
+                  size="compact"
+                  loading={statusBusy}
+                  disabled={statusBusy}
+                  onClick={handleMarkDelivered}
+                >
+                  Mark delivered
                 </LiquidGlassButton>
               ) : null}
             </div>
