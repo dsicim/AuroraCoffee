@@ -6370,7 +6370,7 @@ export default function ProductManagerPage() {
                 type="button"
                 role="tab"
                 aria-selected={activeTab === tab.key ? 'true' : 'false'}
-                className={`aurora-sales-order-row rounded-[1.1rem] px-4 py-3 text-left text-sm font-semibold transition ${activeTab === tab.key ? 'is-selected' : ''}`.trim()}
+                className={`aurora-sales-order-row rounded-[1.1rem] px-4 py-3 text-center text-sm font-semibold transition ${activeTab === tab.key ? 'is-selected' : ''}`.trim()}
                 onClick={() => {
                   setActiveTab(tab.key)
                 }}

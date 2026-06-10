@@ -23,6 +23,7 @@ import ReviewPrivacyMatrix from '../features/comments/presentation/ReviewPrivacy
 import {
   buildReviewPrivacyCode,
   buildReviewPrivacySelection,
+  buildReviewPrivacySelectionFromCode,
   getReviewPrivacyFallbackMode,
   normalizeReviewPrivacyMode,
   resolveReviewPrivacySelection,
@@ -556,6 +557,44 @@ function ReviewRatingInput({
   )
 }
 
+function getCurrentUserPrivacyCode(user) {
+  return String(
+    user?.nameprivacy ||
+      user?.privacy ||
+      user?.comment_privacy ||
+      user?.commentPrivacy ||
+      '',
+  ).trim()
+}
+
+function getReviewPrivacySelectionForUser({
+  currentSelection,
+  displayName,
+  user,
+  fallbackSelection,
+  fallbackMode = 'initials',
+}) {
+  const savedPrivacy = getCurrentUserPrivacyCode(user)
+
+  if (savedPrivacy) {
+    return buildReviewPrivacySelectionFromCode(savedPrivacy, displayName)
+  }
+
+  if (Array.isArray(currentSelection) && currentSelection.length) {
+    return resolveReviewPrivacySelection(
+      currentSelection,
+      displayName,
+      getReviewPrivacyFallbackMode(currentSelection, fallbackMode),
+    )
+  }
+
+  if (Array.isArray(fallbackSelection) && fallbackSelection.length) {
+    return resolveReviewPrivacySelection(fallbackSelection, displayName, fallbackMode)
+  }
+
+  return buildReviewPrivacySelection(displayName, fallbackMode)
+}
+
 function ProductReviewPanel({ product }) {
   const location = useLocation()
   const navigate = useNavigate()
@@ -565,7 +604,7 @@ function ProductReviewPanel({ product }) {
   const [hoverReviewRating, setHoverReviewRating] = useState(null)
   const [reviewComment, setReviewComment] = useState('')
   const [reviewPrivacySelection, setReviewPrivacySelection] = useState([])
-  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(true)
+  const [privacyMenuOpen, setPrivacyMenuOpen] = useState(false)
   const [reviews, setReviews] = useState([])
   const [selfComment, setSelfComment] = useState(null)
   const [selfCommentEditing, setSelfCommentEditing] = useState(false)
@@ -749,27 +788,33 @@ function ProductReviewPanel({ product }) {
 
   useEffect(() => {
     setHoverReviewRating(null)
-    setPrivacyMenuOpen(true)
+    setPrivacyMenuOpen(false)
 
     if (!hasSession || !selfComment || !editorMode) {
       setReviewRating(null)
       setReviewComment('')
-      setReviewPrivacySelection(
-        buildReviewPrivacySelection(currentUser?.displayname, 'initials'),
+      setReviewPrivacySelection((currentSelection) =>
+        getReviewPrivacySelectionForUser({
+          currentSelection,
+          displayName: currentUser?.displayname,
+          user: currentUser,
+        }),
       )
       return
     }
 
     setReviewRating(selfComment.prefill?.rating ?? null)
     setReviewComment(selfComment.prefill?.comment || '')
-    setReviewPrivacySelection(
-      resolveReviewPrivacySelection(
-        selfComment.prefill?.privacySelection,
-        currentUser?.displayname,
-        selfComment.prefill?.privacyMode || 'initials',
-      ),
+    setReviewPrivacySelection((currentSelection) =>
+      getReviewPrivacySelectionForUser({
+        currentSelection,
+        displayName: currentUser?.displayname,
+        user: currentUser,
+        fallbackSelection: selfComment.prefill?.privacySelection,
+        fallbackMode: selfComment.prefill?.privacyMode || 'initials',
+      }),
     )
-  }, [currentUser?.displayname, editorMode, hasSession, product.id, selfComment])
+  }, [currentUser, editorMode, hasSession, product.id, selfComment])
 
   useEffect(() => {
     if (!hasSession || !currentUser?.displayname) {
@@ -777,13 +822,13 @@ function ProductReviewPanel({ product }) {
     }
 
     setReviewPrivacySelection((currentSelection) =>
-      resolveReviewPrivacySelection(
+      getReviewPrivacySelectionForUser({
         currentSelection,
-        currentUser.displayname,
-        getReviewPrivacyFallbackMode(currentSelection),
-      ),
+        displayName: currentUser.displayname,
+        user: currentUser,
+      }),
     )
-  }, [currentUser?.displayname, hasSession])
+  }, [currentUser, hasSession])
 
   const metricReviews = useMemo(() => {
     if (selfComment?.visibleSnapshot) {
@@ -913,7 +958,7 @@ function ProductReviewPanel({ product }) {
         })
 
         setHoverReviewRating(null)
-        setPrivacyMenuOpen(true)
+        setPrivacyMenuOpen(false)
         setReviewFeedback(
           result?.msg ||
           (editorMode
