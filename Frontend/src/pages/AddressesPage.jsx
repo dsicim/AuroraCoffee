@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import AccountLayout from '../components/AccountLayout'
 import LiquidGlassButton from '../shared/components/ui/LiquidGlassButton'
@@ -76,6 +76,7 @@ function validateAddressForm(form) {
 
 export default function AddressesPage() {
   const location = useLocation()
+  const formSectionRef = useRef(null)
   const [addresses, setAddresses] = useState(() => getAddressBookSnapshot().addresses)
   const [addressesLoaded, setAddressesLoaded] = useState(() => getAddressBookSnapshot().loaded)
   const [loading, setLoading] = useState(() => !getAddressBookSnapshot().loaded)
@@ -206,7 +207,15 @@ export default function AddressesPage() {
           phone: address.phone || '',
         })
         setErrors({})
-        window.scrollTo({ top: 0, behavior: 'smooth' })
+
+        if (window.matchMedia('(max-width: 1023px)').matches) {
+          window.requestAnimationFrame(() => {
+            formSectionRef.current?.scrollIntoView({
+              behavior: 'smooth',
+              block: 'start',
+            })
+          })
+        }
       } catch (loadError) {
         setErrors((current) => ({
           ...current,
@@ -240,7 +249,7 @@ export default function AddressesPage() {
       ) : null}
 
       <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-        <section className="aurora-ops-panel p-8">
+        <section ref={formSectionRef} className="aurora-ops-panel p-8">
           <div className="flex items-end justify-between gap-4">
             <div>
               <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[var(--aurora-olive-deep)]">
