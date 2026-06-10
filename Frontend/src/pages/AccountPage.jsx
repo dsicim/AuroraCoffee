@@ -148,7 +148,7 @@ export default function AccountPage() {
       getUserDisplayName(currentUser),
     ),
   )
-  const [profilePrivacyMenuOpen, setProfilePrivacyMenuOpen] = useState(true)
+  const [profilePrivacyMenuOpen, setProfilePrivacyMenuOpen] = useState(false)
   const [profileFeedback, setProfileFeedback] = useState('')
   const [profileFeedbackType, setProfileFeedbackType] = useState('success')
   const [profileSaving, setProfileSaving] = useState(false)
@@ -235,7 +235,7 @@ export default function AccountPage() {
     setProfilePrivacySelection(
       buildReviewPrivacySelectionFromCode(getUserPrivacy(currentUser), nextProfileName),
     )
-    setProfilePrivacyMenuOpen(true)
+    setProfilePrivacyMenuOpen(false)
   }, [currentUser])
 
   const mostRecentOrder = ordersLoaded ? orders[0] || null : null
