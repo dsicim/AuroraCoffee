@@ -84,7 +84,7 @@
             document.getElementById("latest").textContent = "Latest software version: Unable to fetch";
             return;
         }
-        const latestVersion = "0." + sprintNo[0] + "." + (latestCommit - sprintNo[1]);
+        const latestVersion = "1." + sprintNo[0] + "." + (latestCommit - sprintNo[1]);
         document.getElementById("latest").textContent = "Latest software version: " + latestVersion;
     }
     function updateOutput(text) {
