@@ -83,6 +83,59 @@ function getDateInputValue(value) {
   return `${year}-${month}-${day}`
 }
 
+function getDateFromInputValue(value) {
+  const [year, month, day] = String(value || '').split('-').map(Number)
+
+  if (!year || !month || !day) {
+    return new Date()
+  }
+
+  return new Date(year, month - 1, day)
+}
+
+function getMonthStart(value) {
+  const date = getDateFromInputValue(value)
+
+  return new Date(date.getFullYear(), date.getMonth(), 1)
+}
+
+function shiftMonth(date, offset) {
+  return new Date(date.getFullYear(), date.getMonth() + offset, 1)
+}
+
+function formatDateRangeLabel(startDate, endDate) {
+  if (!startDate && !endDate) {
+    return 'Date range'
+  }
+
+  if (startDate && endDate) {
+    return `${formatShortDate(startDate)} - ${formatShortDate(endDate)}`
+  }
+
+  return startDate ? `From ${formatShortDate(startDate)}` : `Until ${formatShortDate(endDate)}`
+}
+
+function buildCalendarDays(monthDate) {
+  const firstOfMonth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1)
+  const firstVisible = new Date(firstOfMonth)
+  const mondayOffset = (firstOfMonth.getDay() + 6) % 7
+
+  firstVisible.setDate(firstVisible.getDate() - mondayOffset)
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(firstVisible)
+
+    date.setDate(firstVisible.getDate() + index)
+
+    return {
+      date,
+      label: String(date.getDate()),
+      value: getDateInputValue(date.toISOString()),
+      inCurrentMonth: date.getMonth() === monthDate.getMonth(),
+    }
+  })
+}
+
 function getOrderLocation(order) {
   return [
     order?.delivery?.district || order?.delivery?.city,
@@ -378,6 +431,151 @@ function SalesGraphicsPanel({ orders, statusBreakdown }) {
         </div>
       </div>
     </section>
+  )
+}
+
+function OrderDateRangePicker({
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+}) {
+  const [open, setOpen] = useState(false)
+  const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(startDate || endDate))
+  const [rangeStart, rangeEnd] = startDate && endDate && startDate > endDate
+    ? [endDate, startDate]
+    : [startDate, endDate]
+  const calendarDays = useMemo(() => buildCalendarDays(visibleMonth), [visibleMonth])
+  const monthLabel = visibleMonth.toLocaleDateString('en-GB', {
+    month: 'long',
+    year: 'numeric',
+  })
+  const rangeLabel = formatDateRangeLabel(rangeStart, rangeEnd)
+
+  function handlePickDate(nextDate) {
+    if (!startDate || endDate) {
+      onStartDateChange(nextDate)
+      onEndDateChange('')
+      setVisibleMonth(getMonthStart(nextDate))
+      return
+    }
+
+    if (nextDate < startDate) {
+      onStartDateChange(nextDate)
+      onEndDateChange(startDate)
+      return
+    }
+
+    onEndDateChange(nextDate)
+  }
+
+  function handleClear() {
+    onStartDateChange('')
+    onEndDateChange('')
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        className="aurora-input flex w-full items-center justify-between gap-3 text-left"
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        onClick={() => {
+          setVisibleMonth(getMonthStart(startDate || endDate))
+          setOpen((currentOpen) => !currentOpen)
+        }}
+      >
+        <span className={rangeStart || rangeEnd ? 'text-[var(--aurora-text-strong)]' : 'text-[var(--aurora-text)]'}>
+          {rangeLabel}
+        </span>
+        <span aria-hidden="true" className="text-sm text-[var(--sales-page-accent)]">
+          Calendar
+        </span>
+      </button>
+
+      {open ? (
+        <div
+          className="absolute left-0 z-30 mt-2 w-full min-w-[20rem] rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
+          role="dialog"
+          aria-label="Filter orders by date range"
+        >
+          <div className="flex items-center justify-between gap-3">
+            <button
+              type="button"
+              className="rounded-full border border-[var(--aurora-border)] px-3 py-1.5 text-sm font-semibold text-[var(--aurora-text-strong)]"
+              onClick={() => setVisibleMonth((currentMonth) => shiftMonth(currentMonth, -1))}
+              aria-label="Previous month"
+            >
+              Prev
+            </button>
+            <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
+              {monthLabel}
+            </p>
+            <button
+              type="button"
+              className="rounded-full border border-[var(--aurora-border)] px-3 py-1.5 text-sm font-semibold text-[var(--aurora-text-strong)]"
+              onClick={() => setVisibleMonth((currentMonth) => shiftMonth(currentMonth, 1))}
+              aria-label="Next month"
+            >
+              Next
+            </button>
+          </div>
+
+          <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((weekday) => (
+              <span key={weekday}>{weekday}</span>
+            ))}
+          </div>
+
+          <div className="mt-2 grid grid-cols-7 gap-1">
+            {calendarDays.map((day) => {
+              const selected = day.value === rangeStart || day.value === rangeEnd
+              const inRange = rangeStart && rangeEnd && day.value > rangeStart && day.value < rangeEnd
+
+              return (
+                <button
+                  key={day.value}
+                  type="button"
+                  className={[
+                    'min-h-9 rounded-full text-sm font-semibold transition',
+                    day.inCurrentMonth ? 'text-[var(--aurora-text-strong)]' : 'text-[var(--aurora-text)] opacity-45',
+                    inRange ? 'bg-[var(--aurora-surface-muted)]' : '',
+                    selected ? 'bg-[var(--sales-page-accent)] text-white opacity-100' : '',
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => handlePickDate(day.value)}
+                  aria-pressed={selected}
+                >
+                  {day.label}
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs font-semibold text-[var(--aurora-text)]">
+              {rangeStart && !rangeEnd ? 'Select an end date' : rangeLabel}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="text-sm font-semibold text-[var(--aurora-text)]"
+                onClick={handleClear}
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-[var(--aurora-text-strong)] px-4 py-2 text-sm font-semibold text-white"
+                onClick={() => setOpen(false)}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -1604,29 +1802,12 @@ export default function SalesManagerPage() {
                   placeholder="Search order number, purchase id, or status"
                 />
               </label>
-              <fieldset className="grid grid-cols-2 gap-2">
-                <legend className="sr-only">Filter orders by date range</legend>
-                <label className="block">
-                  <span className="sr-only">Filter orders from date</span>
-                  <input
-                    type="date"
-                    className="aurora-input"
-                    value={orderDateStartFilter}
-                    onChange={(event) => setOrderDateStartFilter(event.target.value)}
-                    aria-label="Filter orders from date"
-                  />
-                </label>
-                <label className="block">
-                  <span className="sr-only">Filter orders to date</span>
-                  <input
-                    type="date"
-                    className="aurora-input"
-                    value={orderDateEndFilter}
-                    onChange={(event) => setOrderDateEndFilter(event.target.value)}
-                    aria-label="Filter orders to date"
-                  />
-                </label>
-              </fieldset>
+              <OrderDateRangePicker
+                startDate={orderDateStartFilter}
+                endDate={orderDateEndFilter}
+                onStartDateChange={setOrderDateStartFilter}
+                onEndDateChange={setOrderDateEndFilter}
+              />
               <label className="block">
                 <span className="sr-only">Filter by status</span>
                 <select
