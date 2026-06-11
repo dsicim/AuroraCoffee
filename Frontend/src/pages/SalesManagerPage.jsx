@@ -68,6 +68,21 @@ function formatShortDate(value) {
   })
 }
 
+function getDateInputValue(value) {
+  const timestamp = Date.parse(value || '')
+
+  if (!Number.isFinite(timestamp)) {
+    return ''
+  }
+
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
 function getOrderLocation(order) {
   return [
     order?.delivery?.district || order?.delivery?.city,
@@ -1115,6 +1130,7 @@ export default function SalesManagerPage() {
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [query, setQuery] = useState('')
+  const [orderDateFilter, setOrderDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
@@ -1263,9 +1279,13 @@ export default function SalesManagerPage() {
   )
   const filteredOrders = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
+    const normalizedDateFilter = orderDateFilter.trim()
 
     return orders.filter((order) => {
       const statusMatches = statusFilter === 'all' || order.statusKey === statusFilter
+      const dateMatches =
+        !normalizedDateFilter ||
+        getDateInputValue(order.submittedAt || order.createdAt) === normalizedDateFilter
       const queryMatches = !normalizedQuery || [
         order.id,
         order.purchaseId,
@@ -1273,9 +1293,9 @@ export default function SalesManagerPage() {
         order.submittedAt,
       ].some((value) => String(value || '').toLowerCase().includes(normalizedQuery))
 
-      return statusMatches && queryMatches
+      return statusMatches && dateMatches && queryMatches
     })
-  }, [orders, query, statusFilter])
+  }, [orderDateFilter, orders, query, statusFilter])
   const selectedOrderIndex = filteredOrders.findIndex((order) => order.id === selectedOrderId)
   const selectedStatus = selectedOrder?.statusKey || selectedOrder?.status || ''
   const selectedSummary = orders.find((order) => order.id === selectedOrderId) || null
@@ -1567,7 +1587,7 @@ export default function SalesManagerPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_220px]">
+            <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_220px]">
               <label className="block">
                 <span className="sr-only">Search orders</span>
                 <input
@@ -1575,7 +1595,17 @@ export default function SalesManagerPage() {
                   className="aurora-input"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Search order number, purchase id, status, or date"
+                  placeholder="Search order number, purchase id, or status"
+                />
+              </label>
+              <label className="block">
+                <span className="sr-only">Filter orders by date</span>
+                <input
+                  type="date"
+                  className="aurora-input"
+                  value={orderDateFilter}
+                  onChange={(event) => setOrderDateFilter(event.target.value)}
+                  aria-label="Filter orders by date"
                 />
               </label>
               <label className="block">
