@@ -265,10 +265,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (["shipped", "delivered"].includes(result.d.order.order.status)) return { s: 400, j: true, d: { e: `Cannot cancel order in ${result.d.order.order.status} status` } };
             const refundResult = await payments.IyzipayAPI(config, "POST", "payment/cancel", {}, { locale: "en", paymentId: result.d.order.order.purchaseId}).then(res => {
                 if (res.status == "success") return { success: true, message: "Order cancelled and payment refunded successfully" };
-                else return { success: false, message: "Order cancelled but failed to refund payment: "+res.errorMessage };
+                else return { success: false, message: "Failed to refund payment: "+res.errorMessage };
             }).catch(err => {
                 console.error("Payment cancellation error:", err);
-                return { success: false, message: "Order cancelled but failed to refund payment: "+err.toString() };
+                return { success: false, message: "Failed to refund payment: "+err.toString() };
             });
             if (refundResult.message == "Failed to refund payment: Transaction has already been cancelled") refundResult.success = true; // This means the order was already cancelled/refunded on the payment provider, so we can treat it as a success for our purposes.
             if (refundResult.message == "Failed to refund payment: Process has been locked before") refundResult.success = true; // This means the order was already cancelled/refunded on the payment provider, so we can treat it as a success for our purposes.
