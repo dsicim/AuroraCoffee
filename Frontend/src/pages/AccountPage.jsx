@@ -377,6 +377,9 @@ export default function AccountPage() {
             </div>
 
             <form className="mt-6 grid gap-5" onSubmit={handleProfileSubmit}>
+              <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                  {"ID: " + authState.user?.id}
+              </p>
               <label className="block">
                 <span className="aurora-field-label">Display name</span>
                 <input
@@ -400,7 +403,9 @@ export default function AccountPage() {
                   className="aurora-input"
                 />
               </label>
-
+              <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                  {"Email: " + authState.user?.username}
+              </p>
               <label className="block">
                 <span className="aurora-field-label">Identity number</span>
                 <input
