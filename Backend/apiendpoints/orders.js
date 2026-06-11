@@ -220,7 +220,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         return { s: 400, j: true, d: { e: refundResult.message } };
                     }
                     restock = {
-                        productId: result.d.order.order.details.products[product].id,
+                        productId: result.d.order.order.details.products[product].product_id,
                         variantId: result.d.order.order.details.products[product].variantId,
                         quantity: result.d.order.order.details.products[product].quantity
                     }
@@ -237,7 +237,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         if (endpoint[1] === "approve") {
                             const emaildetails = {
                                 product: {
-                                    name: result.d.order.order.details.products[product].name,
+                                    name: result.d.order.order.details.products[product].product_name,
                                     optionstext: result.d.order.order.details.products[product].optionstext,
                                     product_image: result.d.order.order.details.products[product].product_image,
                                     quantity: result.d.order.order.details.products[product].quantity,
