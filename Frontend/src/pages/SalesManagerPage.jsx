@@ -464,6 +464,7 @@ function OrderDateRangePicker({
   onEndDateChange,
   ariaLabel = 'Filter orders by date range',
   helperText = 'Pick a start date, then pick an end date.',
+  placement = 'bottom',
 }) {
   const [open, setOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(startDate || endDate))
@@ -522,7 +523,10 @@ function OrderDateRangePicker({
 
       {open ? (
         <div
-          className="absolute left-1/2 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
+          className={[
+            'absolute left-1/2 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]',
+            placement === 'top' ? 'bottom-full mb-2' : 'mt-2',
+          ].join(' ')}
           role="dialog"
           aria-label={ariaLabel}
         >
@@ -630,11 +634,6 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   const timeseries = analytics?.timeseries || []
   const summary = analytics?.summary || {}
   const visiblePoints = timeseries.slice(-10)
-  const maxAmount = Math.max(1, ...visiblePoints.flatMap((point) => [
-    point.sales,
-    point.profit,
-    point.refunds,
-  ].map((value) => Math.abs(value))))
   const chartWidth = 700
   const chartHeight = 260
   const chartLeft = 64
@@ -643,30 +642,46 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   const chartBottom = 48
   const plotWidth = chartWidth - chartLeft - chartRight
   const plotHeight = chartHeight - chartTop - chartBottom
+  const rawValues = visiblePoints.flatMap((point) => [
+    point.sales,
+    point.profit,
+    point.refunds,
+  ])
+  const minAmount = Math.min(0, ...rawValues)
+  const maxAmount = Math.max(1, ...rawValues)
+  const amountRange = Math.max(1, maxAmount - minAmount)
+  const yForAmount = (value) => chartTop + ((maxAmount - value) / amountRange) * plotHeight
+  const zeroY = yForAmount(0)
   const xStep = visiblePoints.length > 1 ? plotWidth / (visiblePoints.length - 1) : 0
   const chartPoints = visiblePoints.map((point, index) => {
     const x = chartLeft + (visiblePoints.length > 1 ? index * xStep : plotWidth / 2)
-    const salesY = chartTop + (1 - (point.sales / maxAmount)) * plotHeight
-    const profitY = chartTop + (1 - (point.profit / maxAmount)) * plotHeight
-    const refundHeight = Math.max(0, (point.refunds / maxAmount) * plotHeight)
+    const salesY = yForAmount(point.sales)
+    const profitY = yForAmount(point.profit)
+    const refundY = yForAmount(point.refunds)
+    const refundHeight = Math.abs(zeroY - refundY)
 
     return {
       ...point,
       x,
       salesY,
       profitY,
+      refundY,
       refundHeight,
     }
   })
   const salesPath = chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.salesY}`).join(' ')
   const profitPath = chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.profitY}`).join(' ')
   const salesAreaPath = chartPoints.length
-    ? `${salesPath} L ${chartPoints.at(-1).x} ${chartTop + plotHeight} L ${chartPoints[0].x} ${chartTop + plotHeight} Z`
+    ? `${salesPath} L ${chartPoints.at(-1).x} ${zeroY} L ${chartPoints[0].x} ${zeroY} Z`
     : ''
-  const amountTicks = [1, 0.75, 0.5, 0.25, 0].map((ratio) => Math.round(maxAmount * ratio))
+  const amountTicks = Array.from({ length: 5 }, (_, index) => {
+    const ratio = index / 4
+
+    return Math.round(maxAmount - (amountRange * ratio))
+  })
 
   return (
-    <section className="aurora-sales-dashboard p-6">
+    <section className="aurora-sales-dashboard overflow-visible p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="aurora-widget-heading">
           <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">
@@ -708,7 +723,7 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                   </linearGradient>
                 </defs>
                 {amountTicks.map((tick) => {
-                  const y = chartTop + (1 - (tick / maxAmount)) * plotHeight
+                  const y = yForAmount(tick)
 
                   return (
                     <g key={tick}>
@@ -720,17 +735,19 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                   )
                 })}
                 <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartTop + plotHeight} />
-                <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft + plotWidth} y1={chartTop + plotHeight} y2={chartTop + plotHeight} />
+                <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft + plotWidth} y1={zeroY} y2={zeroY} />
                 {chartPoints.map((point) => (
                   <rect
                     key={`${point.date}-refund`}
                     x={point.x - 9}
-                    y={chartTop + plotHeight - point.refundHeight}
+                    y={Math.min(point.refundY, zeroY)}
                     width="18"
                     height={point.refundHeight}
                     rx="7"
                     fill="url(#refundBarGradient)"
-                  />
+                  >
+                    <title>{`${formatShortDate(point.date)} refunds: ${formatCurrency(point.refunds)}`}</title>
+                  </rect>
                 ))}
                 <path d={salesAreaPath} fill="url(#salesAreaGradient)" />
                 <path className="aurora-sales-chart-sales" d={salesPath} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
@@ -738,8 +755,12 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                 {chartPoints.map((point) => (
                   <g key={point.date}>
                     <line className="aurora-sales-chart-axis" x1={point.x} x2={point.x} y1={chartTop + plotHeight} y2={chartTop + plotHeight + 5} />
-                    <circle className="aurora-sales-chart-dot-sales" cx={point.x} cy={point.salesY} r="5" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2" />
-                    <circle className="aurora-sales-chart-dot-profit" cx={point.x} cy={point.profitY} r="4" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2" />
+                    <circle className="aurora-sales-chart-dot-sales" cx={point.x} cy={point.salesY} r="5" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2">
+                      <title>{`${formatShortDate(point.date)} sales: ${formatCurrency(point.sales)}`}</title>
+                    </circle>
+                    <circle className="aurora-sales-chart-dot-profit" cx={point.x} cy={point.profitY} r="4" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2">
+                      <title>{`${formatShortDate(point.date)} profit: ${formatCurrency(point.profit)}`}</title>
+                    </circle>
                     <text className="aurora-sales-chart-text" x={point.x} y={chartTop + plotHeight + 24} fontSize="11" fontWeight="600" textAnchor="middle">
                       {formatShortDate(point.date)}
                     </text>
