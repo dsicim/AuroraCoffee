@@ -29,18 +29,15 @@ function sanitizeProductManagerOrder(order) {
 }
 async function emailRefund(config, email, details) {
     const itemstemplate = fs.readFileSync("./emails/refundemailitems.html", "utf-8");
-    let itemshtml = "";
-    details.products.forEach(product => {
-        itemshtml += itemstemplate.replaceAll("{{ITEM_NAME}}", product.product_name)
-            .replaceAll("{{ITEM_IMAGE_URL}}", product.product_image)
-            .replaceAll("{{ITEM_OPTIONS}}", product.optionstext ? product.optionstext : "")
-            .replaceAll("{{ITEM_AMOUNT}}", product.quantity)
-            .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, product.product_price));
-    });
+    let itemshtml = itemstemplate.replaceAll("{{ITEM_NAME}}", details.product.product_name)
+        .replaceAll("{{ITEM_IMAGE_URL}}", details.product.product_image)
+        .replaceAll("{{ITEM_OPTIONS}}", details.product.optionstext ? details.product.optionstext : "")
+        .replaceAll("{{ITEM_AMOUNT}}", details.product.quantity)
+        .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, details.product.product_price));
     const template = fs.readFileSync("./emails/refundemail.html", "utf-8")
         .replaceAll("{{ORDER_ID}}", orderNumber)
         .replaceAll("{{ORDER_URL}}", "https://" + config.domain + "/account/orders/" + orderNumber)
-        .replaceAll("{{TOTAL_PRICE}}", currencymodule.currencyToSymbol(details.currency, details.products[0].product_price))
+        .replaceAll("{{TOTAL_PRICE}}", currencymodule.currencyToSymbol(details.currency, details.product.product_price))
         .replaceAll("{{REFUNDED_ITEMS_HTML}}", itemshtml);
     return await mailer.sendEmail(email, "Your refund has been approved", template, []).then(res => {
         //console.log("Email sent:", res);
