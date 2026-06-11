@@ -1872,10 +1872,10 @@ func.getComments = async function (productId, approvedOnly = true, pendingOnly =
     if (!productId) {
         throw new DBError(400, 'Product ID is required');
     }
-    productId = Number(productId);
     try {
         const params = [];
         let where = productId === "all" ? '1' : `c.product_id = ?`;
+        if (productId !== "all") productId = Number(productId);
         if (productId !== "all") params.push(productId);
         if (meOnly) {
             where += ` AND c.user_id = ?`;
