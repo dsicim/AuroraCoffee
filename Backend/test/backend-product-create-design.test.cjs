@@ -67,6 +67,10 @@ function createFakeConnection() {
         return [{ affectedRows: 1 }];
       }
 
+      if (String(sql).includes('SELECT id FROM categories WHERE id = ?')) {
+        return [Number(values[0]) === 999 ? [] : [{ id: Number(values[0]) }]];
+      }
+
       return [{}];
     },
     async beginTransaction() {
@@ -172,6 +176,40 @@ test('updateProduct rejects negative manufacturing cost edits', async () => {
   );
 
   assert.equal(connection.calls.some((call) => call.sql.includes('UPDATE products')), false);
+});
+
+test('updateProduct persists valid category edits with category_id', async () => {
+  const connection = createFakeConnection();
+  const db = loadDbFunctions(connection);
+  await db.initDB();
+
+  await db.updateProduct(7, { category_id: '12' });
+
+  const categoryCheck = connection.calls.find((call) =>
+    call.sql.includes('SELECT id FROM categories WHERE id = ?'));
+  const updateCall = connection.calls.find((call) => call.sql.includes('UPDATE products'));
+
+  assert.deepEqual(Array.from(categoryCheck.values), [12]);
+  assert.ok(updateCall.sql.includes('category_id = ?'));
+  assert.deepEqual(Array.from(updateCall.values), [12, 7]);
+  assert.equal(connection.commitCalled, true);
+});
+
+test('updateProduct rejects missing category edits before claiming success', async () => {
+  const connection = createFakeConnection();
+  const db = loadDbFunctions(connection);
+  await db.initDB();
+
+  await assert.rejects(
+    () => db.updateProduct(7, { category_id: 999 }),
+    {
+      status: 404,
+      message: 'Category not found',
+    },
+  );
+
+  assert.equal(connection.calls.some((call) => call.sql.includes('UPDATE products')), false);
+  assert.equal(connection.rollbackCalled, true);
 });
 
 test('addProduct accepts records without optional model', async () => {

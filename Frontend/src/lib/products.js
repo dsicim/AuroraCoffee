@@ -694,9 +694,12 @@ export async function updateProductDetails(productId, edits) {
     }),
   })
 
-  await fetchAllProducts({ force: true })
+  const refreshedProducts = await fetchAllProducts({ force: true })
 
-  return data
+  return {
+    ...data,
+    product: refreshedProducts.find((product) => Number(product.id) === normalizedProductId) || null,
+  }
 }
 
 export async function createProduct(payload) {

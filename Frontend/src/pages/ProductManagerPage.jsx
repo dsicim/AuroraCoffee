@@ -4718,6 +4718,7 @@ function ProductEditPanel({ products, loading }) {
     void updateProductDetails(selectedProduct.id, edits)
       .then((result) => {
         handleSelectedProductSnapshotChange(
+          result?.product ||
           applyProductEditsToSnapshot(selectedProduct, edits, createCategories),
         )
         setSaveState({

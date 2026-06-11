@@ -1450,6 +1450,20 @@ func.updateProduct = async function (productId, data) {
     }
     try {
         await connection.beginTransaction();
+        if (!data || Object.keys(data).length === 0) {
+            throw new DBError(400, 'No product changes to save');
+        }
+        if (data.category_id !== undefined && data.category_id !== null) {
+            const normalizedCategoryId = Number(data.category_id);
+            if (!Number.isFinite(normalizedCategoryId) || normalizedCategoryId <= 0) {
+                throw new DBError(400, 'Category ID must be a valid category');
+            }
+            const [categories] = await connection.execute('SELECT id FROM categories WHERE id = ?', [normalizedCategoryId]);
+            if (categories.length === 0) {
+                throw new DBError(404, 'Category not found');
+            }
+            data.category_id = normalizedCategoryId;
+        }
         if (data.cost !== undefined) {
             const normalizedCost = Number(data.cost);
             if (!Number.isFinite(normalizedCost) || normalizedCost < 0) {
