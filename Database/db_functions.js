@@ -1374,7 +1374,7 @@ func.updateVariant = async function (variantId, data) {
 
         const updateData = { ...data };
         const option_value_ids = updateData.option_value_ids;
-        if (option_value_ids !== undefined && !Array.isArray(option_value_ids)) {
+        if (option_value_ids !== undefined && Array.isArray(option_value_ids)) {
             updateData.variant_code = await buildVariantCodeForOptionValueIds(connection, option_value_ids);
         }
         delete updateData.option_value_ids;
