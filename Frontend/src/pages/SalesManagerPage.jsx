@@ -650,7 +650,7 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   const rawValues = visiblePoints.flatMap((point) => [
     point.sales,
     point.profit,
-    point.refunds,
+    point.refunds > 0 ? -point.refunds : point.refunds,
   ])
   const minAmount = Math.min(0, ...rawValues)
   const maxAmount = Math.max(1, ...rawValues)
@@ -662,7 +662,8 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
     const x = chartLeft + (visiblePoints.length > 1 ? index * xStep : plotWidth / 2)
     const salesY = yForAmount(point.sales)
     const profitY = yForAmount(point.profit)
-    const refundY = yForAmount(point.refunds)
+    const refundImpact = point.refunds > 0 ? -point.refunds : point.refunds
+    const refundY = yForAmount(refundImpact)
     const refundHeight = Math.abs(zeroY - refundY)
 
     return {
@@ -670,6 +671,7 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
       x,
       salesY,
       profitY,
+      refundImpact,
       refundY,
       refundHeight,
     }
@@ -760,16 +762,16 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                 {chartPoints.map((point) => (
                   <rect
                     key={`${point.date}-refund`}
-                    className="aurora-sales-chart-hit-target"
-                    x={point.x - 9}
+                    className="aurora-sales-chart-refund-bar aurora-sales-chart-hit-target"
+                    x={point.x - 6}
                     y={Math.min(point.refundY, zeroY)}
-                    width="18"
+                    width="12"
                     height={point.refundHeight}
-                    rx="7"
+                    rx="6"
                     fill="url(#refundBarGradient)"
                     onBlur={hideChartTooltip}
-                    onFocus={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, Math.min(point.refundY, zeroY))}
-                    onPointerEnter={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, Math.min(point.refundY, zeroY))}
+                    onFocus={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, point.refundY)}
+                    onPointerEnter={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, point.refundY)}
                     onPointerLeave={hideChartTooltip}
                     tabIndex={0}
                   >
