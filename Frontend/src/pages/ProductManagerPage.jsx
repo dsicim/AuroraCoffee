@@ -3697,7 +3697,6 @@ function CategoryManagementPanel({ products }) {
   const [selectedCategoryId, setSelectedCategoryId] = useState('')
   const [editName, setEditName] = useState('')
   const [editParentId, setEditParentId] = useState('')
-  const [editBaseline, setEditBaseline] = useState(null)
   const [editingCategoryId, setEditingCategoryId] = useState('')
   const [categoryEditDrafts, setCategoryEditDrafts] = useState({})
   const [childCategoryDrafts, setChildCategoryDrafts] = useState({})
@@ -3772,17 +3771,11 @@ function CategoryManagementPanel({ products }) {
     if (!selectedCategory) {
       setEditName('')
       setEditParentId('')
-      setEditBaseline(null)
       return
     }
 
     setEditName(selectedCategory.name)
     setEditParentId(selectedCategory.parentId ? String(selectedCategory.parentId) : '')
-    setEditBaseline({
-      id: selectedCategory.id,
-      name: selectedCategory.name,
-      parentId: selectedCategory.parentId || null,
-    })
   }, [selectedCategory])
 
   function setActionBusy(busy) {
@@ -3856,12 +3849,6 @@ function CategoryManagementPanel({ products }) {
 
     if (hasSiblingCategoryName(categories, { name, parentId, excludedId: category.id })) {
       setActionError(new Error('A category with that name already exists at this level.'))
-      return
-    }
-
-    if (name === category.name) {
-      setEditingCategoryId('')
-      setActionSuccess('No category changes to save.')
       return
     }
 
@@ -4068,19 +4055,7 @@ function CategoryManagementPanel({ products }) {
       return
     }
 
-    const baseline = editBaseline && String(editBaseline.id) === String(selectedCategory.id)
-      ? editBaseline
-      : {
-          name: selectedCategory.name,
-          parentId: selectedCategory.parentId || null,
-        }
-
-    if (name !== baseline.name || baseline.parentId !== parentId) {
-      setActionBusy('update')
-    } else {
-      setActionSuccess('No category changes to save.')
-      return
-    }
+    setActionBusy('update')
 
     try {
       const result = await updateProductCategory(selectedCategory.id, { name, parentId })
