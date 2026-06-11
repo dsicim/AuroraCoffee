@@ -98,10 +98,6 @@
     color: var(--sales-dashboard-muted);
   }
 
-  .aurora-sales-manager-page .aurora-sales-dashboard.aurora-sales-dashboard-overflow-visible {
-    overflow: visible;
-  }
-
   .aurora-sales-chart-grid {
     stroke: var(--sales-dashboard-grid);
   }
