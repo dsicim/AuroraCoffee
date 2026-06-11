@@ -6036,6 +6036,7 @@ function ProductOrderLookupPanel() {
                 downloadingLabel="Invoice"
                 variant="secondary"
                 size="compact"
+                managerScope
                 onError={(message) => setError(message)}
                 onSuccess={() => setFeedback('Invoice download started.')}
               />

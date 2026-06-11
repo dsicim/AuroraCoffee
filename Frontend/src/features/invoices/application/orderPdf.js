@@ -49,7 +49,7 @@ async function getPdfErrorMessage(response) {
   return message.trim() || 'Invoice download failed'
 }
 
-export async function downloadOrderPdf(orderId) {
+export async function downloadOrderPdf(orderId, { managerScope = false } = {}) {
   const normalizedOrderId = String(orderId || '').trim()
   const session = getAuthSession()
 
@@ -61,7 +61,13 @@ export async function downloadOrderPdf(orderId) {
     throw new Error('Sign in again to download this order invoice.')
   }
 
-  const response = await fetchAuthResponse(`/orders/pdf?id=${encodeURIComponent(normalizedOrderId)}`, {
+  const query = new URLSearchParams({ id: normalizedOrderId })
+
+  if (managerScope) {
+    query.set('admin', '1')
+  }
+
+  const response = await fetchAuthResponse(`/orders/pdf?${query.toString()}`, {
     method: 'GET',
     cache: 'no-store',
     headers: {

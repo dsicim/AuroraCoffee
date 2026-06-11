@@ -220,7 +220,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         if (method === "POST") {
             if (!currentUser || currentUser.e || !currentUser.id) return { s: 401, j: true, d: { e: "Unauthorized" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
-            const admin = (["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role));
+            const admin = Boolean(body.data.admin) && ["Admin", "Sales Manager", "Product Manager"].includes(currentUser.role);
             const orderId = body.data.id;
             function getOrderResult(result) {
                 if (result.success) {
@@ -287,7 +287,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!query || !query.id) return { s: 400, j: true, d: { e: "Invalid request body" } };
             const specificorder = Boolean(query.id) ? query.id : null;
             if (!specificorder) return { s: 400, j: true, d: { e: "Order ID is required" } };
-            const admin = (["Admin","Sales Manager", "Product Manager"].includes(currentUser.role)) ? true : false;
+            const admin = (query.admin && (query.admin === "true" || query.admin === "1")) && ["Admin","Sales Manager", "Product Manager"].includes(currentUser.role);
             async function getOrderResult(result) {
                 if (result.success) {
                     const errors = [];

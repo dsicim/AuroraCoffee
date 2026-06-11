@@ -1065,6 +1065,7 @@ export default function SalesManagerPage() {
                           orderId={selectedOrder.id}
                           label="PDF"
                           downloadingLabel="PDF"
+                          managerScope
                           onError={(message) => setError(message)}
                           onSuccess={() => setFeedback('PDF download started.')}
                         />

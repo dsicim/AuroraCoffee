@@ -7,29 +7,29 @@ test('canAccessRole keeps customers out of sales manager pages', () => {
   assert.equal(canAccessRole(userRoles.customer, userRoles.salesManager), false)
 })
 
-test('canAccessRole keeps product managers focused on product manager pages', () => {
+test('canAccessRole lets product managers use customer pages by default', () => {
   assert.equal(canAccessRole(userRoles.productManager, userRoles.productManager), true)
-  assert.equal(canAccessRole(userRoles.productManager, userRoles.customer), false)
+  assert.equal(canAccessRole(userRoles.productManager, userRoles.customer), true)
   assert.equal(canAccessRole(userRoles.productManager, userRoles.salesManager), false)
 })
 
-test('canAccessRole keeps sales managers focused on sales manager pages', () => {
+test('canAccessRole lets sales managers use customer pages by default', () => {
   assert.equal(canAccessRole(userRoles.salesManager, userRoles.salesManager), true)
-  assert.equal(canAccessRole(userRoles.salesManager, userRoles.customer), false)
+  assert.equal(canAccessRole(userRoles.salesManager, userRoles.customer), true)
   assert.equal(canAccessRole(userRoles.salesManager, userRoles.productManager), false)
 })
 
-test('getAccessibleRoleLevels returns the matching product manager destination', () => {
+test('getAccessibleRoleLevels returns customer and product manager destinations', () => {
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.productManager).map(({ role }) => role),
-    [userRoles.productManager],
+    [userRoles.customer, userRoles.productManager],
   )
 })
 
 test('getAccessibleRoleLevels returns the matching sales manager and customer destinations', () => {
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.salesManager).map(({ role }) => role),
-    [userRoles.salesManager],
+    [userRoles.customer, userRoles.salesManager],
   )
   assert.deepEqual(
     getAccessibleRoleLevels(userRoles.customer).map(({ role }) => role),
