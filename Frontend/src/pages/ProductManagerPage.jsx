@@ -5729,6 +5729,7 @@ function ProductOrderLookupPanel() {
 
     void fetchAdminOrderById(normalizedOrderId)
       .then((nextOrder) => {
+        console.log(nextOrder)
         setOrder(nextOrder)
         setOrderId(nextOrder?.id || normalizedOrderId)
       })

@@ -402,10 +402,10 @@ export default function AccountPage() {
                   }}
                   className="aurora-input"
                 />
+                <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
+                    {"Email: " + authState.user?.username}
+                </p>
               </label>
-              <p className="mt-2 text-sm font-semibold text-[var(--aurora-text-strong)]">
-                  {"Email: " + authState.user?.username}
-              </p>
               <label className="block">
                 <span className="aurora-field-label">Identity number</span>
                 <input
