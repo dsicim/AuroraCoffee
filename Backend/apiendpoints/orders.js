@@ -20,13 +20,7 @@ function sanitizeProductManagerOrder(order) {
             products: Array.isArray(details.products) ? details.products : [],
             price: details.price && typeof details.price === "object" ? details.price : {},
             currency: details.currency,
-            shippingAddress: {
-                name: shippingAddress.name,
-                surname: shippingAddress.surname,
-                city: shippingAddress.city,
-                province: shippingAddress.province,
-                country: shippingAddress.country
-            }
+            shippingAddress: shippingAddress
         }
     };
 }
