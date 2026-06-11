@@ -631,6 +631,7 @@ function OrderDateRangePicker({
 }
 
 function SalesAnalyticsGraph({ analytics, loading, error }) {
+  const [chartTooltip, setChartTooltip] = useState(null)
   const timeseries = analytics?.timeseries || []
   const summary = analytics?.summary || {}
   const visiblePoints = timeseries.slice(-10)
@@ -679,6 +680,22 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
 
     return Math.round(maxAmount - (amountRange * ratio))
   })
+  const showChartTooltip = (point, metric, value, x, y) => {
+    setChartTooltip({
+      date: formatShortDate(point.date),
+      metric,
+      value: formatCurrency(value),
+      x,
+      y,
+    })
+  }
+  const hideChartTooltip = () => setChartTooltip(null)
+  const tooltipX = chartTooltip
+    ? Math.min(Math.max(chartTooltip.x - 76, chartLeft), chartWidth - 168)
+    : 0
+  const tooltipY = chartTooltip
+    ? Math.min(Math.max(chartTooltip.y - 58, chartTop + 8), chartHeight - 58)
+    : 0
 
   return (
     <section className="aurora-sales-dashboard overflow-visible p-6">
@@ -739,12 +756,18 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                 {chartPoints.map((point) => (
                   <rect
                     key={`${point.date}-refund`}
+                    className="aurora-sales-chart-hit-target"
                     x={point.x - 9}
                     y={Math.min(point.refundY, zeroY)}
                     width="18"
                     height={point.refundHeight}
                     rx="7"
                     fill="url(#refundBarGradient)"
+                    onBlur={hideChartTooltip}
+                    onFocus={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, Math.min(point.refundY, zeroY))}
+                    onPointerEnter={() => showChartTooltip(point, 'Refunds', point.refunds, point.x, Math.min(point.refundY, zeroY))}
+                    onPointerLeave={hideChartTooltip}
+                    tabIndex={0}
                   >
                     <title>{`${formatShortDate(point.date)} refunds: ${formatCurrency(point.refunds)}`}</title>
                   </rect>
@@ -761,11 +784,50 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                     <circle className="aurora-sales-chart-dot-profit" cx={point.x} cy={point.profitY} r="4" stroke="var(--sales-dashboard-card-strong)" strokeWidth="2">
                       <title>{`${formatShortDate(point.date)} profit: ${formatCurrency(point.profit)}`}</title>
                     </circle>
+                    <circle
+                      className="aurora-sales-chart-hit-target"
+                      cx={point.x}
+                      cy={point.salesY}
+                      r="13"
+                      fill="transparent"
+                      onBlur={hideChartTooltip}
+                      onFocus={() => showChartTooltip(point, 'Sales', point.sales, point.x, point.salesY)}
+                      onPointerEnter={() => showChartTooltip(point, 'Sales', point.sales, point.x, point.salesY)}
+                      onPointerLeave={hideChartTooltip}
+                      tabIndex={0}
+                    />
+                    <circle
+                      className="aurora-sales-chart-hit-target"
+                      cx={point.x}
+                      cy={point.profitY}
+                      r="12"
+                      fill="transparent"
+                      onBlur={hideChartTooltip}
+                      onFocus={() => showChartTooltip(point, 'Profit', point.profit, point.x, point.profitY)}
+                      onPointerEnter={() => showChartTooltip(point, 'Profit', point.profit, point.x, point.profitY)}
+                      onPointerLeave={hideChartTooltip}
+                      tabIndex={0}
+                    />
                     <text className="aurora-sales-chart-text" x={point.x} y={chartTop + plotHeight + 24} fontSize="11" fontWeight="600" textAnchor="middle">
                       {formatShortDate(point.date)}
                     </text>
                   </g>
                 ))}
+                {chartTooltip ? (
+                  <g
+                    className="aurora-sales-chart-tooltip"
+                    transform={`translate(${tooltipX} ${tooltipY})`}
+                    pointerEvents="none"
+                  >
+                    <rect width="152" height="50" rx="12" />
+                    <text className="aurora-sales-chart-tooltip-label" x="12" y="18">
+                      {chartTooltip.date} · {chartTooltip.metric}
+                    </text>
+                    <text className="aurora-sales-chart-tooltip-value" x="12" y="38">
+                      {chartTooltip.value}
+                    </text>
+                  </g>
+                ) : null}
               </svg>
             </div>
           ) : (
@@ -838,7 +900,7 @@ function AnalyticsControlPanel({
   }
 
   return (
-    <section className="aurora-sales-dashboard p-6">
+    <section className="aurora-sales-dashboard aurora-sales-dashboard-overflow-visible p-6">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.42fr)] xl:items-start">
         <div>
           <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">

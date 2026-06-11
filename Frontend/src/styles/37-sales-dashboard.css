@@ -98,6 +98,10 @@
     color: var(--sales-dashboard-muted);
   }
 
+  .aurora-sales-manager-page .aurora-sales-dashboard.aurora-sales-dashboard-overflow-visible {
+    overflow: visible;
+  }
+
   .aurora-sales-chart-grid {
     stroke: var(--sales-dashboard-grid);
   }
@@ -128,6 +132,36 @@
 
   .aurora-sales-chart-dot-profit {
     fill: var(--sales-dashboard-profit);
+  }
+
+  .aurora-sales-chart-hit-target {
+    cursor: help;
+    outline: none;
+  }
+
+  .aurora-sales-chart-hit-target:focus-visible {
+    stroke: color-mix(in srgb, var(--sales-dashboard-line) 58%, white);
+    stroke-width: 2;
+  }
+
+  .aurora-sales-chart-tooltip rect {
+    fill: color-mix(in srgb, var(--sales-dashboard-card-strong) 96%, transparent);
+    stroke: var(--sales-dashboard-border);
+    filter: drop-shadow(0 12px 20px rgba(29, 20, 15, 0.14));
+  }
+
+  .aurora-sales-chart-tooltip-label {
+    fill: var(--sales-dashboard-muted);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .aurora-sales-chart-tooltip-value {
+    fill: var(--sales-dashboard-text);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 0;
   }
 
   .aurora-sales-status-bar {
