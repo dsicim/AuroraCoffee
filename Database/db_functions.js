@@ -1947,7 +1947,9 @@ func.updateOrderDetails = async function (orderId, details, restock = null) {
             const [productResult] = await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [restock.quantity, restock.productId]);
             if (restock.variantId) {
                 const [variantResult] = await connection.execute('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [restock.quantity, restock.variantId]);
+                console.log(variantResult);
             }
+            console.log(productResult);
         }
         await connection.commit();
         return { success: true, message: 'Order details updated successfully' };
