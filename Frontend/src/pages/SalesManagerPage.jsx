@@ -465,6 +465,7 @@ function OrderDateRangePicker({
   ariaLabel = 'Filter orders by date range',
   helperText = 'Pick a start date, then pick an end date.',
   placement = 'bottom',
+  inlineCalendar = false,
 }) {
   const [open, setOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(startDate || endDate))
@@ -524,8 +525,11 @@ function OrderDateRangePicker({
       {open ? (
         <div
           className={[
-            'absolute left-1/2 z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]',
-            placement === 'top' ? 'bottom-full mb-2' : 'mt-2',
+            'z-50 w-[min(22rem,100%)] rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]',
+            inlineCalendar
+              ? 'relative mt-3'
+              : 'absolute left-1/2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2',
+            inlineCalendar ? '' : placement === 'top' ? 'bottom-full mb-2' : 'mt-2',
           ].join(' ')}
           role="dialog"
           aria-label={ariaLabel}
@@ -900,7 +904,7 @@ function AnalyticsControlPanel({
   }
 
   return (
-    <section className="aurora-sales-dashboard aurora-sales-dashboard-overflow-visible p-6">
+    <section className="aurora-sales-dashboard p-6">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.42fr)] xl:items-start">
         <div>
           <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">
@@ -943,6 +947,7 @@ function AnalyticsControlPanel({
           onEndDateChange={onEndDateChange}
           ariaLabel="Filter analytics by date range"
           helperText="Pick the first and last day to focus the analytics tab."
+          inlineCalendar
         />
       </div>
 
