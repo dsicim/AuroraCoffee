@@ -7,20 +7,20 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         return { s: 401, j: true, d: { e: "Unauthorized" } };
     }
     if (endpoint[0] === "me") {
-        if (currentUser.tax_id && currentUser.tax_id.length > 0) {
+        if (currentUser.tax_id) {
             currentUser.tax_id = aes.pjs(currentUser.tax_id);
             if (currentUser.tax_id.e && currentUser.tax_id.e.startsWith("Failed to parse JSON: ")) {
                 currentUser.tax_id = null;
                 currentUser.tax_id_error = "Failed to parse tax ID data, possibly due to legacy format. Please update your tax ID in your profile settings.";
             }
+            currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
+            if (!currentUser.tax_id.s || currentUser.tax_id.e) {
+                console.error("Decryption error:", currentUser.tax_id.e);
+                currentUser.tax_id = null;
+                currentUser.tax_id_error = "Failed to decrypt tax ID. Please update your tax ID in your profile settings.";
+            }
+            else currentUser.tax_id = currentUser.tax_id.value;
         }
-        currentUser.tax_id = aes.decrypt(currentUser.tax_id, currentUser.id);
-        if (!currentUser.tax_id.s || currentUser.tax_id.e) {
-            console.error("Decryption error:", currentUser.tax_id.e);
-            currentUser.tax_id = null;
-            currentUser.tax_id_error = "Failed to decrypt tax ID. Please update your tax ID in your profile settings.";
-        }
-        else currentUser.tax_id = currentUser.tax_id.value;
         const taxIDInfo = idvalidate.taxIDType(currentUser.tax_id);
         if (!taxIDInfo.s) {
             currentUser.tax_id_type = taxIDInfo.t || "unknown";
