@@ -34,7 +34,7 @@ async function getUpToDateVersion() {
     if (!latestCommit || !sprintNo) {
         return { s: false };
     }
-    const latestVersion = "0." + sprintNo[0] + "." + (latestCommit - sprintNo[1]);
+    const latestVersion = "1." + sprintNo[0] + "." + (latestCommit - sprintNo[1]);
     return { s: true, v: latestVersion };
 }
 function execute(command, options = {}, logfile = null) {
