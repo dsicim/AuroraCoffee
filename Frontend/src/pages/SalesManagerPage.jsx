@@ -496,7 +496,7 @@ function OrderDateRangePicker({
 
       {open ? (
         <div
-          className="mt-2 w-full rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
+          className="absolute left-1/2 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
           role="dialog"
           aria-label="Filter orders by date range"
         >
@@ -543,20 +543,26 @@ function OrderDateRangePicker({
             ))}
           </div>
 
-          <div className="mt-2 grid grid-cols-7 gap-1">
+          <div className="mt-2 grid grid-cols-7 gap-y-1 overflow-hidden rounded-[1.2rem]">
             {calendarDays.map((day) => {
               const selected = day.value === rangeStart || day.value === rangeEnd
               const inRange = rangeStart && rangeEnd && day.value > rangeStart && day.value < rangeEnd
+              const startsRange = rangeStart && day.value === rangeStart
+              const endsRange = rangeEnd && day.value === rangeEnd
+              const singleDayRange = startsRange && endsRange
+              const rangeVisible = selected || inRange
 
               return (
                 <button
                   key={day.value}
                   type="button"
                   className={[
-                    'min-h-9 rounded-full text-sm font-semibold transition',
+                    'min-h-9 text-sm font-semibold transition',
                     day.inCurrentMonth ? 'text-[var(--aurora-text-strong)]' : 'text-[var(--aurora-text)] opacity-45',
-                    inRange ? 'bg-[#f2faeb] text-[#3f563b] opacity-100' : '',
-                    selected ? 'border border-[#b8dca7] bg-[#e4f4d7] text-[#2f452b] opacity-100 shadow-[0_7px_16px_rgba(106,139,86,0.16)]' : '',
+                    rangeVisible ? 'bg-[#f2faeb] text-[#3f563b] opacity-100' : 'rounded-full',
+                    startsRange && !singleDayRange ? 'rounded-l-full bg-[#e4f4d7] text-[#2f452b] ring-1 ring-inset ring-[#b8dca7]' : '',
+                    endsRange && !singleDayRange ? 'rounded-r-full bg-[#e4f4d7] text-[#2f452b] ring-1 ring-inset ring-[#b8dca7]' : '',
+                    singleDayRange ? 'rounded-full bg-[#e4f4d7] text-[#2f452b] ring-1 ring-inset ring-[#b8dca7]' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => handlePickDate(day.value)}
                   aria-pressed={selected}
@@ -1806,7 +1812,7 @@ export default function SalesManagerPage() {
               </div>
             </div>
 
-            <div className="relative z-10 mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)_220px]">
+            <div className="relative z-40 mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)_220px]">
               <label className="block">
                 <span className="sr-only">Search orders</span>
                 <input
