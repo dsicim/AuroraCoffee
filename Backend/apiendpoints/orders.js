@@ -234,7 +234,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                         quantity: result.d.order.order.details.products[product].quantity
                     }
                 }
-                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails), restock).then(res => {
+                return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails), restock).then(async res => {
                     if (res.success) {
                         if (endpoint[1] === "approve") {
                             const emaildetails = {
