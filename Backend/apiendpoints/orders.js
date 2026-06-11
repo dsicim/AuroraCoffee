@@ -35,8 +35,8 @@ async function emailRefund(config, email, details) {
         .replaceAll("{{ITEM_AMOUNT}}", details.product.quantity)
         .replaceAll("{{ITEM_PRICE}}", currencymodule.currencyToSymbol(details.currency, details.product.product_price));
     const template = fs.readFileSync("./emails/refundemail.html", "utf-8")
-        .replaceAll("{{ORDER_ID}}", orderNumber)
-        .replaceAll("{{ORDER_URL}}", "https://" + config.domain + "/account/orders/" + orderNumber)
+        .replaceAll("{{ORDER_ID}}", details.orderNumber)
+        .replaceAll("{{ORDER_URL}}", "https://" + config.domain + "/account/orders/" + details.orderNumber)
         .replaceAll("{{TOTAL_PRICE}}", currencymodule.currencyToSymbol(details.currency, details.product.product_price))
         .replaceAll("{{REFUNDED_ITEMS_HTML}}", itemshtml);
     return await mailer.sendEmail(email, "Your refund has been approved", template, []).then(res => {

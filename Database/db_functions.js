@@ -1943,8 +1943,10 @@ func.updateOrderDetails = async function (orderId, details, restock = null) {
             throw new DBError(404, 'Order not found');
         }
         if (restock !== null) {
+            console.log('Restocking due to order update:', restock);
             await connection.execute('UPDATE products p SET p.stock = p.stock + ? WHERE p.id = ?', [restock.quantity, restock.productId]);
             if (restock.variantId) {
+                console.log('Restocking variant due to order update:', restock.variantId);
                 await connection.execute('UPDATE product_variants pv SET pv.stock = pv.stock + ? WHERE pv.id = ?', [restock.quantity, restock.variantId]);
             }
         }
