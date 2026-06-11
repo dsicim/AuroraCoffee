@@ -29,7 +29,7 @@ function sanitizeProductManagerOrder(order) {
 }
 async function emailRefund(config, email, details) {
     const itemstemplate = fs.readFileSync("./emails/refundemailitems.html", "utf-8");
-    let itemshtml = itemstemplate.replaceAll("{{ITEM_NAME}}", details.product.product_name)
+    let itemshtml = itemstemplate.replaceAll("{{ITEM_NAME}}", details.product.name)
         .replaceAll("{{ITEM_IMAGE_URL}}", details.product.product_image)
         .replaceAll("{{ITEM_OPTIONS}}", details.product.optionstext ? details.product.optionstext : "")
         .replaceAll("{{ITEM_AMOUNT}}", details.product.quantity)
@@ -240,6 +240,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                                     name: result.d.order.order.details.products[product].name,
                                     optionstext: result.d.order.order.details.products[product].optionstext,
                                     product_image: result.d.order.order.details.products[product].product_image,
+                                    quantity: result.d.order.order.details.products[product].quantity,
                                     product_price: result.d.order.order.details.products[product].product_price
                                 },
                                 orderNumber: result.d.order.order.id,

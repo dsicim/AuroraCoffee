@@ -1944,10 +1944,12 @@ func.updateOrderDetails = async function (orderId, details, restock = null) {
         }
         if (restock !== null) {
             console.log('Restocking due to order update:', restock);
-            await connection.execute('UPDATE products p SET p.stock = p.stock + ? WHERE p.id = ?', [restock.quantity, restock.productId]);
+            const [productResult] = await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [restock.quantity, restock.productId]);
+            console.log('Product restock result:', productResult);
             if (restock.variantId) {
                 console.log('Restocking variant due to order update:', restock.variantId);
-                await connection.execute('UPDATE product_variants pv SET pv.stock = pv.stock + ? WHERE pv.id = ?', [restock.quantity, restock.variantId]);
+                const [variantResult] = await connection.execute('UPDATE product_variants SET stock = stock + ? WHERE id = ?', [restock.quantity, restock.variantId]);
+                console.log('Variant restock result:', variantResult);
             }
         }
         await connection.commit();
