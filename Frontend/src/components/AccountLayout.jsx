@@ -13,7 +13,7 @@ import {
   getAuthStateSnapshot,
 } from '../lib/auth'
 import { reconcileAccountStorageWithAuth } from '../lib/accountData'
-import { getAccessibleRoleLevels, normalizeUserRole, userRoles } from '../lib/roles'
+import { getAccessibleRoleLevels, normalizeUserRole } from '../lib/roles'
 
 const accountLinks = [
   { label: 'Overview', to: '/account' },
@@ -178,7 +178,7 @@ export default function AccountLayout({
   const canRenderAccountShell = Boolean(displayUser) || authState.isProfileError
   const accessLevels = getAccessibleRoleLevels(displayUser?.role)
   const displayRole = normalizeUserRole(displayUser?.role)
-  const visibleAccountLinks = displayRole === userRoles.customer
+  const visibleAccountLinks = displayRole
     ? accountLinks
     : accountLinks.filter((item) => item.to === '/account')
 
@@ -332,9 +332,9 @@ export default function AccountLayout({
 
               <div className="aurora-divider my-5" />
               <p className="text-sm text-[var(--aurora-text)]">
-                {displayRole === userRoles.customer
+                {displayRole
                   ? 'Orders, saved addresses, cards, and favorites stay one tap apart.'
-                  : 'Profile settings stay available without exposing customer account tools.'}
+                  : 'Profile settings stay available while the current session is checked.'}
               </p>
             </aside>
 

@@ -29,6 +29,7 @@ export default function OrderPdfDownloadButton({
   size = 'compact',
   className = '',
   disabled = false,
+  managerScope = false,
   onSuccess,
   onError,
 }) {
@@ -42,7 +43,7 @@ export default function OrderPdfDownloadButton({
     setDownloading(true)
 
     try {
-      const result = await downloadOrderPdf(orderId)
+      const result = await downloadOrderPdf(orderId, { managerScope })
 
       if (onSuccess) {
         onSuccess(result)
