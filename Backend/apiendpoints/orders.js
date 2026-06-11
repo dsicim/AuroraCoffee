@@ -221,7 +221,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     }
                     restock = {
                         productId: result.d.order.order.details.products[product].product_id,
-                        variantId: result.d.order.order.details.products[product].variantId,
+                        variantId: result.d.order.order.details.products[product].variant_id || result.d.order.order.details.products[product].variantId,
                         quantity: result.d.order.order.details.products[product].quantity
                     }
                 }
