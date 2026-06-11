@@ -5991,7 +5991,7 @@ function ProductOrderLookupPanel() {
           <div className="aurora-widget-subsurface p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="aurora-kicker">Order</p>
+                <p className="aurora-kicker">Order ID</p>
                 <h3 className="mt-3 break-all font-display text-3xl text-[var(--aurora-text-strong)]">
                   {order.id}
                 </h3>
@@ -6016,7 +6016,7 @@ function ProductOrderLookupPanel() {
               <div>
                 <dt className="aurora-kicker">Customer</dt>
                 <dd className="mt-2 text-sm leading-7 text-[var(--aurora-text)]">
-                  {order.delivery?.fullName || 'Customer name unavailable'}
+                  {order.delivery?.fullName || 'Customer name unavailable'} (ID: {order.userId})
                 </dd>
               </div>
               <div>
@@ -6080,7 +6080,7 @@ function ProductOrderLookupPanel() {
                     <div className="flex items-start justify-between gap-4">
                       <div className="min-w-0">
                         <p className="font-semibold text-[var(--aurora-text-strong)]">
-                          {item.name}
+                          {item.name} (ID: {item.id})
                         </p>
                         <p className="mt-1 text-[var(--aurora-text)]">
                           Qty {item.quantity}

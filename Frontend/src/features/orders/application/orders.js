@@ -589,6 +589,7 @@ async function normalizeOrderDetail(record) {
   return {
     ...summary,
     items,
+    userId: order.user_id,
     itemCount: items.reduce((totalCount, item) => totalCount + item.quantity, 0),
     delivery: normalizeOrderAddress(details.shippingAddress),
     billing: normalizeOrderAddress(details.billingAddress),
