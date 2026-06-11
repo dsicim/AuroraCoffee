@@ -130,6 +130,10 @@
     fill: var(--sales-dashboard-profit);
   }
 
+  .aurora-sales-chart-refund-bar {
+    opacity: 0.72;
+  }
+
   .aurora-sales-chart-hit-target {
     cursor: help;
     outline: none;
