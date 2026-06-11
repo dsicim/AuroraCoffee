@@ -4391,6 +4391,7 @@ function ProductEditPanel({ products, loading }) {
   const [selectedProductKey, setSelectedProductKey] = useState(storedInitialSelection.key)
   const [selectedProductId, setSelectedProductId] = useState(storedInitialSelection.id)
   const [selectedProductSnapshot, setSelectedProductSnapshot] = useState(storedInitialSelection.product)
+  const [editCategoryId, setEditCategoryId] = useState('')
   const currentSelectedProduct = useMemo(
     () =>
       editableProducts.find((product) => Number(product.id) === Number(selectedProductId)) ||
@@ -4418,7 +4419,6 @@ function ProductEditPanel({ products, loading }) {
     success: '',
   })
   const editFieldsRef = useRef(null)
-  const editCategoryRef = useRef(null)
   const createFieldsRef = useRef(null)
   const createCategoryRef = useRef(null)
   const createImageInputRef = useRef(null)
@@ -4532,6 +4532,10 @@ function ProductEditPanel({ products, loading }) {
     setSelectedProductSnapshot(currentSelectedProduct)
     writeStoredProductManagerSelection(currentSelectedProduct)
   }, [currentSelectedProduct, debugInstance])
+
+  useEffect(() => {
+    setEditCategoryId(selectedProduct?.categoryId ? String(selectedProduct.categoryId) : '')
+  }, [selectedProduct?.categoryId, selectedProduct?.id])
 
   const handleSelectedProductSnapshotChange = useCallback((nextProduct) => {
     logProductManagerDebug('edit-panel:snapshot-updated', {
@@ -4654,9 +4658,7 @@ function ProductEditPanel({ products, loading }) {
       }
     }
 
-    if (editCategoryRef.current) {
-      editCategoryRef.current.value = selectedProduct.categoryId ? String(selectedProduct.categoryId) : ''
-    }
+    setEditCategoryId(selectedProduct.categoryId ? String(selectedProduct.categoryId) : '')
   }
 
   function handleSave() {
@@ -4674,12 +4676,7 @@ function ProductEditPanel({ products, loading }) {
     try {
       const form = getCurrentEditForm()
       edits = buildProductEdits(selectedProduct, form)
-      const nextCategoryId = normalizeProductCategoryEdit(editCategoryRef.current?.value || '')
-      const currentCategoryId = selectedProduct.categoryId ? Number(selectedProduct.categoryId) : null
-
-      if (nextCategoryId !== currentCategoryId) {
-        edits.category_id = nextCategoryId
-      }
+      edits.category_id = normalizeProductCategoryEdit(editCategoryId)
     } catch (validationError) {
       setSaveState({
         saving: false,
@@ -5027,25 +5024,6 @@ function ProductEditPanel({ products, loading }) {
                   ))}
                 </select>
               </label>
-              <label className="aurora-product-edit-picker-field">
-                <span className="aurora-product-edit-label">Category</span>
-                <select
-                  key={`edit-category:${selectedProduct?.id || 'none'}:${selectedProduct?.categoryId || 'none'}`}
-                  ref={editCategoryRef}
-                  className="aurora-select aurora-product-edit-input mt-3"
-                  disabled={productActionBusy || categoriesLoading || !selectedProduct}
-                  defaultValue={selectedProduct?.categoryId ? String(selectedProduct.categoryId) : ''}
-                >
-                  <option value="">
-                    {categoriesLoading ? 'Loading categories' : 'No category'}
-                  </option>
-                  {createCategories.map((category) => (
-                    <option key={category.id} value={String(category.id)}>
-                      {getCategorySelectLabel(createCategories, category)}
-                    </option>
-                  ))}
-                </select>
-              </label>
             </>
           ) : (
             <label className="aurora-product-edit-picker-field">
@@ -5231,6 +5209,42 @@ function ProductEditPanel({ products, loading }) {
               />
 
               <div className="aurora-product-edit-groups">
+                <fieldset className="aurora-product-edit-group">
+                  <legend>
+                    <span>Catalog placement</span>
+                    <small>Choose where this product appears in the storefront category tree.</small>
+                  </legend>
+
+                  <div className="aurora-product-edit-grid">
+                    <label className="aurora-product-edit-field">
+                      <span className="aurora-product-edit-label">Category</span>
+                      <select
+                        key={`edit-category:${selectedProduct?.id || 'none'}:${selectedProduct?.categoryId || 'none'}`}
+                        className="aurora-select aurora-product-edit-input mt-3"
+                        disabled={productActionBusy || categoriesLoading || !selectedProduct}
+                        value={editCategoryId}
+                        onChange={(event) => {
+                          setEditCategoryId(event.target.value)
+                          setSaveState({
+                            saving: false,
+                            error: '',
+                            success: '',
+                          })
+                        }}
+                      >
+                        <option value="">
+                          {categoriesLoading ? 'Loading categories' : 'No category'}
+                        </option>
+                        {createCategories.map((category) => (
+                          <option key={category.id} value={String(category.id)}>
+                            {getCategorySelectLabel(createCategories, category)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                </fieldset>
+
                 {productEditFieldGroups.map((group) => (
                   <fieldset key={group.title} className="aurora-product-edit-group">
                     <legend>
