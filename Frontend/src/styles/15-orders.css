@@ -152,6 +152,10 @@
     gap: 0.9rem;
   }
 
+  .aurora-order-progress.is-single {
+    max-width: 18rem;
+  }
+
   .aurora-order-progress-line {
     display: none;
   }
@@ -261,6 +265,15 @@
       align-items: start;
     }
 
+    .aurora-order-progress.is-single {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .aurora-order-progress.is-compact {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 0.55rem;
+    }
+
     .aurora-order-progress-line {
       display: block;
       position: absolute;
@@ -269,6 +282,26 @@
       right: calc(12.5% + 0.675rem);
       height: 1px;
       background: rgba(138, 144, 119, 0.24);
+    }
+
+    .aurora-order-progress.is-single .aurora-order-progress-line {
+      display: none;
+    }
+
+    .aurora-order-progress.is-compact .aurora-order-progress-line {
+      left: calc(10% + 0.675rem);
+      right: calc(10% + 0.675rem);
+    }
+
+    .aurora-order-progress.is-compact .aurora-order-progress-card {
+      min-height: 4.2rem;
+      padding: 0.8rem 0.65rem;
+      border-radius: 1.05rem;
+    }
+
+    .aurora-order-progress.is-compact .aurora-order-progress-label {
+      font-size: 0.86rem;
+      line-height: 1.25;
     }
 
     .aurora-order-progress-line.is-pending {

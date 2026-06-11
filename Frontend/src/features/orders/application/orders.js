@@ -21,6 +21,9 @@ export const orderProgressSteps = [
   { key: 'delivered', label: 'Delivered' },
 ]
 
+const refundedProgressStep = { key: 'refunded', label: 'Refunded' }
+const cancelledProgressStep = { key: 'cancelled', label: 'Cancelled' }
+
 const MAX_CACHED_ORDER_DETAILS = 30
 
 export const orderStatusOptions = [
@@ -222,38 +225,65 @@ export function getOrderStatusPresentation(statusOrOrder) {
   }
 }
 
+function hasRefundedItems(order) {
+  return Array.isArray(order?.items) && order.items.some((item) => item?.refunded)
+}
+
+export function getOrderProgressSteps(order) {
+  const presentation = getOrderStatusPresentation(order)
+
+  if (presentation.isCancelled) {
+    return [cancelledProgressStep]
+  }
+
+  return hasRefundedItems(order)
+    ? [...orderProgressSteps, refundedProgressStep]
+    : orderProgressSteps
+}
+
 export function getOrderProgressState(statusOrOrder) {
   const presentation = getOrderStatusPresentation(statusOrOrder)
+  const progressSteps = getOrderProgressSteps(statusOrOrder)
+  const hasRefundedProgress = progressSteps.some((step) => step.key === refundedProgressStep.key)
 
   if (presentation.isCancelled) {
     return {
       ...presentation,
-      stepStates: orderProgressSteps.map(() => 'cancelled'),
+      steps: progressSteps,
+      stepStates: progressSteps.map(() => 'cancelled'),
     }
   }
 
   if (presentation.isPending) {
     return {
       ...presentation,
-      stepStates: orderProgressSteps.map(() => 'pending'),
+      steps: progressSteps,
+      stepStates: progressSteps.map(() => 'pending'),
     }
   }
 
-  const activeIndex = orderProgressSteps.findIndex((step) => step.key === presentation.key)
+  const activeKey = hasRefundedProgress ? refundedProgressStep.key : presentation.key
+  const activeIndex = progressSteps.findIndex((step) => step.key === activeKey)
 
   return {
     ...presentation,
-    stepStates: orderProgressSteps.map((step, index) => {
+    label: hasRefundedProgress ? refundedProgressStep.label : presentation.label,
+    steps: progressSteps,
+    stepStates: progressSteps.map((step, index) => {
+      if (activeKey === refundedProgressStep.key && step.key !== refundedProgressStep.key) {
+        return 'complete'
+      }
+
+      if (step.key === activeKey) {
+        return activeKey === 'delivered' ? 'complete' : 'active'
+      }
+
       if (presentation.key === 'delivered') {
         return 'complete'
       }
 
       if (index < activeIndex) {
         return 'complete'
-      }
-
-      if (step.key === presentation.key) {
-        return 'active'
       }
 
       return 'upcoming'

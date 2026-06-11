@@ -19,7 +19,6 @@ import {
   getOrderProgressState,
   getOrderStatusPresentation,
   isRefundRequestWindowOpen,
-  orderProgressSteps,
   ordersChangeEvent,
   requestOrderRefund,
 } from '../application/orders'
@@ -381,6 +380,7 @@ export default function OrderDetailPage() {
   }
 
   const progressState = getOrderProgressState(order)
+  const progressSteps = progressState.steps || []
   const status = getOrderStatusPresentation(order)
   const detailReady = Boolean(order && Array.isArray(order.items))
   const canCancelOrder = Boolean(order?.id) && !['shipped', 'delivered', 'cancelled'].includes(status.key)
@@ -504,9 +504,15 @@ export default function OrderDetailPage() {
               </div>
             </div>
 
-            <div className="aurora-order-progress mt-8">
+            <div
+              className={[
+                'aurora-order-progress mt-8',
+                progressSteps.length === 1 ? 'is-single' : '',
+                progressSteps.length > 4 ? 'is-compact' : '',
+              ].filter(Boolean).join(' ')}
+            >
               <div className={`aurora-order-progress-line${progressState.isCancelled ? ' is-cancelled' : ''}${progressState.isPending ? ' is-pending' : ''}`} />
-              {orderProgressSteps.map((step, index) => {
+              {progressSteps.map((step, index) => {
                 const stepState = progressState.stepStates[index]
 
                 return (

@@ -490,36 +490,51 @@ function OrderDateRangePicker({
           {rangeLabel}
         </span>
         <span aria-hidden="true" className="text-sm text-[var(--sales-page-accent)]">
-          Calendar
+          Choose
         </span>
       </button>
 
       {open ? (
         <div
-          className="absolute left-0 z-30 mt-2 w-full min-w-[20rem] rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
+          className="mt-2 w-full rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
           role="dialog"
           aria-label="Filter orders by date range"
         >
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              className="rounded-full border border-[var(--aurora-border)] px-3 py-1.5 text-sm font-semibold text-[var(--aurora-text-strong)]"
+              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--aurora-border)] text-lg font-semibold text-[var(--aurora-text-strong)]"
               onClick={() => setVisibleMonth((currentMonth) => shiftMonth(currentMonth, -1))}
               aria-label="Previous month"
             >
-              Prev
+              &lt;
             </button>
             <p className="text-sm font-semibold text-[var(--aurora-text-strong)]">
               {monthLabel}
             </p>
             <button
               type="button"
-              className="rounded-full border border-[var(--aurora-border)] px-3 py-1.5 text-sm font-semibold text-[var(--aurora-text-strong)]"
+              className="grid h-10 w-10 place-items-center rounded-full border border-[var(--aurora-border)] text-lg font-semibold text-[var(--aurora-text-strong)]"
               onClick={() => setVisibleMonth((currentMonth) => shiftMonth(currentMonth, 1))}
               aria-label="Next month"
             >
-              Next
+              &gt;
             </button>
+          </div>
+
+          <p className="mt-3 text-xs font-semibold text-[var(--aurora-text)]">
+            Pick a start date, then pick an end date.
+          </p>
+
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-semibold">
+            <div className="rounded-[0.9rem] border border-[#d5e8ca] bg-[#f4fbef] px-3 py-2 text-[#3f563b]">
+              <span className="block text-[0.62rem] uppercase tracking-normal text-[#6b8065]">Start</span>
+              {rangeStart ? formatShortDate(rangeStart) : 'Not set'}
+            </div>
+            <div className="rounded-[0.9rem] border border-[#d5e8ca] bg-[#f4fbef] px-3 py-2 text-[#3f563b]">
+              <span className="block text-[0.62rem] uppercase tracking-normal text-[#6b8065]">End</span>
+              {rangeEnd ? formatShortDate(rangeEnd) : 'Not set'}
+            </div>
           </div>
 
           <div className="mt-4 grid grid-cols-7 gap-1 text-center text-[0.68rem] font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
@@ -540,8 +555,8 @@ function OrderDateRangePicker({
                   className={[
                     'min-h-9 rounded-full text-sm font-semibold transition',
                     day.inCurrentMonth ? 'text-[var(--aurora-text-strong)]' : 'text-[var(--aurora-text)] opacity-45',
-                    inRange ? 'bg-[var(--aurora-surface-muted)]' : '',
-                    selected ? 'bg-[var(--sales-page-accent)] text-white opacity-100' : '',
+                    inRange ? 'bg-[#f2faeb] text-[#3f563b] opacity-100' : '',
+                    selected ? 'border border-[#b8dca7] bg-[#e4f4d7] text-[#2f452b] opacity-100 shadow-[0_7px_16px_rgba(106,139,86,0.16)]' : '',
                   ].filter(Boolean).join(' ')}
                   onClick={() => handlePickDate(day.value)}
                   aria-pressed={selected}
@@ -1791,7 +1806,7 @@ export default function SalesManagerPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)_220px]">
+            <div className="relative z-10 mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(340px,0.9fr)_220px]">
               <label className="block">
                 <span className="sr-only">Search orders</span>
                 <input
@@ -1864,7 +1879,7 @@ export default function SalesManagerPage() {
                 </p>
               </div>
             ) : (
-              <div className="aurora-widget-subsurface mt-8">
+              <div className="aurora-widget-subsurface relative z-0 mt-8">
                 <div className="grid grid-cols-[minmax(0,1.2fr)_140px_120px] gap-4 px-5 py-3 text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)] max-md:hidden">
                   <span>Order</span>
                   <span>Date</span>
