@@ -270,7 +270,8 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 console.error("Payment cancellation error:", err);
                 return { success: false, message: "Order cancelled but failed to refund payment: "+err.toString() };
             });
-            if (refundResult.message == "Order cancelled but failed to refund payment: Process has been locked before") refundResult.success = true; // This means the order was already cancelled/refunded on the payment provider, so we can treat it as a success for our purposes.
+            if (refundResult.message == "Failed to refund payment: Transaction has already been cancelled") refundResult.success = true; // This means the order was already cancelled/refunded on the payment provider, so we can treat it as a success for our purposes.
+            if (refundResult.message == "Failed to refund payment: Process has been locked before") refundResult.success = true; // This means the order was already cancelled/refunded on the payment provider, so we can treat it as a success for our purposes.
             if (!refundResult.success) {
                 return { s: 500, j: true, d: { e: "Failed to cancel payment: " + refundResult.message } };
             }
