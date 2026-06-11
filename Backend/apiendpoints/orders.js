@@ -197,8 +197,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                 if (product === -1) return { s: 400, j: true, d: { e: "Product not found in order" } };
                 if (!result.d.order.order.details.products[product].refundRequested) return { s: 400, j: true, d: { e: "No pending refund request found for this product" } };
                 let emailaddr = null;
+                let restock = null;
                 if (endpoint[1] === "approve") {
-                    emailaddr = await sql.findUser(userId, true).then(res => {
+                    emailaddr = await sql.findUser(result.d.order.order.user_id, true).then(res => {
                         return res.success ? res.user.username : null;
                     }).catch(err => {
                         return null;
@@ -220,20 +221,18 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     if (!refundResult.success) {
                         return { s: 400, j: true, d: { e: refundResult.message } };
                     }
-                }
-                else {
-                    result.d.order.order.details.products[product].refundRequested = false;
-                    result.d.order.order.details.products[product].refundRejected = true;
-                }
-                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), result.d.order.order.user_id);
-                let restock = null;
-                if (endpoint[1] === "approve") {
                     restock = {
                         productId: result.d.order.order.details.products[product].id,
                         variantId: result.d.order.order.details.products[product].variantId,
                         quantity: result.d.order.order.details.products[product].quantity
                     }
                 }
+                else {
+                    result.d.order.order.details.products[product].refundRequested = false;
+                    result.d.order.order.details.products[product].refundRejected = true;
+                }
+                const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), result.d.order.order.user_id);
+                
                 return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails), restock).then(async res => {
                     if (res.success) {
                         if (endpoint[1] === "approve") {
