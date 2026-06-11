@@ -7,6 +7,15 @@ import { fetchAuthJson } from '../lib/authRequest'
 import { getAuthStateSnapshot } from '../features/auth/application/auth'
 import { normalizeUserRole, userRoles } from '../features/auth/domain/roles'
 import {
+  updateProductDetails,
+  updateProductVariant,
+  useProductCatalog,
+} from '../lib/products'
+import {
+  fetchWishlistNotifyQueue,
+  sendWishlistNotifications,
+} from '../lib/wishlist'
+import {
   fetchAdminOrderById,
   fetchAdminOrders,
   getOrderStatusPresentation,
@@ -121,6 +130,69 @@ function getRefundStatus(item) {
   }
 
   return null
+}
+
+const salesManagerTabs = [
+  {
+    key: 'analytics',
+    label: 'Analytics',
+    description: 'Revenue, cost, profit, refunds, and order-status movement stay grouped here.',
+  },
+  {
+    key: 'orders',
+    label: 'Orders',
+    description: 'Search orders, inspect delivery details, move fulfillment status, and review refunds.',
+  },
+  {
+    key: 'wishlist',
+    label: 'Wishlist Queue',
+    description: 'Review and send the queued wishlist stock and discount notifications.',
+  },
+  {
+    key: 'pricing',
+    label: 'Product Pricing',
+    description: 'Update product and variant pricing fields approved for Sales Manager access.',
+  },
+]
+
+function roundCurrency(value) {
+  return Math.round((Number(value) || 0) * 100) / 100
+}
+
+function roundFactor(value) {
+  return Math.round((Number(value) || 0) * 10000) / 10000
+}
+
+function normalizePricingNumber(value, label, { min = 0, max = null, fallback = null } = {}) {
+  const normalizedValue = String(value ?? '').trim()
+
+  if (!normalizedValue && fallback !== null) {
+    return fallback
+  }
+
+  if (!normalizedValue) {
+    throw new Error(`${label} is required.`)
+  }
+
+  const numericValue = Number(normalizedValue)
+
+  if (!Number.isFinite(numericValue)) {
+    throw new Error(`${label} must be a valid number.`)
+  }
+
+  if (min !== null && numericValue < min) {
+    throw new Error(`${label} cannot be below ${min}.`)
+  }
+
+  if (max !== null && numericValue > max) {
+    throw new Error(`${label} cannot be above ${max}.`)
+  }
+
+  return numericValue
+}
+
+function getVariantTotalPrice(basePrice, priceAdd, priceMult) {
+  return roundCurrency((Number(basePrice) + Number(priceAdd)) * Number(priceMult))
 }
 
 function getRecentOrderBuckets(orders) {
@@ -451,8 +523,593 @@ function MetricTile({ label, value, description }) {
   )
 }
 
+function getWishlistNotifySummary(items) {
+  const normalizedItems = Array.isArray(items) ? items : []
+  const userIds = new Set()
+  const productIds = new Set()
+  let blockedUsers = 0
+
+  for (const item of normalizedItems) {
+    if (item?.user_id !== undefined && item?.user_id !== null) {
+      userIds.add(String(item.user_id))
+    }
+
+    if (item?.product_id !== undefined && item?.product_id !== null) {
+      productIds.add(String(item.product_id))
+    }
+
+    if (item?.emailblocked) {
+      blockedUsers += 1
+    }
+  }
+
+  return {
+    entries: normalizedItems.length,
+    users: userIds.size,
+    products: productIds.size,
+    blockedUsers,
+  }
+}
+
+function WishlistQueuePanel() {
+  const [queueState, setQueueState] = useState({
+    loading: true,
+    error: '',
+    discount: [],
+    stock: [],
+  })
+  const [sendState, setSendState] = useState({
+    type: '',
+    error: '',
+    success: '',
+    log: '',
+  })
+
+  const discountSummary = useMemo(
+    () => getWishlistNotifySummary(queueState.discount),
+    [queueState.discount],
+  )
+  const stockSummary = useMemo(
+    () => getWishlistNotifySummary(queueState.stock),
+    [queueState.stock],
+  )
+  const busyType = sendState.type
+
+  async function loadQueue({ quiet = false } = {}) {
+    setQueueState((current) => ({
+      ...current,
+      loading: quiet ? current.loading : true,
+      error: '',
+    }))
+
+    try {
+      const queue = await fetchWishlistNotifyQueue()
+
+      setQueueState({
+        loading: false,
+        error: '',
+        discount: queue.discount,
+        stock: queue.stock,
+      })
+    } catch (queueError) {
+      setQueueState((current) => ({
+        ...current,
+        loading: false,
+        error: queueError?.message || 'Could not load wishlist notification queue.',
+      }))
+    }
+  }
+
+  useEffect(() => {
+    void loadQueue()
+  }, [])
+
+  function handleSend(type, summary) {
+    if (busyType) {
+      return
+    }
+
+    if (!summary.entries) {
+      setSendState({
+        type: '',
+        error: '',
+        success: `No ${type} notifications are waiting.`,
+        log: '',
+      })
+      return
+    }
+
+    if (!window.confirm(`Send ${type} wishlist notifications to ${summary.users} user${summary.users === 1 ? '' : 's'} now?`)) {
+      return
+    }
+
+    setSendState({
+      type,
+      error: '',
+      success: '',
+      log: '',
+    })
+
+    void sendWishlistNotifications(type)
+      .then((result) => {
+        setSendState({
+          type: '',
+          error: '',
+          success: `${type === 'discount' ? 'Discount' : 'Stock'} notifications sent.`,
+          log: result?.log || '',
+        })
+        void loadQueue({ quiet: true })
+      })
+      .catch((sendError) => {
+        setSendState({
+          type: '',
+          error: sendError?.message || `Could not send ${type} notifications.`,
+          success: '',
+          log: '',
+        })
+      })
+  }
+
+  const cards = [
+    {
+      type: 'discount',
+      title: 'Discount alerts',
+      description: 'Wishlisted products whose discount changed and are waiting for a manager-triggered email.',
+      summary: discountSummary,
+    },
+    {
+      type: 'stock',
+      title: 'Stock alerts',
+      description: 'Wishlisted products that came back in stock and are waiting for a manager-triggered email.',
+      summary: stockSummary,
+    },
+  ]
+
+  return (
+    <section id="wishlist-queue" className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+            Wishlist queue
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Send queued wishlist emails
+          </h2>
+        </div>
+        <LiquidGlassButton
+          type="button"
+          variant="quiet"
+          size="compact"
+          disabled={queueState.loading || Boolean(busyType)}
+          onClick={() => {
+            void loadQueue()
+          }}
+        >
+          Refresh queue
+        </LiquidGlassButton>
+      </div>
+
+      {queueState.error ? (
+        <div className="aurora-message aurora-message-error mt-6">{queueState.error}</div>
+      ) : null}
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        {cards.map((card) => (
+          <article key={card.type} className="aurora-ops-card p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+                  {card.summary.entries} queued
+                </p>
+                <h3 className="mt-3 text-xl font-semibold text-[var(--aurora-text-strong)]">
+                  {card.title}
+                </h3>
+              </div>
+              <p className="text-right text-sm font-semibold text-[var(--aurora-text-strong)]">
+                {card.summary.users} user{card.summary.users === 1 ? '' : 's'}
+              </p>
+            </div>
+
+            <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
+              {card.description}
+            </p>
+
+            <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+                  Products
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.products}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+                  Entries
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.entries}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+                  Blocked
+                </p>
+                <p className="mt-1 font-semibold text-[var(--aurora-text-strong)]">
+                  {card.summary.blockedUsers}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-[var(--aurora-border)] pt-4">
+              <LiquidGlassButton
+                type="button"
+                variant={card.type === 'discount' ? 'secondary' : 'soft'}
+                size="compact"
+                loading={busyType === card.type}
+                disabled={queueState.loading || Boolean(busyType) || !card.summary.entries}
+                onClick={() => {
+                  handleSend(card.type, card.summary)
+                }}
+              >
+                Send {card.type}
+              </LiquidGlassButton>
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                Requires confirmation before sending.
+              </p>
+            </div>
+          </article>
+        ))}
+      </div>
+
+      {sendState.error ? (
+        <div className="aurora-message aurora-message-error mt-6">{sendState.error}</div>
+      ) : null}
+      {sendState.success ? (
+        <div className="aurora-message aurora-message-success mt-6">{sendState.success}</div>
+      ) : null}
+      {sendState.log ? (
+        <pre className="mt-4 max-h-48 overflow-auto rounded-[1.2rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-muted)] p-4 text-xs leading-6 text-[var(--aurora-text)]">
+          {sendState.log}
+        </pre>
+      ) : null}
+    </section>
+  )
+}
+
+function buildProductPricingForm(product) {
+  return {
+    price: String(roundCurrency(product?.price)),
+    cost: String(roundCurrency(product?.cost)),
+    discountRate: String(roundCurrency(product?.discountRate)),
+    taxRate: String(roundCurrency(product?.taxRate ?? 0)),
+  }
+}
+
+function buildVariantPricingForm(variant) {
+  return {
+    priceAdd: String(roundCurrency(variant?.priceAdd)),
+    priceMult: String(roundFactor(variant?.priceMult ?? 1)),
+    cost: String(roundCurrency(variant?.cost)),
+    discountRate: String(roundCurrency(variant?.discountRate)),
+  }
+}
+
+function ProductPricingPanel({ products, loading, error }) {
+  const sortedProducts = useMemo(
+    () => [...products].sort((left, right) => left.name.localeCompare(right.name)),
+    [products],
+  )
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [selectedVariantId, setSelectedVariantId] = useState('')
+  const [productForm, setProductForm] = useState(() => buildProductPricingForm(null))
+  const [variantForm, setVariantForm] = useState(() => buildVariantPricingForm(null))
+  const [saveState, setSaveState] = useState({
+    target: '',
+    error: '',
+    success: '',
+  })
+
+  const selectedProduct = useMemo(
+    () => sortedProducts.find((product) => String(product.id) === String(selectedProductId)) || null,
+    [selectedProductId, sortedProducts],
+  )
+  const selectedVariant = useMemo(
+    () => (selectedProduct?.variants || []).find((variant) => String(variant.id) === String(selectedVariantId)) || null,
+    [selectedProduct, selectedVariantId],
+  )
+
+  useEffect(() => {
+    if (!selectedProductId && sortedProducts.length) {
+      setSelectedProductId(String(sortedProducts[0].id))
+    }
+  }, [selectedProductId, sortedProducts])
+
+  useEffect(() => {
+    setProductForm(buildProductPricingForm(selectedProduct))
+    setSelectedVariantId((currentVariantId) => (
+      selectedProduct?.variants?.some((variant) => String(variant.id) === String(currentVariantId))
+        ? currentVariantId
+        : ''
+    ))
+  }, [selectedProduct])
+
+  useEffect(() => {
+    setVariantForm(buildVariantPricingForm(selectedVariant))
+  }, [selectedVariant])
+
+  const hasVariants = Boolean(selectedProduct?.variants?.length)
+  const variantPreviewPrice = selectedVariant
+    ? getVariantTotalPrice(selectedProduct?.price || 0, variantForm.priceAdd, variantForm.priceMult)
+    : null
+
+  function updateProductField(field, value) {
+    setProductForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  function updateVariantField(field, value) {
+    setVariantForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  async function handleSaveProductPricing() {
+    if (!selectedProduct) {
+      return
+    }
+
+    setSaveState({ target: 'product', error: '', success: '' })
+
+    try {
+      const nextPrice = roundCurrency(normalizePricingNumber(productForm.price, 'Price'))
+      const nextCost = roundCurrency(normalizePricingNumber(productForm.cost, 'Manufacturing cost'))
+      const nextDiscount = roundCurrency(normalizePricingNumber(productForm.discountRate, 'Discount', { max: 100 }))
+      const nextTax = roundCurrency(normalizePricingNumber(productForm.taxRate, 'Tax', { max: 100 }))
+      const edits = {}
+
+      if (nextPrice !== roundCurrency(selectedProduct.price)) edits.price = nextPrice
+      if (nextCost !== roundCurrency(selectedProduct.cost)) edits.cost = nextCost
+      if (nextDiscount !== roundCurrency(selectedProduct.discountRate)) edits.discount_rate = nextDiscount
+      if (nextTax !== roundCurrency(selectedProduct.taxRate ?? 0)) edits.tax = nextTax
+
+      await updateProductDetails(selectedProduct.id, edits)
+      setSaveState({
+        target: '',
+        error: '',
+        success: 'Product pricing updated.',
+      })
+    } catch (saveError) {
+      setSaveState({
+        target: '',
+        error: saveError?.message || 'Could not update product pricing.',
+        success: '',
+      })
+    }
+  }
+
+  async function handleSaveVariantPricing() {
+    if (!selectedVariant) {
+      return
+    }
+
+    setSaveState({ target: 'variant', error: '', success: '' })
+
+    try {
+      const nextPriceAdd = roundCurrency(normalizePricingNumber(variantForm.priceAdd, 'Addition factor'))
+      const nextPriceMult = roundFactor(normalizePricingNumber(variantForm.priceMult, 'Multiplication factor'))
+      const nextCost = roundCurrency(normalizePricingNumber(variantForm.cost, 'Variant cost'))
+      const nextDiscount = roundCurrency(normalizePricingNumber(variantForm.discountRate, 'Variant discount', { max: 100 }))
+      const edits = {}
+
+      if (nextPriceAdd !== roundCurrency(selectedVariant.priceAdd)) edits.price_add = nextPriceAdd
+      if (nextPriceMult !== roundFactor(selectedVariant.priceMult ?? 1)) edits.price_mult = nextPriceMult
+      if (nextCost !== roundCurrency(selectedVariant.cost)) edits.cost = nextCost
+      if (nextDiscount !== roundCurrency(selectedVariant.discountRate)) edits.discount_rate = nextDiscount
+
+      await updateProductVariant(selectedVariant.id, edits)
+      setSaveState({
+        target: '',
+        error: '',
+        success: 'Variant pricing updated.',
+      })
+    } catch (saveError) {
+      setSaveState({
+        target: '',
+        error: saveError?.message || 'Could not update variant pricing.',
+        success: '',
+      })
+    }
+  }
+
+  return (
+    <section id="product-pricing" className="aurora-ops-panel p-8">
+      <div className="aurora-widget-header">
+        <div className="aurora-widget-heading">
+          <p className="text-sm font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+            Product pricing
+          </p>
+          <h2 className="mt-3 font-display text-4xl text-[var(--aurora-text-strong)]">
+            Update prices, costs, tax, and discounts
+          </h2>
+        </div>
+        <span className="aurora-order-status-chip is-processing">
+          {loading ? 'Syncing' : `${sortedProducts.length} products`}
+        </span>
+      </div>
+
+      {error ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">
+          {error}
+        </div>
+      ) : null}
+
+      <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_220px]">
+        <label className="block">
+          <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+            Product
+          </span>
+          <select
+            className="aurora-select mt-3"
+            value={selectedProductId}
+            onChange={(event) => {
+              setSelectedProductId(event.target.value)
+              setSaveState({ target: '', error: '', success: '' })
+            }}
+          >
+            {!sortedProducts.length ? <option value="">No products available</option> : null}
+            {sortedProducts.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="aurora-widget-subsurface p-4 text-sm leading-7 text-[var(--aurora-text)]">
+          {selectedProduct
+            ? `${selectedProduct.categoryName || 'Catalog'} · ${selectedProduct.productCode || selectedProduct.id}`
+            : 'Choose a product to edit.'}
+        </div>
+      </div>
+
+      {saveState.error ? (
+        <div className="aurora-message aurora-message-error mt-6" role="alert">{saveState.error}</div>
+      ) : null}
+      {saveState.success ? (
+        <div className="aurora-message aurora-message-success mt-6" role="status" aria-live="polite">{saveState.success}</div>
+      ) : null}
+
+      <div className="mt-6 grid gap-6 xl:grid-cols-2">
+        <article className="aurora-ops-card p-5">
+          <div className="aurora-widget-heading">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+              Base product
+            </p>
+            <h3 className="mt-3 text-xl font-semibold text-[var(--aurora-text-strong)]">
+              {selectedProduct?.name || 'Product pricing'}
+            </h3>
+          </div>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Price</span>
+              <input className="aurora-input mt-2" type="number" min="0" step="0.01" value={productForm.price} onChange={(event) => updateProductField('price', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Cost</span>
+              <input className="aurora-input mt-2" type="number" min="0" step="0.01" value={productForm.cost} onChange={(event) => updateProductField('cost', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Discount %</span>
+              <input className="aurora-input mt-2" type="number" min="0" max="100" step="0.01" value={productForm.discountRate} onChange={(event) => updateProductField('discountRate', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Tax %</span>
+              <input className="aurora-input mt-2" type="number" min="0" max="100" step="1" value={productForm.taxRate} onChange={(event) => updateProductField('taxRate', event.target.value)} />
+            </label>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--aurora-border)] pt-4">
+            <p className="text-sm leading-7 text-[var(--aurora-text)]">
+              Current sale price {formatCurrency((Number(productForm.price) || 0) * ((100 - (Number(productForm.discountRate) || 0)) / 100))}
+            </p>
+            <LiquidGlassButton
+              type="button"
+              variant="secondary"
+              size="compact"
+              loading={saveState.target === 'product'}
+              disabled={!selectedProduct || Boolean(saveState.target)}
+              onClick={() => {
+                void handleSaveProductPricing()
+              }}
+            >
+              Save product pricing
+            </LiquidGlassButton>
+          </div>
+        </article>
+
+        <article className="aurora-ops-card p-5">
+          <div className="aurora-widget-heading">
+            <p className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+              Variant pricing
+            </p>
+            <h3 className="mt-3 text-xl font-semibold text-[var(--aurora-text-strong)]">
+              {hasVariants ? 'Variant price factors' : 'No variants on this product'}
+            </h3>
+          </div>
+
+          <label className="mt-5 block">
+            <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">
+              Variant
+            </span>
+            <select
+              className="aurora-select mt-3"
+              value={selectedVariantId}
+              disabled={!hasVariants}
+              onChange={(event) => {
+                setSelectedVariantId(event.target.value)
+                setSaveState({ target: '', error: '', success: '' })
+              }}
+            >
+              <option value="">{hasVariants ? 'Choose a variant' : 'No variants available'}</option>
+              {(selectedProduct?.variants || []).map((variant) => (
+                <option key={variant.id} value={variant.id}>
+                  {variant.variantCode || `Variant ${variant.id}`}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Price add</span>
+              <input className="aurora-input mt-2" type="number" min="0" step="0.01" disabled={!selectedVariant} value={variantForm.priceAdd} onChange={(event) => updateVariantField('priceAdd', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Price multiplier</span>
+              <input className="aurora-input mt-2" type="number" min="0" step="0.0001" disabled={!selectedVariant} value={variantForm.priceMult} onChange={(event) => updateVariantField('priceMult', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Variant cost</span>
+              <input className="aurora-input mt-2" type="number" min="0" step="0.01" disabled={!selectedVariant} value={variantForm.cost} onChange={(event) => updateVariantField('cost', event.target.value)} />
+            </label>
+            <label>
+              <span className="text-xs font-semibold uppercase tracking-normal text-[var(--sales-page-accent)]">Variant discount %</span>
+              <input className="aurora-input mt-2" type="number" min="0" max="100" step="0.01" disabled={!selectedVariant} value={variantForm.discountRate} onChange={(event) => updateVariantField('discountRate', event.target.value)} />
+            </label>
+          </div>
+
+          <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--aurora-border)] pt-4">
+            <p className="text-sm leading-7 text-[var(--aurora-text)]">
+              {selectedVariant
+                ? `Preview ${formatCurrency(variantPreviewPrice)} before variant discount.`
+                : 'Select a variant to edit its price factors.'}
+            </p>
+            <LiquidGlassButton
+              type="button"
+              variant="secondary"
+              size="compact"
+              loading={saveState.target === 'variant'}
+              disabled={!selectedVariant || Boolean(saveState.target)}
+              onClick={() => {
+                void handleSaveVariantPricing()
+              }}
+            >
+              Save variant pricing
+            </LiquidGlassButton>
+          </div>
+        </article>
+      </div>
+    </section>
+  )
+}
+
 export default function SalesManagerPage() {
   const [viewerRole] = useState(() => normalizeUserRole(getAuthStateSnapshot().user?.role))
+  const { products, loading: productsLoading, error: productsError } = useProductCatalog()
   const [orders, setOrders] = useState([])
   const [salesAnalytics, setSalesAnalytics] = useState(null)
   const [selectedOrderId, setSelectedOrderId] = useState('')
@@ -468,6 +1125,7 @@ export default function SalesManagerPage() {
   const [analyticsError, setAnalyticsError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [pendingDeliveredStatus, setPendingDeliveredStatus] = useState('')
+  const [activeTab, setActiveTab] = useState('analytics')
   const isProductManagerView = viewerRole === userRoles.productManager
 
   useEffect(() => {
@@ -648,6 +1306,9 @@ export default function SalesManagerPage() {
       .filter((status) => status.count > 0),
     [orders],
   )
+  const activeTabDescription =
+    salesManagerTabs.find((tab) => tab.key === activeTab)?.description ||
+    salesManagerTabs[0].description
 
   const handleRefresh = async () => {
     setOrdersLoading(true)
@@ -799,17 +1460,6 @@ export default function SalesManagerPage() {
         : 'A focused fulfillment console for order lookup, invoice access, delivery review, and status movement.'}
     >
       <div className="aurora-sales-manager-page space-y-6">
-        {!isProductManagerView ? (
-          <div className="space-y-4">
-            <SalesAnalyticsGraph
-              analytics={salesAnalytics}
-              loading={analyticsLoading}
-              error={analyticsError}
-            />
-            <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
-          </div>
-        ) : null}
-
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <MetricTile
             label="Active"
@@ -833,6 +1483,62 @@ export default function SalesManagerPage() {
           />
         </section>
 
+        {!isProductManagerView ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-4">
+              <p className="text-sm leading-7 text-[var(--aurora-text)]">
+                {ordersLoading ? 'Syncing order data.' : 'Backend-backed sales tools are active.'}
+              </p>
+              <p className="max-w-2xl text-sm leading-7 text-[var(--aurora-text)]">
+                {activeTabDescription}
+              </p>
+            </div>
+
+            <section className="aurora-widget-subsurface p-3">
+              <div className="grid gap-2 md:grid-cols-4" role="tablist" aria-label="Sales manager sections">
+                {salesManagerTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    role="tab"
+                    aria-selected={activeTab === tab.key ? 'true' : 'false'}
+                    className={`aurora-sales-order-row rounded-[1.1rem] px-4 py-3 text-center text-sm font-semibold transition ${activeTab === tab.key ? 'is-selected' : ''}`.trim()}
+                    onClick={() => {
+                      setActiveTab(tab.key)
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : null}
+
+        {!isProductManagerView && activeTab === 'analytics' ? (
+          <div className="space-y-4">
+            <SalesAnalyticsGraph
+              analytics={salesAnalytics}
+              loading={analyticsLoading}
+              error={analyticsError}
+            />
+            <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
+          </div>
+        ) : null}
+
+        {!isProductManagerView && activeTab === 'wishlist' ? (
+          <WishlistQueuePanel />
+        ) : null}
+
+        {!isProductManagerView && activeTab === 'pricing' ? (
+          <ProductPricingPanel
+            products={products}
+            loading={productsLoading}
+            error={productsError}
+          />
+        ) : null}
+
+      {(isProductManagerView || activeTab === 'orders') ? (
       <div className="grid gap-8 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="space-y-8">
           <section id="activity" className="aurora-ops-panel p-8">
@@ -1238,6 +1944,7 @@ export default function SalesManagerPage() {
           </section>
         </div>
       </div>
+      ) : null}
       </div>
 
       {pendingDeliveredStatus ? (
