@@ -75,12 +75,24 @@ function getDateInputValue(value) {
     return ''
   }
 
-  const date = new Date(timestamp)
+  return getDateObjectInputValue(new Date(timestamp))
+}
+
+function getDateObjectInputValue(date) {
   const year = date.getFullYear()
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
 
   return `${year}-${month}-${day}`
+}
+
+function getRelativeDateInputValue(daysAgo) {
+  const date = new Date()
+
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() - daysAgo)
+
+  return getDateObjectInputValue(date)
 }
 
 function getDateFromInputValue(value) {
@@ -292,8 +304,19 @@ function getRecentOrderBuckets(orders) {
   })
 }
 
-async function fetchSalesAnalytics() {
-  const { response, payload, data } = await fetchAuthJson('/analytics')
+async function fetchSalesAnalytics({ startDate = '', endDate = '' } = {}) {
+  const params = new URLSearchParams()
+
+  if (startDate) {
+    params.set('startDate', startDate)
+  }
+
+  if (endDate) {
+    params.set('endDate', endDate)
+  }
+
+  const analyticsPath = params.size ? `/analytics?${params.toString()}` : '/analytics'
+  const { response, payload, data } = await fetchAuthJson(analyticsPath)
 
   if (!response.ok || data?.e || payload?.e) {
     throw new Error(data?.e || payload?.e || 'Could not load sales analytics.')
@@ -439,6 +462,8 @@ function OrderDateRangePicker({
   endDate,
   onStartDateChange,
   onEndDateChange,
+  ariaLabel = 'Filter orders by date range',
+  helperText = 'Pick a start date, then pick an end date.',
 }) {
   const [open, setOpen] = useState(false)
   const [visibleMonth, setVisibleMonth] = useState(() => getMonthStart(startDate || endDate))
@@ -481,6 +506,7 @@ function OrderDateRangePicker({
         className="aurora-input flex w-full items-center justify-between gap-3 text-left"
         aria-expanded={open}
         aria-haspopup="dialog"
+        aria-label={ariaLabel}
         onClick={() => {
           setVisibleMonth(getMonthStart(startDate || endDate))
           setOpen((currentOpen) => !currentOpen)
@@ -498,7 +524,7 @@ function OrderDateRangePicker({
         <div
           className="absolute left-1/2 z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-[1.35rem] border border-[var(--aurora-border)] bg-[var(--aurora-surface-strong)] p-4 shadow-[var(--aurora-shadow)]"
           role="dialog"
-          aria-label="Filter orders by date range"
+          aria-label={ariaLabel}
         >
           <div className="flex items-center justify-between gap-3">
             <button
@@ -523,7 +549,7 @@ function OrderDateRangePicker({
           </div>
 
           <p className="mt-3 text-xs font-semibold text-[var(--aurora-text)]">
-            Pick a start date, then pick an end date.
+            {helperText}
           </p>
 
           <div className="mt-3 grid grid-cols-2 gap-2 text-xs font-semibold">
@@ -607,6 +633,7 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
   const maxAmount = Math.max(1, ...visiblePoints.flatMap((point) => [
     point.sales,
     point.profit,
+    point.refunds,
   ].map((value) => Math.abs(value))))
   const chartWidth = 700
   const chartHeight = 260
@@ -621,12 +648,14 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
     const x = chartLeft + (visiblePoints.length > 1 ? index * xStep : plotWidth / 2)
     const salesY = chartTop + (1 - (point.sales / maxAmount)) * plotHeight
     const profitY = chartTop + (1 - (point.profit / maxAmount)) * plotHeight
+    const refundHeight = Math.max(0, (point.refunds / maxAmount) * plotHeight)
 
     return {
       ...point,
       x,
       salesY,
       profitY,
+      refundHeight,
     }
   })
   const salesPath = chartPoints.map((point, index) => `${index ? 'L' : 'M'} ${point.x} ${point.salesY}`).join(' ')
@@ -646,6 +675,9 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
           <h2 className="mt-2 font-display text-2xl text-[var(--sales-dashboard-text)]">
             Revenue and profit trend
           </h2>
+          <p className="aurora-sales-dashboard-muted mt-2 text-sm leading-6">
+            Sales and profit are shown as trend lines; refunds appear as soft bars.
+          </p>
         </div>
         <span className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-xs font-semibold uppercase tracking-normal text-[var(--sales-dashboard-text)]">
           {loading ? 'Loading' : `${visiblePoints.length} days`}
@@ -670,6 +702,10 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                     <stop offset="0%" stopColor="color-mix(in srgb, var(--sales-dashboard-line) 28%, transparent)" />
                     <stop offset="100%" stopColor="color-mix(in srgb, var(--sales-dashboard-line) 3%, transparent)" />
                   </linearGradient>
+                  <linearGradient id="refundBarGradient" x1="0" x2="0" y1="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(201, 86, 77, 0.35)" />
+                    <stop offset="100%" stopColor="rgba(201, 86, 77, 0.08)" />
+                  </linearGradient>
                 </defs>
                 {amountTicks.map((tick) => {
                   const y = chartTop + (1 - (tick / maxAmount)) * plotHeight
@@ -685,6 +721,17 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
                 })}
                 <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft} y1={chartTop} y2={chartTop + plotHeight} />
                 <line className="aurora-sales-chart-axis" x1={chartLeft} x2={chartLeft + plotWidth} y1={chartTop + plotHeight} y2={chartTop + plotHeight} />
+                {chartPoints.map((point) => (
+                  <rect
+                    key={`${point.date}-refund`}
+                    x={point.x - 9}
+                    y={chartTop + plotHeight - point.refundHeight}
+                    width="18"
+                    height={point.refundHeight}
+                    rx="7"
+                    fill="url(#refundBarGradient)"
+                  />
+                ))}
                 <path d={salesAreaPath} fill="url(#salesAreaGradient)" />
                 <path className="aurora-sales-chart-sales" d={salesPath} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="4" />
                 <path className="aurora-sales-chart-profit" d={profitPath} fill="none" strokeDasharray="7 7" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
@@ -732,6 +779,104 @@ function SalesAnalyticsGraph({ analytics, loading, error }) {
           <span className="h-3 w-3 rounded-full bg-[var(--sales-dashboard-profit)]" />
           Profit
         </span>
+        <span className="inline-flex items-center gap-2">
+          <span className="h-3 w-3 rounded-full bg-[#c9564d]" />
+          Refunds
+        </span>
+      </div>
+    </section>
+  )
+}
+
+function AnalyticsControlPanel({
+  analytics,
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+}) {
+  const summary = analytics?.summary || {}
+  const timeseries = analytics?.timeseries || []
+  const normalizedStartDate = startDate && endDate && startDate > endDate ? endDate : startDate
+  const normalizedEndDate = startDate && endDate && startDate > endDate ? startDate : endDate
+  const rangeLabel = formatDateRangeLabel(normalizedStartDate, normalizedEndDate)
+  const presets = [
+    { label: '7 days', daysAgo: 6 },
+    { label: '30 days', daysAgo: 29 },
+    { label: '90 days', daysAgo: 89 },
+  ]
+
+  function applyPreset(daysAgo) {
+    onStartDateChange(getRelativeDateInputValue(daysAgo))
+    onEndDateChange(getRelativeDateInputValue(0))
+  }
+
+  function clearRange() {
+    onStartDateChange('')
+    onEndDateChange('')
+  }
+
+  return (
+    <section className="aurora-sales-dashboard p-6">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(19rem,0.42fr)] xl:items-start">
+        <div>
+          <p className="aurora-sales-dashboard-kicker text-xs font-semibold uppercase">
+            Analytics range
+          </p>
+          <h2 className="mt-2 font-display text-2xl text-[var(--sales-dashboard-text)]">
+            Focus the sales window
+          </h2>
+          <p className="aurora-sales-dashboard-muted mt-2 text-sm leading-6">
+            {rangeLabel === 'Date range'
+              ? 'Showing all available analytics data.'
+              : `Showing analytics for ${rangeLabel}.`}
+          </p>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {presets.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                className="rounded-full border border-[var(--sales-dashboard-border)] bg-[var(--sales-dashboard-card)] px-4 py-2 text-sm font-semibold text-[var(--sales-dashboard-text)] transition hover:-translate-y-0.5"
+                onClick={() => applyPreset(preset.daysAgo)}
+              >
+                {preset.label}
+              </button>
+            ))}
+            <button
+              type="button"
+              className="rounded-full border border-[var(--sales-dashboard-border)] px-4 py-2 text-sm font-semibold text-[var(--sales-dashboard-muted)] transition hover:-translate-y-0.5"
+              onClick={clearRange}
+            >
+              All time
+            </button>
+          </div>
+        </div>
+
+        <OrderDateRangePicker
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={onStartDateChange}
+          onEndDateChange={onEndDateChange}
+          ariaLabel="Filter analytics by date range"
+          helperText="Pick the first and last day to focus the analytics tab."
+        />
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-4">
+        {[
+          ['Sales', formatCurrency(summary.totalSales || 0)],
+          ['Profit', formatCurrency(summary.netProfit || 0)],
+          ['Refunds', formatCurrency(summary.totalRefunds || 0)],
+          ['Data days', timeseries.length],
+        ].map(([label, value]) => (
+          <div key={label} className="aurora-sales-dashboard-card px-4 py-3">
+            <p className="aurora-sales-dashboard-kicker text-xs font-semibold">{label}</p>
+            <p className="mt-1 font-display text-2xl text-[var(--sales-dashboard-text)]">
+              {value}
+            </p>
+          </div>
+        ))}
       </div>
     </section>
   )
@@ -1351,6 +1496,8 @@ export default function SalesManagerPage() {
   const [query, setQuery] = useState('')
   const [orderDateStartFilter, setOrderDateStartFilter] = useState('')
   const [orderDateEndFilter, setOrderDateEndFilter] = useState('')
+  const [analyticsDateStartFilter, setAnalyticsDateStartFilter] = useState('')
+  const [analyticsDateEndFilter, setAnalyticsDateEndFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
@@ -1418,7 +1565,10 @@ export default function SalesManagerPage() {
     setAnalyticsLoading(true)
     setAnalyticsError('')
 
-    void fetchSalesAnalytics()
+    void fetchSalesAnalytics({
+      startDate: analyticsDateStartFilter,
+      endDate: analyticsDateEndFilter,
+    })
       .then((nextAnalytics) => {
         if (!active) {
           return
@@ -1443,7 +1593,7 @@ export default function SalesManagerPage() {
     return () => {
       active = false
     }
-  }, [isProductManagerView])
+  }, [analyticsDateEndFilter, analyticsDateStartFilter, isProductManagerView])
 
   useEffect(() => {
     let active = true
@@ -1537,7 +1687,23 @@ export default function SalesManagerPage() {
   const pendingRefundCount = selectedRefundItems.filter((item) => (
     item.refundRequested && !item.refunded && !item.refundRejected
   )).length
-  const statusBreakdown = useMemo(
+  const analyticsOrders = useMemo(() => {
+    const normalizedStartDate = analyticsDateStartFilter.trim()
+    const normalizedEndDate = analyticsDateEndFilter.trim()
+    const [dateRangeStart, dateRangeEnd] = normalizedStartDate && normalizedEndDate && normalizedStartDate > normalizedEndDate
+      ? [normalizedEndDate, normalizedStartDate]
+      : [normalizedStartDate, normalizedEndDate]
+
+    return orders.filter((order) => {
+      const orderDate = getDateInputValue(order.submittedAt || order.createdAt)
+
+      return (
+        (!dateRangeStart || orderDate >= dateRangeStart) &&
+        (!dateRangeEnd || orderDate <= dateRangeEnd)
+      )
+    })
+  }, [analyticsDateEndFilter, analyticsDateStartFilter, orders])
+  const analyticsStatusBreakdown = useMemo(
     () => orderStatusOptions
       .map((status) => {
         const presentation = getOrderStatusPresentation(status)
@@ -1545,11 +1711,11 @@ export default function SalesManagerPage() {
         return {
           key: presentation.key,
           label: presentation.label,
-          count: orders.filter((order) => order.statusKey === presentation.key).length,
+          count: analyticsOrders.filter((order) => order.statusKey === presentation.key).length,
         }
       })
       .filter((status) => status.count > 0),
-    [orders],
+    [analyticsOrders],
   )
   const activeTabDescription =
     salesManagerTabs.find((tab) => tab.key === activeTab)?.description ||
@@ -1565,7 +1731,12 @@ export default function SalesManagerPage() {
     try {
       const [ordersResult, analyticsResult] = await Promise.allSettled([
         fetchAdminOrders(),
-        isProductManagerView ? Promise.resolve(null) : fetchSalesAnalytics(),
+        isProductManagerView
+          ? Promise.resolve(null)
+          : fetchSalesAnalytics({
+            startDate: analyticsDateStartFilter,
+            endDate: analyticsDateEndFilter,
+          }),
       ])
 
       if (ordersResult.status === 'fulfilled') {
@@ -1762,12 +1933,19 @@ export default function SalesManagerPage() {
 
         {!isProductManagerView && activeTab === 'analytics' ? (
           <div className="space-y-4">
+            <AnalyticsControlPanel
+              analytics={salesAnalytics}
+              startDate={analyticsDateStartFilter}
+              endDate={analyticsDateEndFilter}
+              onStartDateChange={setAnalyticsDateStartFilter}
+              onEndDateChange={setAnalyticsDateEndFilter}
+            />
             <SalesAnalyticsGraph
               analytics={salesAnalytics}
               loading={analyticsLoading}
               error={analyticsError}
             />
-            <SalesGraphicsPanel orders={orders} statusBreakdown={statusBreakdown} />
+            <SalesGraphicsPanel orders={analyticsOrders} statusBreakdown={analyticsStatusBreakdown} />
           </div>
         ) : null}
 
