@@ -16,6 +16,7 @@ function sanitizeProductManagerOrder(order) {
 
     return {
         id: order.id,
+        user_id: order.user_id,
         status: order.status,
         created_at: order.created_at,
         purchase_id: order.purchase_id,
