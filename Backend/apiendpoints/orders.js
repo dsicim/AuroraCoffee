@@ -5,7 +5,7 @@ const aes = require("../components/aes256.js");
 const pdf = require("../invoice/pdf.js");
 const currencymodule = require("../components/currency.js");
 const payments = require("./payment.js");
-const mailer = require("../components/mailer.js");
+const mailer = require("../components/email.js");
 
 function sanitizeProductManagerOrder(order) {
     const details = order && typeof order.details === "object" ? order.details : {};
