@@ -229,6 +229,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
                     result.d.order.order.details.products[product].refundRequested = false;
                     result.d.order.order.details.products[product].refundRejected = true;
                 }
+                console.log(restock);
                 const encryptedDetails = aes.encrypt(JSON.stringify(result.d.order.order.details), result.d.order.order.user_id);
                 
                 return await sql.updateOrderDetails(orderId, JSON.stringify(encryptedDetails), restock).then(async res => {
