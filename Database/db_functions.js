@@ -1942,6 +1942,7 @@ func.updateOrderDetails = async function (orderId, details, restock = null) {
         if (result.affectedRows === 0) {
             throw new DBError(404, 'Order not found');
         }
+        console.log(restock);
         if (restock !== null) {
             const [productResult] = await connection.execute('UPDATE products SET stock = stock + ? WHERE id = ?', [restock.quantity, restock.productId]);
             if (restock.variantId) {
