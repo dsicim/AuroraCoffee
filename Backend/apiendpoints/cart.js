@@ -9,7 +9,7 @@ function getDiscountedPrice(price, discountRate) {
 }
 
 function validateOptions(product, opt, variant, ignoreRequired = false) {
-    if (!opt || typeof opt !== "object" || Array.isArray(opt)) return { s: false, e: "Options should be an object" };
+    if (opt && (typeof opt !== "object" || Array.isArray(opt))) return { s: false, e: "Options should be an object" };
     const o = product.options ? product.options : [];
     const expectedopt = [];
     const validopt = [];
