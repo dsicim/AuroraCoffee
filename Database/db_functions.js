@@ -2051,7 +2051,7 @@ func.cancelOrder = async function (orderId, userId, products) {
         await connection.beginTransaction();
 
         // 1. Get order status and items
-        const [orders] = await connection.execute('SELECT status FROM orders WHERE id = ? FOR UPDATE', [orderId]);
+        const [orders] = await connection.execute('SELECT status, user_id FROM orders WHERE id = ? FOR UPDATE', [orderId]);
         if (orders.length === 0) {
             throw new DBError(404, 'Order not found');
         }
