@@ -1130,7 +1130,8 @@ export default function SalesManagerPage() {
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [query, setQuery] = useState('')
-  const [orderDateFilter, setOrderDateFilter] = useState('')
+  const [orderDateStartFilter, setOrderDateStartFilter] = useState('')
+  const [orderDateEndFilter, setOrderDateEndFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [ordersLoading, setOrdersLoading] = useState(true)
   const [analyticsLoading, setAnalyticsLoading] = useState(true)
@@ -1279,13 +1280,18 @@ export default function SalesManagerPage() {
   )
   const filteredOrders = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase()
-    const normalizedDateFilter = orderDateFilter.trim()
+    const normalizedStartDate = orderDateStartFilter.trim()
+    const normalizedEndDate = orderDateEndFilter.trim()
+    const [dateRangeStart, dateRangeEnd] = normalizedStartDate && normalizedEndDate && normalizedStartDate > normalizedEndDate
+      ? [normalizedEndDate, normalizedStartDate]
+      : [normalizedStartDate, normalizedEndDate]
 
     return orders.filter((order) => {
       const statusMatches = statusFilter === 'all' || order.statusKey === statusFilter
+      const orderDate = getDateInputValue(order.submittedAt || order.createdAt)
       const dateMatches =
-        !normalizedDateFilter ||
-        getDateInputValue(order.submittedAt || order.createdAt) === normalizedDateFilter
+        (!dateRangeStart || orderDate >= dateRangeStart) &&
+        (!dateRangeEnd || orderDate <= dateRangeEnd)
       const queryMatches = !normalizedQuery || [
         order.id,
         order.purchaseId,
@@ -1295,7 +1301,7 @@ export default function SalesManagerPage() {
 
       return statusMatches && dateMatches && queryMatches
     })
-  }, [orderDateFilter, orders, query, statusFilter])
+  }, [orderDateEndFilter, orderDateStartFilter, orders, query, statusFilter])
   const selectedOrderIndex = filteredOrders.findIndex((order) => order.id === selectedOrderId)
   const selectedStatus = selectedOrder?.statusKey || selectedOrder?.status || ''
   const selectedSummary = orders.find((order) => order.id === selectedOrderId) || null
@@ -1587,7 +1593,7 @@ export default function SalesManagerPage() {
               </div>
             </div>
 
-            <div className="mt-6 grid gap-3 lg:grid-cols-[1fr_180px_220px]">
+            <div className="mt-6 grid gap-3 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.85fr)_220px]">
               <label className="block">
                 <span className="sr-only">Search orders</span>
                 <input
@@ -1598,16 +1604,29 @@ export default function SalesManagerPage() {
                   placeholder="Search order number, purchase id, or status"
                 />
               </label>
-              <label className="block">
-                <span className="sr-only">Filter orders by date</span>
-                <input
-                  type="date"
-                  className="aurora-input"
-                  value={orderDateFilter}
-                  onChange={(event) => setOrderDateFilter(event.target.value)}
-                  aria-label="Filter orders by date"
-                />
-              </label>
+              <fieldset className="grid grid-cols-2 gap-2">
+                <legend className="sr-only">Filter orders by date range</legend>
+                <label className="block">
+                  <span className="sr-only">Filter orders from date</span>
+                  <input
+                    type="date"
+                    className="aurora-input"
+                    value={orderDateStartFilter}
+                    onChange={(event) => setOrderDateStartFilter(event.target.value)}
+                    aria-label="Filter orders from date"
+                  />
+                </label>
+                <label className="block">
+                  <span className="sr-only">Filter orders to date</span>
+                  <input
+                    type="date"
+                    className="aurora-input"
+                    value={orderDateEndFilter}
+                    onChange={(event) => setOrderDateEndFilter(event.target.value)}
+                    aria-label="Filter orders to date"
+                  />
+                </label>
+              </fieldset>
               <label className="block">
                 <span className="sr-only">Filter by status</span>
                 <select
@@ -1660,7 +1679,7 @@ export default function SalesManagerPage() {
                   No matching orders
                 </p>
                 <p className="mt-4 text-sm leading-7 text-[var(--aurora-text)]">
-                  Clear the search or status filter to return to the full queue.
+                  Clear the search, date range, or status filter to return to the full queue.
                 </p>
               </div>
             ) : (
@@ -1670,7 +1689,7 @@ export default function SalesManagerPage() {
                   <span>Date</span>
                   <span className="text-right">Status</span>
                 </div>
-                <div className="aurora-sales-table-divider divide-y">
+                <div className="aurora-sales-table-divider max-h-[560px] divide-y overflow-y-auto overscroll-contain">
                   {filteredOrders.map((order) => {
                   const status = getOrderStatusPresentation(order)
                   const selected = order.id === selectedOrderId
