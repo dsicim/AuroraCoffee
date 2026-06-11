@@ -278,9 +278,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             else {
                 return await sql.cancelOrder(orderId, admin?result.user_id:currentUser.id, result.d.order.order.details.products).then(res => {
                     if (res.success) return { s: 200, j: true, d: { message: res.message } };
-                    else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred" } };
+                    else return { s: 400, j: true, d: { e: res.e || "An unknown error occurred", u: result.user_id, c: currentUser.id, admin: admin } };
                 }).catch(err => {
-                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred" } };
+                    if (err instanceof sql.DBError) return { s: err.status, j: true, d: { e: err.error || "An unknown error occurred", u: result.user_id, c: currentUser.id, admin: admin } };
                     else return { s: 500, j: true, d: { e: "An unknown error occurred", u: result.user_id, c: currentUser.id, admin: admin } };
                 });
             }
