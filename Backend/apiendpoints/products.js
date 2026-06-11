@@ -74,10 +74,10 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             if (!isManager) return { s: 403, j: true, d: { e: "Forbidden" } };
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id || !body.data.edits) return { s: 400, j: true, d: { e: "Invalid request body" } };
             if (currentUser.role === "Sales Manager") {
-                const allowedEdits = ["price", "discount_rate"];
+                const allowedEdits = ["price", "discount_rate", "cost", "tax"];
                 const editKeys = Object.keys(body.data.edits);
                 if (editKeys.length === 0 || editKeys.some(key => !allowedEdits.includes(key))) {
-                    return { s: 403, j: true, d: { e: "Forbidden: Sales Managers can only edit price and discount_rate" } };
+                    return { s: 403, j: true, d: { e: "Forbidden: Sales Managers can only edit price, tax, cost and discount_rate" } };
                 }
             }
             return await sql.updateProduct(body.data.id, body.data.edits).then(async result => {
@@ -244,8 +244,9 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
     }
     else if (endpoint[0] === "variants") {
         if (!userId) return { s: 401, j: true, d: { e: "Unauthorized" } };
-        if (!["Admin", "Product Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
+        if (!["Admin", "Product Manager", "Sales Manager"].includes(currentUser.role)) return { s: 403, j: true, d: { e: "Forbidden" } };
         if (method === "POST") {
+            if (currentUser.role === "Sales Manager") return { s: 403, j: true, d: { e: "Forbidden: Sales Managers cannot add variants" } };
             if (!body || !body.exists || body.err || !body.json || !body.data) return { s: 400, j: true, d: { e: "Invalid request body" } };
             return await sql.addVariant(body.data).then(async result => {
                 if (result.success) {
@@ -263,6 +264,13 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
         else if (method === "PATCH") {
             if (!body || !body.exists || body.err || !body.json || !body.data || !body.data.id) return { s: 400, j: true, d: { e: "Variant ID is required" } };
             const edits = body.data.edits || body.data;
+            if (currentUser.role === "Sales Manager") {
+                const allowedEdits = ["price_add", "price_mult", "cost", "discount_rate"];
+                const editKeys = Object.keys(body.data.edits);
+                if (editKeys.length === 0 || editKeys.some(key => !allowedEdits.includes(key))) {
+                    return { s: 403, j: true, d: { e: "Forbidden: Sales Managers can only edit price_add, price_mult, cost and discount_rate" } };
+                }
+            }
             return await sql.updateVariant(body.data.id, edits).then(async result => {
                 if (result.success) {
                     return { s: 200, j: true, d: { msg: result.message } };
@@ -277,6 +285,7 @@ async function handleAPI(config, method, endpoint, query, body, headers, current
             });
         }
         else if (method === "DELETE") {
+            if (currentUser.role === "Sales Manager") return { s: 403, j: true, d: { e: "Forbidden: Sales Managers cannot add variants" } };
             const id = query.id || (body && body.data && body.data.id);
             if (!id) return { s: 400, j: true, d: { e: "Variant ID is required" } };
             return await sql.deleteVariant(id).then(async result => {
